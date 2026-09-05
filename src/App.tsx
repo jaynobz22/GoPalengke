@@ -5,10 +5,34 @@ import { AuthPage } from './pages/AuthPage';
 import { BuyerApp } from './pages/BuyerApp';
 import { SellerApp } from './pages/SellerApp';
 import { RiderApp } from './pages/RiderApp';
+import { PublicPages } from './components/PublicPages';
+
+function useHashRoute() {
+  const [hash, setHash] = useState(window.location.hash);
+
+  useEffect(() => {
+    function onChange() { setHash(window.location.hash); }
+    window.addEventListener('hashchange', onChange);
+    return () => window.removeEventListener('hashchange', onChange);
+  }, []);
+
+  const clean = hash.replace(/^#/, '');
+  const parts = clean.split('/');
+  if (parts.length >= 3 && parts[0] === '' && (parts[1] === 's' || parts[1] === 'u')) {
+    return { type: parts[1], slug: decodeURIComponent(parts[2]) };
+  }
+  return null;
+}
 
 function AppContent() {
   const { session, profile, loading } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
+  const publicRoute = useHashRoute();
+
+  // Public profile/store pages take priority — visible even without login
+  if (publicRoute) {
+    return <PublicPages />;
+  }
 
   if (loading) {
     return (

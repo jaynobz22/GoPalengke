@@ -11,6 +11,7 @@ import {
   Store as StoreIcon, Package, Settings, Plus, ArrowLeft, Edit, Trash2, X,
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
   TrendingUp, DollarSign, Bell, Search, Camera, Loader2, MessageCircle,
+  Share2, Copy, ExternalLink,
 } from 'lucide-react';
 
 type Tab = 'dashboard' | 'products' | 'orders' | 'settings';
@@ -1185,9 +1186,52 @@ function SellerSettings({ store, onEditStore, onSignOut }: { store: Store; onEdi
         <ArrowLeft size={18} className="text-gray-300 rotate-180" />
       </button>
 
+      {/* Shareable Store URL */}
+      {store.slug && (
+        <ShareableLinkSection
+          label="Link ng Tindahan"
+          url={`${window.location.origin}${window.location.pathname}#/s/${store.slug}`}
+          onOpen={() => { window.location.hash = `/s/${store.slug}`; }}
+        />
+      )}
+      {profile?.slug && (
+        <ShareableLinkSection
+          label="Link ng Profile"
+          url={`${window.location.origin}${window.location.pathname}#/u/${profile.slug}`}
+          onOpen={() => { window.location.hash = `/u/${profile.slug}`; }}
+        />
+      )}
+
       <button onClick={onSignOut} className="w-full bg-white text-red-500 border border-red-200 rounded-2xl font-semibold py-4 active:scale-[0.98] transition mt-4">
         Mag-sign Out
       </button>
+    </div>
+  );
+}
+
+// ============= SHAREABLE LINK SECTION =============
+function ShareableLinkSection({ label, url, onOpen }: { label: string; url: string; onOpen: () => void }) {
+  const [copied, setCopied] = useState(false);
+  function copy() {
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-2">
+      <div className="flex items-center gap-2 mb-2">
+        <Share2 size={18} className="text-brand-600" />
+        <span className="font-medium text-sm text-gray-700">{label}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 px-3 py-2 bg-gray-50 rounded-lg text-xs text-gray-500 truncate border border-gray-100">{url}</div>
+        <button onClick={copy} className="w-9 h-9 rounded-lg bg-brand-50 flex items-center justify-center active:scale-95 transition flex-shrink-0">
+          {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} className="text-brand-600" />}
+        </button>
+        <button onClick={onOpen} className="w-9 h-9 rounded-lg bg-brand-50 flex items-center justify-center active:scale-95 transition flex-shrink-0">
+          <ExternalLink size={16} className="text-brand-600" />
+        </button>
+      </div>
     </div>
   );
 }

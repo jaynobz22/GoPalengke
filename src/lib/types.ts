@@ -11,6 +11,7 @@ export interface Profile {
   city: string | null;
   region: string | null;
   avatar_url: string | null;
+  slug: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -41,6 +42,7 @@ export interface Store {
   is_open: boolean;
   rating: number;
   palengke_name: string | null;
+  slug: string | null;
   created_at: string;
   updated_at: string;
 }

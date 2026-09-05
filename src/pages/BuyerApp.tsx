@@ -9,6 +9,7 @@ import {
   Search, ShoppingCart, Home, Package, User, Plus, Minus, Trash2, X,
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, Bike, Store as StoreIcon,
   QrCode, Clock, Phone, Navigation, Filter, ShoppingBag, MessageCircle, Send,
+  Share2, Copy, ExternalLink,
 } from 'lucide-react';
 
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
@@ -1425,6 +1426,35 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
         </div>
         <ChevronRight size={18} className="text-gray-300" />
       </button>
+
+      {/* Shareable Profile URL */}
+      {profile?.slug && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-2">
+          <div className="flex items-center gap-2 mb-2">
+            <Share2 size={18} className="text-brand-600" />
+            <span className="font-medium text-sm text-gray-700">Link ng Profile</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 px-3 py-2 bg-gray-50 rounded-lg text-xs text-gray-500 truncate border border-gray-100">
+              {window.location.origin}{window.location.pathname}#/u/{profile.slug}
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}#/u/${profile.slug}`);
+              }}
+              className="w-9 h-9 rounded-lg bg-brand-50 flex items-center justify-center active:scale-95 transition flex-shrink-0"
+            >
+              <Copy size={16} className="text-brand-600" />
+            </button>
+            <button
+              onClick={() => { window.location.hash = `/u/${profile.slug}`; }}
+              className="w-9 h-9 rounded-lg bg-brand-50 flex items-center justify-center active:scale-95 transition flex-shrink-0"
+            >
+              <ExternalLink size={16} className="text-brand-600" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <button
         onClick={onSignOut}

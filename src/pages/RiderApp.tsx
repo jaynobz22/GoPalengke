@@ -7,6 +7,7 @@ import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
+  Share2, Copy, ExternalLink,
 } from 'lucide-react';
 
 type Tab = 'deliveries' | 'history' | 'profile';
@@ -507,6 +508,35 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           <MapPin size={16} /><span>{profile?.barangay}, {profile?.city}, {profile?.region}</span>
         </div>
       </div>
+
+      {/* Shareable Profile URL */}
+      {profile?.slug && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Share2 size={18} className="text-blue-600" />
+            <span className="font-medium text-sm text-gray-700">Link ng Profile</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 px-3 py-2 bg-gray-50 rounded-lg text-xs text-gray-500 truncate border border-gray-100">
+              {window.location.origin}{window.location.pathname}#/u/{profile.slug}
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}#/u/${profile.slug}`);
+              }}
+              className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center active:scale-95 transition flex-shrink-0"
+            >
+              <Copy size={16} className="text-blue-600" />
+            </button>
+            <button
+              onClick={() => { window.location.hash = `/u/${profile.slug}`; }}
+              className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center active:scale-95 transition flex-shrink-0"
+            >
+              <ExternalLink size={16} className="text-blue-600" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <button onClick={onSignOut} className="w-full py-3 bg-white text-red-500 border border-red-200 rounded-2xl font-semibold active:scale-[0.98] transition">
         Mag-sign Out
