@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import type { Store, Product, ProductCatalog, Order, OrderItem, OrderStatus, Conversation } from '@/lib/types';
-import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, CATALOG_CATEGORIES } from '@/lib/types';
+import type { Store, Product, Order, OrderItem, OrderStatus, Conversation } from '@/lib/types';
+import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { getCityMarkets } from '@/lib/philippineLocations';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
 import { compressImage } from '@/lib/imageCompress';
@@ -11,7 +11,7 @@ import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import {
   Store as StoreIcon, Package, Settings, Plus, ArrowLeft, Edit, Trash2, X,
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
-  TrendingUp, DollarSign, Bell, Search, Camera, Loader2, MessageCircle,
+  TrendingUp, DollarSign, Bell, Camera, Loader2, MessageCircle,
   Share2, Copy, ExternalLink,
 } from 'lucide-react';
 
@@ -366,7 +366,6 @@ function SellerDashboard({ store, onEditStore }: { store: Store; onEditStore: ()
 
 // ============= PRODUCTS =============
 function SellerProducts({ store, onAdd, onEdit }: { store: Store; onAdd: () => void; onEdit: (p: Product) => void }) {
-  const [view, setView] = useState<'mine' | 'catalog'>('mine');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -392,64 +391,47 @@ function SellerProducts({ store, onAdd, onEdit }: { store: Store; onAdd: () => v
     <div className="px-5 py-4">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-gray-800">Mga Paninda</h2>
-        {view === 'mine' && (
-          <button onClick={onAdd} className="w-10 h-10 rounded-full bg-brand-600 flex items-center justify-center active:scale-90 transition">
-            <Plus size={22} className="text-white" />
+        <button onClick={onAdd} className="w-10 h-10 rounded-full bg-brand-600 flex items-center justify-center active:scale-90 transition">
+          <Plus size={22} className="text-white" />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
+      ) : products.length === 0 ? (
+        <div className="text-center py-12 text-gray-400">
+          <Package size={48} className="mx-auto mb-3 opacity-50" />
+          <p className="mb-4">Wala pang paninda. Magdagdag na!</p>
+          <button onClick={onAdd} className="px-6 py-3 bg-brand-600 text-white rounded-xl font-semibold active:scale-95 transition">
+            Magdagdag ng Paninda
           </button>
-        )}
-      </div>
-
-      <div className="flex gap-2 mb-4 bg-gray-100 rounded-xl p-1">
-        <button onClick={() => setView('mine')}
-          className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${view === 'mine' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500'}`}>
-          Ang Paninda Ko
-        </button>
-        <button onClick={() => setView('catalog')}
-          className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${view === 'catalog' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500'}`}>
-          Catalog Library
-        </button>
-      </div>
-
-      {view === 'mine' ? (
-        loading ? (
-          <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
-        ) : products.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            <Package size={48} className="mx-auto mb-3 opacity-50" />
-            <p className="mb-4">Wala pang paninda. Magdagdag na!</p>
-            <button onClick={onAdd} className="px-6 py-3 bg-brand-600 text-white rounded-xl font-semibold active:scale-95 transition">
-              Magdagdag ng Paninda
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {products.map(p => (
-              <div key={p.id} className="bg-white rounded-2xl border border-gray-100 p-3 flex items-center gap-3">
-                <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
-                  {p.image_url && <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm text-gray-800 line-clamp-1">{p.name}</p>
-                  <p className="text-brand-600 font-bold text-sm">₱{p.price}<span className="text-xs text-gray-400 font-normal">/{p.unit}</span></p>
-                  <p className="text-xs text-gray-400">Stock: {p.stock}</p>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <button onClick={() => onEdit(p)} className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center active:scale-90 transition">
-                    <Edit size={16} className="text-gray-600" />
-                  </button>
-                  <button onClick={() => toggleAvailable(p)} className={`w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 transition ${p.is_available ? 'bg-green-50' : 'bg-gray-100'}`}>
-                    <Check size={16} className={p.is_available ? 'text-green-600' : 'text-gray-400'} />
-                  </button>
-                  <button onClick={() => deleteProduct(p)} className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center active:scale-90 transition">
-                    <Trash2 size={16} className="text-red-500" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )
+        </div>
       ) : (
-        <CatalogBrowser store={store} onAdded={load} />
+        <div className="space-y-2">
+          {products.map(p => (
+            <div key={p.id} className="bg-white rounded-2xl border border-gray-100 p-3 flex items-center gap-3">
+              <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
+                {p.image_url && <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm text-gray-800 line-clamp-1">{p.name}</p>
+                <p className="text-brand-600 font-bold text-sm">₱{p.price}<span className="text-xs text-gray-400 font-normal">/{p.unit}</span></p>
+                <p className="text-xs text-gray-400">Stock: {p.stock}</p>
+              </div>
+              <div className="flex flex-col gap-1">
+                <button onClick={() => onEdit(p)} className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center active:scale-90 transition">
+                  <Edit size={16} className="text-gray-600" />
+                </button>
+                <button onClick={() => toggleAvailable(p)} className={`w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 transition ${p.is_available ? 'bg-green-50' : 'bg-gray-100'}`}>
+                  <Check size={16} className={p.is_available ? 'text-green-600' : 'text-gray-400'} />
+                </button>
+                <button onClick={() => deleteProduct(p)} className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center active:scale-90 transition">
+                  <Trash2 size={16} className="text-red-500" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -606,231 +588,6 @@ function ProductFormModal({ store, product, onClose, onSaved }: { store: Store; 
           </button>
         </form>
       </div>
-    </div>
-  );
-}
-
-// ============= CATALOG BROWSER =============
-function CatalogBrowser({ store, onAdded }: { store: Store; onAdded: () => void }) {
-  const [catalog, setCatalog] = useState<ProductCatalog[]>([]);
-  const [existingProducts, setExistingProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string>('all');
-  const [selected, setSelected] = useState<ProductCatalog | null>(null);
-
-  const load = useCallback(async () => {
-    const [{ data: cat }, { data: prods }] = await Promise.all([
-      supabase.from('product_catalog').select('*').order('sort_order'),
-      supabase.from('products').select('*').eq('store_id', store.id),
-    ]);
-    setCatalog(cat || []);
-    setExistingProducts(prods || []);
-    setLoading(false);
-  }, [store.id]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const existingCatalogIds = new Set(existingProducts.map(p => p.catalog_id).filter(Boolean));
-
-  const filtered = catalog.filter(c => {
-    const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.name_fil.toLowerCase().includes(search.toLowerCase());
-    const matchCat = activeCategory === 'all' || c.category === activeCategory;
-    return matchSearch && matchCat;
-  });
-
-  if (loading) {
-    return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-24 bg-gray-100 rounded-2xl animate-pulse" />)}</div>;
-  }
-
-  if (selected) {
-    return (
-      <CatalogProductForm
-        catalog={selected}
-        store={store}
-        existingProduct={existingProducts.find(p => p.catalog_id === selected.id)}
-        onBack={() => setSelected(null)}
-        onSaved={() => { setSelected(null); load(); onAdded(); }}
-      />
-    );
-  }
-
-  return (
-    <div>
-      <div className="relative mb-3">
-        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Hanapin ang produkto..."
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition text-sm"
-        />
-      </div>
-
-      <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar">
-        <button
-          onClick={() => setActiveCategory('all')}
-          className={`px-4 py-2 rounded-full text-sm font-medium flex-shrink-0 ${activeCategory === 'all' ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}
-        >
-          Lahat
-        </button>
-        {CATALOG_CATEGORIES.map(cat => (
-          <button
-            key={cat.slug}
-            onClick={() => setActiveCategory(cat.slug)}
-            className={`px-4 py-2 rounded-full text-sm font-medium flex-shrink-0 ${activeCategory === cat.slug ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}
-          >
-            {cat.label_fil}
-          </button>
-        ))}
-      </div>
-
-      <div className="space-y-2">
-        {filtered.length === 0 ? (
-          <p className="text-center py-8 text-gray-400 text-sm">Walang nahanap na produkto.</p>
-        ) : (
-          filtered.map(c => {
-            const added = existingCatalogIds.has(c.id);
-            return (
-              <button
-                key={c.id}
-                onClick={() => setSelected(c)}
-                className={`w-full bg-white rounded-2xl border p-3 flex items-center gap-3 text-left active:scale-[0.98] transition ${added ? 'border-green-200' : 'border-gray-100'}`}
-              >
-                <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
-                  {c.image_url_1 && <img src={c.image_url_1} alt={c.name} className="w-full h-full object-cover" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm text-gray-800">{c.name}</p>
-                  <p className="text-xs text-gray-400 capitalize">{c.category} · {c.default_unit}</p>
-                </div>
-                {added && (
-                  <span className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded-full flex items-center gap-1">
-                    <Check size={12} /> Nasa store
-                  </span>
-                )}
-              </button>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ============= CATALOG PRODUCT FORM =============
-function CatalogProductForm({
-  catalog, store, existingProduct, onBack, onSaved,
-}: {
-  catalog: ProductCatalog;
-  store: Store;
-  existingProduct: Product | undefined;
-  onBack: () => void;
-  onSaved: () => void;
-}) {
-  const images = [catalog.image_url_1, catalog.image_url_2, catalog.image_url_3].filter(Boolean) as string[];
-  const [selectedImage, setSelectedImage] = useState(existingProduct?.selected_image_index || 1);
-  const [price, setPrice] = useState(existingProduct?.price?.toString() || '');
-  const [stock, setStock] = useState(existingProduct?.stock?.toString() || '0');
-  const [unit, setUnit] = useState(existingProduct?.unit || catalog.default_unit);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function save() {
-    setSaving(true);
-    setError(null);
-    const selectedUrl = images[selectedImage - 1] || images[0] || null;
-
-    if (existingProduct) {
-      const { error } = await supabase.from('products').update({
-        selected_image_index: selectedImage,
-        price: parseFloat(price),
-        unit,
-        stock: parseInt(stock) || 0,
-        image_url: selectedUrl,
-      }).eq('id', existingProduct.id);
-      if (error) { setError(error.message); setSaving(false); return; }
-    } else {
-      const { error } = await supabase.from('products').insert({
-        store_id: store.id,
-        catalog_id: catalog.id,
-        selected_image_index: selectedImage,
-        name: catalog.name,
-        description: null,
-        price: parseFloat(price),
-        unit,
-        stock: parseInt(stock) || 0,
-        image_url: selectedUrl,
-        is_available: true,
-      });
-      if (error) { setError(error.message); setSaving(false); return; }
-    }
-    setSaving(false);
-    onSaved();
-  }
-
-  return (
-    <div>
-      <div className="flex items-center gap-3 mb-4">
-        <button onClick={onBack} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
-          <ArrowLeft size={20} className="text-gray-600" />
-        </button>
-        <h3 className="text-lg font-bold text-gray-800">{catalog.name}</h3>
-      </div>
-
-      <div className="mb-4">
-        <p className="text-sm font-medium text-gray-600 mb-2">Piliin ang larawan</p>
-        <div className="grid grid-cols-3 gap-2">
-          {images.map((img, idx) => (
-            <button
-              key={idx}
-              onClick={() => setSelectedImage(idx + 1)}
-              className={`relative rounded-xl overflow-hidden aspect-square transition ${selectedImage === idx + 1 ? 'ring-2 ring-brand-600' : 'ring-1 ring-gray-200'}`}
-            >
-              <img src={img} alt={`${catalog.name} ${idx + 1}`} className="w-full h-full object-cover" />
-              {selectedImage === idx + 1 && (
-                <div className="absolute top-1 right-1 w-5 h-5 bg-brand-600 rounded-full flex items-center justify-center">
-                  <Check size={12} className="text-white" />
-                </div>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <div>
-          <label className="text-sm font-medium text-gray-600 mb-1 block">Presyo (₱)</label>
-          <input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} placeholder="180" required
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none transition" />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-gray-600 mb-1 block">Unit</label>
-          <select value={unit} onChange={e => setUnit(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none transition">
-            <option value="kilo">kilo</option>
-            <option value="grams">grams</option>
-            <option value="piece">piece</option>
-            <option value="pack">pack</option>
-            <option value="tray">tray</option>
-            <option value="bundle">bundle</option>
-            <option value="bote">bote</option>
-          </select>
-        </div>
-      </div>
-      <div className="mb-4">
-        <label className="text-sm font-medium text-gray-600 mb-1 block">Stock</label>
-        <input type="number" value={stock} onChange={e => setStock(e.target.value)} placeholder="50" required
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none transition" />
-      </div>
-
-      {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg mb-3">{error}</p>}
-
-      <button onClick={save} disabled={saving || !price}
-        className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg active:scale-[0.98] transition disabled:opacity-50">
-        {saving ? 'Nagsasave...' : existingProduct ? 'I-update' : 'Idagdag sa Store'}
-      </button>
     </div>
   );
 }

@@ -47,25 +47,10 @@ export interface Store {
   updated_at: string;
 }
 
-export interface ProductCatalog {
-  id: string;
-  name: string;
-  name_fil: string;
-  category: string;
-  default_unit: string;
-  image_url_1: string | null;
-  image_url_2: string | null;
-  image_url_3: string | null;
-  sort_order: number;
-  created_at: string;
-}
-
 export interface Product {
   id: string;
   store_id: string;
   category_id: string | null;
-  catalog_id: string | null;
-  selected_image_index: number;
   name: string;
   description: string | null;
   price: number;
@@ -76,13 +61,6 @@ export interface Product {
   created_at: string;
   updated_at: string;
 }
-
-export const CATALOG_CATEGORIES: { slug: string; label: string; label_fil: string }[] = [
-  { slug: 'isda', label: 'Fish', label_fil: 'Isda' },
-  { slug: 'karne', label: 'Meat', label_fil: 'Karne' },
-  { slug: 'gulay', label: 'Vegetables', label_fil: 'Gulay' },
-  { slug: 'panakot', label: 'Condiments', label_fil: 'Panakot' },
-];
 
 export interface CartItem {
   id: string;
