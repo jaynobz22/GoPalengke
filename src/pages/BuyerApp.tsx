@@ -4,6 +4,7 @@ import { useAuth } from '@/lib/auth';
 import type { Product, Store, Category, CartItem, Order, OrderItem, OrderStatus, Conversation } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
+import { computeDeliveryFee, estimateDistanceKm } from '@/lib/deliveryFee';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import { Avatar } from '@/components/Avatar';
 import { ImageUploadField } from '@/components/ImageUploadField';
@@ -895,7 +896,7 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
     for (const [storeId, items] of Object.entries(grouped)) {
       const store = items[0].store;
       const total = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
-      const deliveryFee = 50;
+      const deliveryFee = computeDeliveryFee(store.city, profile.city);
 
       const { data: order, error } = await supabase.from('orders').insert({
         buyer_id: profile.id,
@@ -936,7 +937,10 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
   if (loading) return <div className="p-5"><div className="h-40 bg-gray-100 rounded-2xl animate-pulse" /></div>;
   if (cartItems.length === 0) return <div className="p-5 text-center text-gray-400">Walang laman ang cart.</div>;
 
-  const grandTotal = Object.entries(grouped).reduce((sum, [_, items]) => sum + items.reduce((s, i) => s + i.product.price * i.quantity, 0) + 50, 0);
+  const grandTotal = Object.entries(grouped).reduce((sum, [_, items]) => {
+    const fee = computeDeliveryFee(items[0].store.city, profile?.city || null);
+    return sum + items.reduce((s, i) => s + i.product.price * i.quantity, 0) + fee;
+  }, 0);
 
   return (
     <div className="px-5 py-4 pb-8">
@@ -991,7 +995,8 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
             </div>
           ))}
           <div className="flex justify-between text-sm text-gray-500 pt-2 border-t border-gray-50">
-            <span>Delivery fee</span><span>₱50</span>
+            <span>Delivery fee ({estimateDistanceKm(items[0].store.city, profile?.city || null)}km × ₱15 + ₱50 base)</span>
+            <span>₱{computeDeliveryFee(items[0].store.city, profile?.city || null).toFixed(0)}</span>
           </div>
         </div>
       ))}
