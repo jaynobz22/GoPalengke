@@ -193,6 +193,8 @@ export interface SellerFee {
   subscription_balance: number;
   last_subscription_charge_at: string | null;
   total_payable: number;
+  grace_deadline: string | null;
+  frozen_at: string | null;
   created_at: string;
   updated_at: string;
 }

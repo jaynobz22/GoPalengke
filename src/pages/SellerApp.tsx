@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import type { Store, Product, Order, OrderItem, OrderStatus, Conversation } from '@/lib/types';
+import type { Store, Product, Order, OrderItem, OrderStatus, Conversation, SellerFee } from '@/lib/types';
+import { PAYMENT_THRESHOLD } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { getCityMarkets } from '@/lib/philippineLocations';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
@@ -16,7 +17,7 @@ import {
   Store as StoreIcon, Package, Settings, Plus, ArrowLeft, Edit, Trash2, X,
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
   TrendingUp, DollarSign, Bell, Camera, Loader2, MessageCircle,
-  Share2, Copy, ExternalLink, Search, ImageIcon, Wallet,
+  Share2, Copy, ExternalLink, Search, ImageIcon, Wallet, Lock, AlertTriangle,
 } from 'lucide-react';
 
 type Tab = 'dashboard' | 'products' | 'orders' | 'messages' | 'billing' | 'settings';
@@ -35,6 +36,9 @@ export function SellerApp() {
   const [chatPartnerRole, setChatPartnerRole] = useState('');
   const [showChat, setShowChat] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [sellerFee, setSellerFee] = useState<SellerFee | null>(null);
+  const [showFreezeWarning, setShowFreezeWarning] = useState(false);
+  const [isFeeFrozen, setIsFeeFrozen] = useState(false);
 
   const loadStore = useCallback(async () => {
     if (!profile) return;
@@ -44,6 +48,26 @@ export function SellerApp() {
   }, [profile]);
 
   useEffect(() => { loadStore(); }, [loadStore]);
+
+  // Check and apply freezes, then load seller fee data
+  useEffect(() => {
+    if (!profile) return;
+    async function checkFreeze() {
+      await supabase.rpc('freeze_overdue_sellers');
+      const { data } = await supabase.from('seller_fees').select('*').eq('seller_id', profile.id).maybeSingle();
+      const fee = data as SellerFee | null;
+      setSellerFee(fee);
+      if (fee?.frozen_at) {
+        setIsFeeFrozen(true);
+      } else {
+        setIsFeeFrozen(false);
+        if (fee?.grace_deadline && (fee.total_payable || 0) >= PAYMENT_THRESHOLD) {
+          setShowFreezeWarning(true);
+        }
+      }
+    }
+    checkFreeze();
+  }, [profile]);
 
   // Track unread messages for badge
   useEffect(() => {
@@ -103,9 +127,44 @@ export function SellerApp() {
 
   const canAct = profile?.is_active ?? true;
 
+  // Frozen due to unpaid fees — full screen block
+  if (isFeeFrozen) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-5 max-w-md mx-auto">
+        <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center mb-4">
+          <Lock size={40} className="text-red-600" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-800 mb-2 text-center">Naka-freeze ang Account</h2>
+        <p className="text-sm text-gray-500 text-center mb-1">
+          Na-freeze ang iyong account dahil hindi nabayaran ang payable na ₱{(sellerFee?.total_payable || 0).toFixed(2)}.
+        </p>
+        <p className="text-sm text-gray-500 text-center mb-6">
+          Magbayad muna sa admin para ma-reactivate ang iyong account at makapag-negosyo ulit.
+        </p>
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 w-full mb-4">
+          <p className="text-xs text-gray-400 mb-1">Total Payable</p>
+          <p className="text-2xl font-bold text-red-600">₱{(sellerFee?.total_payable || 0).toFixed(2)}</p>
+        </div>
+        <a
+          href="mailto:jdabblogger@gmail.com"
+          className="w-full py-3.5 bg-brand-600 text-white rounded-xl font-semibold text-sm text-center active:scale-95 transition flex items-center justify-center gap-2"
+        >
+          <MessageCircle size={18} />
+          Contact Admin
+        </a>
+        <button
+          onClick={async () => { await supabase.auth.signOut(); }}
+          className="mt-3 px-6 py-2.5 bg-gray-100 text-gray-600 rounded-xl font-medium text-sm"
+        >
+          Mag-sign out
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
-      {!canAct && <InactiveBanner />}
+      {!canAct && !isFeeFrozen && <InactiveBanner />}
       <div className="flex-1 pb-20 overflow-y-auto">
         {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} onOpenMessages={() => setTab('messages')} onOpenOrders={() => setTab('orders')} unreadMessages={unreadCount} canAct={canAct} />}
         {tab === 'products' && (
@@ -150,6 +209,39 @@ export function SellerApp() {
       )}
 
       <SellerBottomNav tab={tab} setTab={setTab} storeId={store.id} unreadMessages={unreadCount} />
+
+      {/* Grace period warning popup */}
+      {showFreezeWarning && sellerFee?.grace_deadline && (
+        <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center px-5">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full">
+            <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle size={32} className="text-red-600" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-800 text-center mb-2">Babayaran na!</h2>
+            <p className="text-sm text-gray-500 text-center mb-4">
+              Ang total payable mo ay ₱{(sellerFee.total_payable || 0).toFixed(2)}. Kailangan mong magbayad sa loob ng 3 araw kung hindi, ma-freeze ang iyong account.
+            </p>
+            <div className="bg-red-50 rounded-xl p-3 mb-4 text-center">
+              <p className="text-xs text-red-500 font-medium">Deadline</p>
+              <p className="text-sm font-bold text-red-700">
+                {new Date(sellerFee.grace_deadline).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+            </div>
+            <button
+              onClick={() => { setTab('billing'); setShowFreezeWarning(false); }}
+              className="w-full py-3 bg-brand-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition mb-2"
+            >
+              Magbayad Ngayon
+            </button>
+            <button
+              onClick={() => setShowFreezeWarning(false)}
+              className="w-full py-2.5 bg-gray-100 text-gray-600 rounded-xl font-medium text-sm"
+            >
+              Mamaya na
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

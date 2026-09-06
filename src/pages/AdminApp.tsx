@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import type { Announcement, Profile, FeePayment, UserRole } from '@/lib/types';
+import type { Announcement, Profile, FeePayment, UserRole, SellerFee } from '@/lib/types';
 import { ImageUploadField } from '@/components/ImageUploadField';
 import {
   Megaphone, Plus, Trash2, Power, Check, Loader2, Fish, LogOut,
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
   AlertCircle, X, UserCheck, UserX, DollarSign, TrendingUp, Receipt,
+  Lock, Unlock,
 } from 'lucide-react';
 
 type Tab = 'overview' | 'users' | 'fees' | 'announcements' | 'settings';
@@ -77,14 +78,14 @@ export function AdminApp() {
 function OverviewTab() {
   const [stats, setStats] = useState({
     stores: 0, products: 0, buyers: 0, riders: 0, sellers: 0, orders: 0,
-    pendingApprovals: 0, pendingPayments: 0,
+    pendingApprovals: 0, pendingPayments: 0, frozenSellers: 0,
     totalCommission: 0, totalSubscription: 0, totalPlatformEarnings: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const [stores, products, buyers, riders, sellers, orders, pendingApprovals, pendingPayments, sellerFees] = await Promise.all([
+      const [stores, products, buyers, riders, sellers, orders, pendingApprovals, pendingPayments, sellerFees, frozenCount] = await Promise.all([
         supabase.from('stores').select('*', { count: 'exact', head: true }),
         supabase.from('products').select('*', { count: 'exact', head: true }),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'buyer'),
@@ -94,6 +95,7 @@ function OverviewTab() {
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_approved', false),
         supabase.from('fee_payments').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('seller_fees').select('*'),
+        supabase.from('seller_fees').select('*', { count: 'exact', head: true }).not('frozen_at', 'is', null),
       ]);
 
       const fees = (sellerFees.data || []) as any[];
@@ -109,6 +111,7 @@ function OverviewTab() {
         orders: orders.count || 0,
         pendingApprovals: pendingApprovals.count || 0,
         pendingPayments: pendingPayments.count || 0,
+        frozenSellers: frozenCount.count || 0,
         totalCommission,
         totalSubscription,
         totalPlatformEarnings: totalCommission + totalSubscription,
@@ -142,6 +145,14 @@ function OverviewTab() {
           <Wallet size={18} className="text-blue-600 flex-shrink-0" />
           <p className="text-sm text-blue-700 font-medium">
             May {stats.pendingPayments} payment na naghihintay ng approval.
+          </p>
+        </div>
+      )}
+      {stats.frozenSellers > 0 && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-2xl p-3 mb-4">
+          <Lock size={18} className="text-red-600 flex-shrink-0" />
+          <p className="text-sm text-red-700 font-medium">
+            May {stats.frozenSellers} seller na naka-freeze dahil sa hindi pagbabayad.
           </p>
         </div>
       )}
@@ -345,15 +356,25 @@ function UsersTab() {
 function FeesTab() {
   const { profile: adminProfile } = useAuth();
   const [payments, setPayments] = useState<(FeePayment & { seller: { full_name: string; email: string } })[]>([]);
+  const [frozenSellers, setFrozenSellers] = useState<(SellerFee & { seller: { full_name: string; email: string } })[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [reactivating, setReactivating] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const { data } = await supabase
-      .from('fee_payments')
-      .select('*, seller:profiles!fee_payments_seller_id_fkey(full_name, email)')
-      .order('created_at', { ascending: false });
-    setPayments((data || []) as any);
+    const [payData, frozenData] = await Promise.all([
+      supabase
+        .from('fee_payments')
+        .select('*, seller:profiles!fee_payments_seller_id_fkey(full_name, email)')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('seller_fees')
+        .select('*, seller:profiles!seller_fees_seller_id_fkey(full_name, email)')
+        .not('frozen_at', 'is', null)
+        .order('frozen_at', { ascending: false }),
+    ]);
+    setPayments((payData.data || []) as any);
+    setFrozenSellers((frozenData.data || []) as any);
     setLoading(false);
   }, []);
 
@@ -378,6 +399,17 @@ function FeesTab() {
     setProcessing(payment.id);
     await supabase.from('fee_payments').update({ status: 'rejected' }).eq('id', payment.id);
     setProcessing(null);
+    load();
+  }
+
+  async function reactivateSeller(sellerId: string) {
+    if (!confirm('Sigurado ka bang gusto mong i-reactivate ang seller na ito? Titiyakin na nakapagbayad na siya.')) return;
+    setReactivating(sellerId);
+    const { error } = await supabase.rpc('reactivate_seller', { p_seller_id: sellerId });
+    if (error) {
+      alert('Error: ' + error.message);
+    }
+    setReactivating(null);
     load();
   }
 
@@ -441,6 +473,39 @@ function FeesTab() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Frozen Sellers */}
+      {frozenSellers.length > 0 && (
+        <>
+          <h3 className="font-bold text-red-700 mb-3 text-sm flex items-center gap-2 mt-4">
+            <Lock size={16} /> Naka-freeze na Seller
+          </h3>
+          <div className="space-y-2 mb-6">
+            {frozenSellers.map(f => (
+              <div key={f.id} className="bg-white rounded-2xl border border-red-200 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="font-semibold text-sm text-gray-800">{f.seller?.full_name || 'Seller'}</p>
+                    <p className="text-xs text-gray-400">{f.seller?.email}</p>
+                  </div>
+                  <p className="font-bold text-lg text-red-600">₱{(f.total_payable || 0).toFixed(2)}</p>
+                </div>
+                <p className="text-xs text-gray-400 mb-3">
+                  Na-freeze no: {f.frozen_at ? new Date(f.frozen_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                </p>
+                <button
+                  onClick={() => reactivateSeller(f.seller_id)}
+                  disabled={reactivating === f.seller_id}
+                  className="w-full flex items-center justify-center gap-1 py-2.5 bg-green-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition disabled:opacity-50"
+                >
+                  {reactivating === f.seller_id ? <Loader2 size={14} className="animate-spin" /> : <Unlock size={14} />}
+                  Reactivate Seller
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Payment History */}
