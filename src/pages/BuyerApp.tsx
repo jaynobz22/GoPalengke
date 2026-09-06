@@ -15,7 +15,7 @@ import {
   Search, ShoppingCart, Home, Package, User, Plus, Minus, Trash2, X,
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, Bike, Store as StoreIcon,
   QrCode, Clock, Phone, Navigation, Filter, ShoppingBag, MessageCircle, Send,
-  Share2, Copy, ExternalLink, Download, ImageOff, Bell, Timer,
+  Share2, Copy, ExternalLink, Download, ImageOff, Bell, Timer, CheckCircle,
 } from 'lucide-react';
 
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
@@ -1103,6 +1103,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
   const { profile } = useAuth();
   const [orders, setOrders] = useState<(Order & { store: Store })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [subTab, setSubTab] = useState<'active' | 'history'>('active');
 
   const loadOrders = useCallback(async () => {
     if (!profile) return;
@@ -1120,28 +1121,77 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
     return () => { supabase.removeChannel(sub); };
   }, [loadOrders, profile]);
 
-  const activeStatuses: OrderStatus[] = ['accepted', 'preparing', 'ready_for_pickup', 'picked_up'];
-  const activeCount = orders.filter(o => activeStatuses.includes(o.status)).length;
+  const activeStatuses: OrderStatus[] = ['pending', 'accepted', 'preparing', 'ready_for_pickup', 'picked_up'];
+  const historyStatuses: OrderStatus[] = ['delivered', 'cancelled'];
+
+  const activeOrders = orders.filter(o => activeStatuses.includes(o.status));
+  const historyOrders = orders.filter(o => historyStatuses.includes(o.status));
+  const activeCount = activeOrders.length;
 
   if (loading) return <div className="p-5"><div className="h-32 bg-gray-100 rounded-2xl animate-pulse" /></div>;
+
+  const displayed = subTab === 'active' ? activeOrders : historyOrders;
 
   return (
     <div className="px-5 py-4">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Mga Orders ko</h2>
-      {activeCount > 0 && (
+
+      {/* Sub-tabs */}
+      <div className="flex gap-2 mb-4 bg-gray-100 rounded-xl p-1">
+        <button
+          onClick={() => setSubTab('active')}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
+            subTab === 'active' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500'
+          }`}
+        >
+          <Clock size={16} />
+          Aktibo
+          {activeCount > 0 && (
+            <span className="bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              {activeCount > 9 ? '9+' : activeCount}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setSubTab('history')}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
+            subTab === 'history' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500'
+          }`}
+        >
+          <CheckCircle size={16} />
+          Kasaysayan
+          {historyOrders.length > 0 && (
+            <span className="bg-gray-300 text-gray-600 text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              {historyOrders.length > 9 ? '9+' : historyOrders.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {subTab === 'active' && activeCount > 0 && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-2">
           <Bell size={18} className="text-red-500 flex-shrink-0" />
-          <p className="text-sm text-red-700 font-medium">May {activeCount} active order{activeCount > 1 ? 's' : ''} na may update mula seller</p>
+          <p className="text-sm text-red-700 font-medium">May {activeCount} active order{activeCount > 1 ? 's' : ''} na pinoprocess pa</p>
         </div>
       )}
-      {orders.length === 0 ? (
+
+      {displayed.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
-          <Package size={48} className="mx-auto mb-3 opacity-50" />
-          <p>Wala ka pang order. Mag-order na!</p>
+          {subTab === 'active' ? (
+            <>
+              <Package size={48} className="mx-auto mb-3 opacity-50" />
+              <p>Wala pang active order. Mag-order na!</p>
+            </>
+          ) : (
+            <>
+              <CheckCircle size={48} className="mx-auto mb-3 opacity-50" />
+              <p>Wala pang completed na orders.</p>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
-          {orders.map(order => {
+          {displayed.map(order => {
             const isActive = activeStatuses.includes(order.status);
             return (
             <button
@@ -1157,8 +1207,8 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
                   <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {isActive && (
-                    <span className="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">BAGO</span>
+                  {isActive && order.status === 'pending' && (
+                    <span className="text-[10px] font-bold text-white bg-amber-500 px-2 py-0.5 rounded-full">BAGO</span>
                   )}
                   <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
                     {ORDER_STATUS_LABELS[order.status]}
