@@ -47,10 +47,11 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
   const slides = [
-    { src: 'https://images.pexels.com/photos/12681324/pexels-photo-12681324.jpeg?auto=compress&cs=tinysrgb&h=650&w=940', alt: 'Masayang mamimili sa isang makulay na palengke' },
-    { src: 'https://images.pexels.com/photos/9805547/pexels-photo-9805547.jpeg?auto=compress&cs=tinysrgb&h=650&w=940', alt: 'Mamimili na may dalang sariwang paninda sa palengke' },
-    { src: 'https://images.pexels.com/photos/33571971/pexels-photo-33571971.jpeg?auto=compress&cs=tinysrgb&h=650&w=940', alt: 'Sariwang isda sa yelo at makukulay na gulay sa palengke' },
-    { src: 'https://images.pexels.com/photos/7403234/pexels-photo-7403234.jpeg?auto=compress&cs=tinysrgb&h=650&w=940', alt: 'Masayang pamilya na may dalang sariwang paninda mula sa palengke' },
+    { src: '/images/Copilot_20260906_113445.png', alt: 'Tindera ng sariwang seafood sa palengke' },
+    { src: '/images/Copilot_20260906_114051.png', alt: 'Tindero ng sariwang isda sa palengke' },
+    { src: '/images/Copilot_20260906_115019.png', alt: 'Tindero ng sariwang karne sa palengke' },
+    { src: '/images/Copilot_20260906_115256.png', alt: 'Tindera ng sariwang gulay at karne sa palengke' },
+    { src: '/images/Copilot_20260906_115828.png', alt: 'Tindera ng sariwang prutas at grocery products sa palengke' },
   ];
 
   useEffect(() => {
