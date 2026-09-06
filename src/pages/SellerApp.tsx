@@ -1451,7 +1451,7 @@ function SellerBottomNav({ tab, setTab, storeId, unreadMessages }: { tab: Tab; s
           const active = tab === item.id;
           const isAlert = item.alert && item.badge && item.badge > 0;
           return (
-            <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center gap-0.5 py-1.5 px-3 relative">
+            <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center gap-0.5 py-1.5 px-2 relative">
               <div className="relative">
                 <Icon
                   size={22}
