@@ -15,7 +15,7 @@ import {
   Share2, Copy, ExternalLink,
 } from 'lucide-react';
 
-type Tab = 'dashboard' | 'products' | 'orders' | 'settings';
+type Tab = 'dashboard' | 'products' | 'orders' | 'messages' | 'settings';
 
 export function SellerApp() {
   const { profile, signOut } = useAuth();
@@ -78,6 +78,13 @@ export function SellerApp() {
     }
   }
 
+  function openChatFromMessages(convId: string, name: string, role: string) {
+    setActiveConversationId(convId);
+    setChatPartnerName(name);
+    setChatPartnerRole(role);
+    setShowChat(true);
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -93,7 +100,7 @@ export function SellerApp() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
       <div className="flex-1 pb-20 overflow-y-auto">
-        {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} />}
+        {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} onOpenMessages={() => setTab('messages')} unreadMessages={unreadCount} />}
         {tab === 'products' && (
           <SellerProducts store={store} onAdd={() => { setEditingProduct(null); setShowProductForm(true); }} onEdit={(p) => { setEditingProduct(p); setShowProductForm(true); }} />
         )}
@@ -103,6 +110,9 @@ export function SellerApp() {
           ) : (
             <SellerOrders store={store} onOrderClick={setSelectedOrder} />
           )
+        )}
+        {tab === 'messages' && (
+          <SellerMessagesView onOpenChat={openChatFromMessages} />
         )}
         {tab === 'settings' && <SellerSettings store={store} onEditStore={() => setShowStoreForm(true)} onSignOut={signOut} />}
 
@@ -252,7 +262,7 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
 }
 
 // ============= DASHBOARD =============
-function SellerDashboard({ store, onEditStore }: { store: Store; onEditStore: () => void }) {
+function SellerDashboard({ store, onEditStore, onOpenMessages, unreadMessages }: { store: Store; onEditStore: () => void; onOpenMessages: () => void; unreadMessages: number }) {
   const { profile } = useAuth();
   const [stats, setStats] = useState({ totalOrders: 0, pendingOrders: 0, totalRevenue: 0, productCount: 0 });
   const [recentOrders, setRecentOrders] = useState<(Order & { buyer: { full_name: string } })[]>([]);
@@ -283,9 +293,19 @@ function SellerDashboard({ store, onEditStore }: { store: Store; onEditStore: ()
   return (
     <div>
       <div className="bg-gradient-to-br from-brand-600 to-brand-700 px-5 pt-12 pb-6 text-white">
-        <div className="flex items-center gap-2 mb-2">
-          <StoreIcon size={20} />
-          <span className="text-lg font-bold">{store.name}</span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <StoreIcon size={20} />
+            <span className="text-lg font-bold">{store.name}</span>
+          </div>
+          <button onClick={onOpenMessages} className="relative w-10 h-10 rounded-full bg-white/20 flex items-center justify-center active:scale-90 transition">
+            <Bell size={20} className="text-white" />
+            {unreadMessages > 0 && (
+              <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold" style={{ fontSize: 10 }}>
+                {unreadMessages > 9 ? '9+' : unreadMessages}
+              </span>
+            )}
+          </button>
         </div>
         {store.palengke_name && (
           <p className="text-brand-100 text-xs flex items-center gap-1 mb-1">
@@ -1007,6 +1027,118 @@ function ShareableLinkSection({ label, url, onOpen }: { label: string; url: stri
   );
 }
 
+// ============= SELLER MESSAGES VIEW =============
+function SellerMessagesView({ onOpenChat }: { onOpenChat: (convId: string, name: string, role: string) => void }) {
+  const { profile } = useAuth();
+  const [conversations, setConversations] = useState<(Conversation & { other_name: string; other_role: string; last_message: string | null; last_message_time: string | null; unread: number })[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!profile) return;
+    const userId = profile.id;
+    async function load() {
+      const { data: convs } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('seller_id', userId)
+        .order('updated_at', { ascending: false });
+      if (!convs) { setLoading(false); return; }
+
+      const enriched = await Promise.all((convs as Conversation[]).map(async (conv) => {
+        let otherName = 'Unknown';
+        let otherRole = '';
+        if (conv.type === 'buyer_seller') {
+          const { data: buyer } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', conv.buyer_id)
+            .maybeSingle();
+          otherName = buyer?.full_name || 'Buyer';
+          otherRole = 'Buyer';
+        } else {
+          const { data: rider } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', conv.rider_id || '')
+            .maybeSingle();
+          otherName = rider?.full_name || 'Rider';
+          otherRole = 'Rider';
+        }
+        const { data: lastMsg } = await supabase
+          .from('messages')
+          .select('body, created_at, sender_id, read_at')
+          .eq('conversation_id', conv.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const { count } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('conversation_id', conv.id)
+          .neq('sender_id', userId)
+          .is('read_at', null);
+        return {
+          ...conv,
+          other_name: otherName,
+          other_role: otherRole,
+          last_message: lastMsg?.body || null,
+          last_message_time: lastMsg?.created_at || null,
+          unread: count || 0,
+        };
+      }));
+      setConversations(enriched);
+      setLoading(false);
+    }
+    load();
+    const sub = supabase.channel('seller-messages-list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [profile]);
+
+  return (
+    <div className="px-5 py-4">
+      <h2 className="text-xl font-bold text-gray-800 mb-4">Mga Mensahe</h2>
+      {loading ? (
+        <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
+      ) : conversations.length === 0 ? (
+        <div className="text-center py-16 text-gray-400">
+          <MessageCircle size={48} className="mx-auto mb-3 opacity-50" />
+          <p className="text-sm">Wala pang messages. Makikipag-chat ka kapag may nag-order na buyer!</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {conversations.map(conv => (
+            <button
+              key={conv.id}
+              onClick={() => onOpenChat(conv.id, conv.other_name, conv.other_role)}
+              className="w-full bg-white rounded-2xl border border-gray-100 p-4 text-left active:scale-[0.98] transition flex items-center gap-3"
+            >
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${conv.other_role === 'Rider' ? 'bg-blue-100' : 'bg-brand-100'}`}>
+                {conv.other_role === 'Rider' ? <Bike size={20} className="text-blue-600" /> : <StoreIcon size={20} className="text-brand-600" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-sm text-gray-800 truncate">{conv.other_name}</p>
+                  {conv.last_message_time && (
+                    <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{new Date(conv.last_message_time).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 truncate mt-0.5">{conv.last_message || 'Wala pang messages'}</p>
+              </div>
+              {conv.unread > 0 && (
+                <span className="bg-orange-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold flex-shrink-0" style={{ fontSize: 10 }}>
+                  {conv.unread}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ============= SELLER BOTTOM NAV =============
 function SellerBottomNav({ tab, setTab, storeId, unreadMessages }: { tab: Tab; setTab: (t: Tab) => void; storeId: string; unreadMessages: number }) {
   const [newOrders, setNewOrders] = useState(0);
@@ -1026,9 +1158,10 @@ function SellerBottomNav({ tab, setTab, storeId, unreadMessages }: { tab: Tab; s
   }, [storeId]);
 
   const items: { id: Tab; icon: typeof TrendingUp; label: string; badge?: number }[] = [
-    { id: 'dashboard', icon: TrendingUp, label: 'Dashboard', badge: unreadMessages },
+    { id: 'dashboard', icon: TrendingUp, label: 'Dashboard' },
     { id: 'products', icon: Package, label: 'Paninda' },
     { id: 'orders', icon: ShoppingBag, label: 'Orders', badge: newOrders },
+    { id: 'messages', icon: MessageCircle, label: 'Messages', badge: unreadMessages },
     { id: 'settings', icon: Settings, label: 'Settings' },
   ];
 
