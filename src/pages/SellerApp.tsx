@@ -838,7 +838,7 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
             <X size={20} className="text-gray-600" />
           </button>
         </div>
-        <form onSubmit={save} className="px-5 py-4 space-y-4 pb-8">
+        <form onSubmit={save} className="px-5 py-4 space-y-4 pb-28">
           <div>
             <label className="text-sm font-medium text-gray-600 mb-1 block">Pangalan</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)} required
