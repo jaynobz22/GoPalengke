@@ -8,6 +8,7 @@ import { LocationSelector, type LocationData } from '@/components/LocationSelect
 import { compressImage } from '@/lib/imageCompress';
 import { ImageUploadField } from '@/components/ImageUploadField';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
+import { Avatar } from '@/components/Avatar';
 import {
   Store as StoreIcon, Package, Settings, Plus, ArrowLeft, Edit, Trash2, X,
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
@@ -884,13 +885,13 @@ function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o:
 // ============= SELLER ORDER DETAIL =============
 function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order; store: Store; onBack: () => void; onOpenChat: (order: Order, buyerName: string) => void }) {
   const [items, setItems] = useState<OrderItem[]>([]);
-  const [buyer, setBuyer] = useState<{ full_name: string; phone: string | null } | null>(null);
+  const [buyer, setBuyer] = useState<{ full_name: string; phone: string | null; avatar_url: string | null } | null>(null);
   const [currentOrder, setCurrentOrder] = useState(order);
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
-    supabase.from('profiles').select('full_name, phone').eq('id', order.buyer_id).maybeSingle().then(({ data }) => setBuyer(data as any));
+    supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', order.buyer_id).maybeSingle().then(({ data }) => setBuyer(data as any));
 
     const sub = supabase.channel(`seller-order-${order.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${order.id}` }, (payload: any) => {
@@ -939,7 +940,10 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
           <h3 className="font-semibold text-gray-800 mb-2">Buyer</h3>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">{buyer.full_name}</span>
+            <div className="flex items-center gap-2">
+              <Avatar src={buyer.avatar_url} name={buyer.full_name} size={36} />
+              <span className="text-sm text-gray-600">{buyer.full_name}</span>
+            </div>
             <a href={`tel:${buyer.phone}`} className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center">
               <Phone size={16} className="text-blue-600" />
             </a>
@@ -1077,21 +1081,40 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
 
 // ============= SELLER SETTINGS =============
 function SellerSettings({ store, onEditStore, onSignOut }: { store: Store; onEditStore: () => void; onSignOut: () => void }) {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
+  const [avatarUploading, setAvatarUploading] = useState(false);
   return (
     <div className="px-5 py-4">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Settings</h2>
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center text-2xl font-bold text-brand-600">
-            {profile?.full_name?.[0]?.toUpperCase() || '?'}
-          </div>
+          <Avatar src={profile?.avatar_url} name={profile?.full_name} size={64} />
           <div>
             <p className="font-bold text-gray-800">{profile?.full_name}</p>
             <p className="text-sm text-gray-400">{profile?.email}</p>
             <span className="inline-block mt-1 text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Tindera/Tindero</span>
           </div>
         </div>
+      </div>
+
+      {/* Profile Picture Upload */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+        <ImageUploadField
+          label="Profile Picture"
+          value={profile?.avatar_url || ''}
+          bucket="profile-images"
+          folder={`avatars/${profile?.id}`}
+          aspectClass="h-32"
+          hint="Mag-upload ng larawan para makilala ka ng buyers at riders. Para sa transparency ng transaction."
+          onChange={async (url) => {
+            if (!profile) return;
+            setAvatarUploading(true);
+            await supabase.from('profiles').update({ avatar_url: url || null }).eq('id', profile.id);
+            await refreshProfile();
+            setAvatarUploading(false);
+          }}
+        />
+        {avatarUploading && <p className="text-xs text-brand-500 mt-1">Nag-a-upload...</p>}
       </div>
 
       <button onClick={onEditStore} className="w-full bg-white rounded-2xl border border-gray-100 p-4 mb-2 flex items-center justify-between active:scale-[0.98] transition">

@@ -5,6 +5,8 @@ import type { Product, Store, Category, CartItem, Order, OrderItem, OrderStatus,
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
+import { Avatar } from '@/components/Avatar';
+import { ImageUploadField } from '@/components/ImageUploadField';
 import {
   Search, ShoppingCart, Home, Package, User, Plus, Minus, Trash2, X,
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, Bike, Store as StoreIcon,
@@ -1138,7 +1140,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
   const { profile } = useAuth();
   const [items, setItems] = useState<OrderItem[]>([]);
   const [store, setStore] = useState<Store | null>(null);
-  const [rider, setRider] = useState<{ full_name: string; phone: string | null } | null>(null);
+  const [rider, setRider] = useState<{ full_name: string; phone: string | null; avatar_url: string | null } | null>(null);
   const [currentOrder, setCurrentOrder] = useState(order);
   const [paymentRef, setPaymentRef] = useState(order.payment_reference || '');
   const [submitting, setSubmitting] = useState(false);
@@ -1147,7 +1149,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
     supabase.from('stores').select('*').eq('id', order.store_id).maybeSingle().then(({ data }) => setStore(data as Store | null));
     if (order.rider_id) {
-      supabase.from('profiles').select('full_name, phone').eq('id', order.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
+      supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', order.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
     }
 
     const sub = supabase.channel(`order-${order.id}`)
@@ -1234,7 +1236,10 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
             <span className="font-semibold text-gray-800">Rider</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">{rider.full_name}</span>
+            <div className="flex items-center gap-2">
+              <Avatar src={rider.avatar_url} name={rider.full_name} size={36} />
+              <span className="text-sm text-gray-600">{rider.full_name}</span>
+            </div>
             <a href={`tel:${rider.phone}`} className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center">
               <Phone size={16} className="text-blue-600" />
             </a>
@@ -1573,8 +1578,9 @@ function MessagesView({ onOpenChat }: { onOpenChat: (convId: string, name: strin
 
 // ============= PROFILE VIEW =============
 function ProfileView({ onSignOut }: { onSignOut: () => void }) {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [location, setLocation] = useState<LocationData>({
     barangay: profile?.barangay || '',
     district: profile?.district || '',
@@ -1601,9 +1607,7 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
       <h2 className="text-xl font-bold text-gray-800 mb-4">Profile ko</h2>
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center text-2xl font-bold text-brand-600">
-            {profile?.full_name?.[0]?.toUpperCase() || '?'}
-          </div>
+          <Avatar src={profile?.avatar_url} name={profile?.full_name} size={64} />
           <div>
             <p className="font-bold text-gray-800 text-lg">{profile?.full_name}</p>
             <p className="text-sm text-gray-400">{profile?.email}</p>
@@ -1616,6 +1620,26 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
           )}
           <div className="flex items-center gap-2 text-gray-600"><MapPin size={16} /><span>{profile?.barangay}, {profile?.city}, {profile?.region}</span></div>
         </div>
+      </div>
+
+      {/* Profile Picture Upload */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+        <ImageUploadField
+          label="Profile Picture"
+          value={profile?.avatar_url || ''}
+          bucket="profile-images"
+          folder={`avatars/${profile?.id}`}
+          aspectClass="h-32"
+          hint="Mag-upload ng larawan para makilala ka ng seller at rider. Para sa transparency ng transaction."
+          onChange={async (url) => {
+            if (!profile) return;
+            setAvatarUploading(true);
+            await supabase.from('profiles').update({ avatar_url: url || null }).eq('id', profile.id);
+            await refreshProfile();
+            setAvatarUploading(false);
+          }}
+        />
+        {avatarUploading && <p className="text-xs text-brand-500 mt-1">Nag-a-upload...</p>}
       </div>
 
       <button

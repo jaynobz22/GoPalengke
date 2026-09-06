@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import type { Message, Conversation } from '@/lib/types';
 import { ArrowLeft, Send } from 'lucide-react';
+import { Avatar } from '@/components/Avatar';
 
 export function useChat(conversationId: string | null) {
   const { profile } = useAuth();
@@ -133,6 +134,25 @@ export function ChatView({
   const { messages, loading, sending, sendMessage } = useChat(conversationId);
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [otherAvatar, setOtherAvatar] = useState<string | null>(null);
+  const [myAvatar, setMyAvatar] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadAvatars() {
+      const { data: conv } = await supabase.from('conversations').select('*').eq('id', conversationId).maybeSingle();
+      if (!conv || !profile) return;
+      const otherId = conv.type === 'buyer_seller'
+        ? (conv.seller_id === profile.id ? conv.buyer_id : conv.seller_id)
+        : (conv.buyer_id === profile.id ? conv.rider_id : conv.buyer_id);
+      if (otherId) {
+        const { data } = await supabase.from('profiles').select('avatar_url').eq('id', otherId).maybeSingle();
+        setOtherAvatar(data?.avatar_url || null);
+      }
+      const { data: me } = await supabase.from('profiles').select('avatar_url').eq('id', profile.id).maybeSingle();
+      setMyAvatar(me?.avatar_url || null);
+    }
+    loadAvatars();
+  }, [conversationId, profile]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -154,6 +174,7 @@ export function ChatView({
         <button onClick={onBack} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center active:scale-95 transition">
           <ArrowLeft size={20} className="text-gray-600" />
         </button>
+        <Avatar src={otherAvatar} name={otherName} size={40} />
         <div className="flex-1">
           <p className="font-semibold text-gray-800 text-sm">{otherName}</p>
           <p className="text-xs text-gray-400">{otherRole}</p>
@@ -175,7 +196,8 @@ export function ChatView({
         {messages.map(msg => {
           const isMine = msg.sender_id === profile?.id;
           return (
-            <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+            <div key={msg.id} className={`flex items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
+              {!isMine && <Avatar src={otherAvatar} name={otherName} size={28} />}
               <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl ${
                 isMine
                   ? 'bg-brand-600 text-white rounded-br-md'
@@ -186,6 +208,7 @@ export function ChatView({
                   {new Date(msg.created_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
                 </p>
               </div>
+              {isMine && <Avatar src={myAvatar} name={profile?.full_name} size={28} />}
             </div>
           );
         })}

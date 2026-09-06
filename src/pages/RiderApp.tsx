@@ -4,6 +4,8 @@ import { useAuth } from '@/lib/auth';
 import type { Order, OrderItem, Store, OrderStatus } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
+import { Avatar } from '@/components/Avatar';
+import { ImageUploadField } from '@/components/ImageUploadField';
 import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
@@ -225,14 +227,14 @@ function RiderDeliveries({ onOrderClick }: { onOrderClick: (o: Order) => void })
 function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack: () => void; onOpenChat: (order: Order, buyerName: string) => void }) {
   const [items, setItems] = useState<OrderItem[]>([]);
   const [store, setStore] = useState<Store | null>(null);
-  const [buyer, setBuyer] = useState<{ full_name: string; phone: string | null } | null>(null);
+  const [buyer, setBuyer] = useState<{ full_name: string; phone: string | null; avatar_url: string | null } | null>(null);
   const [currentOrder, setCurrentOrder] = useState(order);
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
     supabase.from('stores').select('*').eq('id', order.store_id).maybeSingle().then(({ data }) => setStore(data as Store | null));
-    supabase.from('profiles').select('full_name, phone').eq('id', order.buyer_id).maybeSingle().then(({ data }) => setBuyer(data as any));
+    supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', order.buyer_id).maybeSingle().then(({ data }) => setBuyer(data as any));
 
     const sub = supabase.channel(`rider-order-${order.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${order.id}` }, (payload: any) => {
@@ -459,8 +461,9 @@ function RiderHistory({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
 
 // ============= PROFILE =============
 function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const [stats, setStats] = useState({ totalDeliveries: 0, totalEarnings: 0 });
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -479,9 +482,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
       <h2 className="text-xl font-bold text-gray-800 mb-4">Profile ko</h2>
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600">
-            {profile?.full_name?.[0]?.toUpperCase() || '?'}
-          </div>
+          <Avatar src={profile?.avatar_url} name={profile?.full_name} size={64} className="!bg-blue-100 !text-blue-600" />
           <div>
             <p className="font-bold text-gray-800 text-lg">{profile?.full_name}</p>
             <p className="text-sm text-gray-400">{profile?.email}</p>
@@ -498,6 +499,26 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
             <p className="text-xs text-gray-400">Kita</p>
           </div>
         </div>
+      </div>
+
+      {/* Profile Picture Upload */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+        <ImageUploadField
+          label="Profile Picture"
+          value={profile?.avatar_url || ''}
+          bucket="profile-images"
+          folder={`avatars/${profile?.id}`}
+          aspectClass="h-32"
+          hint="Mag-upload ng larawan para makilala ka ng buyers at sellers. Para sa transparency ng transaction."
+          onChange={async (url) => {
+            if (!profile) return;
+            setAvatarUploading(true);
+            await supabase.from('profiles').update({ avatar_url: url || null }).eq('id', profile.id);
+            await refreshProfile();
+            setAvatarUploading(false);
+          }}
+        />
+        {avatarUploading && <p className="text-xs text-blue-500 mt-1">Nag-a-upload...</p>}
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
