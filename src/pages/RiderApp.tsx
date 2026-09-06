@@ -348,7 +348,10 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   }
 
   const sameCity = store?.city === currentOrder.delivery_city;
-  const estimatedKm = estimateDistanceKm(store?.city || null, currentOrder.delivery_city);
+  const estimatedKm = estimateDistanceKm(
+    store ? { barangay: store.barangay, city: store.city, region: store.region } : null,
+    { barangay: currentOrder.delivery_barangay, city: currentOrder.delivery_city, region: currentOrder.delivery_region },
+  );
   const estimatedTotalSeconds = sameCity ? 15 * 60 : 30 * 60;
   const remainingSeconds = Math.max(0, estimatedTotalSeconds - elapsedSeconds);
   const remainingMin = Math.floor(remainingSeconds / 60);
@@ -452,7 +455,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           </div>
         </div>
         <div className="mt-2 text-center text-xs text-gray-400">
-          ₱{BASE_DELIVERY_FEE} base + {estimatedKm}km × ₱{PER_KM_RATE} = ₱{computeDeliveryFee(store?.city || null, currentOrder.delivery_city).toFixed(0)} ang fee
+          ₱{BASE_DELIVERY_FEE} base + {estimatedKm}km × ₱{PER_KM_RATE} = ₱{computeDeliveryFee(store ? { barangay: store.barangay, city: store.city, region: store.region } : null, { barangay: currentOrder.delivery_barangay, city: currentOrder.delivery_city, region: currentOrder.delivery_region }).toFixed(0)} ang fee
         </div>
       </div>
 

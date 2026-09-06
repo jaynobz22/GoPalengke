@@ -902,7 +902,10 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
     for (const [storeId, items] of Object.entries(grouped)) {
       const store = items[0].store;
       const total = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
-      const deliveryFee = computeDeliveryFee(store.city, deliveryLocation.city);
+      const deliveryFee = computeDeliveryFee(
+        { barangay: store.barangay, city: store.city, region: store.region },
+        { barangay: deliveryLocation.barangay, city: deliveryLocation.city, region: deliveryLocation.region },
+      );
       const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, deliveryLocation.region]
         .filter(Boolean).join(', ');
 
@@ -946,7 +949,10 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
   if (cartItems.length === 0) return <div className="p-5 text-center text-gray-400">Walang laman ang cart.</div>;
 
   const grandTotal = Object.entries(grouped).reduce((sum, [_, items]) => {
-    const fee = computeDeliveryFee(items[0].store.city, deliveryLocation.city || null);
+    const fee = computeDeliveryFee(
+      { barangay: items[0].store.barangay, city: items[0].store.city, region: items[0].store.region },
+      { barangay: deliveryLocation.barangay, city: deliveryLocation.city, region: deliveryLocation.region },
+    );
     return sum + items.reduce((s, i) => s + i.product.price * i.quantity, 0) + fee;
   }, 0);
 
@@ -1008,8 +1014,8 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
             </div>
           ))}
           <div className="flex justify-between text-sm text-gray-500 pt-2 border-t border-gray-50">
-            <span>Delivery fee ({estimateDistanceKm(items[0].store.city, deliveryLocation.city || null)}km × ₱15 + ₱50 base)</span>
-            <span>₱{computeDeliveryFee(items[0].store.city, deliveryLocation.city || null).toFixed(0)}</span>
+            <span>Delivery fee ({estimateDistanceKm({ barangay: items[0].store.barangay, city: items[0].store.city, region: items[0].store.region }, { barangay: deliveryLocation.barangay, city: deliveryLocation.city, region: deliveryLocation.region })}km × ₱15 + ₱50 base)</span>
+            <span>₱{computeDeliveryFee({ barangay: items[0].store.barangay, city: items[0].store.city, region: items[0].store.region }, { barangay: deliveryLocation.barangay, city: deliveryLocation.city, region: deliveryLocation.region }).toFixed(0)}</span>
           </div>
         </div>
       ))}
