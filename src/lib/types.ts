@@ -103,6 +103,7 @@ export interface Order {
   delivery_lat: number | null;
   delivery_lng: number | null;
   buyer_note: string | null;
+  payment_reference: string | null;
   created_at: string;
   updated_at: string;
   store?: Store;

@@ -1008,7 +1008,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
                 <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
                   <Check size={18} className="text-white" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="font-semibold text-sm text-green-800">Nabayaran na ng Buyer!</p>
                   <p className="text-xs text-green-600">Na-confirm ng buyer na nakapag-bayad na sa GCash/Maya</p>
                 </div>
@@ -1025,6 +1025,28 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
               </>
             )}
           </div>
+
+          {/* Payment reference number from buyer */}
+          {currentOrder.payment_status === 'paid' && currentOrder.payment_reference && (
+            <div className="mt-3 p-3 bg-white rounded-xl border border-green-200">
+              <p className="text-xs text-gray-400 mb-0.5">Payment Reference Number mula sa Buyer:</p>
+              <p className="text-sm font-mono font-bold text-gray-800 break-all">{currentOrder.payment_reference}</p>
+            </div>
+          )}
+
+          {/* Verification instructions for seller */}
+          {currentOrder.payment_status === 'paid' && (
+            <div className="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+              <p className="text-xs font-medium text-blue-900 mb-1.5">Paano i-verify ang payment:</p>
+              <ol className="text-xs text-blue-700 space-y-1 leading-relaxed list-decimal pl-4">
+                <li>Buksan ang GCash o Maya app mo.</li>
+                <li>Pumunta sa "Activity" o "Transaction History".</li>
+                <li>Hanapin ang transaction na may reference number na <strong>{currentOrder.payment_reference || 'na ibinigay ng buyer'}</strong>.</li>
+                <li>Tiyakin na ang halaga ay <strong>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</strong>.</li>
+                <li>Kung tumugma, pwede mo nang ipagpatuloy ang order. Kung hindi, makipag-chat sa buyer.</li>
+              </ol>
+            </div>
+          )}
         </div>
       )}
 

@@ -1140,6 +1140,8 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
   const [store, setStore] = useState<Store | null>(null);
   const [rider, setRider] = useState<{ full_name: string; phone: string | null } | null>(null);
   const [currentOrder, setCurrentOrder] = useState(order);
+  const [paymentRef, setPaymentRef] = useState(order.payment_reference || '');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
@@ -1345,25 +1347,54 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
                   <Download size={18} /> I-download ang QR Code
                 </button>
 
-                {/* Mark as Paid button */}
+                {/* Payment Reference Form + Mark as Paid button */}
                 {currentOrder.payment_status !== 'paid' ? (
-                  <button
-                    onClick={async () => {
-                      await supabase.from('orders').update({ payment_status: 'paid' }).eq('id', currentOrder.id);
-                      setCurrentOrder(prev => ({ ...prev, payment_status: 'paid' }));
-                    }}
-                    className="w-full mt-3 py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition shadow-lg shadow-green-600/20"
-                  >
-                    <Check size={18} /> Naka-bayad na Ako
-                  </button>
+                  <div className="mt-4">
+                    <label className="text-sm font-medium text-gray-700 mb-1.5 block">
+                      Payment Reference Number
+                    </label>
+                    <p className="text-xs text-gray-400 mb-2 leading-relaxed">
+                      Pagkatapos magbayad sa GCash/Maya, may makikita kang reference o transaction ID. Ilagay ito bilang proof ng payment mo.
+                    </p>
+                    <input
+                      type="text"
+                      value={paymentRef}
+                      onChange={(e) => setPaymentRef(e.target.value)}
+                      placeholder="Hal. 1234567890 o Gcash Ref#"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 transition mb-3"
+                    />
+                    <button
+                      onClick={async () => {
+                        setSubmitting(true);
+                        await supabase.from('orders').update({
+                          payment_status: 'paid',
+                          payment_reference: paymentRef.trim() || null,
+                        }).eq('id', currentOrder.id);
+                        setCurrentOrder(prev => ({ ...prev, payment_status: 'paid', payment_reference: paymentRef.trim() || null }));
+                        setSubmitting(false);
+                      }}
+                      disabled={submitting}
+                      className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition shadow-lg shadow-green-600/20 disabled:opacity-50"
+                    >
+                      <Check size={18} /> {submitting ? 'Nagse-send...' : 'Naka-bayad na Ako'}
+                    </button>
+                  </div>
                 ) : (
-                  <div className="w-full mt-3 py-3 bg-green-100 text-green-700 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 border border-green-300">
-                    <Check size={18} /> Na-confirm mo na ang payment
+                  <div className="mt-4">
+                    <div className="w-full py-3 bg-green-100 text-green-700 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 border border-green-300">
+                      <Check size={18} /> Na-confirm mo na ang payment
+                    </div>
+                    {currentOrder.payment_reference && (
+                      <div className="mt-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <p className="text-xs text-gray-400 mb-0.5">Reference Number:</p>
+                        <p className="text-sm font-mono font-medium text-gray-700">{currentOrder.payment_reference}</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
                 <p className="text-xs text-gray-400 mt-3 text-center leading-relaxed">
-                  Pagkatapos mag-bayad sa GCash/Maya, i-tap ang button sa taas para ma-notify ang seller na paid na ang order mo.
+                  Pagkatapos mag-bayad sa GCash/Maya, ilagay ang reference number at i-tap ang button para ma-notify ang seller na paid na ang order mo.
                 </p>
               </div>
             ) : (
