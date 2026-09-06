@@ -556,6 +556,16 @@ function CategoryIcon({ slug, active }: { slug: string; active: boolean }) {
     case 'fruits': return <AppleIcon className={color} />;
     case 'poultry': return <EggIcon className={color} />;
     case 'rice-grains': return <WheatIcon className={color} />;
+    case 'condiments-spices': return <span className={color} style={{ fontSize: 28 }}>🧂</span>;
+    case 'dried-goods': return <span className={color} style={{ fontSize: 28 }}>🐟</span>;
+    case 'noodles-pasta': return <span className={color} style={{ fontSize: 28 }}>🍜</span>;
+    case 'eggs': return <EggIcon className={color} />;
+    case 'frozen-goods': return <span className={color} style={{ fontSize: 28 }}>🧊</span>;
+    case 'bakery': return <span className={color} style={{ fontSize: 28 }}>🍞</span>;
+    case 'beverages': return <span className={color} style={{ fontSize: 28 }}>🥤</span>;
+    case 'snacks-sweets': return <span className={color} style={{ fontSize: 28 }}>🍪</span>;
+    case 'household-items': return <span className={color} style={{ fontSize: 28 }}>🧴</span>;
+    case 'general-merchandise': return <Package size={28} className={color} />;
     default: return <Package size={28} className={color} />;
   }
 }

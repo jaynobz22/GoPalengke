@@ -278,6 +278,16 @@ function CategoryEmoji({ slug }: { slug: string }) {
     case 'fruits': return <span>🍎</span>;
     case 'poultry': return <span>🥚</span>;
     case 'rice-grains': return <span>🌾</span>;
+    case 'condiments-spices': return <span>🧂</span>;
+    case 'dried-goods': return <span>🐟</span>;
+    case 'noodles-pasta': return <span>🍜</span>;
+    case 'eggs': return <span>🥚</span>;
+    case 'frozen-goods': return <span>🧊</span>;
+    case 'bakery': return <span>🍞</span>;
+    case 'beverages': return <span>🥤</span>;
+    case 'snacks-sweets': return <span>🍪</span>;
+    case 'household-items': return <span>🧴</span>;
+    case 'general-merchandise': return <span>📦</span>;
     default: return <span>📦</span>;
   }
 }
