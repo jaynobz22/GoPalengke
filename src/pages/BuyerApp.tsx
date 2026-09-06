@@ -275,7 +275,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders }
           <span className="text-xl font-bold">GoPalengke</span>
         </div>
         <p className="text-brand-100 text-sm mb-4">
-          Hello, {profile?.full_name?.split(' ')[0]}! Anong masarap kumain ngayon?
+          Hello, {profile?.full_name?.split(' ')[0]}! Ano ang plano mong lutuin ngayon?
         </p>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
