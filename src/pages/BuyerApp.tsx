@@ -873,7 +873,13 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
   const [cartItems, setCartItems] = useState<(CartItem & { product: Product; store: Store })[]>([]);
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
-  const [address, setAddress] = useState('');
+  const [deliveryLocation, setDeliveryLocation] = useState<LocationData>({
+    barangay: profile?.barangay || '',
+    district: profile?.district || '',
+    city: profile?.city || '',
+    region: profile?.region || 'NCR',
+  });
+  const [addressDetails, setAddressDetails] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'qr_code' | 'cod'>('qr_code');
   const [note, setNote] = useState('');
 
@@ -896,7 +902,9 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
     for (const [storeId, items] of Object.entries(grouped)) {
       const store = items[0].store;
       const total = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
-      const deliveryFee = computeDeliveryFee(store.city, profile.city);
+      const deliveryFee = computeDeliveryFee(store.city, deliveryLocation.city);
+      const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, deliveryLocation.region]
+        .filter(Boolean).join(', ');
 
       const { data: order, error } = await supabase.from('orders').insert({
         buyer_id: profile.id,
@@ -906,11 +914,11 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
         payment_status: 'pending',
         total,
         delivery_fee: deliveryFee,
-        delivery_barangay: profile.barangay,
-        delivery_district: profile.district,
-        delivery_city: profile.city,
-        delivery_region: profile.region,
-        delivery_address: address || `${profile.barangay}, ${profile.city}, ${profile.region}`,
+        delivery_barangay: deliveryLocation.barangay || null,
+        delivery_district: deliveryLocation.district || null,
+        delivery_city: deliveryLocation.city || null,
+        delivery_region: deliveryLocation.region || null,
+        delivery_address: fullAddress,
         buyer_note: note || null,
       }).select('*').single();
 
@@ -938,7 +946,7 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
   if (cartItems.length === 0) return <div className="p-5 text-center text-gray-400">Walang laman ang cart.</div>;
 
   const grandTotal = Object.entries(grouped).reduce((sum, [_, items]) => {
-    const fee = computeDeliveryFee(items[0].store.city, profile?.city || null);
+    const fee = computeDeliveryFee(items[0].store.city, deliveryLocation.city || null);
     return sum + items.reduce((s, i) => s + i.product.price * i.quantity, 0) + fee;
   }, 0);
 
@@ -957,15 +965,20 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
           <MapPin size={18} className="text-brand-600" />
           <h3 className="font-semibold text-gray-800">Delivery Address</h3>
         </div>
-        <textarea
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder={`Ilagay ang buong address...`}
-          rows={2}
-          className="w-full px-3 py-2 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 resize-none"
+        <LocationSelector
+          value={deliveryLocation}
+          onChange={setDeliveryLocation}
+          compact
         />
-        <div className="mt-2 text-sm text-gray-500">
-          {profile?.barangay}, {profile?.city}, {profile?.region}
+        <div className="mt-3">
+          <label className="text-xs font-medium text-gray-500 mb-1 block">Eksaktong Detalye (House/Block/Phase)</label>
+          <input
+            type="text"
+            value={addressDetails}
+            onChange={(e) => setAddressDetails(e.target.value)}
+            placeholder="Hal. Blk 3 Lot 12, Phase 2, Subdivision"
+            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition text-sm"
+          />
         </div>
       </div>
 
@@ -995,8 +1008,8 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
             </div>
           ))}
           <div className="flex justify-between text-sm text-gray-500 pt-2 border-t border-gray-50">
-            <span>Delivery fee ({estimateDistanceKm(items[0].store.city, profile?.city || null)}km × ₱15 + ₱50 base)</span>
-            <span>₱{computeDeliveryFee(items[0].store.city, profile?.city || null).toFixed(0)}</span>
+            <span>Delivery fee ({estimateDistanceKm(items[0].store.city, deliveryLocation.city || null)}km × ₱15 + ₱50 base)</span>
+            <span>₱{computeDeliveryFee(items[0].store.city, deliveryLocation.city || null).toFixed(0)}</span>
           </div>
         </div>
       ))}

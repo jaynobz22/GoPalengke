@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import type { Order, OrderItem, Store, OrderStatus } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
+import { estimateDistanceKm, computeDeliveryFee, PER_KM_RATE, BASE_DELIVERY_FEE } from '@/lib/deliveryFee';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import { Avatar } from '@/components/Avatar';
 import { ImageUploadField } from '@/components/ImageUploadField';
@@ -347,6 +348,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   }
 
   const sameCity = store?.city === currentOrder.delivery_city;
+  const estimatedKm = estimateDistanceKm(store?.city || null, currentOrder.delivery_city);
   const estimatedTotalSeconds = sameCity ? 15 * 60 : 30 * 60;
   const remainingSeconds = Math.max(0, estimatedTotalSeconds - elapsedSeconds);
   const remainingMin = Math.floor(remainingSeconds / 60);
@@ -442,12 +444,15 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-around">
           <div className="text-center">
             <p className="text-xs text-gray-400">Estimated Distance</p>
-            <p className="font-bold text-gray-800">{sameCity ? '1-3 km' : '5+ km'}</p>
+            <p className="font-bold text-gray-800">~{estimatedKm} km</p>
           </div>
           <div className="text-center">
             <p className="text-xs text-gray-400">Estimated Time</p>
             <p className="font-bold text-gray-800">{sameCity ? '10-15 min' : '20-30 min'}</p>
           </div>
+        </div>
+        <div className="mt-2 text-center text-xs text-gray-400">
+          ₱{BASE_DELIVERY_FEE} base + {estimatedKm}km × ₱{PER_KM_RATE} = ₱{computeDeliveryFee(store?.city || null, currentOrder.delivery_city).toFixed(0)} ang fee
         </div>
       </div>
 
