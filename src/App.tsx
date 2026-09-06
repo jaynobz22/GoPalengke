@@ -5,6 +5,7 @@ import { AuthPage } from './pages/AuthPage';
 import { BuyerApp } from './pages/BuyerApp';
 import { SellerApp } from './pages/SellerApp';
 import { RiderApp } from './pages/RiderApp';
+import { AdminApp } from './pages/AdminApp';
 import { PublicPages } from './components/PublicPages';
 
 function useHashRoute() {
@@ -57,6 +58,7 @@ function AppContent() {
   if (profile.role === 'buyer') return <BuyerApp />;
   if (profile.role === 'seller') return <SellerApp />;
   if (profile.role === 'rider') return <RiderApp />;
+  if (profile.role === 'admin') return <AdminApp />;
 
   return <LandingPage onGetStarted={() => setShowAuth(true)} />;
 }

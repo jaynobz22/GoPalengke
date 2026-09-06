@@ -1,4 +1,4 @@
-export type UserRole = 'buyer' | 'seller' | 'rider';
+export type UserRole = 'buyer' | 'seller' | 'rider' | 'admin';
 
 export interface Profile {
   id: string;
@@ -184,6 +184,15 @@ export interface Message {
   body: string;
   read_at: string | null;
   created_at: string;
+}
+
+export interface Announcement {
+  id: string;
+  message: string;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export const REGIONS = [

@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import type { UserRole } from '@/lib/types';
-import { Fish, Store, Bike, ShoppingCart, ArrowLeft, Check } from 'lucide-react';
+import { Fish, Store, Bike, ShoppingCart, ArrowLeft, Check, Shield } from 'lucide-react';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
 
 const ROLES = [
   { id: 'buyer' as UserRole, name: 'Mamimili', desc: 'Bumili ng sariwang paninda online', icon: ShoppingCart, color: 'bg-brand-500' },
   { id: 'seller' as UserRole, name: 'Tindera/Tindero', desc: 'Magbenta ng paninda sa palengke', icon: Store, color: 'bg-orange-500' },
   { id: 'rider' as UserRole, name: 'Rider', desc: 'Mag-deliver ng orders sa buyers', icon: Bike, color: 'bg-blue-500' },
+  { id: 'admin' as UserRole, name: 'Admin', desc: 'Pamahalaan ang announcements at updates', icon: Shield, color: 'bg-gray-700' },
 ];
 
 export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: boolean; onBack?: () => void }) {
@@ -234,14 +235,16 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
               />
             </div>
 
-            <div className="pt-2">
-              <LocationSelector
-                value={location}
-                onChange={setLocation}
-                label={`Location ng ${selectedRole === 'seller' ? 'tindahan' : 'bahay'}`}
-                compact
-              />
-            </div>
+            {selectedRole !== 'admin' && (
+              <div className="pt-2">
+                <LocationSelector
+                  value={location}
+                  onChange={setLocation}
+                  label={`Location ng ${selectedRole === 'seller' ? 'tindahan' : 'bahay'}`}
+                  compact
+                />
+              </div>
+            )}
 
             {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
             <button

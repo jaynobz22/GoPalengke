@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { Store, Product, Category } from '@/lib/types';
+import type { Store, Product, Category, Announcement } from '@/lib/types';
 import {
   Fish, MapPin, Star, Plus, ArrowRight, ShoppingBag, Bike, Store as StoreIcon,
-  Truck, Shield, Clock, ChevronRight, Sparkles, TrendingUp,
+  Truck, Shield, Clock, ChevronRight, Sparkles, TrendingUp, Megaphone,
 } from 'lucide-react';
 
 export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
@@ -29,6 +29,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <AnnouncementBar />
       <HeroSection onGetStarted={onGetStarted} />
       <StatsBar storeCount={stores.length} productCount={products.length} />
       <CategorySection categories={categories} />
@@ -38,6 +39,46 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
       <WhySection />
       <CTASection onGetStarted={onGetStarted} />
       <Footer />
+    </div>
+  );
+}
+
+// ============= ANNOUNCEMENT BAR =============
+function AnnouncementBar() {
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      const { data } = await supabase
+        .from('announcements')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setAnnouncement(data as Announcement | null);
+    }
+    load();
+
+    const sub = supabase
+      .channel('announcements')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, load)
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, []);
+
+  if (!announcement) return null;
+
+  return (
+    <div className="bg-amber-400 border-b border-amber-500/30 overflow-hidden relative z-20">
+      <div className="flex items-center gap-2 px-4 py-2">
+        <Megaphone size={16} className="text-amber-900 flex-shrink-0" />
+        <div className="overflow-hidden flex-1">
+          <div className="animate-marquee whitespace-nowrap text-sm font-medium text-amber-900">
+            {announcement.message}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
