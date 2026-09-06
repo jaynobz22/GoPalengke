@@ -9,14 +9,16 @@ import { compressImage } from '@/lib/imageCompress';
 import { ImageUploadField } from '@/components/ImageUploadField';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import { Avatar } from '@/components/Avatar';
+import { InactiveBanner } from '@/components/InactiveBanner';
+import { SellerBilling } from '@/components/SellerBilling';
 import {
   Store as StoreIcon, Package, Settings, Plus, ArrowLeft, Edit, Trash2, X,
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
   TrendingUp, DollarSign, Bell, Camera, Loader2, MessageCircle,
-  Share2, Copy, ExternalLink, Search, ImageIcon,
+  Share2, Copy, ExternalLink, Search, ImageIcon, Wallet,
 } from 'lucide-react';
 
-type Tab = 'dashboard' | 'products' | 'orders' | 'messages' | 'settings';
+type Tab = 'dashboard' | 'products' | 'orders' | 'messages' | 'billing' | 'settings';
 
 export function SellerApp() {
   const { profile, signOut } = useAuth();
@@ -98,10 +100,13 @@ export function SellerApp() {
     return <CreateStoreView onCreated={loadStore} />;
   }
 
+  const canAct = profile?.is_active ?? true;
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
+      {!canAct && <InactiveBanner />}
       <div className="flex-1 pb-20 overflow-y-auto">
-        {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} onOpenMessages={() => setTab('messages')} onOpenOrders={() => setTab('orders')} unreadMessages={unreadCount} />}
+        {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} onOpenMessages={() => setTab('messages')} onOpenOrders={() => setTab('orders')} unreadMessages={unreadCount} canAct={canAct} />}
         {tab === 'products' && (
           <SellerProducts store={store} onAdd={() => { setEditingProduct(null); setShowProductForm(true); }} onEdit={(p) => { setEditingProduct(p); setShowProductForm(true); }} />
         )}
@@ -115,6 +120,7 @@ export function SellerApp() {
         {tab === 'messages' && (
           <SellerMessagesView onOpenChat={openChatFromMessages} />
         )}
+        {tab === 'billing' && <SellerBilling />}
         {tab === 'settings' && <SellerSettings store={store} onEditStore={() => setShowStoreForm(true)} onSignOut={signOut} />}
 
         {showChat && activeConversationId && (
@@ -263,7 +269,7 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
 }
 
 // ============= DASHBOARD =============
-function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, unreadMessages }: { store: Store; onEditStore: () => void; onOpenMessages: () => void; onOpenOrders: () => void; unreadMessages: number }) {
+function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, unreadMessages, canAct }: { store: Store; onEditStore: () => void; onOpenMessages: () => void; onOpenOrders: () => void; unreadMessages: number; canAct: boolean }) {
   const { profile } = useAuth();
   const [stats, setStats] = useState({ totalOrders: 0, pendingOrders: 0, totalRevenue: 0, productCount: 0, paidOrders: 0 });
   const [recentOrders, setRecentOrders] = useState<(Order & { buyer: { full_name: string } })[]>([]);
@@ -1499,6 +1505,7 @@ function SellerBottomNav({ tab, setTab, storeId, unreadMessages }: { tab: Tab; s
     { id: 'products', icon: Package, label: 'Paninda' },
     { id: 'orders', icon: ShoppingBag, label: 'Orders', badge: orderBadge, alert: orderAlert },
     { id: 'messages', icon: MessageCircle, label: 'Messages', badge: unreadMessages },
+    { id: 'billing', icon: Wallet, label: 'Billing' },
     { id: 'settings', icon: Settings, label: 'Settings' },
   ];
 

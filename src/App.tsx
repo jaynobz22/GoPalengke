@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { Clock } from 'lucide-react';
+import { supabase } from './lib/supabase';
 import { AuthProvider, useAuth } from './lib/auth';
 import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
@@ -53,6 +55,30 @@ function AppContent() {
 
   if (!profile) {
     return <AuthPage needsProfile />;
+  }
+
+  // Pending approval screen for non-admin users
+  if (!profile.is_approved && profile.role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-5">
+        <div className="max-w-md w-full bg-white rounded-3xl border border-gray-100 p-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+            <Clock size={32} className="text-amber-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Naghihintay ng Approval</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Ang iyong account ay naghihintay pa ng pag-apruba mula sa admin.
+            Makikipag-ugnayan ka sa admin para ma-activate ang iyong account.
+          </p>
+          <button
+            onClick={async () => { await supabase.auth.signOut(); }}
+            className="px-6 py-2.5 bg-gray-100 text-gray-600 rounded-xl font-medium text-sm"
+          >
+            Mag-sign out
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (profile.role === 'buyer') return <BuyerApp />;

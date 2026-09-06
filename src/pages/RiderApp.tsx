@@ -7,6 +7,7 @@ import { estimateDistanceKm, computeDeliveryFee, PER_KM_RATE, BASE_DELIVERY_FEE 
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import { Avatar } from '@/components/Avatar';
 import { ImageUploadField } from '@/components/ImageUploadField';
+import { InactiveBanner } from '@/components/InactiveBanner';
 import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
@@ -62,14 +63,17 @@ export function RiderApp() {
     }
   }
 
+  const canAct = profile?.is_active ?? true;
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
+      {!canAct && <InactiveBanner />}
       <div className="flex-1 pb-20 overflow-y-auto">
         {tab === 'deliveries' && (
           selectedOrder ? (
             <RiderOrderDetail order={selectedOrder} onBack={() => setSelectedOrder(null)} onOpenChat={openChat} />
           ) : (
-            <RiderDeliveries onOrderClick={setSelectedOrder} />
+            <RiderDeliveries onOrderClick={setSelectedOrder} canAct={canAct} />
           )
         )}
         {tab === 'history' && (
@@ -99,7 +103,7 @@ export function RiderApp() {
 }
 
 // ============= DELIVERIES =============
-function RiderDeliveries({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
+function RiderDeliveries({ onOrderClick, canAct }: { onOrderClick: (o: Order) => void; canAct: boolean }) {
   const { profile } = useAuth();
   const [availableOrders, setAvailableOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
   const [myOrders, setMyOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
@@ -170,7 +174,7 @@ function RiderDeliveries({ onOrderClick }: { onOrderClick: (o: Order) => void })
       <div className="px-5 py-4">
         <button
           onClick={toggleAvailability}
-          disabled={toggling}
+          disabled={toggling || !canAct}
           className={`w-full rounded-2xl p-4 flex items-center justify-between transition active:scale-[0.98] ${
             isAvailable
               ? 'bg-green-50 border-2 border-green-300'
@@ -262,8 +266,8 @@ function RiderDeliveries({ onOrderClick }: { onOrderClick: (o: Order) => void })
                       <p className="text-sm text-gray-400">Delivery fee</p>
                       <p className="font-bold text-blue-600">₱{order.delivery_fee.toFixed(0)}</p>
                     </div>
-                    <button onClick={() => acceptOrder(order)}
-                      className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold active:scale-95 transition">
+                    <button onClick={() => acceptOrder(order)} disabled={!canAct}
+                      className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold active:scale-95 transition disabled:opacity-50">
                       Tanggapin
                     </button>
                   </div>

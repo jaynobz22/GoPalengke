@@ -13,6 +13,8 @@ export interface Profile {
   avatar_url: string | null;
   slug: string | null;
   is_available: boolean;
+  is_approved: boolean;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -107,6 +109,7 @@ export interface Order {
   delivery_lng: number | null;
   buyer_note: string | null;
   payment_reference: string | null;
+  commission_amount: number;
   rider_lat: number | null;
   rider_lng: number | null;
   picked_up_at: string | null;
@@ -179,6 +182,48 @@ export interface Announcement {
   created_at: string;
   updated_at: string;
 }
+
+export interface SellerFee {
+  id: string;
+  seller_id: string;
+  commission_balance: number;
+  total_sales: number;
+  subscription_active: boolean;
+  subscription_activated_at: string | null;
+  subscription_balance: number;
+  last_subscription_charge_at: string | null;
+  total_payable: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type FeePaymentStatus = 'pending' | 'approved' | 'rejected';
+
+export interface FeePayment {
+  id: string;
+  seller_id: string;
+  amount: number;
+  reference_number: string;
+  status: FeePaymentStatus;
+  approved_by: string | null;
+  approved_at: string | null;
+  commission_paid: number;
+  subscription_paid: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlatformSetting {
+  key: string;
+  value: string;
+  updated_by: string | null;
+  updated_at: string;
+}
+
+export const COMMISSION_RATE = 0.03;
+export const SUBSCRIPTION_FEE = 499;
+export const SUBSCRIPTION_THRESHOLD = 5000;
+export const PAYMENT_THRESHOLD = 1000;
 
 export const REGIONS = [
   'NCR', 'CAR', 'Region I', 'Region II', 'Region III', 'Region IV-A', 'Region IV-B',

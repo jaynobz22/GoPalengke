@@ -4,7 +4,9 @@ import { useAuth } from '@/lib/auth';
 import type { Product, Store, Category, CartItem, Order, OrderItem, OrderStatus, Conversation } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
+import { InactiveBanner } from '@/components/InactiveBanner';
 import { computeDeliveryFee, estimateDistanceKm } from '@/lib/deliveryFee';
+import { COMMISSION_RATE } from '@/lib/types';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import { Avatar } from '@/components/Avatar';
 import { ImageUploadField } from '@/components/ImageUploadField';
@@ -126,8 +128,11 @@ export function BuyerApp() {
     return () => { supabase.removeChannel(sub); };
   }, [profile]);
 
+  const canAct = profile?.is_active ?? true;
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
+      {!canAct && <InactiveBanner />}
       {/* Content */}
       <div className="flex-1 pb-20 overflow-y-auto">
         {tab === 'home' && view === 'browse' && (
@@ -140,7 +145,7 @@ export function BuyerApp() {
           <StoreView store={selectedStore} onProductClick={(p) => navigateToProduct(p, selectedStore)} onBack={backToBrowse} />
         )}
         {tab === 'home' && view === 'checkout' && (
-          <CheckoutView onBack={backToBrowse} onOrderPlaced={() => { setTab('orders'); setView('browse'); }} />
+          <CheckoutView onBack={backToBrowse} onOrderPlaced={() => { setTab('orders'); setView('browse'); }} canAct={canAct} />
         )}
         {tab === 'home' && view === 'order_detail' && selectedOrder && (
           <OrderDetailView order={selectedOrder} onBack={backToBrowse} onOpenChat={openChat} />
@@ -868,7 +873,7 @@ function CartView({ onCheckout, refreshKey }: { onCheckout: () => void; refreshK
 }
 
 // ============= CHECKOUT VIEW =============
-function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPlaced: () => void }) {
+function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; onOrderPlaced: () => void; canAct: boolean }) {
   const { profile } = useAuth();
   const [cartItems, setCartItems] = useState<(CartItem & { product: Product; store: Store })[]>([]);
   const [loading, setLoading] = useState(true);
@@ -909,6 +914,8 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
       const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, deliveryLocation.region]
         .filter(Boolean).join(', ');
 
+      const commissionAmount = Math.round(total * COMMISSION_RATE * 100) / 100;
+
       const { data: order, error } = await supabase.from('orders').insert({
         buyer_id: profile.id,
         store_id: storeId,
@@ -923,6 +930,7 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
         delivery_region: deliveryLocation.region || null,
         delivery_address: fullAddress,
         buyer_note: note || null,
+        commission_amount: commissionAmount,
       }).select('*').single();
 
       if (error) { setPlacing(false); return; }
@@ -1070,7 +1078,7 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
 
       <button
         onClick={placeOrder}
-        disabled={placing}
+        disabled={placing || !canAct}
         className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50"
       >
         {placing ? 'Nagpapadala...' : `Mag-order Na · ₱${grandTotal.toFixed(2)}`}
