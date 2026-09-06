@@ -29,7 +29,6 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AnnouncementBar />
       <HeroSection onGetStarted={onGetStarted} />
       <StatsBar storeCount={stores.length} productCount={products.length} />
       <CategorySection categories={categories} />
@@ -43,48 +42,9 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
   );
 }
 
-// ============= ANNOUNCEMENT BAR =============
-function AnnouncementBar() {
-  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
-
-  useEffect(() => {
-    async function load() {
-      const { data } = await supabase
-        .from('announcements')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      setAnnouncement(data as Announcement | null);
-    }
-    load();
-
-    const sub = supabase
-      .channel('announcements')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, load)
-      .subscribe();
-    return () => { supabase.removeChannel(sub); };
-  }, []);
-
-  if (!announcement) return null;
-
-  return (
-    <div className="bg-amber-400 border-b border-amber-500/30 overflow-hidden relative z-20">
-      <div className="flex items-center gap-2 px-4 py-2">
-        <Megaphone size={16} className="text-amber-900 flex-shrink-0" />
-        <div className="overflow-hidden flex-1">
-          <div className="animate-marquee whitespace-nowrap text-sm font-medium text-amber-900">
-            {announcement.message}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ============= HERO =============
 function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
   const slides = [
     { src: 'https://images.pexels.com/photos/12681324/pexels-photo-12681324.jpeg?auto=compress&cs=tinysrgb&h=650&w=940', alt: 'Masayang mamimili sa isang makulay na palengke' },
@@ -100,20 +60,51 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
     return () => window.clearInterval(timer);
   }, [slides.length]);
 
+  useEffect(() => {
+    async function loadAnnouncement() {
+      const { data } = await supabase
+        .from('announcements')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setAnnouncement(data as Announcement | null);
+    }
+    loadAnnouncement();
+
+    const sub = supabase
+      .channel('announcements')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, loadAnnouncement)
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, []);
+
   return (
     <div className="relative overflow-hidden bg-gradient-to-br from-brand-600 via-brand-700 to-brand-800">
       <div className="absolute top-10 left-10 w-40 h-40 bg-brand-400/20 rounded-full blur-3xl animate-float" />
       <div className="absolute bottom-10 right-10 w-56 h-56 bg-brand-300/10 rounded-full blur-3xl animate-float-slow" />
 
       {/* Desktop nav bar */}
-      <nav className="hidden md:flex relative max-w-6xl mx-auto px-6 pt-6 pb-2 items-center justify-between">
-        <div className="flex items-center gap-2">
+      <nav className="hidden md:flex relative max-w-6xl mx-auto px-6 pt-6 pb-2 items-center justify-between gap-4">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <div className="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-xl flex items-center justify-center">
             <Fish size={22} className="text-white" />
           </div>
           <span className="text-xl font-bold text-white tracking-tight">GoPalengke</span>
         </div>
-        <div className="flex items-center gap-3">
+        {/* Announcement bar — same level as logo and sign-in/sign-up */}
+        {announcement && (
+          <div className="flex-1 max-w-md bg-amber-400/90 backdrop-blur-sm rounded-full overflow-hidden flex items-center gap-2 px-4 py-1.5">
+            <Megaphone size={14} className="text-amber-900 flex-shrink-0" />
+            <div className="overflow-hidden flex-1">
+              <div className="animate-marquee whitespace-nowrap text-xs font-medium text-amber-900">
+                {announcement.message}
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="flex items-center gap-3 flex-shrink-0">
           <button onClick={onGetStarted} className="px-5 py-2 text-white/90 text-sm font-medium hover:text-white transition">
             Mag-sign In
           </button>
@@ -123,12 +114,22 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
         </div>
       </nav>
 
-      {/* Mobile logo */}
+      {/* Mobile logo + announcement */}
       <div className="md:hidden relative px-5 pt-14 pb-2 flex items-center gap-2 animate-slide-in-left">
-        <div className="w-11 h-11 bg-white/15 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+        <div className="w-11 h-11 bg-white/15 backdrop-blur-sm rounded-2xl flex items-center justify-center flex-shrink-0">
           <Fish size={26} className="text-white" />
         </div>
-        <span className="text-2xl font-bold text-white tracking-tight">GoPalengke</span>
+        <span className="text-2xl font-bold text-white tracking-tight flex-shrink-0">GoPalengke</span>
+        {announcement && (
+          <div className="flex-1 bg-amber-400/90 backdrop-blur-sm rounded-full overflow-hidden flex items-center gap-1.5 px-3 py-1">
+            <Megaphone size={12} className="text-amber-900 flex-shrink-0" />
+            <div className="overflow-hidden flex-1">
+              <div className="animate-marquee whitespace-nowrap text-[10px] font-medium text-amber-900">
+                {announcement.message}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="relative w-full px-5 md:px-8 lg:px-10 pb-10 md:pb-14 pt-4 md:pt-8">
