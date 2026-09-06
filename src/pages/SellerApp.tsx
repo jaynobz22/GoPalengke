@@ -6,6 +6,7 @@ import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS, CATALOG_CATEGORIES } from '@/
 import { getCityMarkets } from '@/lib/philippineLocations';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
 import { compressImage } from '@/lib/imageCompress';
+import { ImageUploadField } from '@/components/ImageUploadField';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import {
   Store as StoreIcon, Package, Settings, Plus, ArrowLeft, Edit, Trash2, X,
@@ -215,16 +216,22 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
               className="w-full px-4 py-3 mt-2 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition text-sm" />
           )}
         </div>
-        <div>
-          <label className="text-sm font-medium text-gray-600 mb-1 block">Logo Image URL</label>
-          <input type="url" value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://..."
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition text-sm" />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-gray-600 mb-1 block">Banner Image URL</label>
-          <input type="url" value={bannerUrl} onChange={e => setBannerUrl(e.target.value)} placeholder="https://..."
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition text-sm" />
-        </div>
+        <ImageUploadField
+          label="Logo ng Tindahan"
+          value={logoUrl}
+          onChange={setLogoUrl}
+          folder="logos"
+          aspectClass="h-32"
+          icon={<StoreIcon size={16} />}
+        />
+        <ImageUploadField
+          label="Banner ng Tindahan"
+          value={bannerUrl}
+          onChange={setBannerUrl}
+          folder="banners"
+          aspectClass="h-40"
+          icon={<StoreIcon size={16} />}
+        />
         <div>
           <label className="text-sm font-medium text-gray-600 mb-1 block">Payment Method</label>
           <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}
@@ -907,24 +914,31 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
                 className="w-full px-4 py-3 mt-2 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition text-sm" />
             )}
           </div>
-          <div>
-            <label className="text-sm font-medium text-gray-600 mb-1 block">Logo URL</label>
-            <input type="url" value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="https://..."
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none transition text-sm" />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-600 mb-1 block">Banner URL</label>
-            <input type="url" value={bannerUrl} onChange={e => setBannerUrl(e.target.value)} placeholder="https://..."
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none transition text-sm" />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-600 mb-1 block flex items-center gap-1">
-              <QrCode size={16} /> QR Code URL (para sa payment)
-            </label>
-            <input type="url" value={qrCodeUrl} onChange={e => setQrCodeUrl(e.target.value)} placeholder="https://..."
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none transition text-sm" />
-            {qrCodeUrl && <img src={qrCodeUrl} alt="QR Code" className="mt-2 w-32 h-32 rounded-xl object-contain mx-auto" />}
-          </div>
+          <ImageUploadField
+            label="Logo ng Tindahan"
+            value={logoUrl}
+            onChange={setLogoUrl}
+            folder="logos"
+            aspectClass="h-32"
+            icon={<StoreIcon size={16} />}
+          />
+          <ImageUploadField
+            label="Banner ng Tindahan"
+            value={bannerUrl}
+            onChange={setBannerUrl}
+            folder="banners"
+            aspectClass="h-40"
+            icon={<StoreIcon size={16} />}
+          />
+          <ImageUploadField
+            label="QR Code (para sa GCash payment)"
+            value={qrCodeUrl}
+            onChange={setQrCodeUrl}
+            folder="qr-codes"
+            aspectClass="h-48"
+            icon={<QrCode size={16} />}
+            hint="I-screenshot ang QR code mo sa GCash app, tapos i-upload dito."
+          />
           <div>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={isOpen} onChange={e => setIsOpen(e.target.checked)} className="w-5 h-5 rounded accent-brand-600" />
