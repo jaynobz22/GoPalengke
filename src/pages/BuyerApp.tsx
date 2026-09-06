@@ -9,7 +9,7 @@ import {
   Search, ShoppingCart, Home, Package, User, Plus, Minus, Trash2, X,
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, Bike, Store as StoreIcon,
   QrCode, Clock, Phone, Navigation, Filter, ShoppingBag, MessageCircle, Send,
-  Share2, Copy, ExternalLink, Download, ImageOff,
+  Share2, Copy, ExternalLink, Download, ImageOff, Bell,
 } from 'lucide-react';
 
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
@@ -27,6 +27,7 @@ export function BuyerApp() {
   const [chatPartnerName, setChatPartnerName] = useState('');
   const [chatPartnerRole, setChatPartnerRole] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [orderUpdates, setOrderUpdates] = useState(0);
 
   function navigateToProduct(product: Product, store: Store) {
     setSelectedProduct(product);
@@ -104,12 +105,30 @@ export function BuyerApp() {
     return () => { supabase.removeChannel(sub); };
   }, [profile]);
 
+  // Track order status updates from seller (accepted, preparing, ready, picked_up)
+  useEffect(() => {
+    if (!profile) return;
+    async function countUpdates() {
+      const { count } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('buyer_id', profile.id)
+        .in('status', ['accepted', 'preparing', 'ready_for_pickup', 'picked_up']);
+      setOrderUpdates(count || 0);
+    }
+    countUpdates();
+    const sub = supabase.channel('buyer-order-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `buyer_id=eq.${profile.id}` }, () => countUpdates())
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [profile]);
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
       {/* Content */}
       <div className="flex-1 pb-20 overflow-y-auto">
         {tab === 'home' && view === 'browse' && (
-          <BrowseView onProductClick={navigateToProduct} onStoreClick={navigateToStore} />
+          <BrowseView onProductClick={navigateToProduct} onStoreClick={navigateToStore} orderUpdates={orderUpdates} onOpenOrders={() => { setTab('orders'); setView('browse'); }} />
         )}
         {tab === 'home' && view === 'product' && selectedProduct && (
           <ProductView product={selectedProduct} store={selectedStore!} onBack={backToBrowse} onAddToCart={refreshCart} />
@@ -157,13 +176,13 @@ export function BuyerApp() {
       </div>
 
       {/* Bottom Nav */}
-      <BottomNav tab={tab} setTab={(t) => { setTab(t); setView('browse'); }} unreadMessages={unreadCount} />
+      <BottomNav tab={tab} setTab={(t) => { setTab(t); setView('browse'); }} unreadMessages={unreadCount} orderUpdates={orderUpdates} />
     </div>
   );
 }
 
 // ============= BROWSE VIEW =============
-function BrowseView({ onProductClick, onStoreClick }: { onProductClick: (p: Product, s: Store) => void; onStoreClick: (s: Store) => void }) {
+function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders }: { onProductClick: (p: Product, s: Store) => void; onStoreClick: (s: Store) => void; orderUpdates: number; onOpenOrders: () => void }) {
   const { profile } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<(Product & { store: Store })[]>([]);
@@ -267,6 +286,29 @@ function BrowseView({ onProductClick, onStoreClick }: { onProductClick: (p: Prod
           </button>
         </div>
       </div>
+
+      {/* Order Update Notification Banner */}
+      {orderUpdates > 0 && (
+        <div className="px-5 pt-4">
+          <button
+            onClick={onOpenOrders}
+            className="w-full bg-gradient-to-r from-red-500 to-red-600 rounded-2xl p-4 text-white text-left active:scale-[0.98] transition shadow-lg shadow-red-500/30 animate-pulse"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                <Bell size={24} className="text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-base">May {orderUpdates} update sa order{orderUpdates > 1 ? 's' : ''} mo!</p>
+                <p className="text-sm text-white/90">I-tap para tingnan ang update mula seller</p>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                <ChevronRight size={18} className="text-white" />
+              </div>
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* Location Filter */}
       <div className="px-5 py-3 bg-white border-b border-gray-100">
@@ -1017,17 +1059,36 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
   const [orders, setOrders] = useState<(Order & { store: Store })[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadOrders = useCallback(async () => {
     if (!profile) return;
-    supabase.from('orders').select('*, store:stores(*)').eq('buyer_id', profile.id).order('created_at', { ascending: false })
-      .then(({ data }) => { setOrders((data || []) as any); setLoading(false); });
+    const { data } = await supabase.from('orders').select('*, store:stores(*)').eq('buyer_id', profile.id).order('created_at', { ascending: false });
+    setOrders((data || []) as any);
+    setLoading(false);
   }, [profile]);
+
+  useEffect(() => {
+    loadOrders();
+    if (!profile) return;
+    const sub = supabase.channel('buyer-orders-list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `buyer_id=eq.${profile.id}` }, () => loadOrders())
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [loadOrders, profile]);
+
+  const activeStatuses: OrderStatus[] = ['accepted', 'preparing', 'ready_for_pickup', 'picked_up'];
+  const activeCount = orders.filter(o => activeStatuses.includes(o.status)).length;
 
   if (loading) return <div className="p-5"><div className="h-32 bg-gray-100 rounded-2xl animate-pulse" /></div>;
 
   return (
     <div className="px-5 py-4">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Mga Orders ko</h2>
+      {activeCount > 0 && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-2">
+          <Bell size={18} className="text-red-500 flex-shrink-0" />
+          <p className="text-sm text-red-700 font-medium">May {activeCount} active order{activeCount > 1 ? 's' : ''} na may update mula seller</p>
+        </div>
+      )}
       {orders.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <Package size={48} className="mx-auto mb-3 opacity-50" />
@@ -1035,27 +1096,37 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
         </div>
       ) : (
         <div className="space-y-3">
-          {orders.map(order => (
+          {orders.map(order => {
+            const isActive = activeStatuses.includes(order.status);
+            return (
             <button
               key={order.id}
               onClick={() => onOrderClick(order)}
-              className="w-full bg-white rounded-2xl border border-gray-100 p-4 text-left active:scale-[0.98] transition"
+              className={`w-full rounded-2xl border p-4 text-left active:scale-[0.98] transition ${
+                isActive ? 'bg-red-50 border-red-300 shadow-sm' : 'bg-white border-gray-100'
+              }`}
             >
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <p className="font-semibold text-gray-800">{order.store.name}</p>
                   <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
-                  {ORDER_STATUS_LABELS[order.status]}
-                </span>
+                <div className="flex items-center gap-2">
+                  {isActive && (
+                    <span className="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">BAGO</span>
+                  )}
+                  <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
+                    {ORDER_STATUS_LABELS[order.status]}
+                  </span>
+                </div>
               </div>
               <div className="flex items-center justify-between mt-2">
                 <span className="text-sm text-gray-500">₱{(order.total + order.delivery_fee).toFixed(0)}</span>
                 <ChevronRight size={18} className="text-gray-300" />
               </div>
             </button>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -1210,25 +1281,48 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
             {currentOrder.status === 'pending' ? (
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <Clock size={16} className="text-amber-500 flex-shrink-0" />
-                <p>Naghihintay pa na ma-confirm ng seller ang order mo. Lalabas ang QR code dito kapag na-confirm na.</p>
+                <p>Naghihintay pa na ma-confirm ng seller ang order mo. Lalabas ang QR code at payment instructions dito kapag na-confirm na.</p>
               </div>
             ) : store?.qr_code_url ? (
               <div>
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-4">
                   <QrCode size={18} className="text-brand-600" />
-                  <span className="font-semibold text-sm text-gray-800">I-scan para mag-bayad</span>
+                  <span className="font-semibold text-sm text-gray-800">Paano Magbayad gamit ang QR Code</span>
                 </div>
+
+                {/* Step 1: Scan */}
+                <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl mb-2.5">
+                  <div className="w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">1</div>
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">I-scan ang QR code</p>
+                    <p className="text-xs text-blue-700 mt-0.5 leading-relaxed">Buksan ang GCash o Maya app sa ibang phone, piliin ang "Scan QR", at i-scan ang QR code sa baba.</p>
+                  </div>
+                </div>
+
+                {/* Step 2: Download & Upload */}
+                <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl mb-2.5">
+                  <div className="w-7 h-7 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">2</div>
+                  <div>
+                    <p className="text-sm font-medium text-amber-900">Isang phone lang ang gamit?</p>
+                    <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">I-download ang QR code image gamit ang button sa baba. Tapos, buksan ang GCash app, piliin ang "Upload QR" o "Import QR", at i-upload ang na-download na image.</p>
+                  </div>
+                </div>
+
+                {/* Step 3: Enter amount */}
+                <div className="flex items-start gap-3 p-3 bg-green-50 rounded-xl mb-4">
+                  <div className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">3</div>
+                  <div>
+                    <p className="text-sm font-medium text-green-900">Ilagay ang tamang halaga</p>
+                    <p className="text-xs text-green-700 mt-0.5 leading-relaxed">Bayaran ang <strong>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</strong> na kabuuang halaga (kasama ang delivery fee).</p>
+                  </div>
+                </div>
+
+                {/* QR Code Image */}
                 <div className="bg-gray-50 rounded-xl p-4 flex justify-center">
                   <img src={store.qr_code_url} alt="QR Code ng Seller" className="w-48 h-48 rounded-xl object-contain" />
                 </div>
-                <p className="text-xs text-gray-500 mt-3 text-center">
-                  I-scan ang QR code gamit ang GCash o Maya app para mag-bayad sa seller.
-                </p>
-                <div className="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
-                  <p className="text-xs text-blue-700 leading-relaxed">
-                    <strong>Isang phone lang ang gamit?</strong> I-download ang QR code sa baba, tapos i-upload ito sa GCash app mo para ma-detect ang account ng seller at makapag-bayad ka.
-                  </p>
-                </div>
+
+                {/* Download button */}
                 <button
                   onClick={async () => {
                     try {
@@ -1246,10 +1340,14 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
                       window.open(store.qr_code_url!, '_blank');
                     }
                   }}
-                  className="w-full mt-3 py-2.5 bg-brand-50 text-brand-700 rounded-xl font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition border border-brand-100"
+                  className="w-full mt-3 py-3 bg-brand-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
                 >
-                  <Download size={16} /> I-download ang QR Code
+                  <Download size={18} /> I-download ang QR Code
                 </button>
+
+                <p className="text-xs text-gray-400 mt-3 text-center leading-relaxed">
+                  Pagkatapos mag-bayad, i-chat ang seller para i-confirm ang payment mo.
+                </p>
               </div>
             ) : (
               <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -1550,7 +1648,7 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
 }
 
 // ============= BOTTOM NAV =============
-function BottomNav({ tab, setTab, unreadMessages }: { tab: Tab; setTab: (t: Tab) => void; unreadMessages: number }) {
+function BottomNav({ tab, setTab, unreadMessages, orderUpdates }: { tab: Tab; setTab: (t: Tab) => void; unreadMessages: number; orderUpdates: number }) {
   const { profile } = useAuth();
   const [cartCount, setCartCount] = useState(0);
 
@@ -1569,12 +1667,12 @@ function BottomNav({ tab, setTab, unreadMessages }: { tab: Tab; setTab: (t: Tab)
     return () => { supabase.removeChannel(sub); };
   }, [profile]);
 
-  const items = [
-    { id: 'home' as Tab, icon: Home, label: 'Home' },
-    { id: 'orders' as Tab, icon: Package, label: 'Orders' },
-    { id: 'cart' as Tab, icon: ShoppingCart, label: 'Cart', badge: cartCount },
-    { id: 'messages' as Tab, icon: MessageCircle, label: 'Messages', badge: unreadMessages },
-    { id: 'profile' as Tab, icon: User, label: 'Profile' },
+  const items: { id: Tab; icon: typeof Home; label: string; badge?: number; alert?: boolean }[] = [
+    { id: 'home', icon: Home, label: 'Home' },
+    { id: 'orders', icon: Package, label: 'Orders', badge: orderUpdates, alert: orderUpdates > 0 },
+    { id: 'cart', icon: ShoppingCart, label: 'Cart', badge: cartCount },
+    { id: 'messages', icon: MessageCircle, label: 'Messages', badge: unreadMessages },
+    { id: 'profile', icon: User, label: 'Profile' },
   ];
 
   return (
@@ -1583,6 +1681,7 @@ function BottomNav({ tab, setTab, unreadMessages }: { tab: Tab; setTab: (t: Tab)
         {items.map(item => {
           const Icon = item.icon;
           const active = tab === item.id;
+          const isAlert = item.alert && item.badge && item.badge > 0;
           return (
             <button
               key={item.id}
@@ -1590,14 +1689,37 @@ function BottomNav({ tab, setTab, unreadMessages }: { tab: Tab; setTab: (t: Tab)
               className="flex flex-col items-center gap-0.5 py-1.5 px-3 relative"
             >
               <div className="relative">
-                <Icon size={22} className={active ? 'text-brand-600' : 'text-gray-400'} />
+                <Icon
+                  size={22}
+                  className={
+                    isAlert
+                      ? 'text-red-500 animate-pulse'
+                      : active
+                        ? 'text-brand-600'
+                        : 'text-gray-400'
+                  }
+                />
                 {item.badge && item.badge > 0 ? (
-                  <span className="absolute -top-1.5 -right-1.5 bg-orange-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold" style={{ fontSize: 9 }}>
+                  <span
+                    className={`absolute -top-1.5 -right-1.5 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] ${
+                      isAlert ? 'bg-red-500 animate-bounce' : 'bg-orange-500'
+                    }`}
+                  >
                     {item.badge}
                   </span>
                 ) : null}
               </div>
-              <span className={`text-xs ${active ? 'text-brand-600 font-medium' : 'text-gray-400'}`}>{item.label}</span>
+              <span
+                className={`text-xs ${
+                  isAlert
+                    ? 'text-red-500 font-bold'
+                    : active
+                      ? 'text-brand-600 font-medium'
+                      : 'text-gray-400'
+                }`}
+              >
+                {item.label}
+              </span>
             </button>
           );
         })}
