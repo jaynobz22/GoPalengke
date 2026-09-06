@@ -205,9 +205,9 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders }
   useEffect(() => {
     async function load() {
       const [{ data: cats }, { data: prods }, { data: strs }] = await Promise.all([
-        supabase.from('categories').select('*').order('sort_order'),
-        supabase.from('products').select('*, store:stores(*)').eq('is_available', true).order('created_at', { ascending: false }),
-        supabase.from('stores').select('*').eq('is_open', true).order('rating', { ascending: false }),
+        supabase.from('categories').select('id, name, name_fil, slug, icon, image_url, sort_order').order('sort_order'),
+        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, rating, logo_url, banner_url)').eq('is_available', true).order('created_at', { ascending: false }).limit(30),
+        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id').eq('is_open', true).order('rating', { ascending: false }).limit(20),
       ]);
       setCategories(cats || []);
       setProducts((prods || []) as any);
@@ -381,7 +381,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders }
                 className="flex-shrink-0 w-40 bg-white rounded-2xl overflow-hidden border border-gray-100 active:scale-[0.98] transition"
               >
                 <div className="h-20 bg-gray-100 relative">
-                  {store.banner_url && <img src={store.banner_url} alt={store.name} className="w-full h-full object-cover" />}
+                  {store.banner_url && <img src={store.banner_url} alt={store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                   {store.city.toLowerCase() === (locationFilter.city || '').toLowerCase() && (
                     <span className="absolute top-1 right-1 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full">Near You</span>
                   )}
@@ -438,7 +438,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders }
                       className="bg-white rounded-2xl overflow-hidden border border-green-200 text-left active:scale-[0.98] transition"
                     >
                       <div className="h-32 bg-gray-100 relative">
-                        {p.image_url && <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />}
+                        {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                         {p.stock <= 5 && p.stock > 0 && (
                           <span className="absolute top-2 left-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">Lang {p.stock} na</span>
                         )}
@@ -480,7 +480,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders }
                       className="bg-white rounded-2xl overflow-hidden border border-gray-100 text-left active:scale-[0.98] transition"
                     >
                       <div className="h-32 bg-gray-100 relative">
-                        {p.image_url && <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />}
+                        {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                         {p.stock <= 5 && p.stock > 0 && (
                           <span className="absolute top-2 left-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">Lang {p.stock} na</span>
                         )}
@@ -604,7 +604,7 @@ function ProductView({ product, store, onBack, onAddToCart }: { product: Product
   return (
     <div>
       <div className="relative h-64 bg-gray-100">
-        {product.image_url && <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />}
+        {product.image_url && <img src={product.image_url} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
         <button onClick={onBack} className="absolute top-12 left-4 w-10 h-10 rounded-full bg-white/90 shadow-md flex items-center justify-center">
           <ArrowLeft size={20} className="text-gray-700" />
         </button>
@@ -676,14 +676,14 @@ function StoreView({ store, onProductClick, onBack }: { store: Store; onProductC
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.from('products').select('*').eq('store_id', store.id).eq('is_available', true).order('created_at', { ascending: false })
+    supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at').eq('store_id', store.id).eq('is_available', true).order('created_at', { ascending: false }).limit(50)
       .then(({ data }) => { setProducts(data || []); setLoading(false); });
   }, [store.id]);
 
   return (
     <div>
       <div className="relative h-40 bg-gray-200">
-        {store.banner_url && <img src={store.banner_url} alt={store.name} className="w-full h-full object-cover" />}
+        {store.banner_url && <img src={store.banner_url} alt={store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <button onClick={onBack} className="absolute top-12 left-4 w-10 h-10 rounded-full bg-white/90 shadow-md flex items-center justify-center">
           <ArrowLeft size={20} className="text-gray-700" />
@@ -692,7 +692,7 @@ function StoreView({ store, onProductClick, onBack }: { store: Store; onProductC
       <div className="px-5 -mt-8 relative">
         <div className="flex items-end gap-3">
           <div className="w-16 h-16 rounded-2xl bg-white shadow-md overflow-hidden border-2 border-white flex-shrink-0">
-            {store.logo_url && <img src={store.logo_url} alt={store.name} className="w-full h-full object-cover" />}
+            {store.logo_url && <img src={store.logo_url} alt={store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
           </div>
           <div className="pb-1">
             <h1 className="text-xl font-bold text-gray-800">{store.name}</h1>
@@ -730,7 +730,7 @@ function StoreView({ store, onProductClick, onBack }: { store: Store; onProductC
                 className="bg-white rounded-2xl overflow-hidden border border-gray-100 text-left active:scale-[0.98] transition"
               >
                 <div className="h-32 bg-gray-100">
-                  {p.image_url && <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />}
+                  {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                 </div>
                 <div className="p-2.5">
                   <p className="font-semibold text-sm text-gray-800 line-clamp-1">{p.name}</p>
@@ -820,7 +820,7 @@ function CartView({ onCheckout, refreshKey }: { onCheckout: () => void; refreshK
             {items.map((item, i) => (
               <div key={item.id} className={`flex items-center gap-3 p-3 ${i > 0 ? 'border-t border-gray-50' : ''}`}>
                 <div className="w-16 h-16 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
-                  {item.product.image_url && <img src={item.product.image_url} alt={item.product.name} className="w-full h-full object-cover" />}
+                  {item.product.image_url && <img src={item.product.image_url} alt={item.product.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm text-gray-800 line-clamp-1">{item.product.name}</p>
@@ -981,7 +981,7 @@ function CheckoutView({ onBack, onOrderPlaced }: { onBack: () => void; onOrderPl
           {items.map(item => (
             <div key={item.id} className="flex items-center gap-3 py-2">
               <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
-                {item.product.image_url && <img src={item.product.image_url} alt="" className="w-full h-full object-cover" />}
+                {item.product.image_url && <img src={item.product.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />}
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-gray-800">{item.product.name}</p>
@@ -1217,7 +1217,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         {items.map(item => (
           <div key={item.id} className="flex items-center gap-3 py-2">
             <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
-              {item.product_image && <img src={item.product_image} alt="" className="w-full h-full object-cover" />}
+              {item.product_image && <img src={item.product_image} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />}
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-800">{item.product_name}</p>
@@ -1326,7 +1326,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
 
                 {/* QR Code Image */}
                 <div className="bg-gray-50 rounded-xl p-4 flex justify-center">
-                  <img src={store.qr_code_url} alt="QR Code ng Seller" className="w-48 h-48 rounded-xl object-contain" />
+                  <img src={store.qr_code_url} alt="QR Code ng Seller" loading="lazy" decoding="async" className="w-48 h-48 rounded-xl object-contain" />
                 </div>
 
                 {/* Download button */}

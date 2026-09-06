@@ -58,6 +58,8 @@ export interface Product {
   image_url: string | null;
   stock: number;
   is_available: boolean;
+  catalog_id: string | null;
+  selected_image_index: number | null;
   created_at: string;
   updated_at: string;
 }

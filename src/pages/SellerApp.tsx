@@ -13,7 +13,7 @@ import {
   Store as StoreIcon, Package, Settings, Plus, ArrowLeft, Edit, Trash2, X,
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
   TrendingUp, DollarSign, Bell, Camera, Loader2, MessageCircle,
-  Share2, Copy, ExternalLink,
+  Share2, Copy, ExternalLink, Search, ImageIcon,
 } from 'lucide-react';
 
 type Tab = 'dashboard' | 'products' | 'orders' | 'messages' | 'settings';
@@ -490,7 +490,7 @@ function SellerProducts({ store, onAdd, onEdit }: { store: Store; onAdd: () => v
           {products.map(p => (
             <div key={p.id} className="bg-white rounded-2xl border border-gray-100 p-3 flex items-center gap-3">
               <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
-                {p.image_url && <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />}
+                {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm text-gray-800 line-clamp-1">{p.name}</p>
@@ -527,9 +527,13 @@ function ProductFormModal({ store, product, onClose, onSaved }: { store: Store; 
   const [categories, setCategories] = useState<{ id: string; name_fil: string }[]>([]);
   const [categoryId, setCategoryId] = useState(product?.category_id || '');
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageSearch, setImageSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<{ name: string; image_url: string; unit: string; category_id: string | null }[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [showImagePicker, setShowImagePicker] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     supabase.from('categories').select('id, name_fil').order('sort_order').then(({ data }) => setCategories(data || []));
@@ -538,22 +542,71 @@ function ProductFormModal({ store, product, onClose, onSaved }: { store: Store; 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploading(true);
-    setError(null);
-    try {
-      const compressed = await compressImage(file);
-      const ext = compressed.name.split('.').pop() || 'webp';
-      const fileName = `${store.id}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, compressed);
-      if (uploadError) throw uploadError;
-      const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(fileName);
-      setImageUrl(publicUrl);
-    } catch (err: any) {
-      setError(err.message || 'Hindi ma-upload ang larawan.');
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = '';
+    const reader = new FileReader();
+    reader.onload = () => {
+      // Use CropModal via ImageUploadField-like flow: compress and upload directly
+      (async () => {
+        setSaving(true);
+        setError(null);
+        try {
+          const compressed = await compressImage(file);
+          const ext = compressed.name.split('.').pop() || 'webp';
+          const fileName = `${store.id}/${Date.now()}.${ext}`;
+          const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, compressed);
+          if (uploadError) throw uploadError;
+          const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(fileName);
+          setImageUrl(publicUrl);
+        } catch (err: any) {
+          setError(err.message || 'Hindi ma-upload ang larawan.');
+        } finally {
+          setSaving(false);
+          if (fileRef.current) fileRef.current.value = '';
+        }
+      })();
+    };
+    reader.onerror = () => setError('Hindi mabasa ang larawan.');
+    reader.readAsDataURL(file);
+  }
+
+  async function searchExistingImages(query: string) {
+    if (!query.trim() || query.trim().length < 2) {
+      setSearchResults([]);
+      return;
     }
+    setSearching(true);
+    const { data } = await supabase
+      .from('products')
+      .select('name, image_url, unit, category_id')
+      .not('image_url', 'is', null)
+      .ilike('name', `%${query.trim()}%`)
+      .limit(20);
+    // Deduplicate by image_url — keep first occurrence
+    const seen = new Set<string>();
+    const unique: typeof searchResults = [];
+    for (const p of (data || []) as any[]) {
+      if (p.image_url && !seen.has(p.image_url)) {
+        seen.add(p.image_url);
+        unique.push(p);
+      }
+    }
+    setSearchResults(unique);
+    setSearching(false);
+  }
+
+  function handleSearchChange(value: string) {
+    setImageSearch(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => searchExistingImages(value), 300);
+  }
+
+  function selectExistingImage(item: { name: string; image_url: string; unit: string; category_id: string | null }) {
+    setImageUrl(item.image_url);
+    if (!name) setName(item.name);
+    if (!unit) setUnit(item.unit);
+    if (!categoryId && item.category_id) setCategoryId(item.category_id);
+    setShowImagePicker(false);
+    setImageSearch('');
+    setSearchResults([]);
   }
 
   async function save(e: React.FormEvent) {
@@ -639,29 +692,98 @@ function ProductFormModal({ store, product, onClose, onSaved }: { store: Store; 
           </div>
           <div>
             <label className="text-sm font-medium text-gray-600 mb-1 block">Larawan ng Paninda</label>
-            <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleFileSelect} className="hidden" />
+
             {imageUrl ? (
               <div className="relative">
-                <img src={imageUrl} alt="Preview" className="w-full h-40 rounded-xl object-cover" />
-                <button type="button" onClick={() => fileRef.current?.click()}
-                  className="absolute bottom-2 right-2 bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-1">
-                  <Camera size={14} /> Palitan
-                </button>
+                <img src={imageUrl} alt="Preview" loading="lazy" decoding="async" className="w-full h-40 rounded-xl object-cover" />
+                <div className="absolute bottom-2 right-2 flex gap-1.5">
+                  <button type="button" onClick={() => setShowImagePicker(true)}
+                    className="bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-1">
+                    <Search size={14} /> Maghanap
+                  </button>
+                  <button type="button" onClick={() => fileRef.current?.click()}
+                    className="bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-1">
+                    <Camera size={14} /> Palitan
+                  </button>
+                  <button type="button" onClick={() => setImageUrl('')}
+                    className="bg-black/60 text-white px-2 py-1.5 rounded-lg text-xs flex items-center gap-1">
+                    <X size={14} />
+                  </button>
+                </div>
               </div>
             ) : (
-              <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
-                className="w-full h-40 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 text-gray-400 active:scale-[0.98] transition disabled:opacity-50">
-                {uploading ? (
-                  <><Loader2 size={28} className="animate-spin" /><span className="text-sm">Naka-compress at nag-uupload...</span></>
-                ) : (
-                  <><Camera size={28} /><span className="text-sm">Mag-upload ng larawan mula sa phone</span></>
-                )}
-              </button>
+              <div className="space-y-2">
+                <button type="button" onClick={() => setShowImagePicker(true)}
+                  className="w-full h-20 rounded-xl border-2 border-dashed border-brand-300 bg-brand-50 flex flex-col items-center justify-center gap-1 text-brand-600 active:scale-[0.98] transition">
+                  <Search size={24} />
+                  <span className="text-sm font-medium">Maghanap ng existing larawan</span>
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+                <button type="button" onClick={() => fileRef.current?.click()} disabled={saving}
+                  className="w-full h-20 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 text-gray-400 active:scale-[0.98] transition disabled:opacity-50">
+                  {saving ? (
+                    <><Loader2 size={24} className="animate-spin" /><span className="text-sm">Naka-compress at nag-uupload...</span></>
+                  ) : (
+                    <><Camera size={24} /><span className="text-sm">Mag-upload ng sariling larawan</span></>
+                  )}
+                </button>
+              </div>
             )}
-            <p className="text-xs text-gray-400 mt-1">Auto-compress ang larawan para maliit ang file size.</p>
+            <p className="text-xs text-gray-400 mt-1">Pumili mula sa mga na-upload na ng ibang seller, o mag-upload ng sarili mo. Isang larawan lang bawat produkto.</p>
           </div>
+
+          {showImagePicker && (
+            <div className="fixed inset-0 bg-black/40 z-[55] flex items-end max-w-md mx-auto animate-fade-in" onClick={() => setShowImagePicker(false)}>
+              <div className="bg-white w-full rounded-t-3xl max-h-[70vh] overflow-y-auto animate-slide-up" onClick={e => e.stopPropagation()}>
+                <div className="sticky top-0 bg-white px-5 py-4 flex items-center justify-between border-b border-gray-100">
+                  <h3 className="font-bold text-gray-800">Pumili ng Larawan</h3>
+                  <button onClick={() => setShowImagePicker(false)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                    <X size={20} className="text-gray-600" />
+                  </button>
+                </div>
+                <div className="px-5 py-4">
+                  <div className="relative mb-3">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                      type="text"
+                      value={imageSearch}
+                      onChange={e => handleSearchChange(e.target.value)}
+                      placeholder="Hanapin: Bangus, Galunggong, Repolyo..."
+                      autoFocus
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none transition text-sm"
+                    />
+                  </div>
+                  {searching ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 size={28} className="animate-spin text-gray-400" />
+                    </div>
+                  ) : searchResults.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400">
+                      <ImageIcon size={40} className="mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">{imageSearch.length >= 2 ? 'Walang nahanap. Subukan ibang pangalan.' : 'Mag-type ng pangalan ng produkto para maghanap.'}</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {searchResults.map((item, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => selectExistingImage(item)}
+                          className="relative aspect-square rounded-xl overflow-hidden border-2 border-transparent hover:border-brand-500 active:scale-95 transition"
+                        >
+                          <img src={item.image_url} alt={item.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] px-1 py-0.5 truncate">{item.name}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
-          <button type="submit" disabled={saving || uploading}
+          <button type="submit" disabled={saving}
             className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg active:scale-[0.98] transition disabled:opacity-50">
             {saving ? 'Nagsasave...' : product ? 'I-save ang Pagbabago' : 'Magdagdag ng Paninda'}
           </button>
@@ -974,7 +1096,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         {items.map(item => (
           <div key={item.id} className="flex items-center gap-3 py-2">
             <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
-              {item.product_image && <img src={item.product_image} alt="" className="w-full h-full object-cover" />}
+              {item.product_image && <img src={item.product_image} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />}
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-800">{item.product_name}</p>
@@ -994,7 +1116,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       {currentOrder.payment_method === 'qr_code' && store.qr_code_url && (
         <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3 text-center">
           <h3 className="font-semibold text-gray-800 mb-2">QR Code para sa Payment</h3>
-          <img src={store.qr_code_url} alt="QR Code" className="w-40 h-40 rounded-xl object-contain mx-auto" />
+          <img src={store.qr_code_url} alt="QR Code" loading="lazy" decoding="async" className="w-40 h-40 rounded-xl object-contain mx-auto" />
           <p className="text-sm text-gray-400 mt-2">I-scan ng buyer para mag-bayad</p>
         </div>
       )}
