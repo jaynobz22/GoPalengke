@@ -264,7 +264,7 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
 // ============= DASHBOARD =============
 function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, unreadMessages }: { store: Store; onEditStore: () => void; onOpenMessages: () => void; onOpenOrders: () => void; unreadMessages: number }) {
   const { profile } = useAuth();
-  const [stats, setStats] = useState({ totalOrders: 0, pendingOrders: 0, totalRevenue: 0, productCount: 0 });
+  const [stats, setStats] = useState({ totalOrders: 0, pendingOrders: 0, totalRevenue: 0, productCount: 0, paidOrders: 0 });
   const [recentOrders, setRecentOrders] = useState<(Order & { buyer: { full_name: string } })[]>([]);
 
   useEffect(() => {
@@ -279,15 +279,27 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, unr
       const pending = allOrders.filter((o: any) => o.status === 'pending').length;
       const revenue = allOrders.filter((o: any) => o.status !== 'cancelled').reduce((s: number, o: any) => s + o.total, 0);
 
+      // Count orders with payment_status = 'paid' that are not yet delivered/cancelled
+      const { count: paidCount } = await supabase.from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('store_id', store.id)
+        .eq('payment_status', 'paid')
+        .in('status', ['accepted', 'preparing', 'ready_for_pickup', 'picked_up']);
+
       setStats({
         totalOrders: count || 0,
         pendingOrders: pending,
         totalRevenue: revenue,
         productCount: products?.length || 0,
+        paidOrders: paidCount || 0,
       });
       setRecentOrders(allOrders);
     }
     load();
+    const sub = supabase.channel('seller-dashboard-orders')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `store_id=eq.${store.id}` }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
   }, [store.id]);
 
   return (
@@ -323,6 +335,29 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, unr
           </div>
         </div>
       </div>
+
+      {/* Payment Received Alert Banner */}
+      {stats.paidOrders > 0 && (
+        <div className="px-5 pt-4">
+          <button
+            onClick={onOpenOrders}
+            className="w-full bg-gradient-to-r from-green-500 to-green-600 rounded-2xl p-4 text-white text-left active:scale-[0.98] transition shadow-lg shadow-green-500/30 animate-pulse"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                <DollarSign size={24} className="text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-base">May {stats.paidOrders} order na nabayaran na!</p>
+                <p className="text-sm text-white/90">I-tap para tingnan ang mga paid orders</p>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                <ArrowLeft size={18} className="text-white rotate-180" />
+              </div>
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* New Order Alert Banner */}
       {stats.pendingOrders > 0 && (
@@ -826,6 +861,9 @@ function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o:
                   {order.status === 'pending' && (
                     <span className="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">BAGO</span>
                   )}
+                  {order.payment_status === 'paid' && (
+                    <span className="text-[10px] font-bold text-white bg-green-500 px-2 py-0.5 rounded-full">PAID</span>
+                  )}
                   <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
                     {ORDER_STATUS_LABELS[order.status]}
                   </span>
@@ -954,6 +992,39 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           <h3 className="font-semibold text-gray-800 mb-2">QR Code para sa Payment</h3>
           <img src={store.qr_code_url} alt="QR Code" className="w-40 h-40 rounded-xl object-contain mx-auto" />
           <p className="text-sm text-gray-400 mt-2">I-scan ng buyer para mag-bayad</p>
+        </div>
+      )}
+
+      {/* Payment Status */}
+      {currentOrder.payment_method === 'qr_code' && (
+        <div className={`rounded-2xl border p-4 mb-3 ${
+          currentOrder.payment_status === 'paid'
+            ? 'bg-green-50 border-green-300'
+            : 'bg-amber-50 border-amber-200'
+        }`}>
+          <div className="flex items-center gap-2">
+            {currentOrder.payment_status === 'paid' ? (
+              <>
+                <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                  <Check size={18} className="text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm text-green-800">Nabayaran na ng Buyer!</p>
+                  <p className="text-xs text-green-600">Na-confirm ng buyer na nakapag-bayad na sa GCash/Maya</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0">
+                  <Clock size={18} className="text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm text-amber-800">Hindi pa nakapagbayad ang buyer</p>
+                  <p className="text-xs text-amber-600">Naghihintay pa ng payment confirmation mula sa buyer</p>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -1174,25 +1245,33 @@ function SellerMessagesView({ onOpenChat }: { onOpenChat: (convId: string, name:
 // ============= SELLER BOTTOM NAV =============
 function SellerBottomNav({ tab, setTab, storeId, unreadMessages }: { tab: Tab; setTab: (t: Tab) => void; storeId: string; unreadMessages: number }) {
   const [newOrders, setNewOrders] = useState(0);
+  const [paidOrders, setPaidOrders] = useState(0);
 
   useEffect(() => {
-    supabase.from('orders').select('*', { count: 'exact', head: true }).eq('store_id', storeId).eq('status', 'pending')
-      .then(({ count }) => setNewOrders(count || 0));
+    async function loadCounts() {
+      const [{ count: pendingCount }, { count: paidCount }] = await Promise.all([
+        supabase.from('orders').select('*', { count: 'exact', head: true }).eq('store_id', storeId).eq('status', 'pending'),
+        supabase.from('orders').select('*', { count: 'exact', head: true }).eq('store_id', storeId).eq('payment_status', 'paid').in('status', ['accepted', 'preparing', 'ready_for_pickup', 'picked_up']),
+      ]);
+      setNewOrders(pendingCount || 0);
+      setPaidOrders(paidCount || 0);
+    }
+    loadCounts();
 
     const sub = supabase.channel('seller-nav')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `store_id=eq.${storeId}` }, () => {
-        supabase.from('orders').select('*', { count: 'exact', head: true }).eq('store_id', storeId).eq('status', 'pending')
-          .then(({ count }) => setNewOrders(count || 0));
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `store_id=eq.${storeId}` }, () => loadCounts())
       .subscribe();
 
     return () => { supabase.removeChannel(sub); };
   }, [storeId]);
 
+  const orderBadge = newOrders + paidOrders;
+  const orderAlert = newOrders > 0 || paidOrders > 0;
+
   const items: { id: Tab; icon: typeof TrendingUp; label: string; badge?: number; alert?: boolean }[] = [
     { id: 'dashboard', icon: TrendingUp, label: 'Dashboard' },
     { id: 'products', icon: Package, label: 'Paninda' },
-    { id: 'orders', icon: ShoppingBag, label: 'Orders', badge: newOrders, alert: newOrders > 0 },
+    { id: 'orders', icon: ShoppingBag, label: 'Orders', badge: orderBadge, alert: orderAlert },
     { id: 'messages', icon: MessageCircle, label: 'Messages', badge: unreadMessages },
     { id: 'settings', icon: Settings, label: 'Settings' },
   ];

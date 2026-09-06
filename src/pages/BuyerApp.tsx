@@ -1345,8 +1345,25 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
                   <Download size={18} /> I-download ang QR Code
                 </button>
 
+                {/* Mark as Paid button */}
+                {currentOrder.payment_status !== 'paid' ? (
+                  <button
+                    onClick={async () => {
+                      await supabase.from('orders').update({ payment_status: 'paid' }).eq('id', currentOrder.id);
+                      setCurrentOrder(prev => ({ ...prev, payment_status: 'paid' }));
+                    }}
+                    className="w-full mt-3 py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition shadow-lg shadow-green-600/20"
+                  >
+                    <Check size={18} /> Naka-bayad na Ako
+                  </button>
+                ) : (
+                  <div className="w-full mt-3 py-3 bg-green-100 text-green-700 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 border border-green-300">
+                    <Check size={18} /> Na-confirm mo na ang payment
+                  </div>
+                )}
+
                 <p className="text-xs text-gray-400 mt-3 text-center leading-relaxed">
-                  Pagkatapos mag-bayad, i-chat ang seller para i-confirm ang payment mo.
+                  Pagkatapos mag-bayad sa GCash/Maya, i-tap ang button sa taas para ma-notify ang seller na paid na ang order mo.
                 </p>
               </div>
             ) : (
