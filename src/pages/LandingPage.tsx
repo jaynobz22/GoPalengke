@@ -172,7 +172,7 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
               Philippines
             </h1>
             <p className="text-brand-100 text-base md:text-lg max-w-xl animate-slide-in-up" style={{ animationDelay: '0.2s' }}>
-              Sariwang Isda, Karne, Gulay, Prutas at marami pang iba, galing sa Palengke, ihatid namin sa inyo
+              Sariwang Isda, Karne, Gulay, Prutas at marami pang iba, galing sa Palengke na pinaka malapit, i-deliver sa bahay nyo!
             </p>
           </div>
         </div>

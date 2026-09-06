@@ -81,7 +81,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
               The First Online<br />Wet Market in the Philippines
             </h1>
             <p className="mt-3 text-gray-500 text-base">
-              Sariwang Isda, Karne, Gulay, Prutas at marami pang iba, galing sa Palengke, ihatid namin sa inyo
+              Sariwang Isda, Karne, Gulay, Prutas at marami pang iba, galing sa Palengke na pinaka malapit, i-deliver sa bahay nyo!
             </p>
           </div>
 
