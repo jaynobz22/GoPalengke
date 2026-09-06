@@ -9,7 +9,7 @@ import {
   Search, ShoppingCart, Home, Package, User, Plus, Minus, Trash2, X,
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, Bike, Store as StoreIcon,
   QrCode, Clock, Phone, Navigation, Filter, ShoppingBag, MessageCircle, Send,
-  Share2, Copy, ExternalLink,
+  Share2, Copy, ExternalLink, Download, ImageOff,
 } from 'lucide-react';
 
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
@@ -1203,6 +1203,62 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         <div className="flex justify-between font-bold text-gray-800 pt-2 border-t border-gray-100">
           <span>Total</span><span>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</span>
         </div>
+
+        {/* QR Code Payment Section - only shows after seller confirms the order */}
+        {isBuyer && currentOrder.payment_method === 'qr_code' && currentOrder.status !== 'cancelled' && currentOrder.status !== 'delivered' && (
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            {currentOrder.status === 'pending' ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Clock size={16} className="text-amber-500 flex-shrink-0" />
+                <p>Naghihintay pa na ma-confirm ng seller ang order mo. Lalabas ang QR code dito kapag na-confirm na.</p>
+              </div>
+            ) : store?.qr_code_url ? (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <QrCode size={18} className="text-brand-600" />
+                  <span className="font-semibold text-sm text-gray-800">I-scan para mag-bayad</span>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4 flex justify-center">
+                  <img src={store.qr_code_url} alt="QR Code ng Seller" className="w-48 h-48 rounded-xl object-contain" />
+                </div>
+                <p className="text-xs text-gray-500 mt-3 text-center">
+                  I-scan ang QR code gamit ang GCash o Maya app para mag-bayad sa seller.
+                </p>
+                <div className="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                  <p className="text-xs text-blue-700 leading-relaxed">
+                    <strong>Isang phone lang ang gamit?</strong> I-download ang QR code sa baba, tapos i-upload ito sa GCash app mo para ma-detect ang account ng seller at makapag-bayad ka.
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(store.qr_code_url!);
+                      const blob = await response.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `qr-code-${store.name.replace(/\s+/g, '-').toLowerCase()}.png`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    } catch {
+                      window.open(store.qr_code_url!, '_blank');
+                    }
+                  }}
+                  className="w-full mt-3 py-2.5 bg-brand-50 text-brand-700 rounded-xl font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition border border-brand-100"
+                >
+                  <Download size={16} /> I-download ang QR Code
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <ImageOff size={16} className="text-gray-400 flex-shrink-0" />
+                <p>Hindi pa nag-upload ang seller ng QR code. Makipag-ugnayan sa seller via chat para makahingi ng payment details.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Cancel button if pending */}
