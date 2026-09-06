@@ -10,6 +10,7 @@ import { COMMISSION_RATE } from '@/lib/types';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import { Avatar } from '@/components/Avatar';
 import { ImageUploadField } from '@/components/ImageUploadField';
+import { ReviewForm, ReviewSection } from '@/components/Reviews';
 import {
   Search, ShoppingCart, Home, Package, User, Plus, Minus, Trash2, X,
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, Bike, Store as StoreIcon,
@@ -1476,6 +1477,17 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         )}
       </div>
 
+      {/* Leave a Review - only for delivered orders */}
+      {isBuyer && currentOrder.status === 'delivered' && (
+        <ReviewSectionForOrder
+          orderId={currentOrder.id}
+          store={store}
+          rider={rider}
+          riderId={currentOrder.rider_id}
+          sellerId={store?.seller_id || null}
+        />
+      )}
+
       {/* Cancel button if pending */}
       {isBuyer && currentOrder.status === 'pending' && (
         <button
@@ -1487,6 +1499,80 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         >
           Kanselahin ang Order
         </button>
+      )}
+    </div>
+  );
+}
+
+// ============= REVIEW SECTION FOR ORDER =============
+function ReviewSectionForOrder({
+  orderId,
+  store,
+  rider,
+  riderId,
+  sellerId,
+}: {
+  orderId: string;
+  store: Store | null;
+  rider: { full_name: string; phone: string | null; avatar_url: string | null } | null;
+  riderId: string | null;
+  sellerId: string | null;
+}) {
+  const [existingReviews, setExistingReviews] = useState<{ review_type: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.from('reviews').select('review_type').eq('order_id', orderId).then(({ data }) => {
+      setExistingReviews(data || []);
+      setLoading(false);
+    });
+  }, [orderId]);
+
+  if (loading) return null;
+
+  const hasSellerReview = existingReviews.some(r => r.review_type === 'seller');
+  const hasRiderReview = existingReviews.some(r => r.review_type === 'rider');
+
+  return (
+    <div>
+      <h3 className="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2">
+        <Star size={18} className="text-amber-500" /> Mag-iwan ng Review
+      </h3>
+
+      {/* Seller Review Form */}
+      {sellerId && !hasSellerReview && store && (
+        <ReviewForm
+          orderId={orderId}
+          revieweeId={sellerId}
+          reviewType="seller"
+          revieweeName={store.name}
+          onSubmitted={() => setExistingReviews(prev => [...prev, { review_type: 'seller' }])}
+        />
+      )}
+
+      {/* Rider Review Form */}
+      {riderId && !hasRiderReview && rider && (
+        <ReviewForm
+          orderId={orderId}
+          revieweeId={riderId}
+          reviewType="rider"
+          revieweeName={rider.full_name}
+          onSubmitted={() => setExistingReviews(prev => [...prev, { review_type: 'rider' }])}
+        />
+      )}
+
+      {/* Already reviewed */}
+      {hasSellerReview && hasRiderReview && (
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-2 mb-3">
+          <Check size={18} className="text-green-600" />
+          <p className="text-sm text-green-700 font-medium">Salamat! Nai-review mo na ang seller at rider para sa order na ito.</p>
+        </div>
+      )}
+      {hasSellerReview && !hasRiderReview && !riderId && (
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-center gap-2 mb-3">
+          <Check size={18} className="text-green-600" />
+          <p className="text-sm text-green-700 font-medium">Salamat sa pag-review ng seller!</p>
+        </div>
       )}
     </div>
   );

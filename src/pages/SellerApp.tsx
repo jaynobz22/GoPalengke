@@ -11,6 +11,7 @@ import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import { Avatar } from '@/components/Avatar';
 import { InactiveBanner } from '@/components/InactiveBanner';
 import { SellerBilling } from '@/components/SellerBilling';
+import { ReviewSection } from '@/components/Reviews';
 import {
   Store as StoreIcon, Package, Settings, Plus, ArrowLeft, Edit, Trash2, X,
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
@@ -445,6 +446,14 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, unr
           </div>
         )}
       </div>
+
+      {/* Reviews */}
+      {profile && (
+        <div className="px-5 pb-4">
+          <h3 className="font-bold text-gray-800 mb-3">Mga Review</h3>
+          <ReviewSection userId={profile.id} />
+        </div>
+      )}
     </div>
   );
 }

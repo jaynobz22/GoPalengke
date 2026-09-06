@@ -220,6 +220,21 @@ export interface PlatformSetting {
   updated_at: string;
 }
 
+export type ReviewType = 'seller' | 'rider';
+
+export interface Review {
+  id: string;
+  order_id: string;
+  reviewer_id: string;
+  reviewee_id: string;
+  review_type: ReviewType;
+  rating: number;
+  comment: string;
+  created_at: string;
+  updated_at: string;
+  reviewer?: { full_name: string; avatar_url: string | null };
+}
+
 export const COMMISSION_RATE = 0.03;
 export const SUBSCRIPTION_FEE = 499;
 export const SUBSCRIPTION_THRESHOLD = 5000;

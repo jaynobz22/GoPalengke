@@ -8,10 +8,11 @@ import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import { Avatar } from '@/components/Avatar';
 import { ImageUploadField } from '@/components/ImageUploadField';
 import { InactiveBanner } from '@/components/InactiveBanner';
+import { ReviewSection } from '@/components/Reviews';
 import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
-  Share2, Copy, ExternalLink, Power, Timer,
+  Share2, Copy, ExternalLink, Power, Timer, Star,
 } from 'lucide-react';
 
 type Tab = 'deliveries' | 'history' | 'profile';
@@ -638,6 +639,16 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           </div>
         </div>
       </div>
+
+      {/* Reviews */}
+      {profile && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+          <h3 className="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2">
+            <Star size={16} className="text-amber-500" /> Mga Review mula sa Buyers
+          </h3>
+          <ReviewSection userId={profile.id} />
+        </div>
+      )}
 
       {/* Profile Picture Upload */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
