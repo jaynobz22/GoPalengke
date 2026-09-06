@@ -994,7 +994,19 @@ function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o:
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">₱{(order.total + order.delivery_fee).toFixed(0)}</span>
-                <span className="text-xs text-gray-400">{order.payment_method === 'qr_code' ? 'QR Code' : 'COD'}</span>
+                <div className="flex items-center gap-2">
+                  {order.rider_id && (
+                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Bike size={10} /> May Rider
+                    </span>
+                  )}
+                  {!order.rider_id && order.status === 'ready_for_pickup' && (
+                    <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                      Naghihintay Rider
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-400">{order.payment_method === 'qr_code' ? 'QR' : 'COD'}</span>
+                </div>
               </div>
             </button>
           ))}
@@ -1008,16 +1020,24 @@ function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o:
 function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order; store: Store; onBack: () => void; onOpenChat: (order: Order, buyerName: string) => void }) {
   const [items, setItems] = useState<OrderItem[]>([]);
   const [buyer, setBuyer] = useState<{ full_name: string; phone: string | null; avatar_url: string | null } | null>(null);
+  const [rider, setRider] = useState<{ full_name: string; phone: string | null; avatar_url: string | null } | null>(null);
   const [currentOrder, setCurrentOrder] = useState(order);
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
     supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', order.buyer_id).maybeSingle().then(({ data }) => setBuyer(data as any));
+    if (order.rider_id) {
+      supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', order.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
+    }
 
     const sub = supabase.channel(`seller-order-${order.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${order.id}` }, (payload: any) => {
-        if (payload.new) setCurrentOrder(payload.new as Order);
+        const newOrder = payload.new as Order;
+        setCurrentOrder(newOrder);
+        if (newOrder.rider_id && !rider) {
+          supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', newOrder.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
+        }
       })
       .subscribe();
     return () => { supabase.removeChannel(sub); };
@@ -1087,6 +1107,45 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
               <MessageCircle size={16} /> Chat with Buyer
             </button>
           )}
+        </div>
+      )}
+
+      {/* Rider Info */}
+      {rider && currentOrder.rider_id && (
+        <div className="bg-white rounded-2xl border border-blue-200 p-4 mb-3">
+          <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <Bike size={16} className="text-blue-500" /> Rider
+          </h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Avatar src={rider.avatar_url} name={rider.full_name} size={36} />
+              <div>
+                <p className="text-sm font-medium text-gray-800">{rider.full_name}</p>
+                {rider.phone && <p className="text-xs text-gray-400">{rider.phone}</p>}
+              </div>
+            </div>
+            <a href={`tel:${rider.phone}`} className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center">
+              <Phone size={16} className="text-blue-600" />
+            </a>
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-xs">
+            {currentOrder.status === 'picked_up' ? (
+              <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Nasa daan na ang rider papunta sa buyer</span>
+            ) : currentOrder.status === 'delivered' ? (
+              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full">Na-deliver na</span>
+            ) : (
+              <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full">Naka-assign na rider</span>
+            )}
+          </div>
+        </div>
+      )}
+      {!currentOrder.rider_id && currentOrder.status === 'ready_for_pickup' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
+          <div className="flex items-center gap-2">
+            <Clock size={18} className="text-amber-500" />
+            <p className="text-sm text-amber-700 font-medium">Naghihintay pa ng rider na tatanggap ng delivery</p>
+          </div>
+          <p className="text-xs text-amber-600 mt-1">Makikita ng mga available na riders ang order na ito. Kapag may tumanggap, lalabas ang info ng rider dito.</p>
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import type { Order, OrderItem, Store, OrderStatus } from '@/lib/types';
@@ -9,7 +9,7 @@ import { ImageUploadField } from '@/components/ImageUploadField';
 import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
-  Share2, Copy, ExternalLink,
+  Share2, Copy, ExternalLink, Power, Timer,
 } from 'lucide-react';
 
 type Tab = 'deliveries' | 'history' | 'profile';
@@ -103,6 +103,8 @@ function RiderDeliveries({ onOrderClick }: { onOrderClick: (o: Order) => void })
   const [availableOrders, setAvailableOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
   const [myOrders, setMyOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAvailable, setIsAvailable] = useState(false);
+  const [toggling, setToggling] = useState(false);
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -117,6 +119,10 @@ function RiderDeliveries({ onOrderClick }: { onOrderClick: (o: Order) => void })
     setLoading(false);
   }, [profile]);
 
+  useEffect(() => {
+    if (profile) setIsAvailable(profile.is_available ?? false);
+  }, [profile]);
+
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
@@ -126,9 +132,22 @@ function RiderDeliveries({ onOrderClick }: { onOrderClick: (o: Order) => void })
     return () => { supabase.removeChannel(sub); };
   }, [load]);
 
+  async function toggleAvailability() {
+    if (!profile) return;
+    setToggling(true);
+    const newValue = !isAvailable;
+    setIsAvailable(newValue);
+    await supabase.from('profiles').update({ is_available: newValue }).eq('id', profile.id);
+    setToggling(false);
+  }
+
   async function acceptOrder(order: Order) {
     if (!profile) return;
-    await supabase.from('orders').update({ rider_id: profile.id, status: 'picked_up' }).eq('id', order.id);
+    await supabase.from('orders').update({
+      rider_id: profile.id,
+      status: 'picked_up',
+      picked_up_at: new Date().toISOString(),
+    }).eq('id', order.id);
     load();
   }
 
@@ -146,8 +165,40 @@ function RiderDeliveries({ onOrderClick }: { onOrderClick: (o: Order) => void })
         <p className="text-blue-100 text-sm">Kumusta, {profile?.full_name?.split(' ')[0]}! Handa ka na ba mag-deliver?</p>
       </div>
 
-      {/* My Active Deliveries */}
+      {/* Availability Toggle */}
       <div className="px-5 py-4">
+        <button
+          onClick={toggleAvailability}
+          disabled={toggling}
+          className={`w-full rounded-2xl p-4 flex items-center justify-between transition active:scale-[0.98] ${
+            isAvailable
+              ? 'bg-green-50 border-2 border-green-300'
+              : 'bg-gray-50 border-2 border-gray-200'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+              isAvailable ? 'bg-green-500' : 'bg-gray-300'
+            }`}>
+              <Power size={24} className="text-white" />
+            </div>
+            <div className="text-left">
+              <p className={`font-bold text-sm ${isAvailable ? 'text-green-700' : 'text-gray-600'}`}>
+                {isAvailable ? 'Available ka na' : 'Hindi ka available'}
+              </p>
+              <p className={`text-xs ${isAvailable ? 'text-green-600' : 'text-gray-400'}`}>
+                {isAvailable ? 'Makikita mo ang available na orders' : 'I-on para makakuha ng orders'}
+              </p>
+            </div>
+          </div>
+          <div className={`relative w-14 h-8 rounded-full transition ${isAvailable ? 'bg-green-500' : 'bg-gray-300'}`}>
+            <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all ${isAvailable ? 'left-7' : 'left-1'}`} />
+          </div>
+        </button>
+      </div>
+
+      {/* My Active Deliveries */}
+      <div className="px-5 pb-4">
         <h2 className="font-bold text-gray-800 mb-3">Active Deliveries ko</h2>
         {myOrders.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
@@ -181,55 +232,61 @@ function RiderDeliveries({ onOrderClick }: { onOrderClick: (o: Order) => void })
         )}
       </div>
 
-      {/* Available Orders */}
-      <div className="px-5 pb-4">
-        <h2 className="font-bold text-gray-800 mb-3">Mga Available na Orders</h2>
-        {availableOrders.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">
-            <Package size={40} className="mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Wala pang available na orders. Maghintay lang!</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {availableOrders.map(order => (
-              <div key={order.id} className="bg-white rounded-2xl border border-gray-100 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-semibold text-gray-800">{order.buyer?.full_name || 'Buyer'}</p>
-                  <span className="text-xs text-gray-400">{new Date(order.created_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                  <StoreIcon size={14} /><span>{order.store.name}</span>
-                  <MapPin size={14} /><span>{order.store.barangay}, {order.store.city}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-                  <Navigation size={14} /><span>Deliver to: {order.delivery_barangay}, {order.delivery_city}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-400">Delivery fee</p>
-                    <p className="font-bold text-blue-600">₱{order.delivery_fee.toFixed(0)}</p>
+      {/* Available Orders — only shown when rider is available */}
+      {isAvailable && (
+        <div className="px-5 pb-4">
+          <h2 className="font-bold text-gray-800 mb-3">Mga Available na Orders</h2>
+          {availableOrders.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <Package size={40} className="mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Wala pang available na orders. Maghintay lang!</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {availableOrders.map(order => (
+                <div key={order.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="font-semibold text-gray-800">{order.buyer?.full_name || 'Buyer'}</p>
+                    <span className="text-xs text-gray-400">{new Date(order.created_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}</span>
                   </div>
-                  <button onClick={() => acceptOrder(order)}
-                    className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold active:scale-95 transition">
-                    Tanggapin
-                  </button>
+                  <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+                    <StoreIcon size={14} /><span>{order.store.name}</span>
+                    <MapPin size={14} /><span>{order.store.barangay}, {order.store.city}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                    <Navigation size={14} /><span>Deliver to: {order.delivery_barangay}, {order.delivery_city}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-400">Delivery fee</p>
+                      <p className="font-bold text-blue-600">₱{order.delivery_fee.toFixed(0)}</p>
+                    </div>
+                    <button onClick={() => acceptOrder(order)}
+                      className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold active:scale-95 transition">
+                      Tanggapin
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 // ============= RIDER ORDER DETAIL =============
 function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack: () => void; onOpenChat: (order: Order, buyerName: string) => void }) {
+  const { profile } = useAuth();
   const [items, setItems] = useState<OrderItem[]>([]);
   const [store, setStore] = useState<Store | null>(null);
   const [buyer, setBuyer] = useState<{ full_name: string; phone: string | null; avatar_url: string | null } | null>(null);
   const [currentOrder, setCurrentOrder] = useState(order);
   const [updating, setUpdating] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [gpsActive, setGpsActive] = useState(false);
+  const watchIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
@@ -244,17 +301,57 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
     return () => { supabase.removeChannel(sub); };
   }, [order.id]);
 
+  // Start GPS tracking when order is picked_up
+  useEffect(() => {
+    if (currentOrder.status !== 'picked_up' || !profile) return;
+
+    function startGps() {
+      if (!navigator.geolocation) return;
+      setGpsActive(true);
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          supabase.from('orders').update({ rider_lat: lat, rider_lng: lng }).eq('id', currentOrder.id);
+        },
+        () => { setGpsActive(false); },
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+      );
+    }
+    startGps();
+
+    return () => {
+      if (watchIdRef.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      setGpsActive(false);
+    };
+  }, [currentOrder.status, currentOrder.id, profile]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (currentOrder.status !== 'picked_up' || !currentOrder.picked_up_at) return;
+    const interval = setInterval(() => {
+      const pickedAt = new Date(currentOrder.picked_up_at!).getTime();
+      const now = Date.now();
+      setElapsedSeconds(Math.floor((now - pickedAt) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [currentOrder.status, currentOrder.picked_up_at]);
+
   async function markDelivered() {
     setUpdating(true);
-    await supabase.from('orders').update({ status: 'delivered' }).eq('id', currentOrder.id);
+    await supabase.from('orders').update({ status: 'delivered', rider_lat: null, rider_lng: null }).eq('id', currentOrder.id);
     setUpdating(false);
     onBack();
   }
 
-  // Calculate distance estimate (simplified — uses city/region matching)
   const sameCity = store?.city === currentOrder.delivery_city;
-  const estimatedDistance = sameCity ? '1-3 km' : '5+ km';
-  const estimatedTime = sameCity ? '10-15 min' : '20-30 min';
+  const estimatedTotalSeconds = sameCity ? 15 * 60 : 30 * 60;
+  const remainingSeconds = Math.max(0, estimatedTotalSeconds - elapsedSeconds);
+  const remainingMin = Math.floor(remainingSeconds / 60);
+  const remainingSec = remainingSeconds % 60;
+  const isOverdue = elapsedSeconds > estimatedTotalSeconds;
 
   return (
     <div className="px-5 py-4">
@@ -265,7 +362,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         <h2 className="text-xl font-bold text-gray-800">Delivery Details</h2>
       </div>
 
-      {/* Status */}
+      {/* Status + Timer */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
         <div className="flex items-center justify-between mb-2">
           <span className={`text-sm px-3 py-1 rounded-full border ${ORDER_STATUS_COLORS[currentOrder.status]}`}>
@@ -273,6 +370,29 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           </span>
           <span className="text-sm text-gray-400">#{order.id.slice(0, 8)}</span>
         </div>
+        {currentOrder.status === 'picked_up' && currentOrder.picked_up_at && (
+          <div className={`mt-3 p-3 rounded-xl flex items-center gap-3 ${isOverdue ? 'bg-red-50' : 'bg-blue-50'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isOverdue ? 'bg-red-500' : 'bg-blue-500'}`}>
+              <Timer size={20} className="text-white" />
+            </div>
+            <div className="flex-1">
+              <p className={`text-xs ${isOverdue ? 'text-red-500' : 'text-blue-500'}`}>
+                {isOverdue ? 'Lampas sa estimated time' : 'Oras na natitira'}
+              </p>
+              <p className={`font-bold text-lg ${isOverdue ? 'text-red-600' : 'text-blue-700'}`}>
+                {isOverdue
+                  ? `+${Math.floor((elapsedSeconds - estimatedTotalSeconds) / 60)}m ${((elapsedSeconds - estimatedTotalSeconds) % 60)}s`
+                  : `${remainingMin}m ${remainingSec}s`}
+              </p>
+            </div>
+            {gpsActive && (
+              <div className="flex items-center gap-1 text-xs text-green-600">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                GPS
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Route Info */}
@@ -322,11 +442,11 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-around">
           <div className="text-center">
             <p className="text-xs text-gray-400">Estimated Distance</p>
-            <p className="font-bold text-gray-800">{estimatedDistance}</p>
+            <p className="font-bold text-gray-800">{sameCity ? '1-3 km' : '5+ km'}</p>
           </div>
           <div className="text-center">
             <p className="text-xs text-gray-400">Estimated Time</p>
-            <p className="font-bold text-gray-800">{estimatedTime}</p>
+            <p className="font-bold text-gray-800">{sameCity ? '10-15 min' : '20-30 min'}</p>
           </div>
         </div>
       </div>
@@ -336,7 +456,13 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
           <h3 className="font-semibold text-gray-800 mb-2">Contact Buyer</h3>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">{buyer.full_name}</span>
+            <div className="flex items-center gap-2">
+              <Avatar src={buyer.avatar_url} name={buyer.full_name} size={36} />
+              <div>
+                <p className="text-sm font-medium text-gray-800">{buyer.full_name}</p>
+                {buyer.phone && <p className="text-xs text-gray-400">{buyer.phone}</p>}
+              </div>
+            </div>
             <a href={`tel:${buyer.phone}`} className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
               <Phone size={18} className="text-blue-600" />
             </a>

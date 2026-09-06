@@ -11,7 +11,7 @@ import {
   Search, ShoppingCart, Home, Package, User, Plus, Minus, Trash2, X,
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, Bike, Store as StoreIcon,
   QrCode, Clock, Phone, Navigation, Filter, ShoppingBag, MessageCircle, Send,
-  Share2, Copy, ExternalLink, Download, ImageOff, Bell,
+  Share2, Copy, ExternalLink, Download, ImageOff, Bell, Timer,
 } from 'lucide-react';
 
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
@@ -1123,7 +1123,14 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
                 </div>
               </div>
               <div className="flex items-center justify-between mt-2">
-                <span className="text-sm text-gray-500">₱{(order.total + order.delivery_fee).toFixed(0)}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">₱{(order.total + order.delivery_fee).toFixed(0)}</span>
+                  {order.rider_id && order.status === 'picked_up' && (
+                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Bike size={10} /> Paparating na
+                    </span>
+                  )}
+                </div>
                 <ChevronRight size={18} className="text-gray-300" />
               </div>
             </button>
@@ -1252,6 +1259,31 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
               <MessageCircle size={16} /> Chat with Rider
             </button>
           )}
+        </div>
+      )}
+
+      {/* Live Tracking Map */}
+      {currentOrder.status === 'picked_up' && currentOrder.rider_lat != null && currentOrder.rider_lng != null && (
+        <LiveTrackingMap
+          riderLat={currentOrder.rider_lat}
+          riderLng={currentOrder.rider_lng}
+          riderName={rider?.full_name || 'Rider'}
+          deliveryAddress={`${currentOrder.delivery_address} ${currentOrder.delivery_barangay} ${currentOrder.delivery_city} ${currentOrder.delivery_region}`}
+          pickedUpAt={currentOrder.picked_up_at}
+          sameCity={store?.city === currentOrder.delivery_city}
+        />
+      )}
+      {currentOrder.status === 'picked_up' && (currentOrder.rider_lat == null || currentOrder.rider_lng == null) && (
+        <div className="bg-blue-50 rounded-2xl border border-blue-200 p-4 mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+              <Bike size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-blue-800">Paparating na ang rider!</p>
+              <p className="text-xs text-blue-600">Nasa daan na ang rider papunta sa iyo. Makikita ang live location dito pag nagsimula na ang rider.</p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1424,6 +1456,94 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
           Kanselahin ang Order
         </button>
       )}
+    </div>
+  );
+}
+
+// ============= LIVE TRACKING MAP =============
+function LiveTrackingMap({ riderLat, riderLng, riderName, deliveryAddress, pickedUpAt, sameCity }: {
+  riderLat: number;
+  riderLng: number;
+  riderName: string;
+  deliveryAddress: string;
+  pickedUpAt: string | null;
+  sameCity: boolean;
+}) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!pickedUpAt) return;
+    const interval = setInterval(() => {
+      const pickedAt = new Date(pickedUpAt).getTime();
+      setElapsedSeconds(Math.floor((Date.now() - pickedAt) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [pickedUpAt]);
+
+  const estimatedTotalSeconds = sameCity ? 15 * 60 : 30 * 60;
+  const remainingSeconds = Math.max(0, estimatedTotalSeconds - elapsedSeconds);
+  const remainingMin = Math.floor(remainingSeconds / 60);
+  const remainingSec = remainingSeconds % 60;
+  const isOverdue = elapsedSeconds > estimatedTotalSeconds;
+
+  const mapUrl = `https://maps.google.com/maps?q=${riderLat},${riderLng}&z=15&output=embed`;
+  const directionsUrl = `https://www.google.com/maps/dir/${riderLat},${riderLng}/${encodeURIComponent(deliveryAddress)}`;
+
+  return (
+    <div className="bg-white rounded-2xl border border-blue-200 p-4 mb-3">
+      <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+        <Navigation size={18} className="text-blue-600" /> Live Location ng Rider
+      </h3>
+
+      {/* Embedded Map */}
+      <div className="rounded-xl overflow-hidden border border-gray-200 mb-3">
+        <iframe
+          src={mapUrl}
+          width="100%"
+          height="200"
+          style={{ border: 0 }}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          title="Rider Live Location"
+        />
+      </div>
+
+      {/* ETA Countdown */}
+      <div className={`p-3 rounded-xl flex items-center gap-3 mb-3 ${isOverdue ? 'bg-red-50' : 'bg-blue-50'}`}>
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isOverdue ? 'bg-red-500' : 'bg-blue-500'}`}>
+          <Timer size={20} className="text-white" />
+        </div>
+        <div className="flex-1">
+          <p className={`text-xs ${isOverdue ? 'text-red-500' : 'text-blue-500'}`}>
+            {isOverdue ? 'Lampas sa estimated time' : 'Tinatayang oras ng pagdating'}
+          </p>
+          <p className={`font-bold text-lg ${isOverdue ? 'text-red-600' : 'text-blue-700'}`}>
+            {isOverdue
+              ? `+${Math.floor((elapsedSeconds - estimatedTotalSeconds) / 60)}m`
+              : `${remainingMin}m ${remainingSec}s`}
+          </p>
+        </div>
+        <div className="flex items-center gap-1 text-xs text-green-600">
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          Live
+        </div>
+      </div>
+
+      {/* Rider name + Directions link */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Bike size={16} className="text-blue-500" />
+          <span className="text-sm text-gray-600">{riderName}</span>
+        </div>
+        <a
+          href={directionsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-blue-600 font-medium"
+        >
+          <MapPin size={12} /> Buksan sa Google Maps
+        </a>
+      </div>
     </div>
   );
 }

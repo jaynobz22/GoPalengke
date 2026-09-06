@@ -12,6 +12,7 @@ export interface Profile {
   region: string | null;
   avatar_url: string | null;
   slug: string | null;
+  is_available: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -106,6 +107,9 @@ export interface Order {
   delivery_lng: number | null;
   buyer_note: string | null;
   payment_reference: string | null;
+  rider_lat: number | null;
+  rider_lng: number | null;
+  picked_up_at: string | null;
   created_at: string;
   updated_at: string;
   store?: Store;
