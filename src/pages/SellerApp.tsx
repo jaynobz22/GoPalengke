@@ -100,7 +100,7 @@ export function SellerApp() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
       <div className="flex-1 pb-20 overflow-y-auto">
-        {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} onOpenMessages={() => setTab('messages')} unreadMessages={unreadCount} />}
+        {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} onOpenMessages={() => setTab('messages')} onOpenOrders={() => setTab('orders')} unreadMessages={unreadCount} />}
         {tab === 'products' && (
           <SellerProducts store={store} onAdd={() => { setEditingProduct(null); setShowProductForm(true); }} onEdit={(p) => { setEditingProduct(p); setShowProductForm(true); }} />
         )}
@@ -262,7 +262,7 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
 }
 
 // ============= DASHBOARD =============
-function SellerDashboard({ store, onEditStore, onOpenMessages, unreadMessages }: { store: Store; onEditStore: () => void; onOpenMessages: () => void; unreadMessages: number }) {
+function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, unreadMessages }: { store: Store; onEditStore: () => void; onOpenMessages: () => void; onOpenOrders: () => void; unreadMessages: number }) {
   const { profile } = useAuth();
   const [stats, setStats] = useState({ totalOrders: 0, pendingOrders: 0, totalRevenue: 0, productCount: 0 });
   const [recentOrders, setRecentOrders] = useState<(Order & { buyer: { full_name: string } })[]>([]);
@@ -323,6 +323,29 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, unreadMessages }:
           </div>
         </div>
       </div>
+
+      {/* New Order Alert Banner */}
+      {stats.pendingOrders > 0 && (
+        <div className="px-5 pt-4">
+          <button
+            onClick={onOpenOrders}
+            className="w-full bg-gradient-to-r from-red-500 to-red-600 rounded-2xl p-4 text-white text-left active:scale-[0.98] transition shadow-lg shadow-red-500/30 animate-pulse"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                <Bell size={24} className="text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-base">May {stats.pendingOrders} bagong order{stats.pendingOrders > 1 ? 's' : ''}!</p>
+                <p className="text-sm text-white/90">I-tap para tingnan agad</p>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                <ArrowLeft size={18} className="text-white rotate-180" />
+              </div>
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="px-5 py-4 grid grid-cols-2 gap-3">
@@ -789,15 +812,24 @@ function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o:
         <div className="space-y-2">
           {orders.map(order => (
             <button key={order.id} onClick={() => onOrderClick(order)}
-              className="w-full bg-white rounded-2xl border border-gray-100 p-4 text-left active:scale-[0.98] transition">
+              className={`w-full rounded-2xl border p-4 text-left active:scale-[0.98] transition ${
+                order.status === 'pending'
+                  ? 'bg-red-50 border-red-300 shadow-sm'
+                  : 'bg-white border-gray-100'
+              }`}>
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <p className="font-semibold text-sm text-gray-800">{order.buyer?.full_name || 'Buyer'}</p>
                   <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
-                  {ORDER_STATUS_LABELS[order.status]}
-                </span>
+                <div className="flex items-center gap-2">
+                  {order.status === 'pending' && (
+                    <span className="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">BAGO</span>
+                  )}
+                  <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
+                    {ORDER_STATUS_LABELS[order.status]}
+                  </span>
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">₱{(order.total + order.delivery_fee).toFixed(0)}</span>
@@ -1157,10 +1189,10 @@ function SellerBottomNav({ tab, setTab, storeId, unreadMessages }: { tab: Tab; s
     return () => { supabase.removeChannel(sub); };
   }, [storeId]);
 
-  const items: { id: Tab; icon: typeof TrendingUp; label: string; badge?: number }[] = [
+  const items: { id: Tab; icon: typeof TrendingUp; label: string; badge?: number; alert?: boolean }[] = [
     { id: 'dashboard', icon: TrendingUp, label: 'Dashboard' },
     { id: 'products', icon: Package, label: 'Paninda' },
-    { id: 'orders', icon: ShoppingBag, label: 'Orders', badge: newOrders },
+    { id: 'orders', icon: ShoppingBag, label: 'Orders', badge: newOrders, alert: newOrders > 0 },
     { id: 'messages', icon: MessageCircle, label: 'Messages', badge: unreadMessages },
     { id: 'settings', icon: Settings, label: 'Settings' },
   ];
@@ -1171,17 +1203,41 @@ function SellerBottomNav({ tab, setTab, storeId, unreadMessages }: { tab: Tab; s
         {items.map(item => {
           const Icon = item.icon;
           const active = tab === item.id;
+          const isAlert = item.alert && item.badge && item.badge > 0;
           return (
             <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center gap-0.5 py-1.5 px-3 relative">
               <div className="relative">
-                <Icon size={22} className={active ? 'text-brand-600' : 'text-gray-400'} />
+                <Icon
+                  size={22}
+                  className={
+                    isAlert
+                      ? 'text-red-500 animate-pulse'
+                      : active
+                        ? 'text-brand-600'
+                        : 'text-gray-400'
+                  }
+                />
                 {item.badge && item.badge > 0 ? (
-                  <span className="absolute -top-1.5 -right-1.5 bg-orange-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px]">
+                  <span
+                    className={`absolute -top-1.5 -right-1.5 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold text-[9px] ${
+                      isAlert ? 'bg-red-500 animate-bounce' : 'bg-orange-500'
+                    }`}
+                  >
                     {item.badge}
                   </span>
                 ) : null}
               </div>
-              <span className={`text-xs ${active ? 'text-brand-600 font-medium' : 'text-gray-400'}`}>{item.label}</span>
+              <span
+                className={`text-xs ${
+                  isAlert
+                    ? 'text-red-500 font-bold'
+                    : active
+                      ? 'text-brand-600 font-medium'
+                      : 'text-gray-400'
+                }`}
+              >
+                {item.label}
+              </span>
             </button>
           );
         })}
