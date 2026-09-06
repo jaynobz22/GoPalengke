@@ -148,7 +148,7 @@ export function ChatView({
   }
 
   return (
-    <div className="flex flex-col h-screen max-w-md mx-auto bg-gray-50">
+    <div className="flex flex-col h-dvh max-w-md mx-auto bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
         <button onClick={onBack} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center active:scale-95 transition">
