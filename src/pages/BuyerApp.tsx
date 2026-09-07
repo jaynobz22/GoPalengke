@@ -449,21 +449,34 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
         </div>
       </div>
 
-      {/* Categories */}
-      <div className="px-5 py-4">
-        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-          {categories.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(activeCategory === cat.id ? null : cat.id)}
-              className={`flex flex-col items-center gap-1.5 flex-shrink-0 ${activeCategory === cat.id ? 'opacity-100' : 'opacity-70'}`}
-            >
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl ${activeCategory === cat.id ? 'bg-brand-500' : 'bg-white border border-gray-200'}`}>
-                <CategoryIcon slug={cat.slug} active={activeCategory === cat.id} />
-              </div>
-              <span className={`text-xs font-medium text-center ${activeCategory === cat.id ? 'text-brand-700' : 'text-gray-600'}`}>{cat.name_fil}</span>
-            </button>
-          ))}
+      {/* Trust Headline */}
+      <div className="px-5 pt-2 pb-3">
+        <div className="bg-gradient-to-r from-brand-600 to-brand-700 rounded-2xl px-4 py-3 shadow-sm">
+          <p className="text-white font-bold text-base leading-snug text-center">
+            All vendors are verified via video call kaya sure na legit at safe ka!
+          </p>
+        </div>
+      </div>
+
+      {/* Categories — scrolling marquee */}
+      <div className="py-3 overflow-hidden">
+        <div className="flex gap-3 animate-marquee-slow w-max">
+          {[...categories, ...categories].map((cat, idx) => {
+            const realIdx = idx % categories.length;
+            const isActive = activeCategory === cat.id;
+            return (
+              <button
+                key={`${cat.id}-${idx}`}
+                onClick={() => setActiveCategory(activeCategory === cat.id ? null : cat.id)}
+                className={`flex flex-col items-center gap-1.5 flex-shrink-0 w-20 ${isActive ? 'opacity-100' : 'opacity-70'}`}
+              >
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl ${isActive ? 'bg-brand-500 shadow-md shadow-brand-500/30' : 'bg-white border border-gray-200'}`}>
+                  <CategoryIcon slug={cat.slug} active={isActive} />
+                </div>
+                <span className={`text-xs font-medium text-center leading-tight ${isActive ? 'text-brand-700' : 'text-gray-600'}`}>{cat.name_fil}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
