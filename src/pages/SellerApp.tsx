@@ -13,6 +13,7 @@ import { Avatar } from '@/components/Avatar';
 import { InactiveBanner } from '@/components/InactiveBanner';
 import { SellerBilling } from '@/components/SellerBilling';
 import { ReviewSection } from '@/components/Reviews';
+import { OrderStepTracker, type StepInfo } from '@/components/OrderStepTracker';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
 import { AdminChat } from '@/components/AdminChat';
 import { useIncomingAdminCall } from '@/lib/useAdminCall';
@@ -1323,13 +1324,45 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
     setUpdating(false);
   }
 
-  const statusFlow: { status: OrderStatus; label: string }[] = [
-    { status: 'accepted', label: 'I-confirm Order' },
-    { status: 'preparing', label: 'Simulang Ihanda' },
-    { status: 'ready_for_pickup', label: 'Ready for Pickup' },
-    { status: 'delivered', label: 'Na-deliver na' },
+  async function acceptCodPayment() {
+    setUpdating(true);
+    await supabase.from('orders').update({
+      cod_payment_accepted_at: new Date().toISOString(),
+      payment_status: 'paid',
+    }).eq('id', currentOrder.id);
+    setCurrentOrder(prev => ({ ...prev, cod_payment_accepted_at: new Date().toISOString(), payment_status: 'paid' }));
+    setUpdating(false);
+  }
+
+  const isCancelled = currentOrder.status === 'cancelled';
+  const isDelivered = currentOrder.status === 'delivered';
+  const isCodPaymentPending = currentOrder.payment_method === 'cod' && isDelivered && currentOrder.cod_payment_reference && !currentOrder.cod_payment_accepted_at;
+
+  // Build seller-side step list
+  const sellerSteps: StepInfo[] = [
+    { key: 'new_order', label: 'Bagong Order', description: 'May bagong order! I-confirm muna para sure na available ang mga paninda.', status: 'completed' },
+    { key: 'confirmed', label: 'Na-confirm na', description: 'Na-confirm mo na ang order. Naghihintay na magbayad ang buyer.', status: 'completed' },
+    { key: 'paid', label: 'Nabayaran na!', description: 'Nabayaran na ng buyer! Ihanda na ang order at i-mark bilang preparing.', status: 'completed' },
+    { key: 'preparing', label: 'Inihahanda ang order', description: 'Inihahanda mo na ang order. I-mark bilang ready for pickup kapag tapos na, para makapili ng rider.', status: 'completed' },
+    { key: 'ready', label: 'Ready for pickup', description: 'Handa na ang order! Pumili ng rider o i-broadcast sa lahat ng available na riders.', status: 'completed' },
+    { key: 'on_the_way', label: 'Nakuha na ng rider', description: 'Nakuha na ng rider ang parcel at on the way na sa buyer. Hintayin na ma-deliver.', status: 'completed' },
+    { key: 'delivered', label: 'Na-deliver na!', description: 'Na-deliver na ang order. Tapos na ang transaction.', status: 'completed' },
   ];
-  const currentStepIndex = statusFlow.findIndex(s => s.status === currentOrder.status);
+
+  let currentStepIndex = 0;
+  if (currentOrder.status === 'pending') currentStepIndex = 0;
+  else if (currentOrder.status === 'accepted') {
+    if (currentOrder.payment_method === 'qr_code' && currentOrder.payment_status !== 'paid') currentStepIndex = 1;
+    else currentStepIndex = 2;
+  }
+  else if (currentOrder.status === 'preparing') currentStepIndex = 3;
+  else if (currentOrder.status === 'ready_for_pickup') currentStepIndex = 4;
+  else if (currentOrder.status === 'picked_up') currentStepIndex = 5;
+  else if (currentOrder.status === 'delivered') currentStepIndex = 6;
+
+  sellerSteps.forEach((s, i) => {
+    s.status = i < currentStepIndex ? 'completed' : i === currentStepIndex ? 'active' : 'pending';
+  });
 
   return (
     <div className="px-5 py-4">
@@ -1340,6 +1373,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         <h2 className="text-xl font-bold text-gray-800">Order Details</h2>
       </div>
 
+      {/* Status badge */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
         <div className="flex items-center justify-between mb-2">
           <span className={`text-sm px-3 py-1 rounded-full border ${ORDER_STATUS_COLORS[currentOrder.status]}`}>
@@ -1350,71 +1384,114 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString('en-PH')}</p>
       </div>
 
-      {/* Buyer Info */}
-      {buyer && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
-          <h3 className="font-semibold text-gray-800 mb-2">Buyer</h3>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Avatar src={buyer.avatar_url} name={buyer.full_name} size={36} />
-              <span className="text-sm text-gray-600">{buyer.full_name}</span>
-            </div>
-            <a href={`tel:${buyer.phone}`} className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center">
-              <Phone size={16} className="text-blue-600" />
-            </a>
-          </div>
-          <div className="mt-2 text-sm text-gray-500">
-            <MapPin size={14} className="inline mr-1" />
-            {currentOrder.delivery_address}
-          </div>
-          {currentOrder.buyer_note && (
-            <div className="mt-2 bg-amber-50 rounded-lg p-2 text-sm text-amber-700">
-              <strong>Note:</strong> {currentOrder.buyer_note}
-            </div>
-          )}
-          {currentOrder.status !== 'cancelled' && (
-            <button
-              onClick={() => onOpenChat(currentOrder, buyer?.full_name || 'Buyer')}
-              className="w-full mt-3 py-2.5 bg-brand-50 text-brand-700 rounded-xl font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition border border-brand-100"
-            >
-              <MessageCircle size={16} /> Chat with Buyer
-            </button>
-          )}
+      {/* Collapsible Step Tracker */}
+      {!isCancelled && (
+        <div className="mb-3">
+          <OrderStepTracker steps={sellerSteps} currentStepIndex={currentStepIndex} />
+        </div>
+      )}
+      {isCancelled && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-3 text-center">
+          <p className="text-sm font-semibold text-red-700">Nakansela ang order na ito.</p>
         </div>
       )}
 
-      {/* Rider Info — assigned and accepted (picked_up or beyond) */}
-      {rider && currentOrder.rider_id && currentOrder.status !== 'ready_for_pickup' && (
-        <div className="bg-white rounded-2xl border border-blue-200 p-4 mb-3">
-          <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-            <Bike size={16} className="text-blue-500" /> Rider
-          </h3>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Avatar src={rider.avatar_url} name={rider.full_name} size={36} />
-              <div>
-                <p className="text-sm font-medium text-gray-800">{rider.full_name}</p>
-                {rider.phone && <p className="text-xs text-gray-400">{rider.phone}</p>}
-              </div>
-            </div>
-            <a href={`tel:${rider.phone}`} className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center">
-              <Phone size={16} className="text-blue-600" />
-            </a>
-          </div>
-          <div className="mt-2 flex items-center gap-2 text-xs">
-            {currentOrder.status === 'picked_up' ? (
-              <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Nasa daan na ang rider papunta sa buyer</span>
-            ) : currentOrder.status === 'delivered' ? (
-              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full">Na-deliver na</span>
-            ) : (
-              <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full">Naka-assign na rider</span>
-            )}
-          </div>
+      {/* Active step: New order — confirm button */}
+      {!isCancelled && currentOrder.status === 'pending' && (
+        <button onClick={() => updateStatus('accepted')} disabled={updating}
+          className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50 mb-3">
+          {updating ? 'Nag-uupdate...' : 'I-confirm ang Order'}
+        </button>
+      )}
+
+      {/* Active step: Waiting for payment — show QR reminder */}
+      {!isCancelled && currentOrder.status === 'accepted' && currentOrder.payment_method === 'qr_code' && currentOrder.payment_status !== 'paid' && store.qr_code_url && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3 text-center">
+          <h3 className="font-semibold text-gray-800 mb-2">QR Code mo para sa Payment</h3>
+          <img src={store.qr_code_url} alt="QR Code" loading="lazy" decoding="async" className="w-40 h-40 rounded-xl object-contain mx-auto" />
+          <p className="text-sm text-gray-400 mt-2">I-scan ng buyer para magbayad. Naghihintay pa ng payment confirmation.</p>
         </div>
       )}
 
-      {/* Rider assigned but waiting for rider to accept (still ready_for_pickup) */}
-      {rider && currentOrder.rider_id && currentOrder.status === 'ready_for_pickup' && (
+      {/* Active step: Paid — verification instructions + start preparing */}
+      {!isCancelled && currentOrder.payment_method === 'qr_code' && currentOrder.payment_status === 'paid' && currentOrder.status === 'accepted' && (
+        <div className="bg-green-50 border border-green-300 rounded-2xl p-4 mb-3">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+              <Check size={18} className="text-white" />
+            </div>
+            <p className="font-semibold text-sm text-green-800">Nabayaran na ng Buyer!</p>
+          </div>
+          {currentOrder.payment_reference && (
+            <div className="mb-3 p-3 bg-white rounded-xl border border-green-200">
+              <p className="text-xs text-gray-400 mb-0.5">Payment Reference Number mula sa Buyer:</p>
+              <p className="text-sm font-mono font-bold text-gray-800 break-all">{currentOrder.payment_reference}</p>
+            </div>
+          )}
+          <div className="p-3 bg-blue-50 rounded-xl border border-blue-100 mb-3">
+            <p className="text-xs font-medium text-blue-900 mb-1.5">Paano i-verify ang payment:</p>
+            <ol className="text-xs text-blue-700 space-y-1 leading-relaxed list-decimal pl-4">
+              <li>Buksan ang GCash o Maya app mo.</li>
+              <li>Pumunta sa "Activity" o "Transaction History".</li>
+              <li>Hanapin ang transaction na may reference number na <strong>{currentOrder.payment_reference || 'na ibinigay ng buyer'}</strong>.</li>
+              <li>Tiyakin na ang halaga ay <strong>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</strong>.</li>
+              <li>Kung tumugma, pwede mo nang ipagpatuloy ang order.</li>
+            </ol>
+          </div>
+          <button onClick={() => updateStatus('preparing')} disabled={updating}
+            className="w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
+            {updating ? 'Nag-uupdate...' : 'Simulang Ihanda ang Order'}
+          </button>
+        </div>
+      )}
+
+      {/* COD — accepted, no payment needed yet, proceed to preparing */}
+      {!isCancelled && currentOrder.payment_method === 'cod' && currentOrder.status === 'accepted' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
+          <p className="text-sm text-amber-700 mb-3">Cash on Delivery — maghahanda ang buyer ng <strong>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</strong> para sa rider. Ihandang muna ang order.</p>
+          <button onClick={() => updateStatus('preparing')} disabled={updating}
+            className="w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
+            {updating ? 'Nag-uupdate...' : 'Simulang Ihanda ang Order'}
+          </button>
+        </div>
+      )}
+
+      {/* Active step: Preparing — ready for pickup button */}
+      {!isCancelled && currentOrder.status === 'preparing' && (
+        <button onClick={() => updateStatus('ready_for_pickup')} disabled={updating}
+          className="w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50 mb-3">
+          {updating ? 'Nag-uupdate...' : 'Ready for Pickup na'}
+        </button>
+      )}
+
+      {/* Active step: Ready for pickup — rider selection */}
+      {!isCancelled && !currentOrder.rider_id && currentOrder.status === 'ready_for_pickup' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
+          <div className="flex items-center gap-2 mb-3">
+            <Clock size={18} className="text-amber-500" />
+            <p className="text-sm text-amber-700 font-medium">Naghihintay pa ng rider</p>
+          </div>
+          <p className="text-xs text-amber-600 mb-3">Pumili ka ng rider na kilala mo, o i-broadcast sa lahat ng available na riders.</p>
+          <button
+            onClick={() => { setShowRiderPicker(true); loadAvailableRiders(); }}
+            className="w-full py-3 bg-white text-brand-700 border border-brand-200 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
+          >
+            <Users size={18} /> Pumili ng Rider
+          </button>
+          <div className="flex items-center gap-2 text-xs text-amber-600 py-2">
+            <div className="flex-1 h-px bg-amber-200" />
+            <span>o</span>
+            <div className="flex-1 h-px bg-amber-200" />
+          </div>
+          <p className="text-xs text-amber-600 text-center">
+            <Radio size={12} className="inline mr-1" />
+            I-broadcast na sa lahat ng riders — makikita na nila ang order na ito sa app nila.
+          </p>
+        </div>
+      )}
+
+      {/* Rider assigned but waiting for rider to accept */}
+      {!isCancelled && rider && currentOrder.rider_id && currentOrder.status === 'ready_for_pickup' && (
         <div className="bg-white rounded-2xl border border-blue-200 p-4 mb-3">
           <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
             <Bike size={16} className="text-blue-500" /> Rider
@@ -1442,31 +1519,54 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         </div>
       )}
 
-      {/* No rider yet — show rider selection options */}
-      {!currentOrder.rider_id && currentOrder.status === 'ready_for_pickup' && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
-          <div className="flex items-center gap-2 mb-3">
-            <Clock size={18} className="text-amber-500" />
-            <p className="text-sm text-amber-700 font-medium">Naghihintay pa ng rider</p>
-          </div>
-          <p className="text-xs text-amber-600 mb-3">Pumili ka ng rider na kilala mo, o i-broadcast sa lahat ng available na riders.</p>
-          <div className="space-y-2">
-            <button
-              onClick={() => { setShowRiderPicker(true); loadAvailableRiders(); }}
-              className="w-full py-3 bg-white text-brand-700 border border-brand-200 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
-            >
-              <Users size={18} /> Pumili ng Rider
-            </button>
-            <div className="flex items-center gap-2 text-xs text-amber-600 py-1">
-              <div className="flex-1 h-px bg-amber-200" />
-              <span>o</span>
-              <div className="flex-1 h-px bg-amber-200" />
+      {/* Rider picked up — on the way */}
+      {!isCancelled && rider && currentOrder.rider_id && currentOrder.status === 'picked_up' && (
+        <div className="bg-white rounded-2xl border border-blue-200 p-4 mb-3">
+          <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <Bike size={16} className="text-blue-500" /> Rider
+          </h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Avatar src={rider.avatar_url} name={rider.full_name} size={36} />
+              <div>
+                <p className="text-sm font-medium text-gray-800">{rider.full_name}</p>
+                {rider.phone && <p className="text-xs text-gray-400">{rider.phone}</p>}
+              </div>
             </div>
-            <p className="text-xs text-amber-600 text-center">
-              <Radio size={12} className="inline mr-1" />
-              I-broadcast na sa lahat ng riders — makikita na nila ang order na ito sa app nila.
-            </p>
+            <a href={`tel:${rider.phone}`} className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center">
+              <Phone size={16} className="text-blue-600" />
+            </a>
           </div>
+          <div className="mt-2">
+            <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">Nasa daan na ang rider papunta sa buyer</span>
+          </div>
+        </div>
+      )}
+
+      {/* COD payment pending — seller needs to accept */}
+      {isCodPaymentPending && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-3">
+          <div className="flex items-center gap-2 mb-3">
+            <DollarSign size={20} className="text-amber-600" />
+            <p className="font-semibold text-sm text-amber-800">COD Payment mula sa Rider</p>
+          </div>
+          <p className="text-xs text-amber-700 mb-2">Nai-submit na ng rider ang reference number para sa COD payment. I-verify at i-accept ang payment para matapos ang transaction.</p>
+          <div className="p-3 bg-white rounded-xl border border-amber-200 mb-3">
+            <p className="text-xs text-gray-400 mb-0.5">Reference Number mula sa Rider:</p>
+            <p className="text-sm font-mono font-bold text-gray-800 break-all">{currentOrder.cod_payment_reference}</p>
+          </div>
+          <button onClick={acceptCodPayment} disabled={updating}
+            className="w-full py-3 bg-green-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
+            {updating ? 'Nag-uupdate...' : 'Tanggapin ang Payment'}
+          </button>
+        </div>
+      )}
+
+      {/* COD payment accepted */}
+      {currentOrder.payment_method === 'cod' && isDelivered && currentOrder.cod_payment_accepted_at && (
+        <div className="bg-green-50 border border-green-300 rounded-2xl p-4 mb-3 flex items-center gap-2">
+          <Check size={18} className="text-green-600" />
+          <p className="text-sm text-green-700 font-medium">Na-tanggap na ang COD payment. Tapos na ang transaction!</p>
         </div>
       )}
 
@@ -1519,6 +1619,39 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         </div>
       )}
 
+      {/* Buyer Info */}
+      {buyer && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
+          <h3 className="font-semibold text-gray-800 mb-2">Buyer</h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Avatar src={buyer.avatar_url} name={buyer.full_name} size={36} />
+              <span className="text-sm text-gray-600">{buyer.full_name}</span>
+            </div>
+            <a href={`tel:${buyer.phone}`} className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center">
+              <Phone size={16} className="text-blue-600" />
+            </a>
+          </div>
+          <div className="mt-2 text-sm text-gray-500">
+            <MapPin size={14} className="inline mr-1" />
+            {currentOrder.delivery_address}
+          </div>
+          {currentOrder.buyer_note && (
+            <div className="mt-2 bg-amber-50 rounded-lg p-2 text-sm text-amber-700">
+              <strong>Note:</strong> {currentOrder.buyer_note}
+            </div>
+          )}
+          {!isCancelled && (
+            <button
+              onClick={() => onOpenChat(currentOrder, buyer?.full_name || 'Buyer')}
+              className="w-full mt-3 py-2.5 bg-brand-50 text-brand-700 rounded-xl font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition border border-brand-100"
+            >
+              <MessageCircle size={16} /> Chat with Buyer
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Items */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
         <h3 className="font-semibold text-gray-800 mb-3">Mga Paninda</h3>
@@ -1541,90 +1674,12 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         </div>
       </div>
 
-      {/* Payment QR Code */}
-      {currentOrder.payment_method === 'qr_code' && store.qr_code_url && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3 text-center">
-          <h3 className="font-semibold text-gray-800 mb-2">QR Code para sa Payment</h3>
-          <img src={store.qr_code_url} alt="QR Code" loading="lazy" decoding="async" className="w-40 h-40 rounded-xl object-contain mx-auto" />
-          <p className="text-sm text-gray-400 mt-2">I-scan ng buyer para mag-bayad</p>
-        </div>
-      )}
-
-      {/* Payment Status */}
-      {currentOrder.payment_method === 'qr_code' && (
-        <div className={`rounded-2xl border p-4 mb-3 ${
-          currentOrder.payment_status === 'paid'
-            ? 'bg-green-50 border-green-300'
-            : 'bg-amber-50 border-amber-200'
-        }`}>
-          <div className="flex items-center gap-2">
-            {currentOrder.payment_status === 'paid' ? (
-              <>
-                <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                  <Check size={18} className="text-white" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-sm text-green-800">Nabayaran na ng Buyer!</p>
-                  <p className="text-xs text-green-600">Na-confirm ng buyer na nakapag-bayad na sa GCash/Maya</p>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0">
-                  <Clock size={18} className="text-white" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sm text-amber-800">Hindi pa nakapagbayad ang buyer</p>
-                  <p className="text-xs text-amber-600">Naghihintay pa ng payment confirmation mula sa buyer</p>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Payment reference number from buyer */}
-          {currentOrder.payment_status === 'paid' && currentOrder.payment_reference && (
-            <div className="mt-3 p-3 bg-white rounded-xl border border-green-200">
-              <p className="text-xs text-gray-400 mb-0.5">Payment Reference Number mula sa Buyer:</p>
-              <p className="text-sm font-mono font-bold text-gray-800 break-all">{currentOrder.payment_reference}</p>
-            </div>
-          )}
-
-          {/* Verification instructions for seller */}
-          {currentOrder.payment_status === 'paid' && (
-            <div className="mt-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
-              <p className="text-xs font-medium text-blue-900 mb-1.5">Paano i-verify ang payment:</p>
-              <ol className="text-xs text-blue-700 space-y-1 leading-relaxed list-decimal pl-4">
-                <li>Buksan ang GCash o Maya app mo.</li>
-                <li>Pumunta sa "Activity" o "Transaction History".</li>
-                <li>Hanapin ang transaction na may reference number na <strong>{currentOrder.payment_reference || 'na ibinigay ng buyer'}</strong>.</li>
-                <li>Tiyakin na ang halaga ay <strong>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</strong>.</li>
-                <li>Kung tumugma, pwede mo nang ipagpatuloy ang order. Kung hindi, makipag-chat sa buyer.</li>
-              </ol>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      {currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled' && (
-        <div className="space-y-2">
-          {currentOrder.status === 'pending' && (
-            <button onClick={() => updateStatus('accepted')} disabled={updating}
-              className="w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
-              I-confirm ang Order
-            </button>
-          )}
-          {currentStepIndex >= 0 && currentOrder.status !== 'pending' && currentStepIndex < statusFlow.length - 1 && (
-            <button onClick={() => updateStatus(statusFlow[currentStepIndex + 1].status)} disabled={updating}
-              className="w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
-              {statusFlow[currentStepIndex + 1].label}
-            </button>
-          )}
-          <button onClick={() => updateStatus('cancelled')} disabled={updating}
-              className="w-full py-3 bg-white text-red-500 border border-red-200 rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
-              Kanselahin ang Order
-            </button>
-        </div>
+      {/* Cancel button */}
+      {!isDelivered && !isCancelled && (
+        <button onClick={() => updateStatus('cancelled')} disabled={updating}
+          className="w-full py-3 bg-white text-red-500 border border-red-200 rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
+          Kanselahin ang Order
+        </button>
       )}
     </div>
   );

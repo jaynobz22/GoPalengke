@@ -17,6 +17,7 @@ import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import { Avatar } from '@/components/Avatar';
 import { ImageUploadField } from '@/components/ImageUploadField';
 import { ReviewForm, ReviewSection } from '@/components/Reviews';
+import { OrderStepTracker, type StepInfo } from '@/components/OrderStepTracker';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
 import { AdminChat } from '@/components/AdminChat';
 import { useIncomingAdminCall } from '@/lib/useAdminCall';
@@ -1790,7 +1791,6 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
       supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', order.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
     }
 
-    // Load sibling orders in the same delivery group
     if (order.delivery_group_id) {
       supabase.from('orders').select('*, store:stores(*)').eq('delivery_group_id', order.delivery_group_id).neq('id', order.id)
         .then(({ data }) => { setSiblingOrders((data || []) as any); });
@@ -1806,6 +1806,35 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
   }, [order.id, order.delivery_group_id]);
 
   const isBuyer = profile?.id === currentOrder.buyer_id;
+  const isCancelled = currentOrder.status === 'cancelled';
+  const isDelivered = currentOrder.status === 'delivered';
+
+  // Build buyer-side step list
+  const buyerSteps: StepInfo[] = [
+    { key: 'placed', label: 'Na-order na', description: 'Nai-submit na ang order mo. Naghihintay ng confirmation mula sa seller na available ang mga paninda.', status: 'completed' },
+    { key: 'confirmed', label: 'Na-confirm ng seller', description: 'Na-confirm na ng seller! Available ang mga paninda. Pwede ka na magbayad.', status: 'completed' },
+    { key: 'paid', label: 'Nabayaran na', description: 'Nabayaran na ang order! Inihahanda na ng seller ang mga paninda. Magko-contact na ng rider.', status: 'completed' },
+    { key: 'preparing', label: 'Inihahanda ng seller', description: 'Inihahanda na ng seller ang order mo. Hintayin lang ang rider na ma-assign at mag-pick up.', status: 'completed' },
+    { key: 'on_the_way', label: 'On the way na!', description: 'Nakuha na ng rider ang parcel at papunta na sa iyo. Makikita mo ang live location sa mapa sa baba.', status: 'completed' },
+    { key: 'delivered', label: 'Na-deliver na!', description: 'Na-deliver na ang order mo sa iyo. Salamat! Pwede mo na i-review ang seller at rider.', status: 'completed' },
+  ];
+
+  // Map order status to step index
+  let currentStepIndex = 0;
+  if (currentOrder.status === 'pending') currentStepIndex = 0;
+  else if (currentOrder.status === 'accepted') {
+    if (currentOrder.payment_method === 'qr_code' && currentOrder.payment_status !== 'paid') currentStepIndex = 1;
+    else currentStepIndex = 2;
+  }
+  else if (currentOrder.status === 'preparing') currentStepIndex = 3;
+  else if (currentOrder.status === 'ready_for_pickup') currentStepIndex = 3;
+  else if (currentOrder.status === 'picked_up') currentStepIndex = 4;
+  else if (currentOrder.status === 'delivered') currentStepIndex = 5;
+
+  // Mark steps
+  buyerSteps.forEach((s, i) => {
+    s.status = i < currentStepIndex ? 'completed' : i === currentStepIndex ? 'active' : 'pending';
+  });
 
   return (
     <div className="px-5 py-4">
@@ -1816,18 +1845,152 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         <h2 className="text-xl font-bold text-gray-800">Order Details</h2>
       </div>
 
-      {/* Status */}
+      {/* Status badge */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2">
           <span className={`text-sm px-3 py-1 rounded-full border ${ORDER_STATUS_COLORS[currentOrder.status]}`}>
             {ORDER_STATUS_LABELS[currentOrder.status]}
           </span>
           <span className="text-sm text-gray-400">#{order.id.slice(0, 8)}</span>
         </div>
-        <OrderStatusTracker status={currentOrder.status} />
+        <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString('en-PH')}</p>
       </div>
 
-      {/* Store */}
+      {/* Collapsible Step Tracker */}
+      {!isCancelled && (
+        <div className="mb-3">
+          <OrderStepTracker steps={buyerSteps} currentStepIndex={currentStepIndex} />
+        </div>
+      )}
+      {isCancelled && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-3 text-center">
+          <p className="text-sm font-semibold text-red-700">Nakansela ang order na ito.</p>
+        </div>
+      )}
+
+      {/* Active step action area */}
+      {!isCancelled && !isDelivered && currentStepIndex === 1 && currentOrder.payment_method === 'qr_code' && currentOrder.payment_status !== 'paid' && store?.qr_code_url && (
+        <div className="bg-white rounded-2xl border-2 border-brand-200 p-4 mb-3">
+          <div className="flex items-center gap-2 mb-3">
+            <QrCode size={18} className="text-brand-600" />
+            <span className="font-semibold text-sm text-gray-800">Magbayad gamit ang QR Code</span>
+          </div>
+          <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl mb-2">
+            <div className="w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">1</div>
+            <div>
+              <p className="text-sm font-medium text-blue-900">I-scan ang QR code</p>
+              <p className="text-xs text-blue-700 mt-0.5 leading-relaxed">Buksan ang GCash o Maya app, piliin ang "Scan QR", at i-scan ang QR code sa baba.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl mb-2">
+            <div className="w-7 h-7 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">2</div>
+            <div>
+              <p className="text-sm font-medium text-amber-900">Isang phone lang ang gamit?</p>
+              <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">I-download ang QR code image, buksan ang GCash app, piliin ang "Upload QR" o "Import QR", at i-upload ang na-download na image.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 p-3 bg-green-50 rounded-xl mb-4">
+            <div className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">3</div>
+            <div>
+              <p className="text-sm font-medium text-green-900">Ilagay ang tamang halaga</p>
+              <p className="text-xs text-green-700 mt-0.5 leading-relaxed">Bayaran ang <strong>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</strong> na kabuuang halaga (kasama ang delivery fee).</p>
+            </div>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-4 flex justify-center">
+            <img src={store.qr_code_url} alt="QR Code ng Seller" loading="lazy" decoding="async" className="w-48 h-48 rounded-xl object-contain" />
+          </div>
+          <button
+            onClick={async () => {
+              try {
+                const response = await fetch(store.qr_code_url!);
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `qr-code-${store.name.replace(/\s+/g, '-').toLowerCase()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              } catch {
+                window.open(store.qr_code_url!, '_blank');
+              }
+            }}
+            className="w-full mt-3 py-3 bg-brand-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
+          >
+            <Download size={18} /> I-download ang QR Code
+          </button>
+          <div className="mt-4">
+            <label className="text-sm font-medium text-gray-700 mb-1.5 block">Payment Reference Number</label>
+            <p className="text-xs text-gray-400 mb-2 leading-relaxed">Pagkatapos magbayad sa GCash/Maya, may makikita kang reference o transaction ID. Ilagay ito bilang proof ng payment mo.</p>
+            <input
+              type="text"
+              value={paymentRef}
+              onChange={(e) => setPaymentRef(e.target.value)}
+              placeholder="Hal. 1234567890 o Gcash Ref#"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 transition mb-3"
+            />
+            <button
+              onClick={async () => {
+                setSubmitting(true);
+                await supabase.from('orders').update({
+                  payment_status: 'paid',
+                  payment_reference: paymentRef.trim() || null,
+                }).eq('id', currentOrder.id);
+                setCurrentOrder(prev => ({ ...prev, payment_status: 'paid', payment_reference: paymentRef.trim() || null }));
+                setSubmitting(false);
+              }}
+              disabled={submitting}
+              className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition shadow-lg shadow-green-600/20 disabled:opacity-50"
+            >
+              <Check size={18} /> {submitting ? 'Nagse-send...' : 'Naka-bayad na Ako'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* QR code not uploaded by seller */}
+      {!isCancelled && currentStepIndex === 1 && currentOrder.payment_method === 'qr_code' && currentOrder.payment_status !== 'paid' && !store?.qr_code_url && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3 flex items-center gap-2">
+          <ImageOff size={16} className="text-amber-500 flex-shrink-0" />
+          <p className="text-sm text-amber-700">Hindi pa nag-upload ang seller ng QR code. Makipag-ugnayan sa seller via chat.</p>
+        </div>
+      )}
+
+      {/* COD note for buyer when confirmed */}
+      {!isCancelled && currentOrder.payment_method === 'cod' && currentOrder.status === 'accepted' && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3 flex items-center gap-2">
+          <Package size={16} className="text-amber-500 flex-shrink-0" />
+          <p className="text-sm text-amber-700">Cash on Delivery — maghanda ng <strong>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</strong> para sa rider pagdating.</p>
+        </div>
+      )}
+
+      {/* Live Tracking Map — shown when rider is on the way */}
+      {currentOrder.status === 'picked_up' && currentOrder.rider_lat != null && currentOrder.rider_lng != null && (
+        <LiveTrackingMap
+          riderLat={currentOrder.rider_lat}
+          riderLng={currentOrder.rider_lng}
+          riderName={rider?.full_name || 'Rider'}
+          deliveryAddress={`${currentOrder.delivery_address} ${currentOrder.delivery_barangay} ${currentOrder.delivery_city} ${currentOrder.delivery_region}`}
+          pickedUpAt={currentOrder.picked_up_at}
+          sameCity={store?.city === currentOrder.delivery_city}
+        />
+      )}
+      {currentOrder.status === 'picked_up' && (currentOrder.rider_lat == null || currentOrder.rider_lng == null) && (
+        <div className="bg-blue-50 rounded-2xl border border-blue-200 p-4 mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+              <Bike size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-blue-800">Paparating na ang rider!</p>
+              <p className="text-xs text-blue-600">Nasa daan na ang rider papunta sa iyo. Makikita ang live location dito pag nagsimula na ang rider.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Store info */}
       {store && (
         <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
           <div className="flex items-center gap-2 mb-2">
@@ -1844,7 +2007,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
               <span>Pwesto sa <strong>{store.palengke_name}</strong></span>
             </div>
           )}
-          {isBuyer && currentOrder.status !== 'cancelled' && (
+          {isBuyer && !isCancelled && (
             <button
               onClick={() => onOpenChat(currentOrder.id, currentOrder.buyer_id, 'buyer_seller', store.name, 'Seller', store.seller_id, null)}
               className="w-full mt-3 py-2.5 bg-brand-50 text-brand-700 rounded-xl font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition border border-brand-100"
@@ -1870,9 +2033,14 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
             <p className="font-semibold text-sm text-gray-700">₱{(item.price * item.quantity).toFixed(0)}</p>
           </div>
         ))}
+        <div className="pt-2 border-t border-gray-100 mt-2 space-y-1">
+          <div className="flex justify-between text-sm text-gray-500"><span>Subtotal</span><span>₱{currentOrder.total.toFixed(2)}</span></div>
+          <div className="flex justify-between text-sm text-gray-500"><span>Delivery fee</span><span>₱{currentOrder.delivery_fee.toFixed(2)}</span></div>
+          <div className="flex justify-between font-bold text-gray-800"><span>Total</span><span>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</span></div>
+        </div>
       </div>
 
-      {/* Rider */}
+      {/* Rider info */}
       {rider && (
         <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
           <div className="flex items-center gap-2 mb-2">
@@ -1888,7 +2056,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
               <Phone size={16} className="text-blue-600" />
             </a>
           </div>
-          {isBuyer && currentOrder.status !== 'cancelled' && currentOrder.status !== 'delivered' && (
+          {isBuyer && !isCancelled && !isDelivered && (
             <button
               onClick={() => onOpenChat(currentOrder.id, currentOrder.buyer_id, 'buyer_rider', rider.full_name, 'Rider', null, currentOrder.rider_id)}
               className="w-full mt-3 py-2.5 bg-blue-50 text-blue-700 rounded-xl font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition border border-blue-100"
@@ -1896,31 +2064,6 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
               <MessageCircle size={16} /> Chat with Rider
             </button>
           )}
-        </div>
-      )}
-
-      {/* Live Tracking Map */}
-      {currentOrder.status === 'picked_up' && currentOrder.rider_lat != null && currentOrder.rider_lng != null && (
-        <LiveTrackingMap
-          riderLat={currentOrder.rider_lat}
-          riderLng={currentOrder.rider_lng}
-          riderName={rider?.full_name || 'Rider'}
-          deliveryAddress={`${currentOrder.delivery_address} ${currentOrder.delivery_barangay} ${currentOrder.delivery_city} ${currentOrder.delivery_region}`}
-          pickedUpAt={currentOrder.picked_up_at}
-          sameCity={store?.city === currentOrder.delivery_city}
-        />
-      )}
-      {currentOrder.status === 'picked_up' && (currentOrder.rider_lat == null || currentOrder.rider_lng == null) && (
-        <div className="bg-blue-50 rounded-2xl border border-blue-200 p-4 mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-              <Bike size={16} className="text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-blue-800">Paparating na ang rider!</p>
-              <p className="text-xs text-blue-600">Nasa daan na ang rider papunta sa iyo. Makikita ang live location dito pag nagsimula na ang rider.</p>
-            </div>
-          </div>
         </div>
       )}
 
@@ -1932,153 +2075,6 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         </div>
         <p className="text-sm text-gray-600">{currentOrder.delivery_address}</p>
         <p className="text-sm text-gray-400">{currentOrder.delivery_barangay}, {currentOrder.delivery_city}, {currentOrder.delivery_region}</p>
-      </div>
-
-      {/* Payment */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
-        <h3 className="font-semibold text-gray-800 mb-2">Payment</h3>
-        <div className="flex justify-between text-sm text-gray-600 mb-1">
-          <span>Method</span>
-          <span>{currentOrder.payment_method === 'qr_code' ? 'QR Code (GCash/Maya)' : 'Cash on Delivery'}</span>
-        </div>
-        <div className="flex justify-between text-sm text-gray-600 mb-1">
-          <span>Subtotal</span><span>₱{currentOrder.total.toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between text-sm text-gray-600 mb-1">
-          <span>Delivery fee</span><span>₱{currentOrder.delivery_fee.toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between font-bold text-gray-800 pt-2 border-t border-gray-100">
-          <span>Total</span><span>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</span>
-        </div>
-
-        {/* QR Code Payment Section - only shows after seller confirms the order */}
-        {isBuyer && currentOrder.payment_method === 'qr_code' && currentOrder.status !== 'cancelled' && currentOrder.status !== 'delivered' && (
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            {currentOrder.status === 'pending' ? (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Clock size={16} className="text-amber-500 flex-shrink-0" />
-                <p>Naghihintay pa na ma-confirm ng seller ang order mo. Lalabas ang QR code at payment instructions dito kapag na-confirm na.</p>
-              </div>
-            ) : store?.qr_code_url ? (
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <QrCode size={18} className="text-brand-600" />
-                  <span className="font-semibold text-sm text-gray-800">Paano Magbayad gamit ang QR Code</span>
-                </div>
-
-                {/* Step 1: Scan */}
-                <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl mb-2.5">
-                  <div className="w-7 h-7 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">1</div>
-                  <div>
-                    <p className="text-sm font-medium text-blue-900">I-scan ang QR code</p>
-                    <p className="text-xs text-blue-700 mt-0.5 leading-relaxed">Buksan ang GCash o Maya app sa ibang phone, piliin ang "Scan QR", at i-scan ang QR code sa baba.</p>
-                  </div>
-                </div>
-
-                {/* Step 2: Download & Upload */}
-                <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl mb-2.5">
-                  <div className="w-7 h-7 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">2</div>
-                  <div>
-                    <p className="text-sm font-medium text-amber-900">Isang phone lang ang gamit?</p>
-                    <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">I-download ang QR code image gamit ang button sa baba. Tapos, buksan ang GCash app, piliin ang "Upload QR" o "Import QR", at i-upload ang na-download na image.</p>
-                  </div>
-                </div>
-
-                {/* Step 3: Enter amount */}
-                <div className="flex items-start gap-3 p-3 bg-green-50 rounded-xl mb-4">
-                  <div className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">3</div>
-                  <div>
-                    <p className="text-sm font-medium text-green-900">Ilagay ang tamang halaga</p>
-                    <p className="text-xs text-green-700 mt-0.5 leading-relaxed">Bayaran ang <strong>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</strong> na kabuuang halaga (kasama ang delivery fee).</p>
-                  </div>
-                </div>
-
-                {/* QR Code Image */}
-                <div className="bg-gray-50 rounded-xl p-4 flex justify-center">
-                  <img src={store.qr_code_url} alt="QR Code ng Seller" loading="lazy" decoding="async" className="w-48 h-48 rounded-xl object-contain" />
-                </div>
-
-                {/* Download button */}
-                <button
-                  onClick={async () => {
-                    try {
-                      const response = await fetch(store.qr_code_url!);
-                      const blob = await response.blob();
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `qr-code-${store.name.replace(/\s+/g, '-').toLowerCase()}.png`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(url);
-                    } catch {
-                      window.open(store.qr_code_url!, '_blank');
-                    }
-                  }}
-                  className="w-full mt-3 py-3 bg-brand-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
-                >
-                  <Download size={18} /> I-download ang QR Code
-                </button>
-
-                {/* Payment Reference Form + Mark as Paid button */}
-                {currentOrder.payment_status !== 'paid' ? (
-                  <div className="mt-4">
-                    <label className="text-sm font-medium text-gray-700 mb-1.5 block">
-                      Payment Reference Number
-                    </label>
-                    <p className="text-xs text-gray-400 mb-2 leading-relaxed">
-                      Pagkatapos magbayad sa GCash/Maya, may makikita kang reference o transaction ID. Ilagay ito bilang proof ng payment mo.
-                    </p>
-                    <input
-                      type="text"
-                      value={paymentRef}
-                      onChange={(e) => setPaymentRef(e.target.value)}
-                      placeholder="Hal. 1234567890 o Gcash Ref#"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 transition mb-3"
-                    />
-                    <button
-                      onClick={async () => {
-                        setSubmitting(true);
-                        await supabase.from('orders').update({
-                          payment_status: 'paid',
-                          payment_reference: paymentRef.trim() || null,
-                        }).eq('id', currentOrder.id);
-                        setCurrentOrder(prev => ({ ...prev, payment_status: 'paid', payment_reference: paymentRef.trim() || null }));
-                        setSubmitting(false);
-                      }}
-                      disabled={submitting}
-                      className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition shadow-lg shadow-green-600/20 disabled:opacity-50"
-                    >
-                      <Check size={18} /> {submitting ? 'Nagse-send...' : 'Naka-bayad na Ako'}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="mt-4">
-                    <div className="w-full py-3 bg-green-100 text-green-700 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 border border-green-300">
-                      <Check size={18} /> Na-confirm mo na ang payment
-                    </div>
-                    {currentOrder.payment_reference && (
-                      <div className="mt-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                        <p className="text-xs text-gray-400 mb-0.5">Reference Number:</p>
-                        <p className="text-sm font-mono font-medium text-gray-700">{currentOrder.payment_reference}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <p className="text-xs text-gray-400 mt-3 text-center leading-relaxed">
-                  Pagkatapos mag-bayad sa GCash/Maya, ilagay ang reference number at i-tap ang button para ma-notify ang seller na paid na ang order mo.
-                </p>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <ImageOff size={16} className="text-gray-400 flex-shrink-0" />
-                <p>Hindi pa nag-upload ang seller ng QR code. Makipag-ugnayan sa seller via chat para makahingi ng payment details.</p>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Sibling stores in the same delivery group */}
@@ -2125,7 +2121,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
       )}
 
       {/* Leave a Review - only for delivered orders */}
-      {isBuyer && currentOrder.status === 'delivered' && (
+      {isBuyer && isDelivered && (
         <ReviewSectionForOrder
           orderId={currentOrder.id}
           store={store}
@@ -2309,42 +2305,6 @@ function LiveTrackingMap({ riderLat, riderLng, riderName, deliveryAddress, picke
           <MapPin size={12} /> Buksan sa Google Maps
         </a>
       </div>
-    </div>
-  );
-}
-
-function OrderStatusTracker({ status }: { status: OrderStatus }) {
-  const steps: { key: OrderStatus; label: string }[] = [
-    { key: 'pending', label: 'Order' },
-    { key: 'accepted', label: 'Confirm' },
-    { key: 'preparing', label: 'Hahanda' },
-    { key: 'picked_up', label: 'Pickup' },
-    { key: 'delivered', label: 'Delivered' },
-  ];
-  const currentIndex = steps.findIndex(s => s.key === status);
-  const isCancelled = status === 'cancelled';
-
-  if (isCancelled) {
-    return <p className="text-center text-red-500 text-sm py-2">Nakansela ang order na ito.</p>;
-  }
-
-  return (
-    <div className="flex items-center justify-between">
-      {steps.map((step, i) => (
-        <div key={step.key} className="flex items-center flex-1 last:flex-none">
-          <div className="flex flex-col items-center gap-1">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-              i <= currentIndex ? 'bg-brand-500 text-white' : 'bg-gray-100 text-gray-400'
-            }`}>
-              {i < currentIndex ? <Check size={14} /> : i + 1}
-            </div>
-            <span className={`text-xs ${i <= currentIndex ? 'text-brand-600 font-medium' : 'text-gray-400'}`}>{step.label}</span>
-          </div>
-          {i < steps.length - 1 && (
-            <div className={`h-0.5 flex-1 mx-1 ${i < currentIndex ? 'bg-brand-500' : 'bg-gray-200'}`} />
-          )}
-        </div>
-      ))}
     </div>
   );
 }

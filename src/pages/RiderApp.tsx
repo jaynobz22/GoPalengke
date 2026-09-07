@@ -9,6 +9,7 @@ import { Avatar } from '@/components/Avatar';
 import { ImageUploadField } from '@/components/ImageUploadField';
 import { InactiveBanner } from '@/components/InactiveBanner';
 import { ReviewSection } from '@/components/Reviews';
+import { OrderStepTracker, type StepInfo } from '@/components/OrderStepTracker';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
 import { AdminChat } from '@/components/AdminChat';
 import { useIncomingAdminCall } from '@/lib/useAdminCall';
@@ -17,6 +18,7 @@ import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
   Share2, Copy, ExternalLink, Power, Timer, Star, UserCheck, LogOut, Shield,
+  QrCode, Download, DollarSign,
 } from 'lucide-react';
 
 type Tab = 'deliveries' | 'messages' | 'history' | 'profile';
@@ -499,13 +501,14 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const watchIdRef = useRef<number | null>(null);
   const [siblingOrders, setSiblingOrders] = useState<(Order & { store: Store })[]>([]);
   const [pickedUpStores, setPickedUpStores] = useState<Set<string>>(new Set());
+  const [codRef, setCodRef] = useState(order.cod_payment_reference || '');
+  const [showCodPayment, setShowCodPayment] = useState(false);
 
   useEffect(() => {
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
     supabase.from('stores').select('*').eq('id', order.store_id).maybeSingle().then(({ data }) => setStore(data as Store | null));
     supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', order.buyer_id).maybeSingle().then(({ data }) => setBuyer(data as any));
 
-    // Load sibling orders in the same delivery group
     if (order.delivery_group_id) {
       supabase.from('orders').select('*, store:stores(*)').eq('delivery_group_id', order.delivery_group_id)
         .then(({ data }) => { setSiblingOrders((data || []) as any); });
@@ -519,7 +522,6 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
     return () => { supabase.removeChannel(sub); };
   }, [order.id, order.delivery_group_id]);
 
-  // GPS tracking: update all orders in the delivery group
   useEffect(() => {
     if (currentOrder.status !== 'picked_up' || !profile) return;
 
@@ -530,7 +532,6 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
-          // Update current order and all siblings in the group
           if (currentOrder.delivery_group_id) {
             supabase.from('orders').update({ rider_lat: lat, rider_lng: lng }).eq('delivery_group_id', currentOrder.delivery_group_id);
           } else {
@@ -551,7 +552,6 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
     };
   }, [currentOrder.status, currentOrder.id, currentOrder.delivery_group_id, profile]);
 
-  // Countdown timer
   useEffect(() => {
     if (currentOrder.status !== 'picked_up' || !currentOrder.picked_up_at) return;
     const interval = setInterval(() => {
@@ -564,24 +564,68 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
 
   async function markDelivered() {
     setUpdating(true);
-    // If part of a delivery group, mark all sibling orders as delivered too
     if (currentOrder.delivery_group_id) {
       const { error } = await supabase.from('orders').update({ status: 'delivered', rider_lat: null, rider_lng: null }).eq('delivery_group_id', currentOrder.delivery_group_id);
       setUpdating(false);
-      if (error) {
-        alert('Hindi ma-update ang status. Subukan ulit.');
-        return;
-      }
+      if (error) { alert('Hindi ma-update ang status. Subukan ulit.'); return; }
     } else {
       const { error } = await supabase.from('orders').update({ status: 'delivered', rider_lat: null, rider_lng: null }).eq('id', currentOrder.id);
       setUpdating(false);
-      if (error) {
-        alert('Hindi ma-update ang status. Subukan ulit.');
-        return;
-      }
+      if (error) { alert('Hindi ma-update ang status. Subukan ulit.'); return; }
     }
     setCurrentOrder(prev => ({ ...prev, status: 'delivered' }));
-    onBack();
+  }
+
+  async function submitCodPayment() {
+    if (!codRef.trim()) return;
+    setUpdating(true);
+    await supabase.from('orders').update({
+      cod_payment_reference: codRef.trim(),
+    }).eq('id', currentOrder.id);
+    setCurrentOrder(prev => ({ ...prev, cod_payment_reference: codRef.trim() }));
+    setUpdating(false);
+    setShowCodPayment(false);
+  }
+
+  const isCancelled = currentOrder.status === 'cancelled';
+  const isDelivered = currentOrder.status === 'delivered';
+  const isCod = currentOrder.payment_method === 'cod';
+  const codSubmitted = !!currentOrder.cod_payment_reference;
+  const codAccepted = !!currentOrder.cod_payment_accepted_at;
+
+  // Build rider-side step list
+  const riderSteps: StepInfo[] = [
+    { key: 'accept', label: 'Tanggapin ang Delivery', description: 'Tanggapin ang delivery order at pumunta sa pickup point (store) para kunin ang parcel.', status: 'completed' },
+    { key: 'pickup', label: 'Pickup sa Store', description: 'Pumunta sa store at kunin ang order. Kumpirmahin ang pickup sa bawat store.', status: 'completed' },
+    { key: 'on_the_way', label: 'On the Way sa Buyer', description: 'Nasa daan ka na papunta sa buyer. Ang GPS location mo ay live na nakikita ng buyer sa mapa.', status: 'completed' },
+    { key: 'delivered', label: 'Na-deliver na!', description: 'Na-deliver mo na ang parcel sa buyer. Tapusin ang delivery.', status: 'completed' },
+  ];
+
+  let currentStepIndex = 0;
+  if (currentOrder.status === 'ready_for_pickup') currentStepIndex = 0;
+  else if (currentOrder.status === 'picked_up') {
+    currentStepIndex = allPickedUp ? 2 : 1;
+  }
+  else if (currentOrder.status === 'delivered') currentStepIndex = 3;
+
+  riderSteps.forEach((s, i) => {
+    s.status = i < currentStepIndex ? 'completed' : i === currentStepIndex ? 'active' : 'pending';
+  });
+
+  // Add COD payment step if COD
+  if (isCod) {
+    riderSteps.push({
+      key: 'cod_payment',
+      label: 'Magpadala ng Payment sa Seller',
+      description: codAccepted
+        ? 'Na-tanggap na ng seller ang COD payment. Tapos na ang transaction!'
+        : codSubmitted
+          ? 'Nai-submit na ang reference number. Naghihintay ng confirmation ng seller.'
+          : 'I-scan ang QR code ng seller, ipadala ang bayad, at i-submit ang reference number.',
+      status: codAccepted ? 'completed' : codSubmitted ? 'active' : 'pending',
+    });
+    if (codAccepted) currentStepIndex = 4;
+    else if (codSubmitted) currentStepIndex = 4;
   }
 
   const sameCity = store?.city === currentOrder.delivery_city;
@@ -613,7 +657,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         <h2 className="text-xl font-bold text-gray-800">Delivery Details</h2>
       </div>
 
-      {/* Status + Timer */}
+      {/* Status badge */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
         <div className="flex items-center justify-between mb-2">
           <span className={`text-sm px-3 py-1 rounded-full border ${ORDER_STATUS_COLORS[currentOrder.status]}`}>
@@ -621,30 +665,123 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           </span>
           <span className="text-sm text-gray-400">#{order.id.slice(0, 8)}</span>
         </div>
-        {currentOrder.status === 'picked_up' && currentOrder.picked_up_at && (
-          <div className={`mt-3 p-3 rounded-xl flex items-center gap-3 ${isOverdue ? 'bg-red-50' : 'bg-blue-50'}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isOverdue ? 'bg-red-500' : 'bg-blue-500'}`}>
-              <Timer size={20} className="text-white" />
-            </div>
-            <div className="flex-1">
-              <p className={`text-xs ${isOverdue ? 'text-red-500' : 'text-blue-500'}`}>
-                {isOverdue ? 'Lampas sa estimated time' : 'Oras na natitira'}
-              </p>
-              <p className={`font-bold text-lg ${isOverdue ? 'text-red-600' : 'text-blue-700'}`}>
-                {isOverdue
-                  ? `+${Math.floor((elapsedSeconds - estimatedTotalSeconds) / 60)}m ${((elapsedSeconds - estimatedTotalSeconds) % 60)}s`
-                  : `${remainingMin}m ${remainingSec}s`}
-              </p>
-            </div>
-            {gpsActive && (
-              <div className="flex items-center gap-1 text-xs text-green-600">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                GPS
-              </div>
-            )}
-          </div>
-        )}
+        <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString('en-PH')}</p>
       </div>
+
+      {/* Collapsible Step Tracker */}
+      {!isCancelled && (
+        <div className="mb-3">
+          <OrderStepTracker steps={riderSteps} currentStepIndex={currentStepIndex} />
+        </div>
+      )}
+      {isCancelled && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-3 text-center">
+          <p className="text-sm font-semibold text-red-700">Nakansela ang order na ito.</p>
+        </div>
+      )}
+
+      {/* Timer when picked up */}
+      {currentOrder.status === 'picked_up' && currentOrder.picked_up_at && (
+        <div className={`p-3 rounded-xl flex items-center gap-3 mb-3 ${isOverdue ? 'bg-red-50' : 'bg-blue-50'}`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isOverdue ? 'bg-red-500' : 'bg-blue-500'}`}>
+            <Timer size={20} className="text-white" />
+          </div>
+          <div className="flex-1">
+            <p className={`text-xs ${isOverdue ? 'text-red-500' : 'text-blue-500'}`}>
+              {isOverdue ? 'Lampas sa estimated time' : 'Oras na natitira'}
+            </p>
+            <p className={`font-bold text-lg ${isOverdue ? 'text-red-600' : 'text-blue-700'}`}>
+              {isOverdue
+                ? `+${Math.floor((elapsedSeconds - estimatedTotalSeconds) / 60)}m ${((elapsedSeconds - estimatedTotalSeconds) % 60)}s`
+                : `${remainingMin}m ${remainingSec}s`}
+            </p>
+          </div>
+          {gpsActive && (
+            <div className="flex items-center gap-1 text-xs text-green-600">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              GPS
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* COD Payment Section — shown after delivery */}
+      {isDelivered && isCod && !codAccepted && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-3">
+          <div className="flex items-center gap-2 mb-3">
+            <DollarSign size={20} className="text-amber-600" />
+            <p className="font-semibold text-sm text-amber-800">COD Payment — Ipadala sa Seller</p>
+          </div>
+          {codSubmitted ? (
+            <div className="flex items-center gap-2">
+              <Clock size={16} className="text-amber-500 flex-shrink-0" />
+              <p className="text-sm text-amber-700">Nai-submit na ang reference number. Naghihintay ng confirmation ng seller.</p>
+            </div>
+          ) : showCodPayment && store?.qr_code_url ? (
+            <div>
+              <p className="text-xs text-amber-700 mb-3">I-scan ang QR code ng seller sa GCash/Maya, ipadala ang <strong>₱{totalAmount.toFixed(2)}</strong>, at i-submit ang reference number.</p>
+              <div className="bg-gray-50 rounded-xl p-4 flex justify-center mb-3">
+                <img src={store.qr_code_url} alt="QR Code ng Seller" loading="lazy" decoding="async" className="w-48 h-48 rounded-xl object-contain" />
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch(store.qr_code_url!);
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `qr-code-${store.name.replace(/\s+/g, '-').toLowerCase()}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  } catch {
+                    window.open(store.qr_code_url!, '_blank');
+                  }
+                }}
+                className="w-full mb-3 py-2.5 bg-brand-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
+              >
+                <Download size={16} /> I-download ang QR Code
+              </button>
+              <label className="text-sm font-medium text-gray-700 mb-1.5 block">Reference Number</label>
+              <input
+                type="text"
+                value={codRef}
+                onChange={(e) => setCodRef(e.target.value)}
+                placeholder="Hal. 1234567890 o Gcash Ref#"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 transition mb-3"
+              />
+              <button
+                onClick={submitCodPayment}
+                disabled={updating || !codRef.trim()}
+                className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50"
+              >
+                <Check size={18} /> {updating ? 'Nagse-send...' : 'I-submit ang Reference'}
+              </button>
+            </div>
+          ) : !showCodPayment ? (
+            <button
+              onClick={() => setShowCodPayment(true)}
+              className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
+            >
+              <QrCode size={18} /> Magbayad sa Seller
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-amber-700">
+              <p>Hindi nag-upload ang seller ng QR code. Makipag-ugnayan sa seller.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* COD accepted confirmation */}
+      {isDelivered && isCod && codAccepted && (
+        <div className="bg-green-50 border border-green-300 rounded-2xl p-4 mb-3 flex items-center gap-2">
+          <Check size={18} className="text-green-600" />
+          <p className="text-sm text-green-700 font-medium">Na-tanggap na ng seller ang COD payment. Tapos na ang transaction!</p>
+        </div>
+      )}
 
       {/* Route Info */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
@@ -654,7 +791,6 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
             <span className="text-[10px] font-bold text-white bg-brand-500 px-2 py-0.5 rounded-full">MULTI-PICKUP</span>
           )}
         </h3>
-        {/* Pickup points */}
         {allStores.map((s, idx) => {
           const isPickedUp = pickedUpStores.has(s.order.store_id);
           const storeData = s.order.store;
@@ -689,9 +825,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
             </div>
           );
         })}
-        {/* Connector line */}
         <div className="ml-4 w-0.5 h-6 bg-gray-200 mb-1" />
-        {/* Dropoff */}
         <div className="flex items-start gap-3">
           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
             <MapPinned size={16} className="text-blue-600" />
@@ -708,8 +842,6 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
             </a>
           </div>
         </div>
-
-        {/* Distance/Time */}
         <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-around">
           <div className="text-center">
             <p className="text-xs text-gray-400">Estimated Distance</p>
@@ -720,12 +852,9 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
             <p className="font-bold text-gray-800">{sameCity ? '10-15 min' : '20-30 min'}</p>
           </div>
         </div>
-        <div className="mt-2 text-center text-xs text-gray-400">
-          ₱{BASE_DELIVERY_FEE} base + {estimatedKm}km × ₱{PER_KM_RATE} = ₱{computeDeliveryFee(store ? { barangay: store.barangay, city: store.city, region: store.region } : null, { barangay: currentOrder.delivery_barangay, city: currentOrder.delivery_city, region: currentOrder.delivery_region }).toFixed(0)} ang fee
-        </div>
       </div>
 
-      {/* Contact */}
+      {/* Contact Buyer */}
       {buyer && (
         <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
           <h3 className="font-semibold text-gray-800 mb-2">Contact Buyer</h3>
@@ -741,7 +870,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
               <Phone size={18} className="text-blue-600" />
             </a>
           </div>
-          {currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled' && (
+          {!isCancelled && (
             <button
               onClick={() => onOpenChat(currentOrder, buyer.full_name)}
               className="w-full mt-3 py-2.5 bg-blue-50 text-blue-700 rounded-xl font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition border border-blue-100"
@@ -795,22 +924,22 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
         <h3 className="font-semibold text-gray-800 mb-2">Payment</h3>
         <p className="text-sm text-gray-600">
-          {currentOrder.payment_method === 'qr_code' ? 'QR Code (GCash/Maya)' : 'Cash on Delivery'}
+          {currentOrder.payment_method === 'qr_code' ? 'QR Code (GCash/Maya) — Paid by buyer' : 'Cash on Delivery'}
         </p>
-        {currentOrder.payment_method === 'cod' && (
-          <p className="text-xs text-amber-600 mt-1">Kolektahin ang ₱{totalAmount.toFixed(2)} sa buyer</p>
+        {isCod && (
+          <p className="text-xs text-amber-600 mt-1">Kolektahin ang ₱{totalAmount.toFixed(2)} sa buyer, ipadala sa seller via QR code.</p>
         )}
       </div>
 
-      {/* Action */}
+      {/* Mark as Delivered button */}
       {currentOrder.status === 'picked_up' && (
         allPickedUp ? (
           <button onClick={markDelivered} disabled={updating}
-            className="w-full py-4 bg-blue-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-blue-600/20 active:scale-[0.98] transition disabled:opacity-50">
+            className="w-full py-4 bg-blue-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-blue-600/20 active:scale-[0.98] transition disabled:opacity-50 mb-3">
             {updating ? 'Nag-uupdate...' : 'Mark as Delivered'}
           </button>
         ) : (
-          <div className="w-full py-4 bg-gray-100 text-gray-400 rounded-2xl font-semibold text-lg text-center">
+          <div className="w-full py-4 bg-gray-100 text-gray-400 rounded-2xl font-semibold text-lg text-center mb-3">
             Kumpirmahin muna lahat ng pickup ({pickedUpStores.size}/{allPickupStoreIds.length})
           </div>
         )

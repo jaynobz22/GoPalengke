@@ -124,6 +124,8 @@ export interface Order {
   rider_lng: number | null;
   picked_up_at: string | null;
   delivery_group_id: string | null;
+  cod_payment_reference: string | null;
+  cod_payment_accepted_at: string | null;
   created_at: string;
   updated_at: string;
   store?: Store;
