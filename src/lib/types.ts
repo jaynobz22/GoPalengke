@@ -165,6 +165,9 @@ export interface Conversation {
   updated_at: string;
 }
 
+export type MessageType = 'text' | 'video_call';
+export type CallStatus = 'pending' | 'accepted' | 'declined' | 'ended';
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -172,6 +175,9 @@ export interface Message {
   body: string;
   read_at: string | null;
   created_at: string;
+  message_type: MessageType;
+  call_room_id: string | null;
+  call_status: CallStatus | null;
 }
 
 export interface Announcement {
