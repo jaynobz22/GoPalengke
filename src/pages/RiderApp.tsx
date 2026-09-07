@@ -12,7 +12,7 @@ import { ReviewSection } from '@/components/Reviews';
 import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
-  Share2, Copy, ExternalLink, Power, Timer, Star,
+  Share2, Copy, ExternalLink, Power, Timer, Star, UserCheck,
 } from 'lucide-react';
 
 type Tab = 'deliveries' | 'history' | 'profile';
@@ -107,6 +107,7 @@ export function RiderApp() {
 function RiderDeliveries({ onOrderClick, canAct }: { onOrderClick: (o: Order) => void; canAct: boolean }) {
   const { profile } = useAuth();
   const [availableOrders, setAvailableOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
+  const [assignedOrders, setAssignedOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
   const [myOrders, setMyOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
@@ -114,13 +115,16 @@ function RiderDeliveries({ onOrderClick, canAct }: { onOrderClick: (o: Order) =>
 
   const load = useCallback(async () => {
     if (!profile) return;
-    const [{ data: available }, { data: mine }] = await Promise.all([
+    const [{ data: available }, { data: assigned }, { data: mine }] = await Promise.all([
       supabase.from('orders').select('*, store:stores(*), buyer:profiles!orders_buyer_id_fkey(full_name)')
         .in('status', ['ready_for_pickup']).is('rider_id', null).order('created_at', { ascending: true }),
+      supabase.from('orders').select('*, store:stores(*), buyer:profiles!orders_buyer_id_fkey(full_name)')
+        .eq('rider_id', profile.id).eq('status', 'ready_for_pickup').order('created_at', { ascending: true }),
       supabase.from('orders').select('*, store:stores(*), buyer:profiles!orders_buyer_id_fkey(full_name)')
         .eq('rider_id', profile.id).in('status', ['picked_up']).order('created_at', { ascending: false }),
     ]);
     setAvailableOrders((available || []) as any);
+    setAssignedOrders((assigned || []) as any);
     setMyOrders((mine || []) as any);
     setLoading(false);
   }, [profile]);
@@ -237,6 +241,43 @@ function RiderDeliveries({ onOrderClick, canAct }: { onOrderClick: (o: Order) =>
           </div>
         )}
       </div>
+
+      {/* Seller-Assigned Orders — orders the seller specifically assigned to this rider */}
+      {assignedOrders.length > 0 && (
+        <div className="px-5 pb-4">
+          <h2 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <UserCheck size={18} className="text-brand-600" />
+            Para Sa'yo (Ini-assign ng Seller)
+          </h2>
+          <div className="space-y-2">
+            {assignedOrders.map(order => (
+              <div key={order.id} className="bg-white rounded-2xl border-2 border-brand-300 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-semibold text-gray-800">{order.buyer?.full_name || 'Buyer'}</p>
+                  <span className="text-xs text-gray-400">{new Date(order.created_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+                  <StoreIcon size={14} /><span>{order.store.name}</span>
+                  <MapPin size={14} /><span>{order.store.barangay}, {order.store.city}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                  <Navigation size={14} /><span>Deliver to: {order.delivery_barangay}, {order.delivery_city}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-400">Delivery fee</p>
+                    <p className="font-bold text-blue-600">₱{order.delivery_fee.toFixed(0)}</p>
+                  </div>
+                  <button onClick={() => acceptOrder(order)} disabled={!canAct}
+                    className="px-6 py-2.5 bg-brand-600 text-white rounded-xl font-semibold active:scale-95 transition disabled:opacity-50">
+                    Tanggapin
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Available Orders — only shown when rider is available */}
       {isAvailable && (

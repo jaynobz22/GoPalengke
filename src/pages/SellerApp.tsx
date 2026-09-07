@@ -18,7 +18,7 @@ import {
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
   TrendingUp, DollarSign, Bell, Camera, Loader2, MessageCircle,
   Share2, Copy, ExternalLink, Search, ImageIcon, Wallet, Lock, AlertTriangle,
-  LogOut, Eye,
+  LogOut, Eye, Users, Radio,
 } from 'lucide-react';
 
 type Tab = 'dashboard' | 'products' | 'orders' | 'messages' | 'billing' | 'settings';
@@ -1225,6 +1225,11 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   const [rider, setRider] = useState<{ full_name: string; phone: string | null; avatar_url: string | null } | null>(null);
   const [currentOrder, setCurrentOrder] = useState(order);
   const [updating, setUpdating] = useState(false);
+  const [showRiderPicker, setShowRiderPicker] = useState(false);
+  const [availableRiders, setAvailableRiders] = useState<{ id: string; full_name: string; phone: string | null; avatar_url: string | null }[]>([]);
+  const [loadingRiders, setLoadingRiders] = useState(false);
+  const [assigningRider, setAssigningRider] = useState<string | null>(null);
+  const [riderAssigned, setRiderAssigned] = useState(false);
 
   useEffect(() => {
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
@@ -1244,6 +1249,23 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       .subscribe();
     return () => { supabase.removeChannel(sub); };
   }, [order.id]);
+
+  async function loadAvailableRiders() {
+    setLoadingRiders(true);
+    const { data } = await supabase.from('profiles').select('id, full_name, phone, avatar_url').eq('role', 'rider').eq('is_available', true).order('full_name', { ascending: true });
+    setAvailableRiders((data || []) as any);
+    setLoadingRiders(false);
+  }
+
+  async function assignRider(riderId: string) {
+    setAssigningRider(riderId);
+    await supabase.from('orders').update({ rider_id: riderId }).eq('id', currentOrder.id);
+    setCurrentOrder(prev => ({ ...prev, rider_id: riderId }));
+    setRiderAssigned(true);
+    setAssigningRider(null);
+    setShowRiderPicker(false);
+    supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', riderId).maybeSingle().then(({ data }) => setRider(data as any));
+  }
 
   async function updateStatus(status: OrderStatus) {
     setUpdating(true);
@@ -1312,8 +1334,8 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         </div>
       )}
 
-      {/* Rider Info */}
-      {rider && currentOrder.rider_id && (
+      {/* Rider Info — assigned and accepted (picked_up or beyond) */}
+      {rider && currentOrder.rider_id && currentOrder.status !== 'ready_for_pickup' && (
         <div className="bg-white rounded-2xl border border-blue-200 p-4 mb-3">
           <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
             <Bike size={16} className="text-blue-500" /> Rider
@@ -1341,13 +1363,110 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           </div>
         </div>
       )}
+
+      {/* Rider assigned but waiting for rider to accept (still ready_for_pickup) */}
+      {rider && currentOrder.rider_id && currentOrder.status === 'ready_for_pickup' && (
+        <div className="bg-white rounded-2xl border border-blue-200 p-4 mb-3">
+          <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            <Bike size={16} className="text-blue-500" /> Rider
+          </h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Avatar src={rider.avatar_url} name={rider.full_name} size={36} />
+              <div>
+                <p className="text-sm font-medium text-gray-800">{rider.full_name}</p>
+                {rider.phone && <p className="text-xs text-gray-400">{rider.phone}</p>}
+              </div>
+            </div>
+            <a href={`tel:${rider.phone}`} className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center">
+              <Phone size={16} className="text-blue-600" />
+            </a>
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-xs">
+            <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full flex items-center gap-1">
+              <Clock size={12} /> Naghihintay na tanggapin ng rider
+            </span>
+          </div>
+          {riderAssigned && (
+            <p className="text-xs text-green-600 mt-2 font-medium">Na-assign na ang rider! Maghihintay na lang na tanggapin niya ang delivery.</p>
+          )}
+        </div>
+      )}
+
+      {/* No rider yet — show rider selection options */}
       {!currentOrder.rider_id && currentOrder.status === 'ready_for_pickup' && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mb-3">
             <Clock size={18} className="text-amber-500" />
-            <p className="text-sm text-amber-700 font-medium">Naghihintay pa ng rider na tatanggap ng delivery</p>
+            <p className="text-sm text-amber-700 font-medium">Naghihintay pa ng rider</p>
           </div>
-          <p className="text-xs text-amber-600 mt-1">Makikita ng mga available na riders ang order na ito. Kapag may tumanggap, lalabas ang info ng rider dito.</p>
+          <p className="text-xs text-amber-600 mb-3">Pumili ka ng rider na kilala mo, o i-broadcast sa lahat ng available na riders.</p>
+          <div className="space-y-2">
+            <button
+              onClick={() => { setShowRiderPicker(true); loadAvailableRiders(); }}
+              className="w-full py-3 bg-white text-brand-700 border border-brand-200 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
+            >
+              <Users size={18} /> Pumili ng Rider
+            </button>
+            <div className="flex items-center gap-2 text-xs text-amber-600 py-1">
+              <div className="flex-1 h-px bg-amber-200" />
+              <span>o</span>
+              <div className="flex-1 h-px bg-amber-200" />
+            </div>
+            <p className="text-xs text-amber-600 text-center">
+              <Radio size={12} className="inline mr-1" />
+              I-broadcast na sa lahat ng riders — makikita na nila ang order na ito sa app nila.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Rider Picker Modal */}
+      {showRiderPicker && (
+        <div className="fixed inset-0 z-[70] bg-black/50 flex items-end sm:items-center justify-center" onClick={() => setShowRiderPicker(false)}>
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[80vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <Users size={20} className="text-brand-600" /> Pumili ng Rider
+              </h3>
+              <button onClick={() => setShowRiderPicker(false)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                <X size={18} className="text-gray-500" />
+              </button>
+            </div>
+            {loadingRiders ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 size={24} className="text-brand-500 animate-spin" />
+              </div>
+            ) : availableRiders.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">
+                <Bike size={40} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Wala pang available na riders sa ngayon.</p>
+                <p className="text-xs mt-1">Subukan ulit mamaya o i-broadcast na lang ang order.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {availableRiders.map(r => (
+                  <button
+                    key={r.id}
+                    onClick={() => assignRider(r.id)}
+                    disabled={assigningRider !== null}
+                    className="w-full flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-2xl active:scale-[0.98] transition disabled:opacity-50 text-left"
+                  >
+                    <Avatar src={r.avatar_url} name={r.full_name} size={40} />
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-800 text-sm">{r.full_name}</p>
+                      {r.phone && <p className="text-xs text-gray-400">{r.phone}</p>}
+                    </div>
+                    {assigningRider === r.id ? (
+                      <Loader2 size={18} className="text-brand-500 animate-spin" />
+                    ) : (
+                      <span className="text-xs text-brand-600 font-medium">I-assign →</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
