@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Store, Product, Category, Announcement } from '@/lib/types';
 import {
-  Fish, MapPin, Star, Plus, ArrowRight, ShoppingBag, Bike, Store as StoreIcon,
+  MapPin, Star, Plus, ArrowRight, ShoppingBag, Bike, Store as StoreIcon,
   Truck, Shield, Clock, ChevronRight, Sparkles, TrendingUp, Megaphone,
 } from 'lucide-react';
 
@@ -89,9 +89,7 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
       {/* Desktop nav bar */}
       <nav className="hidden md:flex relative max-w-6xl mx-auto px-6 pt-6 pb-2 items-center justify-between gap-4">
         <div className="flex items-center gap-2 flex-shrink-0">
-          <div className="w-10 h-10 bg-white/15 backdrop-blur-sm rounded-xl flex items-center justify-center">
-            <Fish size={22} className="text-white" />
-          </div>
+          <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-10 h-10 rounded-xl object-cover" />
           <span className="text-xl font-bold text-white tracking-tight">GoPalengke</span>
         </div>
         {/* Announcement bar — same level as logo and sign-in/sign-up */}
@@ -117,9 +115,7 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
 
       {/* Mobile logo + announcement */}
       <div className="md:hidden relative px-5 pt-14 pb-2 flex items-center gap-2 animate-slide-in-left">
-        <div className="w-11 h-11 bg-white/15 backdrop-blur-sm rounded-2xl flex items-center justify-center flex-shrink-0">
-          <Fish size={26} className="text-white" />
-        </div>
+        <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-11 h-11 rounded-2xl object-cover flex-shrink-0" />
         <span className="text-2xl font-bold text-white tracking-tight flex-shrink-0">GoPalengke</span>
         {announcement && (
           <div className="flex-1 bg-amber-400/90 backdrop-blur-sm rounded-full overflow-hidden flex items-center gap-1.5 px-3 py-1">
@@ -535,7 +531,7 @@ function Footer() {
     <footer className="bg-gray-900 text-gray-400 px-5 py-8 md:py-12 text-center">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-center gap-2 mb-3">
-          <Fish size={20} className="text-brand-400" />
+          <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-7 h-7 rounded-lg object-cover" />
           <span className="text-lg font-bold text-white">GoPalengke</span>
         </div>
         <p className="text-sm">The First Online Wet Market in the Philippines</p>

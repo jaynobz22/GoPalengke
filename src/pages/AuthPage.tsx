@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import type { UserRole } from '@/lib/types';
-import { Fish, Store, Bike, ShoppingCart, ArrowLeft, Check } from 'lucide-react';
+import { Store, Bike, ShoppingCart, ArrowLeft, Check } from 'lucide-react';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
 
 const ROLES = [
@@ -66,9 +66,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
           </button>
         )}
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center">
-            <Fish className="text-white" size={22} />
-          </div>
+          <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-10 h-10 rounded-xl object-cover" />
           <span className="text-xl font-bold text-gray-800">GoPalengke</span>
         </div>
       </div>

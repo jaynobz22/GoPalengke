@@ -6,7 +6,7 @@ import { ImageUploadField } from '@/components/ImageUploadField';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
 import { AdminChat, getOrCreateAdminConversation } from '@/components/AdminChat';
 import {
-  Megaphone, Plus, Trash2, Power, Check, Loader2, Fish, LogOut,
+  Megaphone, Plus, Trash2, Power, Check, Loader2, LogOut,
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
   AlertCircle, X, UserCheck, UserX, DollarSign, TrendingUp, Receipt,
   Lock, Unlock, Video, MessageCircle, Shield,
@@ -68,9 +68,7 @@ export function AdminApp() {
       {/* Header */}
       <div className="bg-gray-900 text-white px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-            <Fish size={22} className="text-white" />
-          </div>
+          <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-10 h-10 rounded-xl object-cover" />
           <div>
             <p className="font-bold text-lg leading-tight">GoPalengke Admin</p>
             <p className="text-xs text-gray-400">{profile?.email}</p>

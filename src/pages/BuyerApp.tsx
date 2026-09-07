@@ -349,7 +349,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
       <div className="bg-gradient-to-br from-brand-600 to-brand-700 px-5 pt-12 pb-6 text-white">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Fish size={24} />
+            <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-8 h-8 rounded-lg object-cover" />
             <span className="text-xl font-bold">GoPalengke</span>
           </div>
           <button onClick={onSignOut} className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition">
