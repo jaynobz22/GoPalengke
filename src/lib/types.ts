@@ -15,6 +15,8 @@ export interface Profile {
   is_available: boolean;
   is_approved: boolean;
   is_active: boolean;
+  email_verified: boolean;
+  phone_verified: boolean;
   rider_age: number | null;
   rider_family_status: string | null;
   rider_residence_address: string | null;

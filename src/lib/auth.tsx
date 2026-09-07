@@ -7,10 +7,15 @@ interface AuthContextValue {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, role: UserRole, location: { barangay: string; district: string; city: string; region: string; phone: string }) => Promise<{ error: string | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, fullName: string, role: UserRole, location: { barangay: string; district: string; city: string; region: string; phone: string }) => Promise<{ error: string | null; userId?: string }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null; needsVerification?: boolean; userId?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  sendEmailOtp: (email: string) => Promise<{ error: string | null }>;
+  verifyEmailOtp: (email: string, token: string) => Promise<{ error: string | null }>;
+  sendPhoneOtp: (phone: string) => Promise<{ error: string | null }>;
+  verifyPhoneOtp: (phone: string, token: string) => Promise<{ error: string | null }>;
+  checkVerificationStatus: (userId: string) => Promise<{ emailVerified: boolean; phoneVerified: boolean }>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -57,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fullName: string,
     role: UserRole,
     location: { barangay: string; district: string; city: string; region: string; phone: string }
-  ): Promise<{ error: string | null }> {
+  ): Promise<{ error: string | null; userId?: string }> {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) return { error: error.message };
     if (!data.user) return { error: 'Hindi makapag-sign up. Subukan ulit.' };
@@ -72,17 +77,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       district: location.district || null,
       city: location.city || null,
       region: location.region || null,
+      email_verified: false,
+      phone_verified: false,
     });
 
     if (profileError) return { error: profileError.message };
-    await fetchProfile(data.user.id);
-    return { error: null };
+    return { error: null, userId: data.user.id };
   }
 
-  async function signIn(email: string, password: string): Promise<{ error: string | null }> {
+  async function signIn(email: string, password: string): Promise<{ error: string | null; needsVerification?: boolean; userId?: string }> {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
-    if (data.user) await fetchProfile(data.user.id);
+    if (!data.user) return { error: 'Hindi makapag-sign in. Subukan ulit.' };
+
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('email_verified, phone_verified')
+      .eq('id', data.user.id)
+      .maybeSingle();
+
+    const p = prof as { email_verified: boolean; phone_verified: boolean } | null;
+    if (p && (!p.email_verified || !p.phone_verified)) {
+      await supabase.auth.signOut();
+      return { error: null, needsVerification: true, userId: data.user.id };
+    }
+
+    await fetchProfile(data.user.id);
     return { error: null };
   }
 
@@ -96,8 +116,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (session?.user) await fetchProfile(session.user.id);
   }
 
+  async function sendEmailOtp(email: string): Promise<{ error: string | null }> {
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    if (error) return { error: error.message };
+    return { error: null };
+  }
+
+  async function verifyEmailOtp(email: string, token: string): Promise<{ error: string | null }> {
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+    if (error) return { error: error.message };
+
+    const userId = data.user?.id;
+    if (userId) {
+      await supabase.from('profiles').update({ email_verified: true }).eq('id', userId);
+    }
+    return { error: null };
+  }
+
+  async function sendPhoneOtp(phone: string): Promise<{ error: string | null }> {
+    const { error } = await supabase.auth.signInWithOtp({ phone, options: { shouldCreateUser: false } });
+    if (error) return { error: error.message };
+    return { error: null };
+  }
+
+  async function verifyPhoneOtp(phone: string, token: string): Promise<{ error: string | null }> {
+    const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: 'sms' });
+    if (error) return { error: error.message };
+
+    const userId = data.user?.id;
+    if (userId) {
+      await supabase.from('profiles').update({ phone_verified: true }).eq('id', userId);
+    }
+    return { error: null };
+  }
+
+  async function checkVerificationStatus(userId: string): Promise<{ emailVerified: boolean; phoneVerified: boolean }> {
+    const { data } = await supabase
+      .from('profiles')
+      .select('email_verified, phone_verified')
+      .eq('id', userId)
+      .maybeSingle();
+    const p = data as { email_verified: boolean; phone_verified: boolean } | null;
+    return {
+      emailVerified: p?.email_verified ?? false,
+      phoneVerified: p?.phone_verified ?? false,
+    };
+  }
+
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signUp, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ session, profile, loading, signUp, signIn, signOut, refreshProfile, sendEmailOtp, verifyEmailOtp, sendPhoneOtp, verifyPhoneOtp, checkVerificationStatus }}>
       {children}
     </AuthContext.Provider>
   );
