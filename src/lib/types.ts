@@ -113,6 +113,7 @@ export interface Order {
   rider_lat: number | null;
   rider_lng: number | null;
   picked_up_at: string | null;
+  delivery_group_id: string | null;
   created_at: string;
   updated_at: string;
   store?: Store;
