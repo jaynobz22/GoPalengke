@@ -26,7 +26,7 @@ import {
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, Bike, Store as StoreIcon,
   QrCode, Clock, Phone, Navigation, Filter, ShoppingBag, MessageCircle, Send,
   Share2, Copy, ExternalLink, Download, ImageOff, Bell, Timer, CheckCircle, LogOut,
-  Shield,
+  Shield, Info,
 } from 'lucide-react';
 
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
@@ -167,7 +167,7 @@ export function BuyerApp() {
           <BrowseView onProductClick={navigateToProduct} onStoreClick={navigateToStore} orderUpdates={orderUpdates} onOpenOrders={() => { setTab('orders'); setView('browse'); }} onSignOut={signOut} />
         )}
         {tab === 'home' && view === 'product' && selectedProduct && (
-          <ProductView product={selectedProduct} store={selectedStore!} onBack={() => { setView('store'); setSelectedProduct(null); }} onAddToCart={refreshCart} />
+          <ProductView product={selectedProduct} store={selectedStore!} onBack={() => { setView('store'); setSelectedProduct(null); }} onAddToCart={refreshCart} onGoToStore={(s, pid) => { setSelectedStore(s); setHighlightProductId(pid); setSelectedProduct(null); setView('store'); }} />
         )}
         {tab === 'home' && view === 'store' && selectedStore && (
           <StoreView store={selectedStore} highlightProductId={highlightProductId} onProductClick={(p) => navigateToProductDetail(p)} onBack={backToBrowse} />
@@ -678,12 +678,12 @@ function WheatIcon({ className }: { className?: string }) {
 }
 
 // ============= PRODUCT VIEW =============
-function ProductView({ product, store, onBack, onAddToCart }: { product: Product; store: Store; onBack: () => void; onAddToCart: () => void }) {
+function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { product: Product; store: Store; onBack: () => void; onAddToCart: () => void; onGoToStore: (store: Store, productId: string) => void }) {
   const { profile } = useAuth();
   const [quantity, setQuantity] = useState(1);
   const [adding, setAdding] = useState(false);
-  const [showConflictModal, setShowConflictModal] = useState(false);
-  const [conflictStoreName, setConflictStoreName] = useState('');
+  const [showReminder, setShowReminder] = useState(false);
+  const [reminderData, setReminderData] = useState<{ storeName: string; storeId: string; productId: string; productPrice: number } | null>(null);
 
   async function addToCart() {
     if (!profile) return;
@@ -691,16 +691,33 @@ function ProductView({ product, store, onBack, onAddToCart }: { product: Product
 
     const { data: otherItems } = await supabase
       .from('cart_items')
-      .select('id, store:stores(name)')
+      .select('store_id, store:stores(name)')
       .eq('buyer_id', profile.id)
       .neq('store_id', store.id);
 
     if (otherItems && otherItems.length > 0) {
-      const otherName = (otherItems[0].store as any)?.name || 'ibang tindahan';
-      setConflictStoreName(otherName);
-      setShowConflictModal(true);
-      setAdding(false);
-      return;
+      const otherStoreId = otherItems[0].store_id;
+      const otherStoreName = (otherItems[0].store as any)?.name || 'ibang tindahan';
+
+      const { data: matchingProduct } = await supabase
+        .from('products')
+        .select('id, name, price')
+        .eq('store_id', otherStoreId)
+        .eq('is_available', true)
+        .ilike('name', product.name)
+        .maybeSingle();
+
+      if (matchingProduct) {
+        setReminderData({
+          storeName: otherStoreName,
+          storeId: otherStoreId,
+          productId: matchingProduct.id,
+          productPrice: matchingProduct.price,
+        });
+        setShowReminder(true);
+        setAdding(false);
+        return;
+      }
     }
 
     await doAddToCart();
@@ -729,14 +746,6 @@ function ProductView({ product, store, onBack, onAddToCart }: { product: Product
     setAdding(false);
     onAddToCart();
     onBack();
-  }
-
-  async function confirmReplaceCart() {
-    if (!profile) return;
-    setShowConflictModal(false);
-    setAdding(true);
-    await supabase.from('cart_items').delete().eq('buyer_id', profile.id).neq('store_id', store.id);
-    await doAddToCart();
   }
 
   return (
@@ -805,30 +814,35 @@ function ProductView({ product, store, onBack, onAddToCart }: { product: Product
         )}
       </div>
 
-      {showConflictModal && (
+      {showReminder && reminderData && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end max-w-md mx-auto animate-fade-in">
           <div className="bg-white w-full rounded-t-3xl p-5 animate-slide-up">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                <ShoppingBag size={24} className="text-amber-600" />
+              <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
+                <Info size={24} className="text-brand-600" />
               </div>
               <div>
-                <h3 className="font-bold text-gray-800 text-lg">May cart items ka na mula sa {conflictStoreName}</h3>
-                <p className="text-sm text-gray-500 mt-0.5">Para mag-order sa {store.name}, mababakante ang cart mula sa {conflictStoreName}.</p>
+                <h3 className="font-bold text-gray-800 text-lg">May {product.name} din sa {reminderData.storeName}</h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  May cart items ka na mula sa {reminderData.storeName}. Available din doon ang {product.name}{reminderData.productPrice !== product.price ? ` sa ₱${reminderData.productPrice}` : ''}.
+                </p>
               </div>
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => setShowConflictModal(false)}
+                onClick={() => { setShowReminder(false); doAddToCart(); }}
                 className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 font-semibold active:scale-[0.98] transition"
               >
-                Huwag na
+                Magpatuloy dito
               </button>
               <button
-                onClick={confirmReplaceCart}
+                onClick={() => {
+                  setShowReminder(false);
+                  onGoToStore({ ...store, id: reminderData.storeId } as Store, reminderData.productId);
+                }}
                 className="flex-1 py-3.5 rounded-2xl bg-brand-600 text-white font-semibold active:scale-[0.98] transition"
               >
-                Palitan ang Cart
+                Tingnan sa {reminderData.storeName}
               </button>
             </div>
           </div>
