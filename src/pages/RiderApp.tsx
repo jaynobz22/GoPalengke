@@ -97,7 +97,7 @@ export function RiderApp() {
         {tab === 'profile' && <RiderProfile onSignOut={signOut} />}
 
         {showChat && activeConversationId && (
-          <div className="fixed inset-0 z-50 bg-gray-50 max-w-md mx-auto">
+          <div className="fixed inset-0 z-[60] bg-gray-50 max-w-md mx-auto">
             <ChatView
               conversationId={activeConversationId}
               otherName={chatPartnerName}

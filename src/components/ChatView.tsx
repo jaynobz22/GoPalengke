@@ -215,13 +215,13 @@ export function ChatView({
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSend} className="bg-white border-t border-gray-100 px-4 py-3 flex items-center gap-2 safe-bottom">
+      <form onSubmit={handleSend} className="bg-blue-50 border-t border-blue-100 px-4 py-3 flex items-center gap-2 safe-bottom">
         <input
           type="text"
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder="Mag-type ng mensahe..."
-          className="flex-1 px-4 py-2.5 rounded-full bg-gray-100 text-sm text-gray-800 placeholder-gray-400 outline-none focus:bg-white focus:ring-2 focus:ring-brand-200 transition"
+          className="flex-1 px-4 py-2.5 rounded-full bg-white text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-200 transition shadow-sm"
         />
         <button
           type="submit"
