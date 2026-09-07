@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
-type View = 'browse' | 'product' | 'store' | 'checkout' | 'order_detail' | 'chat';
+type View = 'browse' | 'product' | 'store' | 'checkout' | 'order_detail' | 'chat' | 'payment_summary';
 
 export function BuyerApp() {
   const { profile, signOut } = useAuth();
@@ -34,6 +34,7 @@ export function BuyerApp() {
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [cartRefresh, setCartRefresh] = useState(0);
+  const [paymentGroupOrders, setPaymentGroupOrders] = useState<Order[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [chatPartnerName, setChatPartnerName] = useState('');
   const [chatPartnerRole, setChatPartnerRole] = useState('');
@@ -157,7 +158,18 @@ export function BuyerApp() {
           <StoreView store={selectedStore} onProductClick={(p) => navigateToProduct(p, selectedStore)} onBack={backToBrowse} />
         )}
         {tab === 'home' && view === 'checkout' && (
-          <CheckoutView onBack={backToBrowse} onOrderPlaced={() => { setTab('orders'); setView('browse'); }} canAct={canAct} />
+          <CheckoutView onBack={backToBrowse} onOrderPlaced={(orders) => {
+            if (orders.length > 1) {
+              setPaymentGroupOrders(orders);
+              setView('payment_summary');
+            } else {
+              setTab('orders');
+              setView('browse');
+            }
+          }} canAct={canAct} />
+        )}
+        {tab === 'home' && view === 'payment_summary' && (
+          <PaymentSummaryView orders={paymentGroupOrders} onDone={() => { setTab('orders'); setView('browse'); }} onBack={backToBrowse} />
         )}
         {tab === 'home' && view === 'order_detail' && selectedOrder && (
           <OrderDetailView order={selectedOrder} onBack={backToBrowse} onOpenChat={openChat} />
@@ -947,7 +959,7 @@ function CartView({ onCheckout, refreshKey }: { onCheckout: () => void; refreshK
 }
 
 // ============= CHECKOUT VIEW =============
-function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; onOrderPlaced: () => void; canAct: boolean }) {
+function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; onOrderPlaced: (orders: Order[]) => void; canAct: boolean }) {
   const { profile } = useAuth();
   const [cartItems, setCartItems] = useState<(CartItem & { product: Product; store: Store })[]>([]);
   const [loading, setLoading] = useState(true);
@@ -978,6 +990,9 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
     if (!profile) return;
     setPlacing(true);
 
+    const groupId = crypto.randomUUID();
+    const createdOrders: Order[] = [];
+
     for (const [storeId, items] of Object.entries(grouped)) {
       const store = items[0].store;
       const total = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
@@ -1005,9 +1020,11 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
         delivery_address: fullAddress,
         buyer_note: note || null,
         commission_amount: commissionAmount,
+        delivery_group_id: groupId,
       }).select('*').single();
 
       if (error) { setPlacing(false); return; }
+      createdOrders.push(order as Order);
 
       const orderItems = items.map(i => ({
         order_id: order.id,
@@ -1024,7 +1041,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
     }
 
     setPlacing(false);
-    onOrderPlaced();
+    onOrderPlaced(createdOrders);
   }
 
   if (loading) return <div className="p-5"><div className="h-40 bg-gray-100 rounded-2xl animate-pulse" /></div>;
@@ -1161,6 +1178,198 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   );
 }
 
+// ============= PAYMENT SUMMARY VIEW =============
+function PaymentSummaryView({ orders, onDone, onBack }: { orders: Order[]; onDone: () => void; onBack: () => void }) {
+  const { profile } = useAuth();
+  const [stores, setStores] = useState<Record<string, Store>>({});
+  const [paymentRefs, setPaymentRefs] = useState<Record<string, string>>({});
+  const [paidStatus, setPaidStatus] = useState<Record<string, boolean>>({});
+  const [submitting, setSubmitting] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadStores() {
+      const storeIds = [...new Set(orders.map(o => o.store_id))];
+      const { data } = await supabase.from('stores').select('*').in('id', storeIds);
+      const map: Record<string, Store> = {};
+      (data || []).forEach((s: any) => { map[s.id] = s; });
+      setStores(map);
+    }
+    loadStores();
+  }, [orders]);
+
+  // Subscribe to order updates to reflect payment_status changes
+  useEffect(() => {
+    const orderIds = orders.map(o => o.id);
+    if (orderIds.length === 0) return;
+    const sub = supabase.channel('payment-summary')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload: any) => {
+        if (payload.new && orderIds.includes(payload.new.id)) {
+          setPaidStatus(prev => ({ ...prev, [payload.new.id]: payload.new.payment_status === 'paid' }));
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [orders]);
+
+  const isQR = orders.every(o => o.payment_method === 'qr_code');
+  const paidCount = orders.filter(o => paidStatus[o.id] || o.payment_status === 'paid').length;
+  const allPaid = paidCount === orders.length;
+
+  async function markPaid(orderId: string) {
+    setSubmitting(orderId);
+    await supabase.from('orders').update({
+      payment_status: 'paid',
+      payment_reference: paymentRefs[orderId]?.trim() || null,
+    }).eq('id', orderId);
+    setPaidStatus(prev => ({ ...prev, [orderId]: true }));
+    setSubmitting(null);
+  }
+
+  return (
+    <div className="px-5 py-4 pb-8">
+      <div className="flex items-center gap-3 mb-4">
+        <button onClick={onBack} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
+          <ArrowLeft size={20} className="text-gray-600" />
+        </button>
+        <h2 className="text-xl font-bold text-gray-800">Payment Summary</h2>
+      </div>
+
+      {/* Progress */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-gray-700">{paidCount} ng {orders.length} tindahan ang nabayaran</span>
+          <span className="text-sm font-bold text-brand-600">{Math.round((paidCount / orders.length) * 100)}%</span>
+        </div>
+        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-full bg-green-500 rounded-full transition-all duration-500" style={{ width: `${(paidCount / orders.length) * 100}%` }} />
+        </div>
+        <p className="text-xs text-gray-400 mt-2">
+          {allPaid ? 'Nabayaran na lahat! Pwede mo na itong i-view sa Orders tab.' : 'Magbayad sa bawat tindahan gamit ang kanilang QR code, tapos i-mark bilang paid.'}
+        </p>
+      </div>
+
+      {/* Per-store payment cards */}
+      {orders.map((order) => {
+        const store = stores[order.store_id];
+        const isPaid = paidStatus[order.id] || order.payment_status === 'paid';
+        const amount = order.total + order.delivery_fee;
+
+        return (
+          <div key={order.id} className={`bg-white rounded-2xl border-2 p-4 mb-3 transition ${isPaid ? 'border-green-300 bg-green-50/30' : 'border-gray-100'}`}>
+            {/* Store header */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center">
+                  <StoreIcon size={16} className="text-brand-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm text-gray-800">{store?.name || 'Tindahan'}</p>
+                  {store?.palengke_name && <p className="text-xs text-brand-600">{store.palengke_name}</p>}
+                </div>
+              </div>
+              {isPaid ? (
+                <span className="text-xs font-bold text-green-700 bg-green-100 px-3 py-1 rounded-full flex items-center gap-1">
+                  <Check size={14} /> Nabayaran na
+                </span>
+              ) : (
+                <span className="text-xs font-medium text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+                  Pending
+                </span>
+              )}
+            </div>
+
+            {/* Amount */}
+            <div className="flex justify-between items-center py-2 border-t border-gray-50">
+              <span className="text-sm text-gray-500">Amount to pay</span>
+              <span className="text-lg font-bold text-gray-800">₱{amount.toFixed(2)}</span>
+            </div>
+
+            {/* QR Code section - only for QR payments */}
+            {isQR && !isPaid && store?.qr_code_url && (
+              <div className="mt-3">
+                {/* QR Code Image */}
+                <div className="bg-gray-50 rounded-xl p-4 flex justify-center">
+                  <img src={store.qr_code_url} alt={`QR Code ng ${store.name}`} loading="lazy" decoding="async" className="w-40 h-40 rounded-xl object-contain" />
+                </div>
+
+                {/* Download button */}
+                <button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(store.qr_code_url!);
+                      const blob = await response.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `qr-code-${store.name.replace(/\s+/g, '-').toLowerCase()}.png`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    } catch {
+                      window.open(store.qr_code_url!, '_blank');
+                    }
+                  }}
+                  className="w-full mt-3 py-2.5 bg-brand-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
+                >
+                  <Download size={16} /> I-download ang QR Code
+                </button>
+
+                {/* Reference number input */}
+                <div className="mt-3">
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">Payment Reference Number</label>
+                  <input
+                    type="text"
+                    value={paymentRefs[order.id] || ''}
+                    onChange={(e) => setPaymentRefs(prev => ({ ...prev, [order.id]: e.target.value }))}
+                    placeholder="Hal. 1234567890 o Gcash Ref#"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 transition mb-2"
+                  />
+                  <button
+                    onClick={() => markPaid(order.id)}
+                    disabled={submitting === order.id}
+                    className="w-full py-2.5 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50"
+                  >
+                    <Check size={16} /> {submitting === order.id ? 'Nagse-send...' : 'Naka-bayad na Ako'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* QR code not uploaded */}
+            {isQR && !isPaid && !store?.qr_code_url && (
+              <div className="mt-3 flex items-center gap-2 text-sm text-gray-500 bg-amber-50 rounded-xl p-3">
+                <ImageOff size={16} className="text-amber-500 flex-shrink-0" />
+                <p>Wala pang QR code ang tindahan na ito. Makipag-ugnayan sa seller via chat.</p>
+              </div>
+            )}
+
+            {/* COD note */}
+            {!isQR && !isPaid && (
+              <div className="mt-3 flex items-center gap-2 text-sm text-amber-600 bg-amber-50 rounded-xl p-3">
+                <Package size={16} className="text-amber-500 flex-shrink-0" />
+                <p>Cash on Delivery — maghanda ng <strong>₱{amount.toFixed(2)}</strong> para sa rider.</p>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Done button */}
+      <button
+        onClick={onDone}
+        className={`w-full py-4 rounded-2xl font-semibold text-lg shadow-lg active:scale-[0.98] transition ${
+          allPaid
+            ? 'bg-green-600 text-white shadow-green-600/20'
+            : 'bg-brand-600 text-white shadow-brand-600/20'
+        }`}
+      >
+        {allPaid ? 'Tapos na — Pumunta sa Orders' : 'Pumunta sa Orders'}
+      </button>
+    </div>
+  );
+}
+
 // ============= ORDERS VIEW =============
 function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
   const { profile } = useAuth();
@@ -1194,6 +1403,18 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
   if (loading) return <div className="p-5"><div className="h-32 bg-gray-100 rounded-2xl animate-pulse" /></div>;
 
   const displayed = subTab === 'active' ? activeOrders : historyOrders;
+
+  // Group orders by delivery_group_id; ungrouped orders (null) stay as individual items
+  const grouped: { key: string; orders: (Order & { store: Store })[] }[] = [];
+  const groupMap = new Map<string, (Order & { store: Store })[]>();
+  for (const order of displayed) {
+    const gid = order.delivery_group_id || order.id;
+    if (!groupMap.has(gid)) groupMap.set(gid, []);
+    groupMap.get(gid)!.push(order);
+  }
+  for (const [key, groupOrders] of groupMap) {
+    grouped.push({ key, orders: groupOrders });
+  }
 
   return (
     <div className="px-5 py-4">
@@ -1254,42 +1475,99 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
         </div>
       ) : (
         <div className="space-y-3">
-          {displayed.map(order => {
-            const isActive = activeStatuses.includes(order.status);
+          {grouped.map(group => {
+            const isMulti = group.orders.length > 1;
+            const firstOrder = group.orders[0];
+            const isActive = activeStatuses.includes(firstOrder.status);
+            const totalAmount = group.orders.reduce((sum, o) => sum + o.total + o.delivery_fee, 0);
+            const allSameStatus = group.orders.every(o => o.status === firstOrder.status);
+            const displayStatus = allSameStatus ? firstOrder.status : 'pending';
+            const anyRiderPickedUp = group.orders.some(o => o.rider_id && o.status === 'picked_up');
+
+            if (!isMulti) {
+              const order = firstOrder;
+              return (
+                <button
+                  key={group.key}
+                  onClick={() => onOrderClick(order)}
+                  className={`w-full rounded-2xl border p-4 text-left active:scale-[0.98] transition ${
+                    isActive ? 'bg-red-50 border-red-300 shadow-sm' : 'bg-white border-gray-100'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="font-semibold text-gray-800">{order.store.name}</p>
+                      <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isActive && order.status === 'pending' && (
+                        <span className="text-[10px] font-bold text-white bg-amber-500 px-2 py-0.5 rounded-full">BAGO</span>
+                      )}
+                      <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
+                        {ORDER_STATUS_LABELS[order.status]}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">₱{(order.total + order.delivery_fee).toFixed(0)}</span>
+                      {order.rider_id && order.status === 'picked_up' && (
+                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Bike size={10} /> Paparating na
+                        </span>
+                      )}
+                    </div>
+                    <ChevronRight size={18} className="text-gray-300" />
+                  </div>
+                </button>
+              );
+            }
+
+            // Multi-store grouped card
             return (
-            <button
-              key={order.id}
-              onClick={() => onOrderClick(order)}
-              className={`w-full rounded-2xl border p-4 text-left active:scale-[0.98] transition ${
-                isActive ? 'bg-red-50 border-red-300 shadow-sm' : 'bg-white border-gray-100'
-              }`}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="font-semibold text-gray-800">{order.store.name}</p>
-                  <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {isActive && order.status === 'pending' && (
-                    <span className="text-[10px] font-bold text-white bg-amber-500 px-2 py-0.5 rounded-full">BAGO</span>
-                  )}
-                  <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
-                    {ORDER_STATUS_LABELS[order.status]}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">₱{(order.total + order.delivery_fee).toFixed(0)}</span>
-                  {order.rider_id && order.status === 'picked_up' && (
-                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Bike size={10} /> Paparating na
+              <button
+                key={group.key}
+                onClick={() => onOrderClick(firstOrder)}
+                className={`w-full rounded-2xl border p-4 text-left active:scale-[0.98] transition ${
+                  isActive ? 'bg-red-50 border-red-300 shadow-sm' : 'bg-white border-gray-100'
+                }`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-bold text-white bg-brand-500 px-2 py-0.5 rounded-full">MULTI-STORE</span>
+                      <span className="text-xs text-gray-400">{group.orders.length} tindahan</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {group.orders.map((o, i) => (
+                        <span key={o.id} className="text-xs text-gray-600 font-medium">
+                          {o.store.name}{i < group.orders.length - 1 ? ',' : ''}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">{new Date(firstOrder.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isActive && displayStatus === 'pending' && (
+                      <span className="text-[10px] font-bold text-white bg-amber-500 px-2 py-0.5 rounded-full">BAGO</span>
+                    )}
+                    <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[displayStatus]}`}>
+                      {ORDER_STATUS_LABELS[displayStatus]}
                     </span>
-                  )}
+                  </div>
                 </div>
-                <ChevronRight size={18} className="text-gray-300" />
-              </div>
-            </button>
+                <div className="flex items-center justify-between mt-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">₱{totalAmount.toFixed(0)}</span>
+                    {anyRiderPickedUp && (
+                      <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Bike size={10} /> Paparating na
+                      </span>
+                    )}
+                  </div>
+                  <ChevronRight size={18} className="text-gray-300" />
+                </div>
+              </button>
             );
           })}
         </div>
@@ -1307,12 +1585,19 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
   const [currentOrder, setCurrentOrder] = useState(order);
   const [paymentRef, setPaymentRef] = useState(order.payment_reference || '');
   const [submitting, setSubmitting] = useState(false);
+  const [siblingOrders, setSiblingOrders] = useState<(Order & { store: Store })[]>([]);
 
   useEffect(() => {
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
     supabase.from('stores').select('*').eq('id', order.store_id).maybeSingle().then(({ data }) => setStore(data as Store | null));
     if (order.rider_id) {
       supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', order.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
+    }
+
+    // Load sibling orders in the same delivery group
+    if (order.delivery_group_id) {
+      supabase.from('orders').select('*, store:stores(*)').eq('delivery_group_id', order.delivery_group_id).neq('id', order.id)
+        .then(({ data }) => { setSiblingOrders((data || []) as any); });
     }
 
     const sub = supabase.channel(`order-${order.id}`)
@@ -1322,7 +1607,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
       .subscribe();
 
     return () => { supabase.removeChannel(sub); };
-  }, [order.id]);
+  }, [order.id, order.delivery_group_id]);
 
   const isBuyer = profile?.id === currentOrder.buyer_id;
 
@@ -1599,6 +1884,49 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
           </div>
         )}
       </div>
+
+      {/* Sibling stores in the same delivery group */}
+      {siblingOrders.length > 0 && (
+        <div className="bg-white rounded-2xl border border-brand-200 p-4 mb-3">
+          <div className="flex items-center gap-2 mb-3">
+            <StoreIcon size={16} className="text-brand-600" />
+            <span className="font-semibold text-gray-800 text-sm">Ibang tindahan sa order na ito</span>
+            <span className="text-[10px] font-bold text-white bg-brand-500 px-2 py-0.5 rounded-full">MULTI-STORE</span>
+          </div>
+          {siblingOrders.map(sib => {
+            const sibAmount = sib.total + sib.delivery_fee;
+            const isPaid = sib.payment_status === 'paid';
+            return (
+              <div key={sib.id} className="flex items-center justify-between py-2 border-t border-gray-50">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
+                    <StoreIcon size={14} className="text-brand-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{sib.store.name}</p>
+                    <p className="text-xs text-gray-400">₱{sibAmount.toFixed(0)}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {sib.payment_method === 'qr_code' && sib.store.qr_code_url && !isPaid && (
+                    <a href={sib.store.qr_code_url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 font-medium">
+                      <QrCode size={16} className="inline" /> QR
+                    </a>
+                  )}
+                  <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[sib.status]}`}>
+                    {ORDER_STATUS_LABELS[sib.status]}
+                  </span>
+                  {isPaid ? (
+                    <span className="text-xs text-green-600 font-medium">Paid</span>
+                  ) : (
+                    <span className="text-xs text-amber-600 font-medium">Pending</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Leave a Review - only for delivered orders */}
       {isBuyer && currentOrder.status === 'delivered' && (

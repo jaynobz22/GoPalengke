@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import type { Order, OrderItem, Store, OrderStatus, Conversation, AdminConversation } from '@/lib/types';
+import type { Order, OrderItem, Store, Conversation, AdminConversation } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { estimateDistanceKm, computeDeliveryFee, PER_KM_RATE, BASE_DELIVERY_FEE } from '@/lib/deliveryFee';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
@@ -155,6 +155,17 @@ export function RiderApp() {
   );
 }
 
+// Helper: group orders by delivery_group_id (or individual if null)
+function groupOrders(orders: (Order & { store: Store; buyer: { full_name: string } })[]) {
+  const map = new Map<string, (Order & { store: Store; buyer: { full_name: string } })[]>();
+  for (const order of orders) {
+    const key = order.delivery_group_id || order.id;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(order);
+  }
+  return Array.from(map.entries()).map(([key, orders]) => ({ key, orders }));
+}
+
 // ============= DELIVERIES =============
 function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o: Order) => void; canAct: boolean; onSignOut: () => void }) {
   const { profile } = useAuth();
@@ -205,11 +216,20 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
 
   async function acceptOrder(order: Order) {
     if (!profile) return;
-    await supabase.from('orders').update({
-      rider_id: profile.id,
-      status: 'picked_up',
-      picked_up_at: new Date().toISOString(),
-    }).eq('id', order.id);
+    // If this order is part of a delivery group, accept all sibling orders too
+    if (order.delivery_group_id) {
+      await supabase.from('orders').update({
+        rider_id: profile.id,
+        status: 'picked_up',
+        picked_up_at: new Date().toISOString(),
+      }).eq('delivery_group_id', order.delivery_group_id);
+    } else {
+      await supabase.from('orders').update({
+        rider_id: profile.id,
+        status: 'picked_up',
+        picked_up_at: new Date().toISOString(),
+      }).eq('id', order.id);
+    }
     load();
   }
 
@@ -274,27 +294,55 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
           </div>
         ) : (
           <div className="space-y-2">
-            {myOrders.map(order => (
-              <button key={order.id} onClick={() => onOrderClick(order)}
-                className="w-full bg-white rounded-2xl border border-blue-200 p-4 text-left active:scale-[0.98] transition">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-semibold text-gray-800">{order.buyer?.full_name || 'Buyer'}</p>
-                  <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
-                    {ORDER_STATUS_LABELS[order.status]}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                  <StoreIcon size={14} /><span>{order.store.name}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <MapPin size={14} /><span>{order.delivery_barangay}, {order.delivery_city}</span>
-                </div>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-sm text-gray-400">₱{order.delivery_fee.toFixed(0)} ang fee</span>
-                  <span className="text-xs text-blue-600 font-medium">Tignan ang details →</span>
-                </div>
-              </button>
-            ))}
+            {(() => {
+              const groups = groupOrders(myOrders);
+              return groups.map(group => {
+                const isMulti = group.orders.length > 1;
+                const first = group.orders[0];
+                const totalFee = group.orders.reduce((s, o) => s + o.delivery_fee, 0);
+                return (
+                  <button key={group.key} onClick={() => onOrderClick(first)}
+                    className="w-full bg-white rounded-2xl border border-blue-200 p-4 text-left active:scale-[0.98] transition">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-gray-800">{first.buyer?.full_name || 'Buyer'}</p>
+                        {isMulti && (
+                          <span className="text-[10px] font-bold text-white bg-brand-500 px-2 py-0.5 rounded-full">MULTI-PICKUP</span>
+                        )}
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[first.status]}`}>
+                        {ORDER_STATUS_LABELS[first.status]}
+                      </span>
+                    </div>
+                    {isMulti ? (
+                      <>
+                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+                          <StoreIcon size={14} /><span>{group.orders.length} tindahan:</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1 mb-1">
+                          {group.orders.map((o, i) => (
+                            <span key={o.id} className="text-xs text-gray-600 font-medium">
+                              {o.store.name}{i < group.orders.length - 1 ? ',' : ''}
+                            </span>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+                        <StoreIcon size={14} /><span>{first.store.name}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <MapPin size={14} /><span>{first.delivery_barangay}, {first.delivery_city}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-sm text-gray-400">₱{totalFee.toFixed(0)} ang fee</span>
+                      <span className="text-xs text-blue-600 font-medium">Tignan ang details →</span>
+                    </div>
+                  </button>
+                );
+              });
+            })()}
           </div>
         )}
       </div>
@@ -307,31 +355,61 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
             Para Sa'yo (Ini-assign ng Seller)
           </h2>
           <div className="space-y-2">
-            {assignedOrders.map(order => (
-              <div key={order.id} className="bg-white rounded-2xl border-2 border-brand-300 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-semibold text-gray-800">{order.buyer?.full_name || 'Buyer'}</p>
-                  <span className="text-xs text-gray-400">{new Date(order.created_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                  <StoreIcon size={14} /><span>{order.store.name}</span>
-                  <MapPin size={14} /><span>{order.store.barangay}, {order.store.city}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-                  <Navigation size={14} /><span>Deliver to: {order.delivery_barangay}, {order.delivery_city}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-400">Delivery fee</p>
-                    <p className="font-bold text-blue-600">₱{order.delivery_fee.toFixed(0)}</p>
+            {(() => {
+              const groups = groupOrders(assignedOrders);
+              return groups.map(group => {
+                const isMulti = group.orders.length > 1;
+                const first = group.orders[0];
+                const totalFee = group.orders.reduce((s, o) => s + o.delivery_fee, 0);
+                return (
+                  <div key={group.key} className="bg-white rounded-2xl border-2 border-brand-300 p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-gray-800">{first.buyer?.full_name || 'Buyer'}</p>
+                        {isMulti && (
+                          <span className="text-[10px] font-bold text-white bg-brand-500 px-2 py-0.5 rounded-full">MULTI-PICKUP</span>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-400">{new Date(first.created_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}</span>
+                    </div>
+                    {isMulti ? (
+                      <>
+                        <div className="flex flex-wrap gap-1 mb-1">
+                          {group.orders.map((o, i) => (
+                            <span key={o.id} className="text-xs text-gray-600 font-medium">
+                              {o.store.name}{i < group.orders.length - 1 ? ',' : ''}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+                          <MapPin size={14} /><span>{first.store.barangay}, {first.store.city}</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+                          <StoreIcon size={14} /><span>{first.store.name}</span>
+                          <MapPin size={14} /><span>{first.store.barangay}, {first.store.city}</span>
+                        </div>
+                      </>
+                    )}
+                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                      <Navigation size={14} /><span>Deliver to: {first.delivery_barangay}, {first.delivery_city}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-400">Delivery fee</p>
+                        <p className="font-bold text-blue-600">₱{totalFee.toFixed(0)}</p>
+                      </div>
+                      <button onClick={() => acceptOrder(first)} disabled={!canAct}
+                        className="px-6 py-2.5 bg-brand-600 text-white rounded-xl font-semibold active:scale-95 transition disabled:opacity-50">
+                        Tanggapin
+                      </button>
+                    </div>
                   </div>
-                  <button onClick={() => acceptOrder(order)} disabled={!canAct}
-                    className="px-6 py-2.5 bg-brand-600 text-white rounded-xl font-semibold active:scale-95 transition disabled:opacity-50">
-                    Tanggapin
-                  </button>
-                </div>
-              </div>
-            ))}
+                );
+              });
+            })()}
           </div>
         </div>
       )}
@@ -347,31 +425,59 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
             </div>
           ) : (
             <div className="space-y-2">
-              {availableOrders.map(order => (
-                <div key={order.id} className="bg-white rounded-2xl border border-gray-100 p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-semibold text-gray-800">{order.buyer?.full_name || 'Buyer'}</p>
-                    <span className="text-xs text-gray-400">{new Date(order.created_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                    <StoreIcon size={14} /><span>{order.store.name}</span>
-                    <MapPin size={14} /><span>{order.store.barangay}, {order.store.city}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-                    <Navigation size={14} /><span>Deliver to: {order.delivery_barangay}, {order.delivery_city}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-400">Delivery fee</p>
-                      <p className="font-bold text-blue-600">₱{order.delivery_fee.toFixed(0)}</p>
+              {(() => {
+                const groups = groupOrders(availableOrders);
+                return groups.map(group => {
+                  const isMulti = group.orders.length > 1;
+                  const first = group.orders[0];
+                  const totalFee = group.orders.reduce((s, o) => s + o.delivery_fee, 0);
+                  return (
+                    <div key={group.key} className="bg-white rounded-2xl border border-gray-100 p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-gray-800">{first.buyer?.full_name || 'Buyer'}</p>
+                          {isMulti && (
+                            <span className="text-[10px] font-bold text-white bg-brand-500 px-2 py-0.5 rounded-full">MULTI-PICKUP</span>
+                          )}
+                        </div>
+                        <span className="text-xs text-gray-400">{new Date(first.created_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}</span>
+                      </div>
+                      {isMulti ? (
+                        <>
+                          <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+                            <StoreIcon size={14} /><span>{group.orders.length} tindahan:</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1 mb-1">
+                            {group.orders.map((o, i) => (
+                              <span key={o.id} className="text-xs text-gray-600 font-medium">
+                                {o.store.name}{i < group.orders.length - 1 ? ',' : ''}
+                              </span>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
+                          <StoreIcon size={14} /><span>{first.store.name}</span>
+                          <MapPin size={14} /><span>{first.store.barangay}, {first.store.city}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                        <Navigation size={14} /><span>Deliver to: {first.delivery_barangay}, {first.delivery_city}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-400">Delivery fee</p>
+                          <p className="font-bold text-blue-600">₱{totalFee.toFixed(0)}</p>
+                        </div>
+                        <button onClick={() => acceptOrder(first)} disabled={!canAct}
+                          className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold active:scale-95 transition disabled:opacity-50">
+                          Tanggapin
+                        </button>
+                      </div>
                     </div>
-                    <button onClick={() => acceptOrder(order)} disabled={!canAct}
-                      className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold active:scale-95 transition disabled:opacity-50">
-                      Tanggapin
-                    </button>
-                  </div>
-                </div>
-              ))}
+                  );
+                });
+              })()}
             </div>
           )}
         </div>
@@ -391,11 +497,19 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [gpsActive, setGpsActive] = useState(false);
   const watchIdRef = useRef<number | null>(null);
+  const [siblingOrders, setSiblingOrders] = useState<(Order & { store: Store })[]>([]);
+  const [pickedUpStores, setPickedUpStores] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
     supabase.from('stores').select('*').eq('id', order.store_id).maybeSingle().then(({ data }) => setStore(data as Store | null));
     supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', order.buyer_id).maybeSingle().then(({ data }) => setBuyer(data as any));
+
+    // Load sibling orders in the same delivery group
+    if (order.delivery_group_id) {
+      supabase.from('orders').select('*, store:stores(*)').eq('delivery_group_id', order.delivery_group_id)
+        .then(({ data }) => { setSiblingOrders((data || []) as any); });
+    }
 
     const sub = supabase.channel(`rider-order-${order.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${order.id}` }, (payload: any) => {
@@ -403,9 +517,9 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
       })
       .subscribe();
     return () => { supabase.removeChannel(sub); };
-  }, [order.id]);
+  }, [order.id, order.delivery_group_id]);
 
-  // Start GPS tracking when order is picked_up
+  // GPS tracking: update all orders in the delivery group
   useEffect(() => {
     if (currentOrder.status !== 'picked_up' || !profile) return;
 
@@ -416,7 +530,12 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
-          supabase.from('orders').update({ rider_lat: lat, rider_lng: lng }).eq('id', currentOrder.id);
+          // Update current order and all siblings in the group
+          if (currentOrder.delivery_group_id) {
+            supabase.from('orders').update({ rider_lat: lat, rider_lng: lng }).eq('delivery_group_id', currentOrder.delivery_group_id);
+          } else {
+            supabase.from('orders').update({ rider_lat: lat, rider_lng: lng }).eq('id', currentOrder.id);
+          }
         },
         () => { setGpsActive(false); },
         { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
@@ -430,7 +549,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
       }
       setGpsActive(false);
     };
-  }, [currentOrder.status, currentOrder.id, profile]);
+  }, [currentOrder.status, currentOrder.id, currentOrder.delivery_group_id, profile]);
 
   // Countdown timer
   useEffect(() => {
@@ -445,11 +564,21 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
 
   async function markDelivered() {
     setUpdating(true);
-    const { error } = await supabase.from('orders').update({ status: 'delivered', rider_lat: null, rider_lng: null }).eq('id', currentOrder.id);
-    setUpdating(false);
-    if (error) {
-      alert('Hindi ma-update ang status. Subukan ulit.');
-      return;
+    // If part of a delivery group, mark all sibling orders as delivered too
+    if (currentOrder.delivery_group_id) {
+      const { error } = await supabase.from('orders').update({ status: 'delivered', rider_lat: null, rider_lng: null }).eq('delivery_group_id', currentOrder.delivery_group_id);
+      setUpdating(false);
+      if (error) {
+        alert('Hindi ma-update ang status. Subukan ulit.');
+        return;
+      }
+    } else {
+      const { error } = await supabase.from('orders').update({ status: 'delivered', rider_lat: null, rider_lng: null }).eq('id', currentOrder.id);
+      setUpdating(false);
+      if (error) {
+        alert('Hindi ma-update ang status. Subukan ulit.');
+        return;
+      }
     }
     setCurrentOrder(prev => ({ ...prev, status: 'delivered' }));
     onBack();
@@ -465,6 +594,15 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const remainingMin = Math.floor(remainingSeconds / 60);
   const remainingSec = remainingSeconds % 60;
   const isOverdue = elapsedSeconds > estimatedTotalSeconds;
+
+  const allStores: { order: Order & { store: Store } }[] = [
+    { order: { ...currentOrder, store: store! } },
+    ...siblingOrders.map(s => ({ order: s })),
+  ].filter(s => s.order.store);
+  const allPickupStoreIds = allStores.map(s => s.order.store_id);
+  const allPickedUp = allPickupStoreIds.every(id => pickedUpStores.has(id));
+  const totalFee = allStores.reduce((s, o) => s + o.order.delivery_fee, 0);
+  const totalAmount = allStores.reduce((s, o) => s + o.order.total + o.order.delivery_fee, 0);
 
   return (
     <div className="px-5 py-4">
@@ -512,25 +650,45 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
         <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
           <NavIcon size={18} className="text-blue-600" /> Route
+          {siblingOrders.length > 0 && (
+            <span className="text-[10px] font-bold text-white bg-brand-500 px-2 py-0.5 rounded-full">MULTI-PICKUP</span>
+          )}
         </h3>
-        {/* Pickup */}
-        {store && (
-          <div className="flex items-start gap-3 mb-3">
-            <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <StoreIcon size={16} className="text-brand-600" />
+        {/* Pickup points */}
+        {allStores.map((s, idx) => {
+          const isPickedUp = pickedUpStores.has(s.order.store_id);
+          const storeData = s.order.store;
+          return (
+            <div key={s.order.id}>
+              <div className="flex items-start gap-3 mb-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${isPickedUp ? 'bg-green-100' : 'bg-brand-100'}`}>
+                  {isPickedUp ? <Check size={16} className="text-green-600" /> : <StoreIcon size={16} className="text-brand-600" />}
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-gray-400 font-medium">PICKUP {allStores.length > 1 ? `${idx + 1} ng ${allStores.length}` : ''}</p>
+                  <p className="font-semibold text-sm text-gray-800">{storeData.name}</p>
+                  <p className="text-sm text-gray-500">{storeData.barangay}, {storeData.city}, {storeData.region}</p>
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeData.name + ' ' + storeData.barangay + ' ' + storeData.city + ' ' + storeData.region)}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-blue-600 mt-1">
+                    <MapPin size={12} /> Buksan sa Google Maps
+                  </a>
+                  {currentOrder.status === 'picked_up' && !isPickedUp && (
+                    <button
+                      onClick={() => {
+                        setPickedUpStores(prev => new Set(prev).add(s.order.store_id));
+                      }}
+                      className="mt-2 px-4 py-2 bg-brand-600 text-white rounded-lg text-xs font-semibold active:scale-95 transition"
+                    >
+                      Nakuha ko na dito
+                    </button>
+                  )}
+                </div>
+              </div>
+              {idx < allStores.length - 1 && <div className="ml-4 w-0.5 h-6 bg-gray-200 mb-1" />}
             </div>
-            <div className="flex-1">
-              <p className="text-xs text-gray-400 font-medium">PICKUP</p>
-              <p className="font-semibold text-sm text-gray-800">{store.name}</p>
-              <p className="text-sm text-gray-500">{store.barangay}, {store.city}, {store.region}</p>
-              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.name + ' ' + store.barangay + ' ' + store.city + ' ' + store.region)}`}
-                target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-blue-600 mt-1">
-                <MapPin size={12} /> Buksan sa Google Maps
-              </a>
-            </div>
-          </div>
-        )}
+          );
+        })}
         {/* Connector line */}
         <div className="ml-4 w-0.5 h-6 bg-gray-200 mb-1" />
         {/* Dropoff */}
@@ -609,12 +767,26 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
             <p className="font-semibold text-sm text-gray-700">₱{(item.price * item.quantity).toFixed(0)}</p>
           </div>
         ))}
+        {siblingOrders.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-gray-50">
+            <p className="text-xs font-medium text-gray-400 mb-2">Iba pang tindahan sa order na ito:</p>
+            {siblingOrders.map(sib => (
+              <div key={sib.id} className="flex items-center justify-between py-1">
+                <div className="flex items-center gap-2">
+                  <StoreIcon size={14} className="text-gray-400" />
+                  <span className="text-sm text-gray-600">{sib.store.name}</span>
+                </div>
+                <span className="text-sm text-gray-500">₱{sib.total.toFixed(0)}</span>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="pt-2 border-t border-gray-100 mt-2">
           <div className="flex justify-between font-bold text-gray-800">
-            <span>Total (incl. delivery)</span><span>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</span>
+            <span>Total (incl. delivery)</span><span>₱{totalAmount.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm text-blue-600 mt-1">
-            <span>Iyong kita (delivery fee)</span><span>₱{currentOrder.delivery_fee.toFixed(2)}</span>
+            <span>Iyong kita (delivery fee)</span><span>₱{totalFee.toFixed(2)}</span>
           </div>
         </div>
       </div>
@@ -626,16 +798,22 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           {currentOrder.payment_method === 'qr_code' ? 'QR Code (GCash/Maya)' : 'Cash on Delivery'}
         </p>
         {currentOrder.payment_method === 'cod' && (
-          <p className="text-xs text-amber-600 mt-1">Kolektahin ang ₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)} sa buyer</p>
+          <p className="text-xs text-amber-600 mt-1">Kolektahin ang ₱{totalAmount.toFixed(2)} sa buyer</p>
         )}
       </div>
 
       {/* Action */}
       {currentOrder.status === 'picked_up' && (
-        <button onClick={markDelivered} disabled={updating}
-          className="w-full py-4 bg-blue-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-blue-600/20 active:scale-[0.98] transition disabled:opacity-50">
-          {updating ? 'Nag-uupdate...' : 'Mark as Delivered'}
-        </button>
+        allPickedUp ? (
+          <button onClick={markDelivered} disabled={updating}
+            className="w-full py-4 bg-blue-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-blue-600/20 active:scale-[0.98] transition disabled:opacity-50">
+            {updating ? 'Nag-uupdate...' : 'Mark as Delivered'}
+          </button>
+        ) : (
+          <div className="w-full py-4 bg-gray-100 text-gray-400 rounded-2xl font-semibold text-lg text-center">
+            Kumpirmahin muna lahat ng pickup ({pickedUpStores.size}/{allPickupStoreIds.length})
+          </div>
+        )
       )}
     </div>
   );
