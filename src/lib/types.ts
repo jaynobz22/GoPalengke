@@ -15,6 +15,12 @@ export interface Profile {
   is_available: boolean;
   is_approved: boolean;
   is_active: boolean;
+  rider_age: number | null;
+  rider_family_status: string | null;
+  rider_residence_address: string | null;
+  rider_valid_id_url: string | null;
+  rider_plate_number: string | null;
+  rider_motor_model: string | null;
   created_at: string;
   updated_at: string;
 }

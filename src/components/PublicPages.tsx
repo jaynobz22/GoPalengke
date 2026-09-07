@@ -5,6 +5,7 @@ import type { Store, Product, Profile } from '@/lib/types';
 import {
   MapPin, Star, ShoppingBag, Bike, Store as StoreIcon, ArrowLeft,
   Phone, Clock, Package, TrendingUp, Share2, Copy, Check, User,
+  Shield, UserCheck, IdCard, Home as HomeIcon, Bike as BikeIcon,
 } from 'lucide-react';
 
 function useHashRoute() {
@@ -330,6 +331,81 @@ function PublicUserPage({ slug }: { slug: string }) {
             <CopyLink url={fullUrl} />
           </div>
         </div>
+
+        {/* Rider Verification Details */}
+        {profile.role === 'rider' && (
+          <div className="mt-3 bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <UserCheck size={18} className="text-blue-600" />
+              <h2 className="font-bold text-gray-800 text-sm">Identity Verification</h2>
+              {(() => {
+                const fields = [profile.rider_age, profile.rider_family_status, profile.rider_residence_address, profile.rider_plate_number, profile.rider_motor_model, profile.rider_valid_id_url];
+                const filled = fields.filter(Boolean).length;
+                const allFilled = filled === fields.length;
+                return allFilled ? (
+                  <span className="inline-flex items-center gap-0.5 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full ml-auto">
+                    <Shield size={10} /> Verified
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400 ml-auto">{filled}/{fields.length} filled</span>
+                );
+              })()}
+            </div>
+            <div className="space-y-2.5 text-sm">
+              {profile.rider_age && (
+                <div className="flex items-center gap-2 text-gray-600">
+                  <User size={14} className="text-gray-400 flex-shrink-0" />
+                  <span className="text-gray-400 w-24">Edad</span>
+                  <span className="font-medium text-gray-700">{profile.rider_age} taong gulang</span>
+                </div>
+              )}
+              {profile.rider_family_status && (
+                <div className="flex items-center gap-2 text-gray-600">
+                  <UserCheck size={14} className="text-gray-400 flex-shrink-0" />
+                  <span className="text-gray-400 w-24">Pamilya</span>
+                  <span className="font-medium text-gray-700">{profile.rider_family_status}</span>
+                </div>
+              )}
+              {profile.rider_residence_address && (
+                <div className="flex items-start gap-2 text-gray-600">
+                  <HomeIcon size={14} className="text-gray-400 flex-shrink-0 mt-0.5" />
+                  <span className="text-gray-400 w-24">Address</span>
+                  <span className="font-medium text-gray-700">{profile.rider_residence_address}</span>
+                </div>
+              )}
+              {profile.rider_plate_number && (
+                <div className="flex items-center gap-2 text-gray-600">
+                  <BikeIcon size={14} className="text-gray-400 flex-shrink-0" />
+                  <span className="text-gray-400 w-24">Plate No.</span>
+                  <span className="font-medium text-gray-700">{profile.rider_plate_number}</span>
+                </div>
+              )}
+              {profile.rider_motor_model && (
+                <div className="flex items-center gap-2 text-gray-600">
+                  <BikeIcon size={14} className="text-gray-400 flex-shrink-0" />
+                  <span className="text-gray-400 w-24">Motor</span>
+                  <span className="font-medium text-gray-700">{profile.rider_motor_model}</span>
+                </div>
+              )}
+              {profile.rider_valid_id_url && (
+                <div className="pt-2 border-t border-gray-100">
+                  <div className="flex items-center gap-2 mb-2">
+                    <IdCard size={14} className="text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-400 text-sm">Valid ID</span>
+                  </div>
+                  <img
+                    src={profile.rider_valid_id_url}
+                    alt="Valid ID"
+                    className="w-full rounded-xl border border-gray-200 max-h-64 object-contain"
+                  />
+                </div>
+              )}
+              {!profile.rider_age && !profile.rider_family_status && !profile.rider_residence_address && !profile.rider_plate_number && !profile.rider_motor_model && !profile.rider_valid_id_url && (
+                <p className="text-sm text-gray-400 italic">Hindi pa na-verify ang rider na ito.</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* If seller, link to store */}
         {profile.role === 'seller' && store && (

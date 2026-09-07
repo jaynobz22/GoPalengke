@@ -177,7 +177,7 @@ export function SellerApp() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
       {!canAct && !isFeeFrozen && <InactiveBanner />}
-      <div className="flex-1 pb-20 overflow-y-auto">
+      <div className="flex-1 pb-24 overflow-y-auto">
         {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} onOpenMessages={() => setTab('messages')} onOpenOrders={() => setTab('orders')} onViewStore={() => setShowStorePreview(true)} onSignOut={signOut} unreadMessages={unreadCount} canAct={canAct} />}
         {tab === 'products' && (
           <SellerProducts store={store} onAdd={() => { setEditingProduct(null); setShowProductForm(true); }} onEdit={(p) => { setEditingProduct(p); setShowProductForm(true); }} />
@@ -1635,7 +1635,7 @@ function SellerSettings({ store, onEditStore, onSignOut }: { store: Store; onEdi
   const { profile, refreshProfile } = useAuth();
   const [avatarUploading, setAvatarUploading] = useState(false);
   return (
-    <div className="px-5 py-4">
+    <div className="px-5 py-4 pb-28">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Settings</h2>
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
         <div className="flex items-center gap-3 mb-4">

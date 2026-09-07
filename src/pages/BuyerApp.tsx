@@ -153,7 +153,7 @@ export function BuyerApp() {
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
       {!canAct && <InactiveBanner />}
       {/* Content */}
-      <div className="flex-1 pb-20 overflow-y-auto">
+      <div className="flex-1 pb-24 overflow-y-auto">
         {tab === 'home' && view === 'browse' && (
           <BrowseView onProductClick={navigateToProduct} onStoreClick={navigateToStore} orderUpdates={orderUpdates} onOpenOrders={() => { setTab('orders'); setView('browse'); }} onSignOut={signOut} />
         )}
@@ -2452,7 +2452,7 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
   }
 
   return (
-    <div className="px-5 py-4">
+    <div className="px-5 py-4 pb-28">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Profile ko</h2>
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
         <div className="flex items-center gap-3 mb-4">

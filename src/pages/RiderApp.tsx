@@ -86,7 +86,7 @@ export function RiderApp() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
       {!canAct && <InactiveBanner />}
-      <div className="flex-1 pb-20 overflow-y-auto">
+      <div className="flex-1 pb-24 overflow-y-auto">
         {tab === 'deliveries' && (
           selectedOrder ? (
             <RiderOrderDetail order={selectedOrder} onBack={() => setSelectedOrder(null)} onOpenChat={openChat} />
@@ -884,6 +884,27 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
   const { profile, refreshProfile } = useAuth();
   const [stats, setStats] = useState({ totalDeliveries: 0, totalEarnings: 0 });
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [idUploading, setIdUploading] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    rider_age: '',
+    rider_family_status: '',
+    rider_residence_address: '',
+    rider_plate_number: '',
+    rider_motor_model: '',
+  });
+
+  useEffect(() => {
+    if (!profile) return;
+    setFormData({
+      rider_age: profile.rider_age?.toString() || '',
+      rider_family_status: profile.rider_family_status || '',
+      rider_residence_address: profile.rider_residence_address || '',
+      rider_plate_number: profile.rider_plate_number || '',
+      rider_motor_model: profile.rider_motor_model || '',
+    });
+  }, [profile]);
 
   useEffect(() => {
     if (!profile) return;
@@ -897,8 +918,34 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
       });
   }, [profile]);
 
+  const verificationFields = [
+    { key: 'rider_age', label: 'Edad', value: profile?.rider_age },
+    { key: 'rider_family_status', label: 'Pamilya', value: profile?.rider_family_status },
+    { key: 'rider_residence_address', label: 'Totoong Address', value: profile?.rider_residence_address },
+    { key: 'rider_plate_number', label: 'Plate Number', value: profile?.rider_plate_number },
+    { key: 'rider_motor_model', label: 'Model ng Motor', value: profile?.rider_motor_model },
+    { key: 'rider_valid_id_url', label: 'Valid ID', value: profile?.rider_valid_id_url },
+  ];
+  const filledCount = verificationFields.filter(f => f.value).length;
+  const isVerified = filledCount === verificationFields.length;
+
+  async function saveVerification() {
+    if (!profile) return;
+    setSaving(true);
+    await supabase.from('profiles').update({
+      rider_age: formData.rider_age ? parseInt(formData.rider_age) : null,
+      rider_family_status: formData.rider_family_status || null,
+      rider_residence_address: formData.rider_residence_address || null,
+      rider_plate_number: formData.rider_plate_number || null,
+      rider_motor_model: formData.rider_motor_model || null,
+    }).eq('id', profile.id);
+    await refreshProfile();
+    setSaving(false);
+    setEditMode(false);
+  }
+
   return (
-    <div className="px-5 py-4">
+    <div className="px-5 py-4 pb-28">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Profile ko</h2>
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
         <div className="flex items-center gap-3 mb-4">
@@ -906,7 +953,14 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           <div>
             <p className="font-bold text-gray-800 text-lg">{profile?.full_name}</p>
             <p className="text-sm text-gray-400">{profile?.email}</p>
-            <span className="inline-block mt-1 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Rider</span>
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className="inline-block text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Rider</span>
+              {isVerified && (
+                <span className="inline-flex items-center gap-0.5 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                  <Shield size={10} /> Verified
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
@@ -931,7 +985,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
         </div>
       )}
 
-      {/* Profile Picture Upload */}
+      {/* Profile Picture Upload with face-match note */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
         <ImageUploadField
           label="Profile Picture"
@@ -939,7 +993,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           bucket="profile-images"
           folder={`avatars/${profile?.id}`}
           aspectClass="h-32"
-          hint="Mag-upload ng larawan para makilala ka ng buyers at sellers. Para sa transparency ng transaction."
+          hint="Mag-upload ng larawan para makilala ka ng buyers at sellers."
           onChange={async (url) => {
             if (!profile) return;
             setAvatarUploading(true);
@@ -949,6 +1003,148 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           }}
         />
         {avatarUploading && <p className="text-xs text-blue-500 mt-1">Nag-a-upload...</p>}
+        <div className="mt-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+          <Shield size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-700 leading-relaxed">
+            <span className="font-semibold">Mahalaga:</span> Ang mukha mo sa profile picture ay dapat malinaw at tugma sa larawan sa Valid ID mo. Hindi pwedeng naka-shades, naka-mask, o malabo ang mukha.
+          </p>
+        </div>
+      </div>
+
+      {/* Identity Verification Section */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+            <UserCheck size={16} className="text-blue-600" /> Identity Verification
+          </h3>
+          <span className="text-xs text-gray-400">{filledCount}/{verificationFields.length} filled</span>
+        </div>
+
+        {/* Progress bar */}
+        <div className="w-full h-2 bg-gray-100 rounded-full mb-4 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${isVerified ? 'bg-green-500' : 'bg-blue-500'}`}
+            style={{ width: `${(filledCount / verificationFields.length) * 100}%` }}
+          />
+        </div>
+
+        {!editMode ? (
+          <>
+            <div className="space-y-2.5">
+              {verificationFields.map(field => (
+                <div key={field.key} className="flex items-start justify-between text-sm">
+                  <span className="text-gray-500 flex items-center gap-1.5">
+                    {field.value ? (
+                      <Check size={14} className="text-green-500 flex-shrink-0" />
+                    ) : (
+                      <span className="w-3.5 h-3.5 rounded-full border-2 border-gray-300 flex-shrink-0" />
+                    )}
+                    {field.label}
+                  </span>
+                  <span className={`text-right max-w-[60%] truncate ${field.value ? 'text-gray-700 font-medium' : 'text-gray-300 italic'}`}>
+                    {field.key === 'rider_valid_id_url'
+                      ? (field.value ? 'Na-upload na' : 'Wala pa')
+                      : (field.value || 'Wala pa')}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setEditMode(true)}
+              className="w-full mt-4 py-2.5 bg-blue-50 text-blue-700 rounded-xl font-semibold text-sm active:scale-[0.98] transition"
+            >
+              {filledCount > 0 ? 'I-edit ang Details' : 'Mag-fill ng Details'}
+            </button>
+          </>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Edad</label>
+              <input
+                type="number"
+                value={formData.rider_age}
+                onChange={e => setFormData({ ...formData, rider_age: e.target.value })}
+                placeholder="Hal. 28"
+                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Pamilya (mayroon ba?)</label>
+              <input
+                type="text"
+                value={formData.rider_family_status}
+                onChange={e => setFormData({ ...formData, rider_family_status: e.target.value })}
+                placeholder="Hal. May asawa at 2 anak"
+                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Totoong Residence Address</label>
+              <textarea
+                value={formData.rider_residence_address}
+                onChange={e => setFormData({ ...formData, rider_residence_address: e.target.value })}
+                placeholder="Hal. 123 Rizal St, Brgy. San Roque, Davao City"
+                rows={2}
+                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 resize-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Plate Number ng Motor</label>
+              <input
+                type="text"
+                value={formData.rider_plate_number}
+                onChange={e => setFormData({ ...formData, rider_plate_number: e.target.value })}
+                placeholder="Hal. ABC 1234"
+                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-medium">Model ng Motor</label>
+              <input
+                type="text"
+                value={formData.rider_motor_model}
+                onChange={e => setFormData({ ...formData, rider_motor_model: e.target.value })}
+                placeholder="Hal. Honda Beat 2023"
+                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400"
+              />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setEditMode(false)}
+                className="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-xl font-semibold text-sm active:scale-[0.98] transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveVerification}
+                disabled={saving}
+                className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm active:scale-[0.98] transition disabled:opacity-50"
+              >
+                {saving ? 'Nagsasave...' : 'I-save'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Valid ID Upload */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+        <ImageUploadField
+          label="Valid ID (Driver's License, UMID, Passport, etc.)"
+          value={profile?.rider_valid_id_url || ''}
+          bucket="profile-images"
+          folder={`valid-ids/${profile?.id}`}
+          aspectClass="h-40"
+          hint="I-upload ang litrato ng valid ID mo. Makikita ito ng buyers sa profile mo para sa kanilang safety."
+          onChange={async (url) => {
+            if (!profile) return;
+            setIdUploading(true);
+            await supabase.from('profiles').update({ rider_valid_id_url: url || null }).eq('id', profile.id);
+            await refreshProfile();
+            setIdUploading(false);
+          }}
+        />
+        {idUploading && <p className="text-xs text-blue-500 mt-1">Nag-a-upload...</p>}
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
