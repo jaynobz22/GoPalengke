@@ -15,7 +15,7 @@ import {
   Search, ShoppingCart, Home, Package, User, Plus, Minus, Trash2, X,
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, Bike, Store as StoreIcon,
   QrCode, Clock, Phone, Navigation, Filter, ShoppingBag, MessageCircle, Send,
-  Share2, Copy, ExternalLink, Download, ImageOff, Bell, Timer, CheckCircle,
+  Share2, Copy, ExternalLink, Download, ImageOff, Bell, Timer, CheckCircle, LogOut,
 } from 'lucide-react';
 
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
@@ -137,7 +137,7 @@ export function BuyerApp() {
       {/* Content */}
       <div className="flex-1 pb-20 overflow-y-auto">
         {tab === 'home' && view === 'browse' && (
-          <BrowseView onProductClick={navigateToProduct} onStoreClick={navigateToStore} orderUpdates={orderUpdates} onOpenOrders={() => { setTab('orders'); setView('browse'); }} />
+          <BrowseView onProductClick={navigateToProduct} onStoreClick={navigateToStore} orderUpdates={orderUpdates} onOpenOrders={() => { setTab('orders'); setView('browse'); }} onSignOut={signOut} />
         )}
         {tab === 'home' && view === 'product' && selectedProduct && (
           <ProductView product={selectedProduct} store={selectedStore!} onBack={backToBrowse} onAddToCart={refreshCart} />
@@ -191,7 +191,7 @@ export function BuyerApp() {
 }
 
 // ============= BROWSE VIEW =============
-function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders }: { onProductClick: (p: Product, s: Store) => void; onStoreClick: (s: Store) => void; orderUpdates: number; onOpenOrders: () => void }) {
+function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, onSignOut }: { onProductClick: (p: Product, s: Store) => void; onStoreClick: (s: Store) => void; orderUpdates: number; onOpenOrders: () => void; onSignOut: () => void }) {
   const { profile } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<(Product & { store: Store })[]>([]);
@@ -271,9 +271,14 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders }
     <div>
       {/* Header */}
       <div className="bg-gradient-to-br from-brand-600 to-brand-700 px-5 pt-12 pb-6 text-white">
-        <div className="flex items-center gap-2 mb-3">
-          <Fish size={24} />
-          <span className="text-xl font-bold">GoPalengke</span>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Fish size={24} />
+            <span className="text-xl font-bold">GoPalengke</span>
+          </div>
+          <button onClick={onSignOut} className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition">
+            <LogOut size={18} className="text-white" />
+          </button>
         </div>
         <p className="text-brand-100 text-sm mb-4">
           Hello, {profile?.full_name?.split(' ')[0]}! Ano ang plano mong lutuin ngayon?

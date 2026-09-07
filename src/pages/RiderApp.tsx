@@ -12,7 +12,7 @@ import { ReviewSection } from '@/components/Reviews';
 import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
-  Share2, Copy, ExternalLink, Power, Timer, Star, UserCheck,
+  Share2, Copy, ExternalLink, Power, Timer, Star, UserCheck, LogOut,
 } from 'lucide-react';
 
 type Tab = 'deliveries' | 'messages' | 'history' | 'profile';
@@ -81,7 +81,7 @@ export function RiderApp() {
           selectedOrder ? (
             <RiderOrderDetail order={selectedOrder} onBack={() => setSelectedOrder(null)} onOpenChat={openChat} />
           ) : (
-            <RiderDeliveries onOrderClick={setSelectedOrder} canAct={canAct} />
+            <RiderDeliveries onOrderClick={setSelectedOrder} canAct={canAct} onSignOut={signOut} />
           )
         )}
         {tab === 'messages' && (
@@ -114,7 +114,7 @@ export function RiderApp() {
 }
 
 // ============= DELIVERIES =============
-function RiderDeliveries({ onOrderClick, canAct }: { onOrderClick: (o: Order) => void; canAct: boolean }) {
+function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o: Order) => void; canAct: boolean; onSignOut: () => void }) {
   const { profile } = useAuth();
   const [availableOrders, setAvailableOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
   const [assignedOrders, setAssignedOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
@@ -178,9 +178,14 @@ function RiderDeliveries({ onOrderClick, canAct }: { onOrderClick: (o: Order) =>
   return (
     <div>
       <div className="bg-gradient-to-br from-blue-600 to-blue-700 px-5 pt-12 pb-6 text-white">
-        <div className="flex items-center gap-2 mb-2">
-          <Bike size={24} />
-          <span className="text-xl font-bold">GoPalengke Rider</span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Bike size={24} />
+            <span className="text-xl font-bold">GoPalengke Rider</span>
+          </div>
+          <button onClick={onSignOut} className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition">
+            <LogOut size={18} className="text-white" />
+          </button>
         </div>
         <p className="text-blue-100 text-sm">Kumusta, {profile?.full_name?.split(' ')[0]}! Handa ka na ba mag-deliver?</p>
       </div>
