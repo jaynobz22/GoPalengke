@@ -403,8 +403,13 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
 
   async function markDelivered() {
     setUpdating(true);
-    await supabase.from('orders').update({ status: 'delivered', rider_lat: null, rider_lng: null }).eq('id', currentOrder.id);
+    const { error } = await supabase.from('orders').update({ status: 'delivered', rider_lat: null, rider_lng: null }).eq('id', currentOrder.id);
     setUpdating(false);
+    if (error) {
+      alert('Hindi ma-update ang status. Subukan ulit.');
+      return;
+    }
+    setCurrentOrder(prev => ({ ...prev, status: 'delivered' }));
     onBack();
   }
 
