@@ -1395,7 +1395,7 @@ function RiderBottomNav({ tab, setTab, riderId, unreadMessages }: { tab: Tab; se
           const Icon = item.icon;
           const active = tab === item.id;
           return (
-            <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center gap-0.5 py-1.5 px-6 relative">
+            <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center gap-0.5 py-1.5 px-3 relative">
               <div className="relative">
                 <Icon size={22} className={active ? 'text-blue-600' : 'text-gray-400'} />
                 {item.badge && item.badge > 0 ? (

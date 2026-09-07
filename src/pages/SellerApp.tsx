@@ -1945,14 +1945,14 @@ function SellerBottomNav({ tab, setTab, storeId, unreadMessages }: { tab: Tab; s
   ];
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 px-2 py-1.5 safe-bottom z-50">
-      <div className="flex items-center justify-around">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 px-1 py-1.5 safe-bottom z-50 overflow-x-auto scrollbar-hide">
+      <div className="flex items-center justify-around min-w-full">
         {items.map(item => {
           const Icon = item.icon;
           const active = tab === item.id;
           const isAlert = item.alert && item.badge && item.badge > 0;
           return (
-            <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center gap-0.5 py-1.5 px-2 relative">
+            <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center gap-0.5 py-1.5 px-1.5 relative flex-shrink-0">
               <div className="relative">
                 <Icon
                   size={22}
