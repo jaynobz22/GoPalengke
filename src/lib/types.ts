@@ -192,6 +192,23 @@ export interface AdminCall {
   updated_at: string;
 }
 
+export interface AdminConversation {
+  id: string;
+  admin_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminMessage {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  body: string;
+  read_at: string | null;
+  created_at: string;
+}
+
 export interface Announcement {
   id: string;
   message: string;

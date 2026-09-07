@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import type { Store, Product, Order, OrderItem, OrderStatus, Conversation, SellerFee } from '@/lib/types';
+import type { Store, Product, Order, OrderItem, OrderStatus, Conversation, SellerFee, AdminConversation } from '@/lib/types';
 import { PAYMENT_THRESHOLD } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { getCityMarkets } from '@/lib/philippineLocations';
@@ -14,13 +14,15 @@ import { InactiveBanner } from '@/components/InactiveBanner';
 import { SellerBilling } from '@/components/SellerBilling';
 import { ReviewSection } from '@/components/Reviews';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
+import { AdminChat } from '@/components/AdminChat';
 import { useIncomingAdminCall } from '@/lib/useAdminCall';
+import { useAdminConversations } from '@/lib/useAdminChat';
 import {
   Store as StoreIcon, Package, Settings, Plus, ArrowLeft, Edit, Trash2, X,
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
   TrendingUp, DollarSign, Bell, Camera, Loader2, MessageCircle,
   Share2, Copy, ExternalLink, Search, ImageIcon, Wallet, Lock, AlertTriangle,
-  LogOut, Eye, Users, Radio,
+  LogOut, Eye, Users, Radio, Shield,
 } from 'lucide-react';
 
 type Tab = 'dashboard' | 'products' | 'orders' | 'messages' | 'billing' | 'settings';
@@ -45,6 +47,8 @@ export function SellerApp() {
   const [showStorePreview, setShowStorePreview] = useState(false);
   const { incomingCall, adminName, clearCall } = useIncomingAdminCall();
   const [activeAdminCall, setActiveAdminCall] = useState<{ roomId: string; callId: string; otherName: string } | null>(null);
+  const { conversations: adminConvs, unreadCount: adminUnread } = useAdminConversations();
+  const [activeAdminChat, setActiveAdminChat] = useState<{ conversationId: string; otherName: string } | null>(null);
 
   const loadStore = useCallback(async () => {
     if (!profile) return;
@@ -100,6 +104,8 @@ export function SellerApp() {
       .subscribe();
     return () => { supabase.removeChannel(sub); };
   }, [profile]);
+
+  const totalUnread = unreadCount + adminUnread;
 
   async function openChat(order: Order, buyerName: string) {
     if (!profile) return;
@@ -184,7 +190,9 @@ export function SellerApp() {
           )
         )}
         {tab === 'messages' && (
-          <SellerMessagesView onOpenChat={openChatFromMessages} />
+          <SellerMessagesView onOpenChat={openChatFromMessages} adminConversations={adminConvs} onOpenAdminChat={(convId, name) => {
+            setActiveAdminChat({ conversationId: convId, otherName: name });
+          }} />
         )}
         {tab === 'billing' && <SellerBilling />}
         {tab === 'settings' && <SellerSettings store={store} onEditStore={() => setShowStoreForm(true)} onSignOut={signOut} />}
@@ -214,6 +222,16 @@ export function SellerApp() {
         <StoreFormModal store={store} onClose={() => setShowStoreForm(false)} onSaved={() => { setShowStoreForm(false); loadStore(); }} />
       )}
 
+      {activeAdminChat && profile && (
+        <AdminChat
+          conversationId={activeAdminChat.conversationId}
+          currentUserId={profile.id}
+          otherName={activeAdminChat.otherName}
+          isAdmin={false}
+          onBack={() => setActiveAdminChat(null)}
+        />
+      )}
+
       {/* Incoming admin video call */}
       {incomingCall && !activeAdminCall && (
         <AdminVideoCall
@@ -234,7 +252,7 @@ export function SellerApp() {
         />
       )}
 
-      <SellerBottomNav tab={tab} setTab={setTab} storeId={store.id} unreadMessages={unreadCount} />
+      <SellerBottomNav tab={tab} setTab={setTab} storeId={store.id} unreadMessages={totalUnread} />
 
       {showStorePreview && (
         <div className="fixed inset-0 z-[60] bg-gray-50 max-w-md mx-auto overflow-y-auto">
@@ -1702,10 +1720,11 @@ function ShareableLinkSection({ label, url, onOpen }: { label: string; url: stri
 }
 
 // ============= SELLER MESSAGES VIEW =============
-function SellerMessagesView({ onOpenChat }: { onOpenChat: (convId: string, name: string, role: string) => void }) {
+function SellerMessagesView({ onOpenChat, adminConversations, onOpenAdminChat }: { onOpenChat: (convId: string, name: string, role: string) => void; adminConversations: (AdminConversation & { admin: { full_name: string } })[]; onOpenAdminChat: (convId: string, name: string) => void }) {
   const { profile } = useAuth();
   const [conversations, setConversations] = useState<(Conversation & { other_name: string; other_role: string; last_message: string | null; last_message_time: string | null; unread: number })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [adminLastMsgs, setAdminLastMsgs] = useState<Record<string, { body: string; created_at: string; unread: boolean }>>({});
 
   useEffect(() => {
     if (!profile) return;
@@ -1770,16 +1789,86 @@ function SellerMessagesView({ onOpenChat }: { onOpenChat: (convId: string, name:
     return () => { supabase.removeChannel(sub); };
   }, [profile]);
 
+  // Load last message + unread for admin conversations
+  useEffect(() => {
+    if (!profile || adminConversations.length === 0) { setAdminLastMsgs({}); return; }
+    const userId = profile.id;
+    async function loadAdminMsgs() {
+      const msgMap: Record<string, { body: string; created_at: string; unread: boolean }> = {};
+      await Promise.all(adminConversations.map(async (c) => {
+        const { data: msgs } = await supabase
+          .from('admin_messages')
+          .select('body, created_at, sender_id, read_at')
+          .eq('conversation_id', c.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (msgs) {
+          msgMap[c.id] = {
+            body: (msgs as any).body,
+            created_at: (msgs as any).created_at,
+            unread: (msgs as any).sender_id !== userId && !(msgs as any).read_at,
+          };
+        }
+      }));
+      setAdminLastMsgs(msgMap);
+    }
+    loadAdminMsgs();
+    const sub = supabase.channel('seller-admin-msgs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_messages' }, () => loadAdminMsgs())
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [profile, adminConversations]);
+
   return (
     <div className="px-5 py-4">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Mga Mensahe</h2>
+
+      {/* Admin Support Conversations */}
+      {adminConversations.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs font-semibold text-gray-400 uppercase mb-2 flex items-center gap-1"><Shield size={12} /> Admin Support</p>
+          <div className="space-y-2">
+            {adminConversations.map(c => {
+              const last = adminLastMsgs[c.id];
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => onOpenAdminChat(c.id, c.admin?.full_name || 'Admin')}
+                  className="w-full bg-blue-50 rounded-2xl border border-blue-200 p-4 text-left active:scale-[0.98] transition flex items-center gap-3"
+                >
+                  <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                    <Shield size={20} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold text-sm text-gray-800 truncate">{c.admin?.full_name || 'Admin'}</p>
+                      {last && (
+                        <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{new Date(last.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 truncate mt-0.5">{last?.body || 'Magsimula ng usapan'}</p>
+                  </div>
+                  {last?.unread && (
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Order Conversations */}
       {loading ? (
         <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
-      ) : conversations.length === 0 ? (
+      ) : conversations.length === 0 && adminConversations.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <MessageCircle size={48} className="mx-auto mb-3 opacity-50" />
           <p className="text-sm">Wala pang messages. Makikipag-chat ka kapag may nag-order na buyer!</p>
         </div>
+      ) : conversations.length === 0 ? (
+        <p className="text-center text-gray-400 text-sm py-8">Wala pang order messages.</p>
       ) : (
         <div className="space-y-2">
           {conversations.map(conv => (

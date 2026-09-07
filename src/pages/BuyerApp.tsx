@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import type { Product, Store, Category, CartItem, Order, OrderItem, OrderStatus, Conversation } from '@/lib/types';
+import type { Product, Store, Category, CartItem, Order, OrderItem, OrderStatus, Conversation, AdminConversation } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
 import { InactiveBanner } from '@/components/InactiveBanner';
@@ -12,12 +12,15 @@ import { Avatar } from '@/components/Avatar';
 import { ImageUploadField } from '@/components/ImageUploadField';
 import { ReviewForm, ReviewSection } from '@/components/Reviews';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
+import { AdminChat } from '@/components/AdminChat';
 import { useIncomingAdminCall } from '@/lib/useAdminCall';
+import { useAdminConversations } from '@/lib/useAdminChat';
 import {
   Search, ShoppingCart, Home, Package, User, Plus, Minus, Trash2, X,
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, Bike, Store as StoreIcon,
   QrCode, Clock, Phone, Navigation, Filter, ShoppingBag, MessageCircle, Send,
   Share2, Copy, ExternalLink, Download, ImageOff, Bell, Timer, CheckCircle, LogOut,
+  Shield,
 } from 'lucide-react';
 
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
@@ -38,6 +41,8 @@ export function BuyerApp() {
   const [orderUpdates, setOrderUpdates] = useState(0);
   const { incomingCall, adminName, clearCall } = useIncomingAdminCall();
   const [activeAdminCall, setActiveAdminCall] = useState<{ roomId: string; callId: string; otherName: string } | null>(null);
+  const { conversations: adminConvs, unreadCount: adminUnread } = useAdminConversations();
+  const [activeAdminChat, setActiveAdminChat] = useState<{ conversationId: string; otherName: string } | null>(null);
 
   function navigateToProduct(product: Product, store: Store) {
     setSelectedProduct(product);
@@ -115,6 +120,8 @@ export function BuyerApp() {
     return () => { supabase.removeChannel(sub); };
   }, [profile]);
 
+  const totalUnread = unreadCount + adminUnread;
+
   // Track order status updates from seller (accepted, preparing, ready, picked_up)
   useEffect(() => {
     if (!profile) return;
@@ -173,6 +180,8 @@ export function BuyerApp() {
             setChatPartnerName(name);
             setChatPartnerRole(role);
             setView('chat');
+          }} adminConversations={adminConvs} onOpenAdminChat={(convId, name) => {
+            setActiveAdminChat({ conversationId: convId, otherName: name });
           }} />
         )}
         {tab === 'messages' && view === 'chat' && activeConversationId && (
@@ -208,8 +217,18 @@ export function BuyerApp() {
         />
       )}
 
+      {activeAdminChat && profile && (
+        <AdminChat
+          conversationId={activeAdminChat.conversationId}
+          currentUserId={profile.id}
+          otherName={activeAdminChat.otherName}
+          isAdmin={false}
+          onBack={() => setActiveAdminChat(null)}
+        />
+      )}
+
       {/* Bottom Nav */}
-      <BottomNav tab={tab} setTab={(t) => { setTab(t); setView('browse'); }} unreadMessages={unreadCount} orderUpdates={orderUpdates} />
+      <BottomNav tab={tab} setTab={(t) => { setTab(t); setView('browse'); }} unreadMessages={totalUnread} orderUpdates={orderUpdates} />
     </div>
   );
 }
@@ -1807,10 +1826,11 @@ function OrderStatusTracker({ status }: { status: OrderStatus }) {
 }
 
 // ============= MESSAGES VIEW =============
-function MessagesView({ onOpenChat }: { onOpenChat: (convId: string, name: string, role: string) => void }) {
+function MessagesView({ onOpenChat, adminConversations, onOpenAdminChat }: { onOpenChat: (convId: string, name: string, role: string) => void; adminConversations: (AdminConversation & { admin: { full_name: string } })[]; onOpenAdminChat: (convId: string, name: string) => void }) {
   const { profile } = useAuth();
   const [conversations, setConversations] = useState<(Conversation & { other_name: string; other_role: string; last_message: string | null; last_message_time: string | null; unread: number })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [adminLastMsgs, setAdminLastMsgs] = useState<Record<string, { body: string; created_at: string; unread: boolean }>>({});
 
   useEffect(() => {
     if (!profile) return;
@@ -1875,16 +1895,86 @@ function MessagesView({ onOpenChat }: { onOpenChat: (convId: string, name: strin
     return () => { supabase.removeChannel(sub); };
   }, [profile]);
 
+  // Load last message + unread for admin conversations
+  useEffect(() => {
+    if (!profile || adminConversations.length === 0) { setAdminLastMsgs({}); return; }
+    const userId = profile.id;
+    async function loadAdminMsgs() {
+      const msgMap: Record<string, { body: string; created_at: string; unread: boolean }> = {};
+      await Promise.all(adminConversations.map(async (c) => {
+        const { data: msgs } = await supabase
+          .from('admin_messages')
+          .select('body, created_at, sender_id, read_at')
+          .eq('conversation_id', c.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (msgs) {
+          msgMap[c.id] = {
+            body: (msgs as any).body,
+            created_at: (msgs as any).created_at,
+            unread: (msgs as any).sender_id !== userId && !(msgs as any).read_at,
+          };
+        }
+      }));
+      setAdminLastMsgs(msgMap);
+    }
+    loadAdminMsgs();
+    const sub = supabase.channel('buyer-admin-msgs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_messages' }, () => loadAdminMsgs())
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [profile, adminConversations]);
+
   return (
     <div className="px-5 py-4">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Mga Mensahe</h2>
+
+      {/* Admin Support Conversations */}
+      {adminConversations.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs font-semibold text-gray-400 uppercase mb-2 flex items-center gap-1"><Shield size={12} /> Admin Support</p>
+          <div className="space-y-2">
+            {adminConversations.map(c => {
+              const last = adminLastMsgs[c.id];
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => onOpenAdminChat(c.id, c.admin?.full_name || 'Admin')}
+                  className="w-full bg-blue-50 rounded-2xl border border-blue-200 p-4 text-left active:scale-[0.98] transition flex items-center gap-3"
+                >
+                  <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                    <Shield size={20} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold text-sm text-gray-800 truncate">{c.admin?.full_name || 'Admin'}</p>
+                      {last && (
+                        <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{new Date(last.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 truncate mt-0.5">{last?.body || 'Magsimula ng usapan'}</p>
+                  </div>
+                  {last?.unread && (
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Order Conversations */}
       {loading ? (
         <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
-      ) : conversations.length === 0 ? (
+      ) : conversations.length === 0 && adminConversations.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <MessageCircle size={48} className="mx-auto mb-3 opacity-50" />
           <p className="text-sm">Wala pang messages. Mag-order muna para makapag-chat!</p>
         </div>
+      ) : conversations.length === 0 ? (
+        <p className="text-center text-gray-400 text-sm py-8">Wala pang order messages.</p>
       ) : (
         <div className="space-y-2">
           {conversations.map(conv => (

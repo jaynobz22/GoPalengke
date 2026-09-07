@@ -1,22 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall } from '@/lib/types';
+import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall, AdminConversation } from '@/lib/types';
 import { ImageUploadField } from '@/components/ImageUploadField';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
+import { AdminChat, getOrCreateAdminConversation } from '@/components/AdminChat';
 import {
   Megaphone, Plus, Trash2, Power, Check, Loader2, Fish, LogOut,
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
   AlertCircle, X, UserCheck, UserX, DollarSign, TrendingUp, Receipt,
-  Lock, Unlock, Video,
+  Lock, Unlock, Video, MessageCircle, Shield,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'users' | 'fees' | 'announcements' | 'settings';
+type Tab = 'overview' | 'users' | 'messages' | 'fees' | 'announcements' | 'settings';
 
 export function AdminApp() {
   const { profile, signOut } = useAuth();
   const [tab, setTab] = useState<Tab>('overview');
   const [activeCall, setActiveCall] = useState<{ roomId: string; isCaller: boolean; callId: string; otherName: string } | null>(null);
+  const [activeChat, setActiveChat] = useState<{ conversationId: string; otherName: string } | null>(null);
 
   function startAdminCall(user: Profile) {
     const roomId = `admin-call-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -40,9 +42,22 @@ export function AdminApp() {
     setActiveCall(null);
   }
 
+  async function startAdminChat(user: Profile) {
+    if (!profile) return;
+    const convId = await getOrCreateAdminConversation(profile.id, user.id);
+    if (convId) {
+      setActiveChat({ conversationId: convId, otherName: user.full_name });
+    }
+  }
+
+  function endAdminChat() {
+    setActiveChat(null);
+  }
+
   const tabs: { id: Tab; label: string; icon: typeof Users }[] = [
     { id: 'overview', label: 'Overview', icon: Users },
     { id: 'users', label: 'Users', icon: UserCheck },
+    { id: 'messages', label: 'Messages', icon: MessageCircle },
     { id: 'fees', label: 'Fees', icon: Wallet },
     { id: 'announcements', label: 'Announcements', icon: Megaphone },
     { id: 'settings', label: 'Settings', icon: Settings },
@@ -90,10 +105,21 @@ export function AdminApp() {
       </div>
 
       {tab === 'overview' && <OverviewTab />}
-      {tab === 'users' && <UsersTab onStartCall={startAdminCall} />}
+      {tab === 'users' && <UsersTab onStartCall={startAdminCall} onStartChat={startAdminChat} />}
+      {tab === 'messages' && <AdminMessagesTab onOpenChat={(convId, name) => setActiveChat({ conversationId: convId, otherName: name })} />}
       {tab === 'fees' && <FeesTab />}
       {tab === 'announcements' && <AnnouncementsTab />}
       {tab === 'settings' && <SettingsTab />}
+
+      {activeChat && profile && (
+        <AdminChat
+          conversationId={activeChat.conversationId}
+          currentUserId={profile.id}
+          otherName={activeChat.otherName}
+          isAdmin={true}
+          onBack={endAdminChat}
+        />
+      )}
 
       {activeCall && (
         <AdminVideoCall
@@ -255,7 +281,7 @@ function OverviewTab() {
 }
 
 // ============= USERS TAB =============
-function UsersTab({ onStartCall }: { onStartCall: (user: Profile) => void }) {
+function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) => void; onStartChat: (user: Profile) => void }) {
   const { profile: adminProfile } = useAuth();
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -379,15 +405,24 @@ function UsersTab({ onStartCall }: { onStartCall: (user: Profile) => void }) {
                 </button>
               </div>
 
-              {/* Video Call Button */}
+              {/* Chat + Video Call Buttons */}
               {user.id !== adminProfile?.id && (
-                <button
-                  onClick={() => onStartCall(user)}
-                  className="w-full mt-2 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 active:scale-95 transition"
-                >
-                  <Video size={15} />
-                  Video Call (Verification)
-                </button>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => onStartChat(user)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200 active:scale-95 transition"
+                  >
+                    <MessageCircle size={15} />
+                    Chat
+                  </button>
+                  <button
+                    onClick={() => onStartCall(user)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 active:scale-95 transition"
+                  >
+                    <Video size={15} />
+                    Video Call
+                  </button>
+                </div>
               )}
             </div>
           ))}
@@ -808,6 +843,125 @@ function SettingsTab() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ============= ADMIN MESSAGES TAB =============
+function AdminMessagesTab({ onOpenChat }: { onOpenChat: (conversationId: string, name: string) => void }) {
+  const { profile } = useAuth();
+  const [conversations, setConversations] = useState<(AdminConversation & { user: { full_name: string; email: string; role: string; avatar_url: string | null } })[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [lastMessages, setLastMessages] = useState<Record<string, { body: string; created_at: string; unread: boolean }>>({});
+
+  const load = useCallback(async () => {
+    if (!profile) return;
+    const { data } = await supabase
+      .from('admin_conversations')
+      .select('*, user:profiles!admin_conversations_user_id_fkey(full_name, email, role, avatar_url)')
+      .eq('admin_id', profile.id)
+      .order('updated_at', { ascending: false });
+    const convs = (data || []) as any[];
+    setConversations(convs);
+    setLoading(false);
+
+    const msgMap: Record<string, { body: string; created_at: string; unread: boolean }> = {};
+    await Promise.all(convs.map(async (c: AdminConversation) => {
+      const { data: msgs } = await supabase
+        .from('admin_messages')
+        .select('*')
+        .eq('conversation_id', c.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (msgs && msgs.length > 0) {
+        const last = msgs[0] as any;
+        msgMap[c.id] = {
+          body: last.body,
+          created_at: last.created_at,
+          unread: last.sender_id !== profile.id && !last.read_at,
+        };
+      }
+    }));
+    setLastMessages(msgMap);
+  }, [profile]);
+
+  useEffect(() => {
+    load();
+    const sub = supabase.channel('admin-messages-tab')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_messages' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_conversations' }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [load]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={32} className="animate-spin text-brand-500" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-5 py-4">
+      <h2 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+        <MessageCircle size={20} className="text-gray-700" />
+        Support Messages
+      </h2>
+
+      {conversations.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+            <MessageCircle size={28} className="text-gray-300" />
+          </div>
+          <p className="text-gray-400 text-sm">Wala pang conversations.</p>
+          <p className="text-gray-400 text-xs mt-1">Pumunta sa Users tab para mag-chat sa sinumang user.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {conversations.map(c => {
+            const last = lastMessages[c.id];
+            return (
+              <button
+                key={c.id}
+                onClick={() => onOpenChat(c.id, c.user?.full_name || 'User')}
+                className="w-full bg-white rounded-2xl border border-gray-100 p-3 flex items-center gap-3 text-left active:scale-[0.98] transition"
+              >
+                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  {c.user?.avatar_url ? (
+                    <img src={c.user.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    <span className="text-gray-400 font-bold text-sm">
+                      {(c.user?.full_name || '?').charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-sm text-gray-800 truncate">{c.user?.full_name || 'User'}</p>
+                    {last && (
+                      <span className="text-[10px] text-gray-400 flex-shrink-0">
+                        {new Date(last.created_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 truncate">{c.user?.email}</p>
+                  {last ? (
+                    <p className={`text-xs mt-0.5 truncate ${last.unread ? 'text-gray-800 font-semibold' : 'text-gray-400'}`}>
+                      {last.body}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-300 mt-0.5">Magsimula ng usapan</p>
+                  )}
+                </div>
+                {last?.unread && (
+                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
