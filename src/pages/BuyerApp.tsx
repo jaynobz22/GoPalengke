@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import type { Product, Store, Category, CartItem, Order, OrderItem, OrderStatus, Conversation, AdminConversation } from '@/lib/types';
@@ -38,6 +38,7 @@ export function BuyerApp() {
   const [view, setView] = useState<View>('browse');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
+  const [highlightProductId, setHighlightProductId] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [cartRefresh, setCartRefresh] = useState(0);
   const [paymentGroupOrders, setPaymentGroupOrders] = useState<Order[]>([]);
@@ -52,13 +53,20 @@ export function BuyerApp() {
   const [activeAdminChat, setActiveAdminChat] = useState<{ conversationId: string; otherName: string } | null>(null);
 
   function navigateToProduct(product: Product, store: Store) {
-    setSelectedProduct(product);
     setSelectedStore(store);
+    setHighlightProductId(product.id);
+    setView('store');
+  }
+
+  function navigateToProductDetail(product: Product) {
+    setSelectedProduct(product);
+    setHighlightProductId(null);
     setView('product');
   }
 
   function navigateToStore(store: Store) {
     setSelectedStore(store);
+    setHighlightProductId(null);
     setView('store');
   }
 
@@ -72,6 +80,7 @@ export function BuyerApp() {
     setSelectedProduct(null);
     setSelectedStore(null);
     setSelectedOrder(null);
+    setHighlightProductId(null);
   }
 
   function refreshCart() {
@@ -158,10 +167,10 @@ export function BuyerApp() {
           <BrowseView onProductClick={navigateToProduct} onStoreClick={navigateToStore} orderUpdates={orderUpdates} onOpenOrders={() => { setTab('orders'); setView('browse'); }} onSignOut={signOut} />
         )}
         {tab === 'home' && view === 'product' && selectedProduct && (
-          <ProductView product={selectedProduct} store={selectedStore!} onBack={backToBrowse} onAddToCart={refreshCart} />
+          <ProductView product={selectedProduct} store={selectedStore!} onBack={() => { setView('store'); setSelectedProduct(null); }} onAddToCart={refreshCart} />
         )}
         {tab === 'home' && view === 'store' && selectedStore && (
-          <StoreView store={selectedStore} onProductClick={(p) => navigateToProduct(p, selectedStore)} onBack={backToBrowse} />
+          <StoreView store={selectedStore} highlightProductId={highlightProductId} onProductClick={(p) => navigateToProductDetail(p)} onBack={backToBrowse} />
         )}
         {tab === 'home' && view === 'checkout' && (
           <CheckoutView onBack={backToBrowse} onOrderPlaced={(orders) => {
@@ -673,8 +682,31 @@ function ProductView({ product, store, onBack, onAddToCart }: { product: Product
   const { profile } = useAuth();
   const [quantity, setQuantity] = useState(1);
   const [adding, setAdding] = useState(false);
+  const [showConflictModal, setShowConflictModal] = useState(false);
+  const [conflictStoreName, setConflictStoreName] = useState('');
 
   async function addToCart() {
+    if (!profile) return;
+    setAdding(true);
+
+    const { data: otherItems } = await supabase
+      .from('cart_items')
+      .select('id, store:stores(name)')
+      .eq('buyer_id', profile.id)
+      .neq('store_id', store.id);
+
+    if (otherItems && otherItems.length > 0) {
+      const otherName = (otherItems[0].store as any)?.name || 'ibang tindahan';
+      setConflictStoreName(otherName);
+      setShowConflictModal(true);
+      setAdding(false);
+      return;
+    }
+
+    await doAddToCart();
+  }
+
+  async function doAddToCart() {
     if (!profile) return;
     setAdding(true);
     const { data: existing } = await supabase
@@ -697,6 +729,14 @@ function ProductView({ product, store, onBack, onAddToCart }: { product: Product
     setAdding(false);
     onAddToCart();
     onBack();
+  }
+
+  async function confirmReplaceCart() {
+    if (!profile) return;
+    setShowConflictModal(false);
+    setAdding(true);
+    await supabase.from('cart_items').delete().eq('buyer_id', profile.id).neq('store_id', store.id);
+    await doAddToCart();
   }
 
   return (
@@ -764,19 +804,56 @@ function ProductView({ product, store, onBack, onAddToCart }: { product: Product
           <p className="text-center py-4 text-gray-400 font-medium">Ubos na ang paninda. Balik na lang mamaya!</p>
         )}
       </div>
+
+      {showConflictModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end max-w-md mx-auto animate-fade-in">
+          <div className="bg-white w-full rounded-t-3xl p-5 animate-slide-up">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <ShoppingBag size={24} className="text-amber-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-800 text-lg">May cart items ka na mula sa {conflictStoreName}</h3>
+                <p className="text-sm text-gray-500 mt-0.5">Para mag-order sa {store.name}, mababakante ang cart mula sa {conflictStoreName}.</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConflictModal(false)}
+                className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 font-semibold active:scale-[0.98] transition"
+              >
+                Huwag na
+              </button>
+              <button
+                onClick={confirmReplaceCart}
+                className="flex-1 py-3.5 rounded-2xl bg-brand-600 text-white font-semibold active:scale-[0.98] transition"
+              >
+                Palitan ang Cart
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ============= STORE VIEW =============
-function StoreView({ store, onProductClick, onBack }: { store: Store; onProductClick: (p: Product) => void; onBack: () => void }) {
+function StoreView({ store, highlightProductId, onProductClick, onBack }: { store: Store; highlightProductId?: string | null; onProductClick: (p: Product) => void; onBack: () => void }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const highlightRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at').eq('store_id', store.id).eq('is_available', true).order('created_at', { ascending: false }).limit(50)
       .then(({ data }) => { setProducts(data || []); setLoading(false); });
   }, [store.id]);
+
+  useEffect(() => {
+    if (highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightProductId, products, loading]);
 
   return (
     <div>
@@ -815,27 +892,43 @@ function StoreView({ store, onProductClick, onBack }: { store: Store; onProductC
         </div>
       </div>
 
+      {highlightProductId && !loading && products.find(p => p.id === highlightProductId) && (
+        <div className="mx-5 mt-3 bg-brand-50 border border-brand-200 rounded-xl p-3 flex items-center gap-2">
+          <CheckCircle size={18} className="text-brand-600 flex-shrink-0" />
+          <p className="text-sm text-brand-700">
+            Pinili mo ang <strong>{products.find(p => p.id === highlightProductId)?.name}</strong>. Tingnan ang lahat ng paninda ng tindahang ito bago mag-order.
+          </p>
+        </div>
+      )}
+
       <div className="px-5 py-4">
         <h3 className="font-bold text-gray-800 mb-3">Mga Paninda</h3>
         {loading ? (
           <div className="grid grid-cols-2 gap-3">{[1,2,3,4].map(i => <div key={i} className="h-44 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {products.map(p => (
-              <button
-                key={p.id}
-                onClick={() => onProductClick(p)}
-                className="bg-white rounded-2xl overflow-hidden border border-gray-100 text-left active:scale-[0.98] transition"
-              >
-                <div className="h-32 bg-gray-100">
-                  {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
+            {products.map(p => {
+              const isHighlighted = highlightProductId === p.id;
+              return (
+                <div key={p.id} ref={isHighlighted ? highlightRef : undefined}>
+                  <button
+                    onClick={() => onProductClick(p)}
+                    className={`w-full bg-white rounded-2xl overflow-hidden text-left active:scale-[0.98] transition relative ${isHighlighted ? 'border-2 border-brand-500 shadow-lg shadow-brand-500/20' : 'border border-gray-100'}`}
+                  >
+                    {isHighlighted && (
+                      <span className="absolute top-2 left-2 z-10 bg-brand-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">Pinili mo</span>
+                    )}
+                    <div className="h-32 bg-gray-100">
+                      {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
+                    </div>
+                    <div className="p-2.5">
+                      <p className="font-semibold text-sm text-gray-800 line-clamp-1">{p.name}</p>
+                      <p className="font-bold text-brand-600 mt-1">₱{p.price}<span className="text-xs text-gray-400 font-normal">/{p.unit}</span></p>
+                    </div>
+                  </button>
                 </div>
-                <div className="p-2.5">
-                  <p className="font-semibold text-sm text-gray-800 line-clamp-1">{p.name}</p>
-                  <p className="font-bold text-brand-600 mt-1">₱{p.price}<span className="text-xs text-gray-400 font-normal">/{p.unit}</span></p>
-                </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
