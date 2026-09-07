@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import type { Order, OrderItem, Store, OrderStatus } from '@/lib/types';
+import type { Order, OrderItem, Store, OrderStatus, Conversation } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { estimateDistanceKm, computeDeliveryFee, PER_KM_RATE, BASE_DELIVERY_FEE } from '@/lib/deliveryFee';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
@@ -15,7 +15,7 @@ import {
   Share2, Copy, ExternalLink, Power, Timer, Star, UserCheck,
 } from 'lucide-react';
 
-type Tab = 'deliveries' | 'history' | 'profile';
+type Tab = 'deliveries' | 'messages' | 'history' | 'profile';
 
 export function RiderApp() {
   const { profile, signOut } = useAuth();
@@ -64,6 +64,13 @@ export function RiderApp() {
     }
   }
 
+  function openChatFromMessages(convId: string, name: string, role: string) {
+    setActiveConversationId(convId);
+    setChatPartnerName(name);
+    setChatPartnerRole(role);
+    setShowChat(true);
+  }
+
   const canAct = profile?.is_active ?? true;
 
   return (
@@ -76,6 +83,9 @@ export function RiderApp() {
           ) : (
             <RiderDeliveries onOrderClick={setSelectedOrder} canAct={canAct} />
           )
+        )}
+        {tab === 'messages' && (
+          <RiderMessagesView onOpenChat={openChatFromMessages} />
         )}
         {tab === 'history' && (
           selectedOrder ? (
@@ -756,6 +766,106 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
   );
 }
 
+// ============= RIDER MESSAGES VIEW =============
+function RiderMessagesView({ onOpenChat }: { onOpenChat: (convId: string, name: string, role: string) => void }) {
+  const { profile } = useAuth();
+  const [conversations, setConversations] = useState<(Conversation & { other_name: string; other_role: string; last_message: string | null; last_message_time: string | null; unread: number })[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!profile) return;
+    const userId = profile.id;
+    async function load() {
+      const { data: convs } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('rider_id', userId)
+        .order('updated_at', { ascending: false });
+      if (!convs) { setLoading(false); return; }
+
+      const enriched = await Promise.all((convs as Conversation[]).map(async (conv) => {
+        const { data: buyer } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', conv.buyer_id)
+          .maybeSingle();
+        const otherName = buyer?.full_name || 'Buyer';
+        const otherRole = 'Buyer';
+        const { data: lastMsg } = await supabase
+          .from('messages')
+          .select('body, created_at, sender_id, read_at')
+          .eq('conversation_id', conv.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const { count } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('conversation_id', conv.id)
+          .neq('sender_id', userId)
+          .is('read_at', null);
+        return {
+          ...conv,
+          other_name: otherName,
+          other_role: otherRole,
+          last_message: lastMsg?.body || null,
+          last_message_time: lastMsg?.created_at || null,
+          unread: count || 0,
+        };
+      }));
+      setConversations(enriched);
+      setLoading(false);
+    }
+    load();
+    const sub = supabase.channel('rider-messages-list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [profile]);
+
+  return (
+    <div className="px-5 py-4">
+      <h2 className="text-xl font-bold text-gray-800 mb-4">Mga Mensahe</h2>
+      {loading ? (
+        <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
+      ) : conversations.length === 0 ? (
+        <div className="text-center py-16 text-gray-400">
+          <MessageCircle size={48} className="mx-auto mb-3 opacity-50" />
+          <p className="text-sm">Wala pang messages. Makikipag-chat ka kapag may tinanggap ka nang order!</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {conversations.map(conv => (
+            <button
+              key={conv.id}
+              onClick={() => onOpenChat(conv.id, conv.other_name, conv.other_role)}
+              className="w-full bg-white rounded-2xl border border-gray-100 p-4 text-left active:scale-[0.98] transition flex items-center gap-3"
+            >
+              <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 bg-brand-100">
+                <User size={20} className="text-brand-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-sm text-gray-800 truncate">{conv.other_name}</p>
+                  {conv.last_message_time && (
+                    <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{new Date(conv.last_message_time).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 truncate mt-0.5">{conv.last_message || 'Wala pang messages'}</p>
+              </div>
+              {conv.unread > 0 && (
+                <span className="bg-orange-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold flex-shrink-0" style={{ fontSize: 10 }}>
+                  {conv.unread}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ============= RIDER BOTTOM NAV =============
 function RiderBottomNav({ tab, setTab, riderId, unreadMessages }: { tab: Tab; setTab: (t: Tab) => void; riderId: string; unreadMessages: number }) {
   const [activeCount, setActiveCount] = useState(0);
@@ -775,7 +885,8 @@ function RiderBottomNav({ tab, setTab, riderId, unreadMessages }: { tab: Tab; se
   }, [riderId]);
 
   const items = [
-    { id: 'deliveries' as Tab, icon: Bike, label: 'Deliveries', badge: activeCount + unreadMessages },
+    { id: 'deliveries' as Tab, icon: Bike, label: 'Deliveries', badge: activeCount },
+    { id: 'messages' as Tab, icon: MessageCircle, label: 'Messages', badge: unreadMessages },
     { id: 'history' as Tab, icon: Clock, label: 'History' },
     { id: 'profile' as Tab, icon: User, label: 'Profile' },
   ];
