@@ -55,6 +55,8 @@ export interface Store {
   is_open: boolean;
   rating: number;
   palengke_name: string | null;
+  seller_type: string | null;
+  farm_type: string | null;
   slug: string | null;
   created_at: string;
   updated_at: string;

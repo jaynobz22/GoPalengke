@@ -23,7 +23,7 @@ import {
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
   TrendingUp, DollarSign, Bell, Camera, Loader2, MessageCircle,
   Share2, Copy, ExternalLink, Search, ImageIcon, Wallet, Lock, AlertTriangle,
-  LogOut, Eye, EyeOff, Users, Radio, Shield,
+  LogOut, Eye, EyeOff, Users, Radio, Shield, Sprout,
 } from 'lucide-react';
 
 type Tab = 'dashboard' | 'products' | 'orders' | 'messages' | 'billing' | 'settings';
@@ -313,6 +313,8 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
   const [paymentMethod, setPaymentMethod] = useState('gcash');
   const [palengkeName, setPalengkeName] = useState('');
   const [palengkeCustom, setPalengkeCustom] = useState('');
+  const [sellerType, setSellerType] = useState<'palengke' | 'farm' | ''>('');
+  const [farmType, setFarmType] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -330,7 +332,9 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
       logo_url: logoUrl || null,
       banner_url: bannerUrl || null,
       payment_method: paymentMethod,
-      palengke_name: finalPalengkeName || null,
+      palengke_name: sellerType === 'palengke' ? (finalPalengkeName || null) : null,
+      seller_type: sellerType || null,
+      farm_type: sellerType === 'farm' ? (farmType || null) : null,
     });
     setCreating(false);
     if (error) { setError(error.message); return; }
@@ -364,19 +368,56 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-gray-600 mb-1 block">Pangalan ng Palengke (opsyonal)</label>
-          <p className="text-xs text-gray-400 mb-1.5">Kung may pwesto ka sa isang palengke, ilagay ang pangalan nito para puntahan din ng mga buyers.</p>
-          <select value={palengkeName} onChange={e => setPalengkeName(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition text-sm">
-            <option value="">Walang pwesto sa palengke</option>
-            {cityMarkets.map(m => <option key={m} value={m}>{m}</option>)}
-            <option value="__custom__">Iba pa...</option>
-          </select>
-          {palengkeName === '__custom__' && (
-            <input type="text" value={palengkeCustom} onChange={e => setPalengkeCustom(e.target.value)} placeholder="Ilagay ang pangalan ng palengke" autoFocus
-              className="w-full px-4 py-3 mt-2 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition text-sm" />
-          )}
+          <label className="text-sm font-medium text-gray-600 mb-1 block">Saan ka nagbebenta?</label>
+          <p className="text-xs text-gray-400 mb-2">May pwesto ka ba sa palengke, o nagbebenta mula sa bahay na may farm/fishpond?</p>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <button type="button" onClick={() => { setSellerType('palengke'); setFarmType(''); }}
+              className={`p-3 rounded-xl border-2 text-left transition ${sellerType === 'palengke' ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white'}`}>
+              <StoreIcon size={18} className={sellerType === 'palengke' ? 'text-brand-600' : 'text-gray-400'} />
+              <p className="text-sm font-semibold text-gray-800 mt-1">May Pwesto sa Palengke</p>
+              <p className="text-xs text-gray-500">May stall sa physical wet market</p>
+            </button>
+            <button type="button" onClick={() => { setSellerType('farm'); setPalengkeName(''); setPalengkeCustom(''); }}
+              className={`p-3 rounded-xl border-2 text-left transition ${sellerType === 'farm' ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white'}`}>
+              <Sprout size={18} className={sellerType === 'farm' ? 'text-brand-600' : 'text-gray-400'} />
+              <p className="text-sm font-semibold text-gray-800 mt-1">Farm / Bahay</p>
+              <p className="text-xs text-gray-500">Nagbebenta mula sa sariling farm</p>
+            </button>
+          </div>
         </div>
+
+        {sellerType === 'palengke' && (
+          <div>
+            <label className="text-sm font-medium text-gray-600 mb-1 block">Pangalan ng Palengke</label>
+            <p className="text-xs text-gray-400 mb-1.5">Piliin ang palengke kung saan mo pwesto.</p>
+            <select value={palengkeName} onChange={e => setPalengkeName(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition text-sm">
+              <option value="">Pumili ng palengke...</option>
+              {cityMarkets.map(m => <option key={m} value={m}>{m}</option>)}
+              <option value="__custom__">Iba pa...</option>
+            </select>
+            {palengkeName === '__custom__' && (
+              <input type="text" value={palengkeCustom} onChange={e => setPalengkeCustom(e.target.value)} placeholder="Ilagay ang pangalan ng palengke" autoFocus
+                className="w-full px-4 py-3 mt-2 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition text-sm" />
+            )}
+          </div>
+        )}
+
+        {sellerType === 'farm' && (
+          <div>
+            <label className="text-sm font-medium text-gray-600 mb-1 block">Anong klaseng farm ang meron?</label>
+            <p className="text-xs text-gray-400 mb-1.5">Piliin kung anong source ng paninda mo mula sa bahay.</p>
+            <select value={farmType} onChange={e => setFarmType(e.target.value)} required
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition text-sm">
+              <option value="">Pumili...</option>
+              <option value="vegetable_farm">Gulay / Pananim (Vegetable Farm)</option>
+              <option value="fishpond">Fishpond / Fishery</option>
+              <option value="poultry">Poultry (Alagang Manok / Itlog)</option>
+              <option value="livestock">Livestock (Baboy, Baka, Kambing)</option>
+              <option value="mixed">Halo-halo (Mixed Farm)</option>
+            </select>
+          </div>
+        )}
         <ImageUploadField
           label="Logo ng Tindahan"
           value={logoUrl}
@@ -1060,6 +1101,11 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
   const [qrCodeUrl, setQrCodeUrl] = useState(store.qr_code_url || '');
   const [palengkeName, setPalengkeName] = useState(store.palengke_name || '');
   const [palengkeCustom, setPalengkeCustom] = useState('');
+  const [sellerType, setSellerType] = useState<'palengke' | 'farm' | ''>(
+    store.seller_type === 'farm' ? 'farm' : store.seller_type === 'palengke' ? 'palengke' :
+    (store.palengke_name ? 'palengke' : '')
+  );
+  const [farmType, setFarmType] = useState(store.farm_type || '');
   const [isOpen, setIsOpen] = useState(store.is_open);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1074,7 +1120,9 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
       name, description, barangay: location.barangay, district: location.district, city: location.city, region: location.region,
       logo_url: logoUrl || null, banner_url: bannerUrl || null,
       qr_code_url: qrCodeUrl || null, is_open: isOpen,
-      palengke_name: finalPalengkeName || null,
+      palengke_name: sellerType === 'palengke' ? (finalPalengkeName || null) : null,
+      seller_type: sellerType || null,
+      farm_type: sellerType === 'farm' ? (farmType || null) : null,
     }).eq('id', store.id);
     setSaving(false);
     if (error) { setError(error.message); return; }
@@ -1108,22 +1156,59 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
             compact
           />
           <div>
-            <label className="text-sm font-medium text-gray-600 mb-1 block">Pangalan ng Palengke (opsyonal)</label>
-            <p className="text-xs text-gray-400 mb-1.5">Kung may pwesto ka sa isang palengke, ilagay ang pangalan nito.</p>
-            <select value={palengkeName} onChange={e => setPalengkeName(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition text-sm">
-              <option value="">Walang pwesto sa palengke</option>
-              {cityMarkets.map(m => <option key={m} value={m}>{m}</option>)}
-              {store.palengke_name && !cityMarkets.includes(store.palengke_name) && (
-                <option value={store.palengke_name}>{store.palengke_name}</option>
-              )}
-              <option value="__custom__">Iba pa...</option>
-            </select>
-            {palengkeName === '__custom__' && (
-              <input type="text" value={palengkeCustom} onChange={e => setPalengkeCustom(e.target.value)} placeholder="Ilagay ang pangalan ng palengke" autoFocus
-                className="w-full px-4 py-3 mt-2 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition text-sm" />
-            )}
+            <label className="text-sm font-medium text-gray-600 mb-1 block">Saan ka nagbebenta?</label>
+            <p className="text-xs text-gray-400 mb-2">May pwesto ka ba sa palengke, o nagbebenta mula sa bahay na may farm/fishpond?</p>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <button type="button" onClick={() => { setSellerType('palengke'); setFarmType(''); }}
+                className={`p-3 rounded-xl border-2 text-left transition ${sellerType === 'palengke' ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white'}`}>
+                <StoreIcon size={18} className={sellerType === 'palengke' ? 'text-brand-600' : 'text-gray-400'} />
+                <p className="text-sm font-semibold text-gray-800 mt-1">May Pwesto sa Palengke</p>
+                <p className="text-xs text-gray-500">May stall sa physical wet market</p>
+              </button>
+              <button type="button" onClick={() => { setSellerType('farm'); setPalengkeName(''); setPalengkeCustom(''); }}
+                className={`p-3 rounded-xl border-2 text-left transition ${sellerType === 'farm' ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white'}`}>
+                <Sprout size={18} className={sellerType === 'farm' ? 'text-brand-600' : 'text-gray-400'} />
+                <p className="text-sm font-semibold text-gray-800 mt-1">Farm / Bahay</p>
+                <p className="text-xs text-gray-500">Nagbebenta mula sa sariling farm</p>
+              </button>
+            </div>
           </div>
+
+          {sellerType === 'palengke' && (
+            <div>
+              <label className="text-sm font-medium text-gray-600 mb-1 block">Pangalan ng Palengke</label>
+              <p className="text-xs text-gray-400 mb-1.5">Piliin ang palengke kung saan mo pwesto.</p>
+              <select value={palengkeName} onChange={e => setPalengkeName(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition text-sm">
+                <option value="">Pumili ng palengke...</option>
+                {cityMarkets.map(m => <option key={m} value={m}>{m}</option>)}
+                {store.palengke_name && !cityMarkets.includes(store.palengke_name) && (
+                  <option value={store.palengke_name}>{store.palengke_name}</option>
+                )}
+                <option value="__custom__">Iba pa...</option>
+              </select>
+              {palengkeName === '__custom__' && (
+                <input type="text" value={palengkeCustom} onChange={e => setPalengkeCustom(e.target.value)} placeholder="Ilagay ang pangalan ng palengke" autoFocus
+                  className="w-full px-4 py-3 mt-2 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition text-sm" />
+              )}
+            </div>
+          )}
+
+          {sellerType === 'farm' && (
+            <div>
+              <label className="text-sm font-medium text-gray-600 mb-1 block">Anong klaseng farm ang meron?</label>
+              <p className="text-xs text-gray-400 mb-1.5">Piliin kung anong source ng paninda mo mula sa bahay.</p>
+              <select value={farmType} onChange={e => setFarmType(e.target.value)} required
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition text-sm">
+                <option value="">Pumili...</option>
+                <option value="vegetable_farm">Gulay / Pananim (Vegetable Farm)</option>
+                <option value="fishpond">Fishpond / Fishery</option>
+                <option value="poultry">Poultry (Alagang Manok / Itlog)</option>
+                <option value="livestock">Livestock (Baboy, Baka, Kambing)</option>
+                <option value="mixed">Halo-halo (Mixed Farm)</option>
+              </select>
+            </div>
+          )}
           <ImageUploadField
             label="Logo ng Tindahan"
             value={logoUrl}
