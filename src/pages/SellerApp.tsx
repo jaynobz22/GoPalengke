@@ -22,7 +22,7 @@ import {
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
   TrendingUp, DollarSign, Bell, Camera, Loader2, MessageCircle,
   Share2, Copy, ExternalLink, Search, ImageIcon, Wallet, Lock, AlertTriangle,
-  LogOut, Eye, Users, Radio, Shield,
+  LogOut, Eye, EyeOff, Users, Radio, Shield,
 } from 'lucide-react';
 
 type Tab = 'dashboard' | 'products' | 'orders' | 'messages' | 'billing' | 'settings';
@@ -732,7 +732,7 @@ function SellerProducts({ store, onAdd, onEdit }: { store: Store; onAdd: () => v
       ) : (
         <div className="space-y-2">
           {products.map(p => (
-            <div key={p.id} className="bg-white rounded-2xl border border-gray-100 p-3 flex items-center gap-3">
+            <div key={p.id} className={`bg-white rounded-2xl border p-3 flex items-center gap-3 transition ${p.is_available ? 'border-gray-100' : 'border-gray-200 opacity-60'}`}>
               <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
                 {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
               </div>
@@ -741,16 +741,23 @@ function SellerProducts({ store, onAdd, onEdit }: { store: Store; onAdd: () => v
                 <p className="text-brand-600 font-bold text-sm">₱{p.price}<span className="text-xs text-gray-400 font-normal">/{p.unit}</span></p>
                 <p className="text-xs text-gray-400">Stock: {p.stock}</p>
               </div>
-              <div className="flex flex-col gap-1">
-                <button onClick={() => onEdit(p)} className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center active:scale-90 transition">
-                  <Edit size={16} className="text-gray-600" />
-                </button>
-                <button onClick={() => toggleAvailable(p)} className={`w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 transition ${p.is_available ? 'bg-green-50' : 'bg-gray-100'}`}>
-                  <Check size={16} className={p.is_available ? 'text-green-600' : 'text-gray-400'} />
-                </button>
-                <button onClick={() => deleteProduct(p)} className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center active:scale-90 transition">
-                  <Trash2 size={16} className="text-red-500" />
-                </button>
+              <div className="flex flex-col gap-1.5 items-end">
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${p.is_available ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {p.is_available ? 'Visible' : 'Hidden'}
+                </span>
+                <div className="flex gap-1">
+                  <button onClick={() => toggleAvailable(p)} className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 active:scale-95 transition ${p.is_available ? 'bg-gray-100 text-gray-600' : 'bg-green-50 text-green-600'}`}>
+                    {p.is_available ? <><EyeOff size={14} /> Itago</> : <><Eye size={14} /> Ipakita</>}
+                  </button>
+                </div>
+                <div className="flex gap-1">
+                  <button onClick={() => onEdit(p)} className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center active:scale-90 transition">
+                    <Edit size={16} className="text-gray-600" />
+                  </button>
+                  <button onClick={() => deleteProduct(p)} className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center active:scale-90 transition">
+                    <Trash2 size={16} className="text-red-500" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -866,7 +873,7 @@ function ProductFormModal({ store, product, onClose, onSaved }: { store: Store; 
       unit,
       stock: parseInt(stock) || 0,
       image_url: imageUrl || null,
-      is_available: true,
+      is_available: product ? product.is_available : true,
     };
 
     if (product) {
