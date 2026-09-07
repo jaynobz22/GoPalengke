@@ -11,6 +11,8 @@ import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import { Avatar } from '@/components/Avatar';
 import { ImageUploadField } from '@/components/ImageUploadField';
 import { ReviewForm, ReviewSection } from '@/components/Reviews';
+import { AdminVideoCall } from '@/components/AdminVideoCall';
+import { useIncomingAdminCall } from '@/lib/useAdminCall';
 import {
   Search, ShoppingCart, Home, Package, User, Plus, Minus, Trash2, X,
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, Bike, Store as StoreIcon,
@@ -34,6 +36,8 @@ export function BuyerApp() {
   const [chatPartnerRole, setChatPartnerRole] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
   const [orderUpdates, setOrderUpdates] = useState(0);
+  const { incomingCall, adminName, clearCall } = useIncomingAdminCall();
+  const [activeAdminCall, setActiveAdminCall] = useState<{ roomId: string; callId: string; otherName: string } | null>(null);
 
   function navigateToProduct(product: Product, store: Store) {
     setSelectedProduct(product);
@@ -183,6 +187,26 @@ export function BuyerApp() {
           <ChatView conversationId={activeConversationId} otherName={chatPartnerName} otherRole={chatPartnerRole} onBack={backFromChat} />
         )}
       </div>
+
+      {/* Incoming admin video call */}
+      {incomingCall && !activeAdminCall && (
+        <AdminVideoCall
+          roomId={incomingCall.room_id}
+          isCaller={false}
+          otherName={adminName}
+          callId={incomingCall.id}
+          onEnd={() => { clearCall(); }}
+        />
+      )}
+      {activeAdminCall && (
+        <AdminVideoCall
+          roomId={activeAdminCall.roomId}
+          isCaller={false}
+          otherName={activeAdminCall.otherName}
+          callId={activeAdminCall.callId}
+          onEnd={() => { setActiveAdminCall(null); clearCall(); }}
+        />
+      )}
 
       {/* Bottom Nav */}
       <BottomNav tab={tab} setTab={(t) => { setTab(t); setView('browse'); }} unreadMessages={unreadCount} orderUpdates={orderUpdates} />

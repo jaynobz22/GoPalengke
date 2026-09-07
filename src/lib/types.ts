@@ -180,6 +180,18 @@ export interface Message {
   call_status: CallStatus | null;
 }
 
+export type AdminCallStatus = 'pending' | 'accepted' | 'declined' | 'ended';
+
+export interface AdminCall {
+  id: string;
+  admin_id: string;
+  target_user_id: string;
+  room_id: string;
+  status: AdminCallStatus;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Announcement {
   id: string;
   message: string;

@@ -13,6 +13,8 @@ import { Avatar } from '@/components/Avatar';
 import { InactiveBanner } from '@/components/InactiveBanner';
 import { SellerBilling } from '@/components/SellerBilling';
 import { ReviewSection } from '@/components/Reviews';
+import { AdminVideoCall } from '@/components/AdminVideoCall';
+import { useIncomingAdminCall } from '@/lib/useAdminCall';
 import {
   Store as StoreIcon, Package, Settings, Plus, ArrowLeft, Edit, Trash2, X,
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
@@ -41,6 +43,8 @@ export function SellerApp() {
   const [showFreezeWarning, setShowFreezeWarning] = useState(false);
   const [isFeeFrozen, setIsFeeFrozen] = useState(false);
   const [showStorePreview, setShowStorePreview] = useState(false);
+  const { incomingCall, adminName, clearCall } = useIncomingAdminCall();
+  const [activeAdminCall, setActiveAdminCall] = useState<{ roomId: string; callId: string; otherName: string } | null>(null);
 
   const loadStore = useCallback(async () => {
     if (!profile) return;
@@ -208,6 +212,26 @@ export function SellerApp() {
 
       {showStoreForm && (
         <StoreFormModal store={store} onClose={() => setShowStoreForm(false)} onSaved={() => { setShowStoreForm(false); loadStore(); }} />
+      )}
+
+      {/* Incoming admin video call */}
+      {incomingCall && !activeAdminCall && (
+        <AdminVideoCall
+          roomId={incomingCall.room_id}
+          isCaller={false}
+          otherName={adminName}
+          callId={incomingCall.id}
+          onEnd={() => { clearCall(); }}
+        />
+      )}
+      {activeAdminCall && (
+        <AdminVideoCall
+          roomId={activeAdminCall.roomId}
+          isCaller={false}
+          otherName={activeAdminCall.otherName}
+          callId={activeAdminCall.callId}
+          onEnd={() => { setActiveAdminCall(null); clearCall(); }}
+        />
       )}
 
       <SellerBottomNav tab={tab} setTab={setTab} storeId={store.id} unreadMessages={unreadCount} />

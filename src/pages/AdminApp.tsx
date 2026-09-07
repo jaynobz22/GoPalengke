@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import type { Announcement, Profile, FeePayment, UserRole, SellerFee } from '@/lib/types';
+import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall } from '@/lib/types';
 import { ImageUploadField } from '@/components/ImageUploadField';
+import { AdminVideoCall } from '@/components/AdminVideoCall';
 import {
   Megaphone, Plus, Trash2, Power, Check, Loader2, Fish, LogOut,
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
   AlertCircle, X, UserCheck, UserX, DollarSign, TrendingUp, Receipt,
-  Lock, Unlock,
+  Lock, Unlock, Video,
 } from 'lucide-react';
 
 type Tab = 'overview' | 'users' | 'fees' | 'announcements' | 'settings';
@@ -15,6 +16,29 @@ type Tab = 'overview' | 'users' | 'fees' | 'announcements' | 'settings';
 export function AdminApp() {
   const { profile, signOut } = useAuth();
   const [tab, setTab] = useState<Tab>('overview');
+  const [activeCall, setActiveCall] = useState<{ roomId: string; isCaller: boolean; callId: string; otherName: string } | null>(null);
+
+  function startAdminCall(user: Profile) {
+    const roomId = `admin-call-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    (async () => {
+      const { data, error } = await supabase
+        .from('admin_calls')
+        .insert({
+          admin_id: profile!.id,
+          target_user_id: user.id,
+          room_id: roomId,
+          status: 'pending',
+        })
+        .select('*')
+        .single();
+      if (error || !data) return;
+      setActiveCall({ roomId, isCaller: true, callId: (data as AdminCall).id, otherName: user.full_name });
+    })();
+  }
+
+  function endAdminCall() {
+    setActiveCall(null);
+  }
 
   const tabs: { id: Tab; label: string; icon: typeof Users }[] = [
     { id: 'overview', label: 'Overview', icon: Users },
@@ -66,10 +90,20 @@ export function AdminApp() {
       </div>
 
       {tab === 'overview' && <OverviewTab />}
-      {tab === 'users' && <UsersTab />}
+      {tab === 'users' && <UsersTab onStartCall={startAdminCall} />}
       {tab === 'fees' && <FeesTab />}
       {tab === 'announcements' && <AnnouncementsTab />}
       {tab === 'settings' && <SettingsTab />}
+
+      {activeCall && (
+        <AdminVideoCall
+          roomId={activeCall.roomId}
+          isCaller={activeCall.isCaller}
+          otherName={activeCall.otherName}
+          callId={activeCall.callId}
+          onEnd={endAdminCall}
+        />
+      )}
     </div>
   );
 }
@@ -221,7 +255,7 @@ function OverviewTab() {
 }
 
 // ============= USERS TAB =============
-function UsersTab() {
+function UsersTab({ onStartCall }: { onStartCall: (user: Profile) => void }) {
   const { profile: adminProfile } = useAuth();
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -344,6 +378,17 @@ function UsersTab() {
                   {user.is_active ? 'Deactivate' : 'Activate'}
                 </button>
               </div>
+
+              {/* Video Call Button */}
+              {user.id !== adminProfile?.id && (
+                <button
+                  onClick={() => onStartCall(user)}
+                  className="w-full mt-2 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 active:scale-95 transition"
+                >
+                  <Video size={15} />
+                  Video Call (Verification)
+                </button>
+              )}
             </div>
           ))}
         </div>

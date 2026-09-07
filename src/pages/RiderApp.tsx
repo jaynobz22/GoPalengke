@@ -9,6 +9,8 @@ import { Avatar } from '@/components/Avatar';
 import { ImageUploadField } from '@/components/ImageUploadField';
 import { InactiveBanner } from '@/components/InactiveBanner';
 import { ReviewSection } from '@/components/Reviews';
+import { AdminVideoCall } from '@/components/AdminVideoCall';
+import { useIncomingAdminCall } from '@/lib/useAdminCall';
 import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
@@ -26,6 +28,8 @@ export function RiderApp() {
   const [chatPartnerRole, setChatPartnerRole] = useState('');
   const [showChat, setShowChat] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { incomingCall, adminName, clearCall } = useIncomingAdminCall();
+  const [activeAdminCall, setActiveAdminCall] = useState<{ roomId: string; callId: string; otherName: string } | null>(null);
 
   // Track unread messages for badge
   useEffect(() => {
@@ -107,6 +111,26 @@ export function RiderApp() {
           </div>
         )}
       </div>
+
+      {/* Incoming admin video call */}
+      {incomingCall && !activeAdminCall && (
+        <AdminVideoCall
+          roomId={incomingCall.room_id}
+          isCaller={false}
+          otherName={adminName}
+          callId={incomingCall.id}
+          onEnd={() => { clearCall(); }}
+        />
+      )}
+      {activeAdminCall && (
+        <AdminVideoCall
+          roomId={activeAdminCall.roomId}
+          isCaller={false}
+          otherName={activeAdminCall.otherName}
+          callId={activeAdminCall.callId}
+          onEnd={() => { setActiveAdminCall(null); clearCall(); }}
+        />
+      )}
 
       <RiderBottomNav tab={tab} setTab={(t) => { setTab(t); setSelectedOrder(null); }} riderId={profile?.id || ''} unreadMessages={unreadCount} />
     </div>
