@@ -243,24 +243,31 @@ function StatsBar({ storeCount, productCount }: { storeCount: number; productCou
 // ============= CATEGORIES =============
 function CategorySection({ categories }: { categories: Category[] }) {
   return (
-    <div className="px-5 md:px-6 py-4 max-w-6xl mx-auto">
-      <div className="flex items-center gap-2 mb-4">
-        <Sparkles size={18} className="text-brand-600" />
-        <h2 className="text-lg md:text-2xl font-bold text-gray-800">Kategorya ng Paninda</h2>
+    <div className="py-4 max-w-6xl mx-auto">
+      {/* Trust Headline */}
+      <div className="px-5 md:px-6 mb-4">
+        <div className="bg-gradient-to-r from-brand-600 to-brand-700 rounded-2xl px-4 py-3 shadow-sm">
+          <p className="text-white font-bold text-base md:text-lg leading-snug text-center">
+            All vendors are verified via video call kaya sure na legit at safe ka!
+          </p>
+        </div>
       </div>
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-        {categories.map((cat, i) => (
-          <div
-            key={cat.id}
-            className="bg-white rounded-2xl border border-gray-100 p-3 md:p-4 flex flex-col items-center gap-2 animate-slide-in-up hover:shadow-md transition"
-            style={{ animationDelay: `${i * 0.08}s` }}
-          >
-            <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center text-2xl">
-              <CategoryEmoji slug={cat.slug} />
+
+      {/* Scrolling category marquee */}
+      <div className="overflow-hidden">
+        <div className="flex gap-3 animate-marquee-slow w-max px-5 md:px-6">
+          {[...categories, ...categories].map((cat, i) => (
+            <div
+              key={`${cat.id}-${i}`}
+              className="bg-white rounded-2xl border border-gray-100 p-3 md:p-4 flex flex-col items-center gap-2 flex-shrink-0 w-20 md:w-24"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center text-2xl">
+                <CategoryEmoji slug={cat.slug} />
+              </div>
+              <span className="text-xs font-medium text-gray-600 text-center leading-tight">{cat.name_fil}</span>
             </div>
-            <span className="text-xs font-medium text-gray-600 text-center">{cat.name_fil}</span>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
