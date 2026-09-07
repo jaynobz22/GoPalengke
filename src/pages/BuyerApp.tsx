@@ -5,7 +5,13 @@ import type { Product, Store, Category, CartItem, Order, OrderItem, OrderStatus,
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
 import { InactiveBanner } from '@/components/InactiveBanner';
-import { computeDeliveryFee, estimateDistanceKm } from '@/lib/deliveryFee';
+import {
+  computeDeliveryFee, estimateDistanceKm,
+  haversineKm, getStoreCoords, getDeliveryCoords,
+  computeDeliveryFeeFromCoords, BASE_DELIVERY_FEE, PER_KM_RATE,
+  type Coords,
+} from '@/lib/deliveryFee';
+import { DeliveryMap } from '@/components/DeliveryMap';
 import { COMMISSION_RATE } from '@/lib/types';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import { Avatar } from '@/components/Avatar';
@@ -973,6 +979,8 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   const [addressDetails, setAddressDetails] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'qr_code' | 'cod'>('qr_code');
   const [note, setNote] = useState('');
+  const [deliveryPin, setDeliveryPin] = useState<Coords | null>(null);
+  const [showMap, setShowMap] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -986,6 +994,28 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
     return acc;
   }, {} as Record<string, (CartItem & { product: Product; store: Store })[]>);
 
+  // Get store coordinates for the first store (for map centering)
+  const firstStore = Object.values(grouped)[0]?.[0]?.store;
+  const storeCoords = firstStore ? getStoreCoords(firstStore) : null;
+
+  // Get delivery coordinates: prefer pin, fall back to text-based geocoding
+  const deliveryCoords: Coords | null = deliveryPin || getDeliveryCoords(deliveryLocation);
+
+  // Calculate fee per store using coordinates when available
+  function getFeeForStore(store: Store): { fee: number; distanceKm: number; isEstimated: boolean } {
+    const sCoords = getStoreCoords(store);
+    if (sCoords && deliveryCoords) {
+      const result = computeDeliveryFeeFromCoords(sCoords, deliveryCoords);
+      return { ...result, isEstimated: !deliveryPin };
+    }
+    // Fallback to text-based
+    const km = estimateDistanceKm(
+      { barangay: store.barangay, city: store.city, region: store.region },
+      { barangay: deliveryLocation.barangay, city: deliveryLocation.city, region: deliveryLocation.region },
+    );
+    return { fee: BASE_DELIVERY_FEE + PER_KM_RATE * km, distanceKm: km, isEstimated: true };
+  }
+
   async function placeOrder() {
     if (!profile) return;
     setPlacing(true);
@@ -996,10 +1026,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
     for (const [storeId, items] of Object.entries(grouped)) {
       const store = items[0].store;
       const total = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
-      const deliveryFee = computeDeliveryFee(
-        { barangay: store.barangay, city: store.city, region: store.region },
-        { barangay: deliveryLocation.barangay, city: deliveryLocation.city, region: deliveryLocation.region },
-      );
+      const { fee: deliveryFee } = getFeeForStore(store);
       const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, deliveryLocation.region]
         .filter(Boolean).join(', ');
 
@@ -1018,6 +1045,8 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
         delivery_city: deliveryLocation.city || null,
         delivery_region: deliveryLocation.region || null,
         delivery_address: fullAddress,
+        delivery_lat: deliveryPin?.lat ?? null,
+        delivery_lng: deliveryPin?.lng ?? null,
         buyer_note: note || null,
         commission_amount: commissionAmount,
         delivery_group_id: groupId,
@@ -1048,10 +1077,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   if (cartItems.length === 0) return <div className="p-5 text-center text-gray-400">Walang laman ang cart.</div>;
 
   const grandTotal = Object.entries(grouped).reduce((sum, [_, items]) => {
-    const fee = computeDeliveryFee(
-      { barangay: items[0].store.barangay, city: items[0].store.city, region: items[0].store.region },
-      { barangay: deliveryLocation.barangay, city: deliveryLocation.city, region: deliveryLocation.region },
-    );
+    const { fee } = getFeeForStore(items[0].store);
     return sum + items.reduce((s, i) => s + i.product.price * i.quantity, 0) + fee;
   }, 0);
 
@@ -1085,39 +1111,102 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
             className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition text-sm"
           />
         </div>
+
+        {/* Map pin toggle */}
+        <button
+          onClick={() => setShowMap(!showMap)}
+          className="mt-3 w-full py-2.5 rounded-xl border-2 border-dashed border-brand-300 bg-brand-50/50 text-brand-600 text-sm font-medium flex items-center justify-center gap-2 transition active:scale-[0.98]"
+        >
+          <MapPin size={16} />
+          {showMap ? 'Itago ang mapa' : 'I-drop ang pin sa mapa para sa eksaktong lokasyon'}
+        </button>
+
+        {showMap && (
+          <div className="mt-3">
+            <DeliveryMap
+              storeCoords={storeCoords}
+              deliveryCoords={deliveryCoords}
+              onPinDrop={(lat, lng) => setDeliveryPin({ lat, lng })}
+              storeName={firstStore?.name}
+            />
+            {deliveryPin && (
+              <div className="mt-2 flex items-center justify-between text-xs">
+                <span className="text-gray-500">
+                  Pin: {deliveryPin.lat.toFixed(4)}, {deliveryPin.lng.toFixed(4)}
+                </span>
+                <button
+                  onClick={() => setDeliveryPin(null)}
+                  className="text-red-500 font-medium"
+                >
+                  I-clear ang pin
+                </button>
+              </div>
+            )}
+            <p className="mt-1 text-xs text-gray-400">
+              I-tap ang mapa para i-drop ang pin sa iyong eksaktong lokasyon. Mas tumpak ang calculation ng delivery fee gamit ang pin.
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Order Items by Store */}
-      {Object.entries(grouped).map(([storeId, items]) => (
-        <div key={storeId} className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
-          <div className="flex items-center gap-2 mb-3">
-            <StoreIcon size={16} className="text-gray-500" />
-            <span className="font-semibold text-sm text-gray-700">{items[0].store.name}</span>
-            {items[0].store.palengke_name && (
-              <span className="text-xs text-brand-600 flex items-center gap-0.5">
-                <MapPin size={12} />
-                {items[0].store.palengke_name}
-              </span>
-            )}
-          </div>
-          {items.map(item => (
-            <div key={item.id} className="flex items-center gap-3 py-2">
-              <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
-                {item.product.image_url && <img src={item.product.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-800">{item.product.name}</p>
-                <p className="text-xs text-gray-400">{item.quantity} × ₱{item.product.price}</p>
-              </div>
-              <p className="font-semibold text-sm text-gray-700">₱{(item.product.price * item.quantity).toFixed(0)}</p>
+      {/* Order Items by Store with Delivery Fee Breakdown */}
+      {Object.entries(grouped).map(([storeId, items]) => {
+        const store = items[0].store;
+        const { fee, distanceKm, isEstimated } = getFeeForStore(store);
+        const distanceFee = fee - BASE_DELIVERY_FEE;
+
+        return (
+          <div key={storeId} className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
+            <div className="flex items-center gap-2 mb-3">
+              <StoreIcon size={16} className="text-gray-500" />
+              <span className="font-semibold text-sm text-gray-700">{store.name}</span>
+              {store.palengke_name && (
+                <span className="text-xs text-brand-600 flex items-center gap-0.5">
+                  <MapPin size={12} />
+                  {store.palengke_name}
+                </span>
+              )}
             </div>
-          ))}
-          <div className="flex justify-between text-sm text-gray-500 pt-2 border-t border-gray-50">
-            <span>Delivery fee ({estimateDistanceKm({ barangay: items[0].store.barangay, city: items[0].store.city, region: items[0].store.region }, { barangay: deliveryLocation.barangay, city: deliveryLocation.city, region: deliveryLocation.region })}km × ₱15 + ₱50 base)</span>
-            <span>₱{computeDeliveryFee({ barangay: items[0].store.barangay, city: items[0].store.city, region: items[0].store.region }, { barangay: deliveryLocation.barangay, city: deliveryLocation.city, region: deliveryLocation.region }).toFixed(0)}</span>
+            {items.map(item => (
+              <div key={item.id} className="flex items-center gap-3 py-2">
+                <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                  {item.product.image_url && <img src={item.product.image_url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-800">{item.product.name}</p>
+                  <p className="text-xs text-gray-400">{item.quantity} × ₱{item.product.price}</p>
+                </div>
+                <p className="font-semibold text-sm text-gray-700">₱{(item.product.price * item.quantity).toFixed(0)}</p>
+              </div>
+            ))}
+
+            {/* Delivery Fee Breakdown */}
+            <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5">
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Base Delivery Fee</span>
+                <span>₱{BASE_DELIVERY_FEE.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Calculated Distance {isEstimated && <span className="text-amber-500">(estimated)</span>}</span>
+                <span>{distanceKm.toFixed(2)} km</span>
+              </div>
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Distance Fee ({distanceKm.toFixed(2)} km × ₱{PER_KM_RATE})</span>
+                <span>₱{distanceFee.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-semibold text-gray-700 pt-1.5 border-t border-gray-50">
+                <span>Total Delivery Fee (Rider Payout)</span>
+                <span>₱{fee.toFixed(2)}</span>
+              </div>
+              {distanceKm > 20 && (
+                <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2 mt-1">
+                  Mahaba ang distansya — ang rider ay sasahurin ng ₱{fee.toFixed(0)} para sa paghatid.
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {/* Payment Method */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">

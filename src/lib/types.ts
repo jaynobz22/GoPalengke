@@ -38,6 +38,8 @@ export interface Store {
   district: string | null;
   city: string;
   region: string;
+  latitude: number | null;
+  longitude: number | null;
   logo_url: string | null;
   banner_url: string | null;
   qr_code_url: string | null;

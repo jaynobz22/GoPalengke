@@ -142,3 +142,13 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Leaflet map overrides */
+.leaflet-container {
+  font-family: 'Inter', system-ui, sans-serif;
+  z-index: 0;
+}
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
