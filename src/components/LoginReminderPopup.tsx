@@ -57,8 +57,8 @@ export function LoginReminderPopup({ storageKey, variant }: Props) {
           </button>
         </div>
 
-        {/* Body */}
-        <div className="px-4 py-4 space-y-3">
+        {/* Body — scrollable */}
+        <div className="px-4 py-4 space-y-3 max-h-[45vh] overflow-y-auto overscroll-contain">
           {reminders.map((item, i) => (
             <div key={i} className="flex items-start gap-2.5">
               <div className="flex-shrink-0 mt-0.5">{item.icon}</div>
