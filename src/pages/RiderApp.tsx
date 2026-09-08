@@ -602,6 +602,15 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const codSubmitted = !!currentOrder.cod_payment_reference;
   const codAccepted = !!currentOrder.cod_payment_accepted_at;
 
+  const allStores: { order: Order & { store: Store } }[] = [
+    { order: { ...currentOrder, store: store! } },
+    ...siblingOrders.map(s => ({ order: s })),
+  ].filter(s => s.order.store);
+  const allPickupStoreIds = allStores.map(s => s.order.store_id);
+  const allPickedUp = allPickupStoreIds.every(id => pickedUpStores.has(id));
+  const totalFee = allStores.reduce((s, o) => s + o.order.delivery_fee, 0);
+  const totalAmount = allStores.reduce((s, o) => s + o.order.total + o.order.delivery_fee, 0);
+
   // Build rider-side step list
   const riderSteps: StepInfo[] = [
     { key: 'accept', label: 'Tanggapin ang Delivery', description: 'Tanggapin ang delivery order at pumunta sa pickup point (store) para kunin ang parcel.', status: 'completed' },
@@ -647,15 +656,6 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const remainingMin = Math.floor(remainingSeconds / 60);
   const remainingSec = remainingSeconds % 60;
   const isOverdue = elapsedSeconds > estimatedTotalSeconds;
-
-  const allStores: { order: Order & { store: Store } }[] = [
-    { order: { ...currentOrder, store: store! } },
-    ...siblingOrders.map(s => ({ order: s })),
-  ].filter(s => s.order.store);
-  const allPickupStoreIds = allStores.map(s => s.order.store_id);
-  const allPickedUp = allPickupStoreIds.every(id => pickedUpStores.has(id));
-  const totalFee = allStores.reduce((s, o) => s + o.order.delivery_fee, 0);
-  const totalAmount = allStores.reduce((s, o) => s + o.order.total + o.order.delivery_fee, 0);
 
   return (
     <div className="px-5 py-4">
