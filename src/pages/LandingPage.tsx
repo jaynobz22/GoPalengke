@@ -534,15 +534,36 @@ function CTASection({ onGetStarted }: { onGetStarted?: () => void }) {
 
 // ============= FOOTER =============
 function Footer() {
+  const legalLinks = [
+    { label: 'Terms and Conditions', hash: '#/legal/terms' },
+    { label: 'Disclaimer', hash: '#/legal/disclaimer' },
+    { label: 'Privacy Policy', hash: '#/legal/privacy' },
+    { label: 'FAQ', hash: '#/legal/faq' },
+  ];
+
   return (
-    <footer className="bg-gray-900 text-gray-400 px-5 py-8 md:py-12 text-center">
+    <footer className="bg-gray-900 text-gray-400 px-5 py-8 md:py-12">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-center gap-2 mb-3">
+        <div className="flex items-center justify-center gap-2 mb-4">
           <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-7 h-7 rounded-lg object-cover" />
           <span className="text-lg font-bold text-white">GoPalengke</span>
         </div>
-        <p className="text-sm">The First Online Wet Market in the Philippines</p>
-        <p className="text-xs mt-2 text-gray-500">© 2026 GoPalengke. All rights reserved.</p>
+        <p className="text-sm text-center mb-5">The First Online Wet Market in the Philippines</p>
+
+        {/* Legal links */}
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mb-5">
+          {legalLinks.map((link) => (
+            <button
+              key={link.hash}
+              onClick={() => { window.location.hash = link.hash; }}
+              className="text-xs md:text-sm text-gray-400 hover:text-white transition"
+            >
+              {link.label}
+            </button>
+          ))}
+        </div>
+
+        <p className="text-xs text-center text-gray-500">© 2026 GoPalengke. All rights reserved.</p>
       </div>
     </footer>
   );
