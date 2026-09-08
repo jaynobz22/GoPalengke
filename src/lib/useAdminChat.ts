@@ -5,14 +5,14 @@ import type { AdminConversation } from '@/lib/types';
 
 export function useAdminConversations() {
   const { profile } = useAuth();
-  const [conversations, setConversations] = useState<(AdminConversation & { admin: { full_name: string } })[]>([]);
+  const [conversations, setConversations] = useState<AdminConversation[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
   const load = useCallback(async () => {
     if (!profile) return;
     const { data } = await supabase
       .from('admin_conversations')
-      .select('*, admin:profiles!admin_conversations_admin_id_fkey(full_name)')
+      .select('*')
       .eq('user_id', profile.id)
       .order('updated_at', { ascending: false });
     const convs = (data || []) as any[];

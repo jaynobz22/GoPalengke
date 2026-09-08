@@ -212,7 +212,7 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
             <PhoneOff size={36} className="text-gray-400" />
           </div>
           <p className="text-white text-lg font-semibold mb-1">Natapos ang video call</p>
-          <p className="text-gray-400 text-sm">Kay {otherName}</p>
+          <p className="text-gray-400 text-sm">Kay {isCaller ? otherName : 'Admin'}</p>
         </div>
         <button onClick={onEnd} className="mt-8 px-8 py-3 bg-white text-gray-800 rounded-2xl font-semibold active:scale-95 transition">
           Bumalik
@@ -228,7 +228,7 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
           <div className="w-28 h-28 rounded-full bg-blue-700 flex items-center justify-center mx-auto mb-6 animate-pulse">
             <Video size={48} className="text-white" />
           </div>
-          <p className="text-white text-xl font-bold mb-1">Tumatawag kay {otherName}...</p>
+          <p className="text-white text-xl font-bold mb-1">Tumatawag kay {isCaller ? otherName : 'Admin'}...</p>
           <p className="text-blue-200 text-sm">Naghihintay ng sagot</p>
         </div>
         <div className="mt-2 flex gap-2 items-center">
@@ -251,7 +251,7 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
           <div className="w-28 h-28 rounded-full bg-blue-700 flex items-center justify-center mx-auto mb-6 ring-4 ring-blue-400/50 animate-pulse">
             <Video size={48} className="text-white" />
           </div>
-          <p className="text-white text-xl font-bold mb-1">Si {otherName} (Admin) ang tumatawag</p>
+          <p className="text-white text-xl font-bold mb-1">Si {isCaller ? otherName : 'Admin'} (Admin) ang tumatawag</p>
           <p className="text-blue-200 text-sm">Verification video call</p>
         </div>
         <div className="mt-10 flex gap-8">
@@ -293,7 +293,7 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
             <div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center mx-auto mb-3">
               <Video size={36} className="text-gray-500" />
             </div>
-            <p className="text-gray-400 text-sm">Naghihintay ng video ni {otherName}...</p>
+            <p className="text-gray-400 text-sm">Naghihintay ng video ni {isCaller ? otherName : 'Admin'}...</p>
           </div>
         </div>
       </div>
@@ -314,7 +314,7 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
       </div>
 
       <div className="absolute top-4 left-4 z-10">
-        <p className="text-white font-semibold text-sm drop-shadow-lg">{otherName}</p>
+        <p className="text-white font-semibold text-sm drop-shadow-lg">{isCaller ? otherName : 'Admin'}</p>
         <p className="text-white/60 text-xs">Admin Verification Call</p>
       </div>
 

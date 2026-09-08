@@ -22,14 +22,7 @@ export function useIncomingAdminCall() {
         .limit(1)
         .maybeSingle();
       if (data) {
-        const call = data as AdminCall;
-        setIncomingCall(call);
-        const { data: admin } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', call.admin_id)
-          .maybeSingle();
-        if (admin) setAdminName(admin.full_name);
+        setIncomingCall(data as AdminCall);
       }
     }
     checkExisting();
@@ -37,16 +30,10 @@ export function useIncomingAdminCall() {
     const sub = supabase.channel(`admin-call-${userId}`)
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'admin_calls', filter: `target_user_id=eq.${userId}` },
-        async (payload: any) => {
+        (payload: any) => {
           const call = payload.new as AdminCall;
           if (call.status === 'pending') {
             setIncomingCall(call);
-            const { data: admin } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', call.admin_id)
-              .maybeSingle();
-            if (admin) setAdminName(admin.full_name);
           }
         }
       )

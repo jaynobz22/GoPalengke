@@ -1355,7 +1355,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
 }
 
 // ============= RIDER MESSAGES VIEW =============
-function RiderMessagesView({ onOpenChat, adminConversations, onOpenAdminChat }: { onOpenChat: (convId: string, name: string, role: string) => void; adminConversations: (AdminConversation & { admin: { full_name: string } })[]; onOpenAdminChat: (convId: string, name: string) => void }) {
+function RiderMessagesView({ onOpenChat, adminConversations, onOpenAdminChat }: { onOpenChat: (convId: string, name: string, role: string) => void; adminConversations: AdminConversation[]; onOpenAdminChat: (convId: string, name: string) => void }) {
   const { profile } = useAuth();
   const [conversations, setConversations] = useState<(Conversation & { other_name: string; other_role: string; last_message: string | null; last_message_time: string | null; unread: number })[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1457,7 +1457,7 @@ function RiderMessagesView({ onOpenChat, adminConversations, onOpenAdminChat }: 
               return (
                 <button
                   key={c.id}
-                  onClick={() => onOpenAdminChat(c.id, c.admin?.full_name || 'Admin')}
+                  onClick={() => onOpenAdminChat(c.id, 'Admin')}
                   className="w-full bg-blue-50 rounded-2xl border border-blue-200 p-4 text-left active:scale-[0.98] transition flex items-center gap-3"
                 >
                   <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
@@ -1465,7 +1465,7 @@ function RiderMessagesView({ onOpenChat, adminConversations, onOpenAdminChat }: 
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <p className="font-semibold text-sm text-gray-800 truncate">{c.admin?.full_name || 'Admin'}</p>
+                      <p className="font-semibold text-sm text-gray-800 truncate">Admin</p>
                       {last && (
                         <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{new Date(last.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</span>
                       )}

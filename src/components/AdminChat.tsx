@@ -88,7 +88,7 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
             <Shield size={20} className="text-white" />
           </div>
           <div className="min-w-0">
-            <p className="text-white font-semibold text-sm truncate">{otherName}</p>
+            <p className="text-white font-semibold text-sm truncate">{isAdmin ? otherName : 'Admin'}</p>
             <p className="text-white/60 text-xs">{isAdmin ? 'Admin Support' : 'GoPalengke Admin'}</p>
           </div>
         </div>
