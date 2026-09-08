@@ -13,7 +13,23 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
 
-const DEFAULT_OG_IMAGE = "https://melwjygaczevpasgazfo.supabase.co/storage/v1/object/public/store-images/Copilot_20260907_183703.png";
+const LANDING_IMAGES = [
+  "https://melwjygaczevpasgazfo.supabase.co/storage/v1/object/public/store-images/landing/Copilot_20260906_113445.png",
+  "https://melwjygaczevpasgazfo.supabase.co/storage/v1/object/public/store-images/landing/Copilot_20260906_114051.png",
+  "https://melwjygaczevpasgazfo.supabase.co/storage/v1/object/public/store-images/landing/Copilot_20260906_115019.png",
+  "https://melwjygaczevpasgazfo.supabase.co/storage/v1/object/public/store-images/landing/Copilot_20260906_115256.png",
+  "https://melwjygaczevpasgazfo.supabase.co/storage/v1/object/public/store-images/landing/Copilot_20260906_115828.png",
+  "https://melwjygaczevpasgazfo.supabase.co/storage/v1/object/public/store-images/landing/Copilot_20260907_183703.png",
+];
+
+function defaultOgImage(seed?: string): string {
+  if (seed) {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+    return LANDING_IMAGES[Math.abs(hash) % LANDING_IMAGES.length];
+  }
+  return LANDING_IMAGES[Math.floor(Math.random() * LANDING_IMAGES.length)];
+}
 
 interface StoreRow {
   id: string;
@@ -134,7 +150,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const s = store as StoreRow;
-      const ogImage = s.banner_url || s.logo_url || DEFAULT_OG_IMAGE;
+      const ogImage = s.banner_url || s.logo_url || defaultOgImage(s.id);
       const description = s.description
         ? `${s.description}${s.palengke_name ? ` · ${s.palengke_name}` : ""}${s.city ? ` · ${s.city}` : ""}`
         : `${s.palengke_name || ""} ${s.barangay || ""} ${s.city || ""} ${s.region || ""}`.trim() || "GoPalengke Online Wet Market";
@@ -177,7 +193,7 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
 
       const s = store as Partial<StoreRow> | null;
-      const ogImage = p.image_url || s?.banner_url || s?.logo_url || DEFAULT_OG_IMAGE;
+      const ogImage = p.image_url || s?.banner_url || s?.logo_url || defaultOgImage(p.store_id);
       const description = p.description
         ? `${p.description} · ₱${p.price}/${p.unit}${s?.name ? ` · ${s.name}` : ""}`
         : `₱${p.price} per ${p.unit}${s?.name ? ` · ${s.name}` : ""}`;
@@ -223,7 +239,7 @@ Deno.serve(async (req: Request) => {
         storeData = s as Partial<StoreRow> | null;
       }
 
-      const ogImage = storeData?.banner_url || storeData?.logo_url || p.avatar_url || DEFAULT_OG_IMAGE;
+      const ogImage = storeData?.banner_url || storeData?.logo_url || p.avatar_url || defaultOgImage(p.id);
       const roleLabel = p.role === "buyer" ? "Mamimili" : p.role === "seller" ? "Tindera/Tindero" : "Rider";
       const description = `${roleLabel}${p.barangay ? ` · ${p.barangay}` : ""}${p.city ? ` · ${p.city}` : ""}`;
       const fullUrl = storeData?.slug ? `${appUrl}s/${storeData.slug}` : `${appUrl}u/${slug}`;
