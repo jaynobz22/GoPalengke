@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import type { Order, OrderItem, Store, Conversation, AdminConversation } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
-import { estimateDistanceKm, computeDeliveryFee, PER_KM_RATE, BASE_DELIVERY_FEE } from '@/lib/deliveryFee';
+import { estimateDistanceKm, computeDeliveryFee, PER_KM_RATE, BASE_DELIVERY_FEE, getStoreCoords, getDeliveryCoords, type Coords } from '@/lib/deliveryFee';
+import { RiderNavigationMap, type NavPhase } from '@/components/RiderNavigationMap';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import { Avatar } from '@/components/Avatar';
 import { ImageUploadField } from '@/components/ImageUploadField';
@@ -503,6 +504,8 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const [pickedUpStores, setPickedUpStores] = useState<Set<string>>(new Set());
   const [codRef, setCodRef] = useState(order.cod_payment_reference || '');
   const [showCodPayment, setShowCodPayment] = useState(false);
+  const [navPhase, setNavPhase] = useState<NavPhase>('to_store');
+  const [liveEarnings, setLiveEarnings] = useState<{ fee: number; distanceKm: number } | null>(null);
 
   useEffect(() => {
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
@@ -783,6 +786,38 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         </div>
       )}
 
+      {/* In-App Navigation Map */}
+      {currentOrder.status === 'picked_up' && store && (() => {
+        const sCoords = getStoreCoords(store);
+        const bCoords = getDeliveryCoords({
+          lat: currentOrder.delivery_lat,
+          lng: currentOrder.delivery_lng,
+          barangay: currentOrder.delivery_barangay,
+          city: currentOrder.delivery_city,
+          region: currentOrder.delivery_region,
+        });
+        if (!sCoords || !bCoords) {
+          return (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
+              <p className="text-sm text-amber-700">Hindi available ang coordinates para sa navigation. Gumamit ng address sa ibaba.</p>
+            </div>
+          );
+        }
+        return (
+          <div className="mb-3">
+            <RiderNavigationMap
+              phase={navPhase}
+              storeCoords={sCoords}
+              storeName={store.name}
+              buyerCoords={bCoords}
+              buyerName={buyer?.full_name || 'Buyer'}
+              onPhaseChange={(p) => setNavPhase(p)}
+              onEarningsUpdate={(fee, distanceKm) => setLiveEarnings({ fee, distanceKm })}
+            />
+          </div>
+        );
+      })()}
+
       {/* Route Info */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
         <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
@@ -804,11 +839,6 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
                   <p className="text-xs text-gray-400 font-medium">PICKUP {allStores.length > 1 ? `${idx + 1} ng ${allStores.length}` : ''}</p>
                   <p className="font-semibold text-sm text-gray-800">{storeData.name}</p>
                   <p className="text-sm text-gray-500">{storeData.barangay}, {storeData.city}, {storeData.region}</p>
-                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeData.name + ' ' + storeData.barangay + ' ' + storeData.city + ' ' + storeData.region)}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-blue-600 mt-1">
-                    <MapPin size={12} /> Buksan sa Google Maps
-                  </a>
                   {currentOrder.status === 'picked_up' && !isPickedUp && (
                     <button
                       onClick={() => {
@@ -835,17 +865,13 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
             <p className="font-semibold text-sm text-gray-800">{buyer?.full_name || 'Buyer'}</p>
             <p className="text-sm text-gray-500">{currentOrder.delivery_address}</p>
             <p className="text-sm text-gray-500">{currentOrder.delivery_barangay}, {currentOrder.delivery_city}, {currentOrder.delivery_region}</p>
-            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(currentOrder.delivery_address + ' ' + currentOrder.delivery_barangay + ' ' + currentOrder.delivery_city + ' ' + currentOrder.delivery_region)}`}
-              target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-blue-600 mt-1">
-              <MapPin size={12} /> Buksan sa Google Maps
-            </a>
           </div>
         </div>
         <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-around">
           <div className="text-center">
-            <p className="text-xs text-gray-400">Estimated Distance</p>
-            <p className="font-bold text-gray-800">~{estimatedKm} km</p>
+            <p className="text-xs text-gray-400">{liveEarnings ? 'Live Distance' : 'Estimated Distance'}</p>
+            <p className="font-bold text-gray-800">{liveEarnings ? `${liveEarnings.distanceKm} km` : `~${estimatedKm} km`}
+            </p>
           </div>
           <div className="text-center">
             <p className="text-xs text-gray-400">Estimated Time</p>
@@ -915,8 +941,15 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
             <span>Total (incl. delivery)</span><span>₱{totalAmount.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm text-blue-600 mt-1">
-            <span>Iyong kita (delivery fee)</span><span>₱{totalFee.toFixed(2)}</span>
+            <span>Iyong kita (delivery fee)</span>
+            <span>₱{liveEarnings ? liveEarnings.fee.toFixed(2) : totalFee.toFixed(2)}</span>
           </div>
+          {liveEarnings && (
+            <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              Live na na-update base sa aktwal na ruta
+            </p>
+          )}
         </div>
       </div>
 
