@@ -17,10 +17,10 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
       const [{ data: cats }, { data: prods }, { data: strs }] = await Promise.all([
         supabase.from('categories').select('*').order('sort_order'),
         supabase.from('products').select('*, store:stores(*)').eq('is_available', true).order('created_at', { ascending: false }).limit(12),
-        supabase.from('stores').select('*').eq('is_verified', true).order('rating', { ascending: false }).limit(10),
+        supabase.from('stores').select('*').eq('is_verified', true).eq('is_open', true).order('rating', { ascending: false }).limit(10),
       ]);
       setCategories(cats || []);
-      setProducts(((prods || []) as any).filter((p: any) => p.store?.is_verified));
+      setProducts(((prods || []) as any).filter((p: any) => p.store?.is_verified && p.store?.is_open));
       setStores(strs || []);
       setLoading(false);
     }

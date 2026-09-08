@@ -317,6 +317,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
 
   const filteredProducts = products.filter(p => {
     if (!p.store?.is_verified) return false;
+    if (!p.store?.is_open) return false;
     if (activeCategory && p.category_id !== activeCategory) return false;
     if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.store.name.toLowerCase().includes(search.toLowerCase()) && !(p.store.palengke_name || '').toLowerCase().includes(search.toLowerCase())) return false;
     if (locationFilter.city && p.store.city.toLowerCase() !== locationFilter.city.toLowerCase()) return false;
@@ -783,9 +784,9 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
           <p className="text-2xl font-bold text-brand-600">₱{product.price}</p>
           <p className="text-sm text-gray-400">per {product.unit}</p>
           {store.is_open ? (
-            <span className="ml-auto text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Bukas ngayon</span>
+            <span className="ml-auto text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Store Open</span>
           ) : (
-            <span className="ml-auto text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">Sarado</span>
+            <span className="ml-auto text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">Store Closed</span>
           )}
         </div>
         {product.description && <p className="text-gray-600 text-sm mb-4">{product.description}</p>}
@@ -910,6 +911,10 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
               <span className="text-sm text-gray-600">{store.rating}</span>
               <span className="text-sm text-gray-300">·</span>
               <span className="text-sm text-gray-500">{store.city}</span>
+              <span className="text-sm text-gray-300">·</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${store.is_open ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {store.is_open ? 'Store Open' : 'Store Closed'}
+              </span>
             </div>
             {store.palengke_name && (
               <p className="text-xs text-brand-600 flex items-center gap-1 mt-1">
@@ -937,7 +942,13 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
 
       <div className="px-5 py-4">
         <h3 className="font-bold text-gray-800 mb-3">Mga Paninda</h3>
-        {loading ? (
+        {!store.is_open ? (
+          <div className="text-center py-12 text-gray-400">
+            <StoreIcon size={40} className="mx-auto mb-2 opacity-50" />
+            <p className="text-sm font-medium text-gray-500">Sarado ang tindahan ngayon.</p>
+            <p className="text-xs mt-1">Balikan mo mamaya para makita ang paninda!</p>
+          </div>
+        ) : loading ? (
           <div className="grid grid-cols-2 gap-3">{[1,2,3,4].map(i => <div key={i} className="h-44 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
         ) : (
           <div className="grid grid-cols-2 gap-3">

@@ -686,7 +686,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
             ) : (
               <Lock size={14} />
             )}
-            {isOpen ? 'Bukas' : 'Sarado'}
+            {isOpen ? 'Store Open' : 'Store Closed'}
           </button>
         </div>
       </div>
@@ -1395,7 +1395,7 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
           <div>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={isOpen} onChange={e => setIsOpen(e.target.checked)} className="w-5 h-5 rounded accent-brand-600" />
-              <span className="text-sm font-medium text-gray-700">Bukas ang tindahan</span>
+              <span className="text-sm font-medium text-gray-700">Store Open</span>
             </label>
           </div>
           {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>}

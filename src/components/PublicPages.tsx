@@ -163,7 +163,7 @@ function PublicStorePage({ slug }: { slug: string }) {
                 <span className="text-sm font-medium text-gray-700">{store.rating}</span>
                 <span className="text-xs text-gray-300">·</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${store.is_open ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  {store.is_open ? 'Bukas' : 'Sarado'}
+                  {store.is_open ? 'Store Open' : 'Store Closed'}
                 </span>
               </div>
             </div>
@@ -185,9 +185,15 @@ function PublicStorePage({ slug }: { slug: string }) {
       <div className="px-5 py-4">
         <div className="flex items-center gap-2 mb-3">
           <Package size={18} className="text-brand-600" />
-          <h2 className="font-bold text-gray-800">Mga Paninda ({products.length})</h2>
+          <h2 className="font-bold text-gray-800">Mga Paninda ({store.is_open ? products.length : 0})</h2>
         </div>
-        {products.length === 0 ? (
+        {!store.is_open ? (
+          <div className="text-center py-12 text-gray-400">
+            <StoreIcon size={40} className="mx-auto mb-2 opacity-50" />
+            <p className="text-sm font-medium text-gray-500">Sarado ang tindahan ngayon.</p>
+            <p className="text-xs mt-1">Balikan mo mamaya para makita ang paninda!</p>
+          </div>
+        ) : products.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
             <Package size={40} className="mx-auto mb-2 opacity-50" />
             <p className="text-sm">Wala pang available na paninda.</p>
