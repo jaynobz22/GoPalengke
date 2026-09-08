@@ -16,6 +16,7 @@ import { ReviewSection } from '@/components/Reviews';
 import { OrderStepTracker, type StepInfo } from '@/components/OrderStepTracker';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
 import { AdminChat } from '@/components/AdminChat';
+import { LoginReminderPopup } from '@/components/LoginReminderPopup';
 import { useIncomingAdminCall } from '@/lib/useAdminCall';
 import { useAdminConversations } from '@/lib/useAdminChat';
 import {
@@ -293,6 +294,8 @@ export function SellerApp() {
           </div>
         </div>
       )}
+
+      <LoginReminderPopup storageKey="seller_login_reminder" variant="seller" />
     </div>
   );
 }

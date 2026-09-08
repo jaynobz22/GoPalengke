@@ -20,6 +20,7 @@ import { ReviewForm, ReviewSection } from '@/components/Reviews';
 import { OrderStepTracker, type StepInfo } from '@/components/OrderStepTracker';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
 import { AdminChat } from '@/components/AdminChat';
+import { LoginReminderPopup } from '@/components/LoginReminderPopup';
 import { useIncomingAdminCall } from '@/lib/useAdminCall';
 import { useAdminConversations } from '@/lib/useAdminChat';
 import {
@@ -257,6 +258,8 @@ export function BuyerApp() {
 
       {/* Bottom Nav */}
       <BottomNav tab={tab} setTab={(t) => { setTab(t); setView('browse'); }} unreadMessages={totalUnread} orderUpdates={orderUpdates} />
+
+      <LoginReminderPopup storageKey="buyer_login_reminder" variant="buyer" />
     </div>
   );
 }
