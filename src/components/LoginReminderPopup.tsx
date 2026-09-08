@@ -7,7 +7,7 @@ interface Props {
 }
 
 const SELLER_REMINDERS = [
-  { icon: <ShieldCheck size={18} className="text-green-600" />, text: 'Class A at sariwa palagi ang produkto na ibibigay mo. Hindi pwede ang bulok, luma, o sira na paninda.' },
+  { icon: <ShieldCheck size={18} className="text-green-600" />, text: 'Siguraduhin na Class A at sariwa palagi ang produkto na ibibigay mo. Hindi pwede ang bulok, luma, o sira na paninda.' },
   { icon: <AlertTriangle size={18} className="text-red-600" />, text: 'Isang negative review lang ng buyer tungkol sa bulok o sira na food products — alis ka agad sa platform. Walang second chance.' },
 ];
 
