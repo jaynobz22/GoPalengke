@@ -120,7 +120,7 @@ function PublicStorePage({ slug }: { slug: string }) {
     );
   }
 
-  const fullUrl = `${window.location.origin}${window.location.pathname}#/s/${store.slug}`;
+  const fullUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/og-preview/s/${store.slug}`;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -283,7 +283,7 @@ function PublicUserPage({ slug }: { slug: string }) {
     );
   }
 
-  const fullUrl = `${window.location.origin}${window.location.pathname}#/u/${profile.slug}`;
+  const fullUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/og-preview/u/${profile.slug}`;
   const roleLabel = profile.role === 'buyer' ? 'Mamimili' : profile.role === 'seller' ? 'Tindera/Tindero' : 'Rider';
   const roleIcon = profile.role === 'rider' ? Bike : profile.role === 'seller' ? StoreIcon : ShoppingBag;
   const RoleIcon = roleIcon;

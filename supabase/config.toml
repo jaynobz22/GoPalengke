@@ -1,2 +1,5 @@
 [functions.delete-storage-objects]
 verify_jwt = true
+
+[functions.og-preview]
+verify_jwt = false

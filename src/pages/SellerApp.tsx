@@ -469,7 +469,7 @@ function ShareToSocialCard({ store }: { store: Store }) {
   const [copied, setCopied] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
 
-  const storeUrl = `${window.location.origin}${window.location.pathname}#/s/${store.slug}`;
+  const storeUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/og-preview/s/${store.slug}`;
   const shareText = `Check out my online store "${store.name}" on GoPalengke! ${storeUrl}`;
   const encodedUrl = encodeURIComponent(storeUrl);
   const encodedText = encodeURIComponent(shareText);
@@ -1978,14 +1978,14 @@ function SellerSettings({ store, onEditStore, onSignOut }: { store: Store; onEdi
       {store.slug && (
         <ShareableLinkSection
           label="Link ng Tindahan"
-          url={`${window.location.origin}${window.location.pathname}#/s/${store.slug}`}
+          url={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/og-preview/s/${store.slug}`}
           onOpen={() => { window.location.hash = `/s/${store.slug}`; }}
         />
       )}
       {profile?.slug && (
         <ShareableLinkSection
           label="Link ng Profile"
-          url={`${window.location.origin}${window.location.pathname}#/u/${profile.slug}`}
+          url={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/og-preview/u/${profile.slug}`}
           onOpen={() => { window.location.hash = `/u/${profile.slug}`; }}
         />
       )}
