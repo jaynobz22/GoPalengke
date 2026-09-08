@@ -289,8 +289,8 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
     async function load() {
       const [{ data: cats }, { data: prods }, { data: strs }] = await Promise.all([
         supabase.from('categories').select('id, name, name_fil, slug, icon, image_url, sort_order').order('sort_order'),
-        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, rating, logo_url, banner_url)').eq('is_available', true).order('created_at', { ascending: false }).limit(30),
-        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id').eq('is_open', true).order('rating', { ascending: false }).limit(20),
+        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url)').eq('is_available', true).order('created_at', { ascending: false }).limit(30),
+        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(20),
       ]);
       setCategories(cats || []);
       setProducts((prods || []) as any);
@@ -304,11 +304,11 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
   useEffect(() => {
     const sub = supabase.channel('browse-stores-products')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stores' }, () => {
-        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id').eq('is_open', true).order('rating', { ascending: false }).limit(20)
+        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(20)
           .then(({ data }) => setStores(data || []));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
-        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, rating, logo_url, banner_url)').eq('is_available', true).order('created_at', { ascending: false }).limit(30)
+        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url)').eq('is_available', true).order('created_at', { ascending: false }).limit(30)
           .then(({ data }) => setProducts((data || []) as any));
       })
       .subscribe();
@@ -316,6 +316,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
   }, []);
 
   const filteredProducts = products.filter(p => {
+    if (!p.store?.is_verified) return false;
     if (activeCategory && p.category_id !== activeCategory) return false;
     if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.store.name.toLowerCase().includes(search.toLowerCase()) && !(p.store.palengke_name || '').toLowerCase().includes(search.toLowerCase())) return false;
     if (locationFilter.city && p.store.city.toLowerCase() !== locationFilter.city.toLowerCase()) return false;

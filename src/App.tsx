@@ -84,8 +84,8 @@ function AppContent() {
     return <AuthPage needsProfile />;
   }
 
-  // Pending approval screen for non-admin users
-  if (!profile.is_approved && profile.role !== 'admin') {
+  // Pending approval screen for non-admin, non-seller users (riders still need approval)
+  if (!profile.is_approved && profile.role !== 'admin' && profile.role !== 'seller') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-5">
         <div className="max-w-md w-full bg-white rounded-3xl border border-gray-100 p-8 text-center">

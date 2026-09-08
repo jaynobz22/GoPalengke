@@ -79,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       region: location.region || null,
       email_verified: false,
       phone_verified: false,
+      is_approved: role === 'seller',
     });
 
     if (profileError) return { error: profileError.message };

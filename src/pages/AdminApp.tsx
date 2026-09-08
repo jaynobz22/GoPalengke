@@ -138,12 +138,13 @@ function OverviewTab() {
     stores: 0, products: 0, buyers: 0, riders: 0, sellers: 0, orders: 0,
     pendingApprovals: 0, pendingPayments: 0, frozenSellers: 0,
     totalCommission: 0, totalSubscription: 0, totalPlatformEarnings: 0,
+    unverifiedStores: [] as any[],
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const [stores, products, buyers, riders, sellers, orders, pendingApprovals, pendingPayments, sellerFees, frozenCount] = await Promise.all([
+      const [stores, products, buyers, riders, sellers, orders, pendingApprovals, pendingPayments, sellerFees, frozenCount, unverifiedStores] = await Promise.all([
         supabase.from('stores').select('*', { count: 'exact', head: true }),
         supabase.from('products').select('*', { count: 'exact', head: true }),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'buyer'),
@@ -154,6 +155,7 @@ function OverviewTab() {
         supabase.from('fee_payments').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('seller_fees').select('*'),
         supabase.from('seller_fees').select('*', { count: 'exact', head: true }).not('frozen_at', 'is', null),
+        supabase.from('stores').select('*, seller:profiles!stores_seller_id_fkey(full_name, email)').eq('is_verified', false).order('created_at', { ascending: false }),
       ]);
 
       const fees = (sellerFees.data || []) as any[];
@@ -173,6 +175,7 @@ function OverviewTab() {
         totalCommission,
         totalSubscription,
         totalPlatformEarnings: totalCommission + totalSubscription,
+        unverifiedStores: unverifiedStores.data || [],
       });
       setLoading(false);
     }
@@ -212,6 +215,35 @@ function OverviewTab() {
           <p className="text-sm text-red-700 font-medium">
             May {stats.frozenSellers} seller na naka-freeze dahil sa hindi pagbabayad.
           </p>
+        </div>
+      )}
+      {stats.unverifiedStores.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Shield size={18} className="text-amber-600 flex-shrink-0" />
+            <p className="text-sm text-amber-700 font-medium">
+              May {stats.unverifiedStores.length} tindahan na naghihintay ng verification.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {stats.unverifiedStores.map((s: any) => (
+              <div key={s.id} className="flex items-center justify-between bg-white rounded-xl p-2.5 border border-amber-100">
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-gray-800 truncate">{s.name}</p>
+                  <p className="text-xs text-gray-400 truncate">{s.seller?.full_name} · {s.seller?.email}</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    await supabase.from('stores').update({ is_verified: true }).eq('id', s.id);
+                    setStats(prev => ({ ...prev, unverifiedStores: prev.unverifiedStores.filter((st: any) => st.id !== s.id) }));
+                  }}
+                  className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold active:scale-95 transition"
+                >
+                  <Check size={14} /> Verify
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -179,6 +179,14 @@ export function SellerApp() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
       {!canAct && !isFeeFrozen && <InactiveBanner />}
+      {!store.is_verified && (
+        <div className="bg-amber-50 border-b border-amber-200 px-5 py-3 flex items-center gap-2">
+          <Shield size={18} className="text-amber-600 flex-shrink-0" />
+          <p className="text-xs text-amber-700 font-medium">
+            Para sa Pag-verify pa ng Admin — hindi pa nakikita ng buyers ang iyong tindahan. Maghintay ng video call o chat mula sa admin para ma-verify.
+          </p>
+        </div>
+      )}
       <div className="flex-1 pb-24 overflow-y-auto">
         {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} onOpenMessages={() => setTab('messages')} onOpenOrders={() => setTab('orders')} onViewStore={() => setShowStorePreview(true)} onSignOut={signOut} unreadMessages={unreadCount} canAct={canAct} />}
         {tab === 'products' && (

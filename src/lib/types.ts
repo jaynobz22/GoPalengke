@@ -53,6 +53,7 @@ export interface Store {
   qr_code_url: string | null;
   payment_method: string;
   is_open: boolean;
+  is_verified: boolean;
   rating: number;
   palengke_name: string | null;
   seller_type: string | null;
