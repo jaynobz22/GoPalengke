@@ -506,6 +506,12 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const [showCodPayment, setShowCodPayment] = useState(false);
   const [navPhase, setNavPhase] = useState<NavPhase>('to_store');
   const [liveEarnings, setLiveEarnings] = useState<{ fee: number; distanceKm: number } | null>(null);
+  const handleEarningsUpdate = useCallback((fee: number, distanceKm: number) => {
+    setLiveEarnings(prev => {
+      if (prev && prev.fee === fee && prev.distanceKm === distanceKm) return prev;
+      return { fee, distanceKm };
+    });
+  }, []);
 
   useEffect(() => {
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
@@ -812,7 +818,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
               buyerCoords={bCoords}
               buyerName={buyer?.full_name || 'Buyer'}
               onPhaseChange={(p) => setNavPhase(p)}
-              onEarningsUpdate={(fee, distanceKm) => setLiveEarnings({ fee, distanceKm })}
+              onEarningsUpdate={handleEarningsUpdate}
             />
           </div>
         );

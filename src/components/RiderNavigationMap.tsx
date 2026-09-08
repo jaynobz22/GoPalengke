@@ -74,6 +74,9 @@ export function RiderNavigationMap({
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'searching' | 'active' | 'error'>('idle');
   const [showInstructions, setShowInstructions] = useState(false);
 
+  const onEarningsUpdateRef = useRef(onEarningsUpdate);
+  onEarningsUpdateRef.current = onEarningsUpdate;
+
   const destination: Coords | null = phase === 'to_store' ? storeCoords : buyerCoords;
   const destLabel = phase === 'to_store' ? storeName : buyerName;
   const destIcon = phase === 'to_store' ? storeIcon : buyerIcon;
@@ -174,9 +177,9 @@ export function RiderNavigationMap({
       setRouteData(routeResult);
 
       // Update earnings
-      if (onEarningsUpdate) {
+      if (onEarningsUpdateRef.current) {
         const fee = BASE_DELIVERY_FEE + PER_KM_RATE * routeResult.distanceKm;
-        onEarningsUpdate(Math.round(fee * 100) / 100, routeResult.distanceKm);
+        onEarningsUpdateRef.current(Math.round(fee * 100) / 100, routeResult.distanceKm);
       }
     } catch (err) {
       // Fallback: straight-line distance with haversine
@@ -193,14 +196,14 @@ export function RiderNavigationMap({
       };
       setRouteData(fallbackRoute);
       setRouteError('Hindi available ang turn-by-turn routing. Straight-line distance lang ang ipinapakita.');
-      if (onEarningsUpdate) {
+      if (onEarningsUpdateRef.current) {
         const fee = BASE_DELIVERY_FEE + PER_KM_RATE * distKm;
-        onEarningsUpdate(Math.round(fee * 100) / 100, Math.round(distKm * 100) / 100);
+        onEarningsUpdateRef.current(Math.round(fee * 100) / 100, Math.round(distKm * 100) / 100);
       }
     } finally {
       setLoadingRoute(false);
     }
-  }, [onEarningsUpdate]);
+  }, []);
 
   // Update map markers and route
   useEffect(() => {
@@ -244,11 +247,17 @@ export function RiderNavigationMap({
       }
     }
 
-    // Fetch route when we have both positions
-    if (riderPos && destination) {
-      fetchRoute(riderPos, destination);
-    }
-  }, [riderPos, destination, destIcon, destLabel, fetchRoute]);
+  }, [riderPos, destination, destIcon, destLabel]);
+
+  // Throttle route re-fetching: only re-fetch if rider moved significantly
+  const lastFetchPosRef = useRef<Coords | null>(null);
+  useEffect(() => {
+    if (!riderPos || !destination) return;
+    const last = lastFetchPosRef.current;
+    if (last && haversineKm(last, riderPos) < 0.05) return; // skip if moved < 50m
+    lastFetchPosRef.current = riderPos;
+    fetchRoute(riderPos, destination);
+  }, [riderPos, destination, fetchRoute]);
 
   // Draw / update route polyline
   useEffect(() => {
