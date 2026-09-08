@@ -12,7 +12,7 @@ const SELLER_REMINDERS = [
 ];
 
 const BUYER_REMINDERS = [
-  { icon: <MessageCircle size={18} className="text-green-600" />, text: 'Bago bumili, i-chat at i-video call muna ang seller para siguraduhing legit at makita mo ang produktong bibilhin mo.' },
+  { icon: <MessageCircle size={18} className="text-green-600" />, text: 'Bago bumili, i-chat at i-video call muna ang seller gamit ang Messages tab sa dashboard mo para siguraduhing legit at makita mo ang produktong bibilhin mo.' },
   { icon: <Home size={18} className="text-amber-600" />, text: 'Kung COD, siguraduhing may tao sa bahay para magbayad at tatanggap ng order pagdating ng rider.' },
 ];
 
