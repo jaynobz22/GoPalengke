@@ -461,6 +461,16 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
   const { profile } = useAuth();
   const [stats, setStats] = useState({ totalOrders: 0, pendingOrders: 0, totalRevenue: 0, productCount: 0, paidOrders: 0 });
   const [recentOrders, setRecentOrders] = useState<(Order & { buyer: { full_name: string } })[]>([]);
+  const [isOpen, setIsOpen] = useState(store.is_open);
+  const [toggling, setToggling] = useState(false);
+
+  async function toggleStoreOpen() {
+    setToggling(true);
+    const newValue = !isOpen;
+    await supabase.from('stores').update({ is_open: newValue }).eq('id', store.id);
+    setIsOpen(newValue);
+    setToggling(false);
+  }
 
   useEffect(() => {
     async function load() {
@@ -533,9 +543,22 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
           <button onClick={onViewStore} className="text-xs bg-white/20 px-3 py-1.5 rounded-full flex items-center gap-1">
             <Eye size={14} /> Tingnan ang tindahan
           </button>
-          <div className={`text-xs px-3 py-1.5 rounded-full ${store.is_open ? 'bg-green-400/30' : 'bg-red-400/30'}`}>
-            {store.is_open ? 'Bukas' : 'Sarado'}
-          </div>
+          <button
+            onClick={toggleStoreOpen}
+            disabled={toggling}
+            className={`text-xs px-4 py-1.5 rounded-full font-semibold flex items-center gap-1.5 active:scale-95 transition disabled:opacity-50 ${
+              isOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+            }`}
+          >
+            {toggling ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : isOpen ? (
+              <StoreIcon size={14} />
+            ) : (
+              <Lock size={14} />
+            )}
+            {isOpen ? 'Bukas' : 'Sarado'}
+          </button>
         </div>
       </div>
 
