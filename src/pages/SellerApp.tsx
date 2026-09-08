@@ -464,127 +464,6 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-// ============= SHARE TO SOCIAL MEDIA =============
-function ShareToSocialCard({ store }: { store: Store }) {
-  const [copied, setCopied] = useState(false);
-  const [showShareSheet, setShowShareSheet] = useState(false);
-
-  const storeUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/og-preview/s/${store.slug}`;
-  const shareText = `Check out my online store "${store.name}" on GoPalengke! ${storeUrl}`;
-  const encodedUrl = encodeURIComponent(storeUrl);
-  const encodedText = encodeURIComponent(shareText);
-
-  const platforms = [
-    { name: 'Facebook', color: 'bg-blue-600', icon: 'f', url: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}` },
-    { name: 'X', color: 'bg-gray-900', icon: '𝕏', url: `https://twitter.com/intent/tweet?text=${encodedText}` },
-    { name: 'WhatsApp', color: 'bg-green-500', icon: '✆', url: `https://wa.me/?text=${encodedText}` },
-    { name: 'Telegram', color: 'bg-sky-500', icon: '✈', url: `https://t.me/share/url?url=${encodedUrl}&text=${encodeURIComponent(store.name)}` },
-    { name: 'Messenger', color: 'bg-blue-500', icon: '✉', url: `https://www.facebook.com/dialog/send?link=${encodedUrl}&app_id=0&redirect_uri=${encodedUrl}` },
-    { name: 'Email', color: 'bg-gray-600', icon: '@', url: `mailto:?subject=${encodeURIComponent(`My GoPalengke Store: ${store.name}`)}&body=${encodedText}` },
-    { name: 'SMS', color: 'bg-green-600', icon: 'SMS', url: `sms:?&body=${encodedText}` },
-    { name: 'LinkedIn', color: 'bg-blue-700', icon: 'in', url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}` },
-    { name: 'Reddit', color: 'bg-orange-600', icon: 'r', url: `https://www.reddit.com/submit?url=${encodedUrl}&title=${encodeURIComponent(store.name)}` },
-    { name: 'Pinterest', color: 'bg-red-600', icon: 'P', url: `https://pinterest.com/pin/create/button/?url=${encodedUrl}&description=${encodedText}` },
-    { name: 'TikTok', color: 'bg-black', icon: 'TT', url: `https://www.tiktok.com/upload?url=${encodedUrl}` },
-    { name: 'YouTube', color: 'bg-red-600', icon: 'YT', url: `https://www.youtube.com/upload?url=${encodedUrl}` },
-  ];
-
-  function copyLink() {
-    navigator.clipboard.writeText(storeUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  function nativeShare() {
-    if (navigator.share) {
-      navigator.share({ title: store.name, text: shareText, url: storeUrl }).catch(() => {});
-    } else {
-      setShowShareSheet(true);
-    }
-  }
-
-  return (
-    <div className="px-5 py-4">
-      <div className="bg-gradient-to-br from-brand-600 to-brand-700 rounded-2xl p-5 text-white shadow-lg">
-        <div className="flex items-center gap-2 mb-1">
-          <Share2 size={18} />
-          <h3 className="font-bold text-base">I-share ang Tindahan</h3>
-        </div>
-        <p className="text-brand-100 text-xs mb-4">
-          I-promote ang iyong online store sa social media para mas maraming tao makakita at makaka-order!
-        </p>
-
-        {/* Social platform grid */}
-        <div className="grid grid-cols-4 gap-2.5 mb-4">
-          {platforms.map(p => (
-            <a
-              key={p.name}
-              href={p.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex flex-col items-center gap-1.5 group"
-            >
-              <div className={`w-12 h-12 rounded-2xl ${p.color} flex items-center justify-center text-white font-bold text-sm shadow-md group-active:scale-90 transition`}>
-                {p.icon}
-              </div>
-              <span className="text-[10px] text-white/90 font-medium text-center leading-tight">{p.name}</span>
-            </a>
-          ))}
-        </div>
-
-        {/* Copy link */}
-        <button
-          onClick={copyLink}
-          className="w-full flex items-center gap-2 px-4 py-3 bg-white/15 backdrop-blur-sm rounded-xl text-sm text-white active:scale-[0.98] transition mb-2"
-        >
-          {copied ? <Check size={16} className="text-green-300" /> : <Copy size={16} />}
-          <span className="flex-1 text-left truncate">{copied ? 'Nakopya na!' : storeUrl}</span>
-        </button>
-
-        {/* Native share (mobile) */}
-        {navigator.share && (
-          <button
-            onClick={nativeShare}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white text-brand-700 rounded-xl text-sm font-bold active:scale-95 transition"
-          >
-            <Share2 size={16} />
-            I-share gamit ang phone
-          </button>
-        )}
-      </div>
-
-      {/* Share sheet for platforms without native share */}
-      {showShareSheet && !navigator.share && (
-        <div className="fixed inset-0 z-[70] bg-black/50 flex items-end justify-center" onClick={() => setShowShareSheet(false)}>
-          <div className="bg-white rounded-t-3xl p-5 w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-            <h3 className="font-bold text-gray-800 text-center mb-4">I-share sa</h3>
-            <div className="grid grid-cols-4 gap-3">
-              {platforms.map(p => (
-                <a
-                  key={p.name}
-                  href={p.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex flex-col items-center gap-1.5"
-                >
-                  <div className={`w-12 h-12 rounded-2xl ${p.color} flex items-center justify-center text-white font-bold text-sm`}>
-                    {p.icon}
-                  </div>
-                  <span className="text-[10px] text-gray-600 font-medium">{p.name}</span>
-                </a>
-              ))}
-            </div>
-            <button onClick={() => setShowShareSheet(false)} className="w-full mt-4 py-3 bg-gray-100 text-gray-600 rounded-xl font-medium text-sm">
-              Isara
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ============= DASHBOARD =============
 function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onViewStore, onSignOut, unreadMessages, canAct }: { store: Store; onEditStore: () => void; onOpenMessages: () => void; onOpenOrders: () => void; onViewStore: () => void; onSignOut: () => void; unreadMessages: number; canAct: boolean }) {
   const { profile } = useAuth();
@@ -770,7 +649,6 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
       </div>
 
       {/* Share to Social Media */}
-      <ShareToSocialCard store={store} />
 
       {/* Recent Orders */}
       <div className="px-5 pb-4">
