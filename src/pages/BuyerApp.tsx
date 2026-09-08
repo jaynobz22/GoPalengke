@@ -8,9 +8,11 @@ import { InactiveBanner } from '@/components/InactiveBanner';
 import {
   computeDeliveryFee, estimateDistanceKm,
   haversineKm, getStoreCoords, getDeliveryCoords,
-  computeDeliveryFeeFromCoords, BASE_DELIVERY_FEE, PER_KM_RATE,
-  type Coords,
+  computeDeliveryFeeFromCoords, fetchRoadDistance,
+  BASE_DELIVERY_FEE, PER_KM_RATE,
+  type Coords, type RouteResult,
 } from '@/lib/deliveryFee';
+import { BuyerLiveTrackingMap } from '@/components/BuyerLiveTrackingMap';
 import { DeliveryMap } from '@/components/DeliveryMap';
 import { COMMISSION_RATE } from '@/lib/types';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
@@ -1125,10 +1127,46 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   // Get delivery coordinates: prefer pin, fall back to text-based geocoding
   const deliveryCoords: Coords | null = deliveryPin || getDeliveryCoords(deliveryLocation);
 
-  // Calculate fee per store using coordinates when available
+  // Road distance cache per store (keyed by storeId)
+  const [roadDistanceCache, setRoadDistanceCache] = useState<Record<string, { distanceKm: number; durationMin: number }>>({});
+
+  // Fetch road distance for each store when delivery coords are available
+  useEffect(() => {
+    if (!deliveryCoords) return;
+    const stores = Object.values(grouped).map(items => items[0].store);
+    const storeIds = stores.map(s => s.id);
+    const missing = storeIds.filter(id => !roadDistanceCache[id]);
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const updates: Record<string, { distanceKm: number; durationMin: number }> = {};
+      for (const store of stores) {
+        if (roadDistanceCache[store.id]) continue;
+        const sCoords = getStoreCoords(store);
+        if (sCoords && deliveryCoords) {
+          const result = await fetchRoadDistance(sCoords, deliveryCoords);
+          if (!cancelled) updates[store.id] = result;
+        }
+      }
+      if (!cancelled && Object.keys(updates).length > 0) {
+        setRoadDistanceCache(prev => ({ ...prev, ...updates }));
+      }
+    })();
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deliveryCoords]);
+
+  // Calculate fee per store using road distance when available
   function getFeeForStore(store: Store): { fee: number; distanceKm: number; isEstimated: boolean } {
     const sCoords = getStoreCoords(store);
     if (sCoords && deliveryCoords) {
+      const road = roadDistanceCache[store.id];
+      if (road) {
+        return { fee: BASE_DELIVERY_FEE + PER_KM_RATE * road.distanceKm, distanceKm: road.distanceKm, isEstimated: !deliveryPin };
+      }
+      // Fallback to haversine while road distance loads
       const result = computeDeliveryFeeFromCoords(sCoords, deliveryCoords);
       return { ...result, isEstimated: !deliveryPin };
     }
@@ -1982,12 +2020,20 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
       )}
 
       {/* Live Tracking Map — shown when rider is on the way */}
-      {currentOrder.status === 'picked_up' && currentOrder.rider_lat != null && currentOrder.rider_lng != null && (
-        <LiveTrackingMap
+      {currentOrder.status === 'picked_up' && currentOrder.rider_lat != null && currentOrder.rider_lng != null && store && (
+        <BuyerLiveTrackingMap
           riderLat={currentOrder.rider_lat}
           riderLng={currentOrder.rider_lng}
           riderName={rider?.full_name || 'Rider'}
-          deliveryAddress={`${currentOrder.delivery_address} ${currentOrder.delivery_barangay} ${currentOrder.delivery_city} ${currentOrder.delivery_region}`}
+          storeCoords={getStoreCoords(store)}
+          deliveryCoords={getDeliveryCoords({
+            lat: currentOrder.delivery_lat,
+            lng: currentOrder.delivery_lng,
+            barangay: currentOrder.delivery_barangay,
+            city: currentOrder.delivery_city,
+            region: currentOrder.delivery_region,
+          })}
+          deliveryAddress={currentOrder.delivery_address || `${currentOrder.delivery_barangay} ${currentOrder.delivery_city} ${currentOrder.delivery_region}`}
           pickedUpAt={currentOrder.picked_up_at}
           sameCity={store?.city === currentOrder.delivery_city}
         />
@@ -2233,94 +2279,6 @@ function ReviewSectionForOrder({
           <p className="text-sm text-green-700 font-medium">Salamat sa pag-review ng seller!</p>
         </div>
       )}
-    </div>
-  );
-}
-
-// ============= LIVE TRACKING MAP =============
-function LiveTrackingMap({ riderLat, riderLng, riderName, deliveryAddress, pickedUpAt, sameCity }: {
-  riderLat: number;
-  riderLng: number;
-  riderName: string;
-  deliveryAddress: string;
-  pickedUpAt: string | null;
-  sameCity: boolean;
-}) {
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-
-  useEffect(() => {
-    if (!pickedUpAt) return;
-    const interval = setInterval(() => {
-      const pickedAt = new Date(pickedUpAt).getTime();
-      setElapsedSeconds(Math.floor((Date.now() - pickedAt) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [pickedUpAt]);
-
-  const estimatedTotalSeconds = sameCity ? 15 * 60 : 30 * 60;
-  const remainingSeconds = Math.max(0, estimatedTotalSeconds - elapsedSeconds);
-  const remainingMin = Math.floor(remainingSeconds / 60);
-  const remainingSec = remainingSeconds % 60;
-  const isOverdue = elapsedSeconds > estimatedTotalSeconds;
-
-  const mapUrl = `https://maps.google.com/maps?q=${riderLat},${riderLng}&z=15&output=embed`;
-  const directionsUrl = `https://www.google.com/maps/dir/${riderLat},${riderLng}/${encodeURIComponent(deliveryAddress)}`;
-
-  return (
-    <div className="bg-white rounded-2xl border border-blue-200 p-4 mb-3">
-      <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-        <Navigation size={18} className="text-blue-600" /> Live Location ng Rider
-      </h3>
-
-      {/* Embedded Map */}
-      <div className="rounded-xl overflow-hidden border border-gray-200 mb-3">
-        <iframe
-          src={mapUrl}
-          width="100%"
-          height="200"
-          style={{ border: 0 }}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          title="Rider Live Location"
-        />
-      </div>
-
-      {/* ETA Countdown */}
-      <div className={`p-3 rounded-xl flex items-center gap-3 mb-3 ${isOverdue ? 'bg-red-50' : 'bg-blue-50'}`}>
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isOverdue ? 'bg-red-500' : 'bg-blue-500'}`}>
-          <Timer size={20} className="text-white" />
-        </div>
-        <div className="flex-1">
-          <p className={`text-xs ${isOverdue ? 'text-red-500' : 'text-blue-500'}`}>
-            {isOverdue ? 'Lampas sa estimated time' : 'Tinatayang oras ng pagdating'}
-          </p>
-          <p className={`font-bold text-lg ${isOverdue ? 'text-red-600' : 'text-blue-700'}`}>
-            {isOverdue
-              ? `+${Math.floor((elapsedSeconds - estimatedTotalSeconds) / 60)}m`
-              : `${remainingMin}m ${remainingSec}s`}
-          </p>
-        </div>
-        <div className="flex items-center gap-1 text-xs text-green-600">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          Live
-        </div>
-      </div>
-
-      {/* Rider name + Directions link */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Bike size={16} className="text-blue-500" />
-          <span className="text-sm text-gray-600">{riderName}</span>
-        </div>
-        <a
-          href={directionsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-blue-600 font-medium"
-        >
-          <MapPin size={12} /> Buksan sa Google Maps
-        </a>
-      </div>
     </div>
   );
 }
