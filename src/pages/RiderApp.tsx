@@ -20,7 +20,7 @@ import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
   Share2, Copy, ExternalLink, Power, Timer, Star, UserCheck, LogOut, Shield,
-  QrCode, Download, DollarSign, X,
+  QrCode, Download, DollarSign, X, Info,
 } from 'lucide-react';
 
 type Tab = 'deliveries' | 'messages' | 'history' | 'profile';
@@ -1004,6 +1004,29 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           <p className="text-xs text-amber-600 mt-1">Kolektahin ang ₱{totalAmount.toFixed(2)} sa buyer, ipadala sa seller via QR code.</p>
         )}
       </div>
+
+      {/* Non-COD: Note to collect delivery fee via QR */}
+      {currentOrder.status === 'picked_up' && !isCod && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-3 flex items-start gap-3">
+          <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+            <Info size={20} className="text-white" />
+          </div>
+          <div>
+            <p className="font-semibold text-sm text-blue-800 mb-1">Kolektahin ang Delivery Fee</p>
+            <p className="text-xs text-blue-700 leading-relaxed">
+              Pwede mo nang kunin ang delivery fee na <strong>₱{totalFee.toFixed(2)}</strong> mula sa buyer via QR code bago ka umalis. Ipakita ang QR code mo sa buyer para ma-scan at mabayaran ka agad.
+            </p>
+            {profile?.rider_qr_code_url && (
+              <div className="mt-3 bg-white rounded-xl p-3 flex justify-center">
+                <img src={profile.rider_qr_code_url} alt="Your QR Code" loading="lazy" decoding="async" className="w-36 h-36 rounded-xl object-contain" />
+              </div>
+            )}
+            {!profile?.rider_qr_code_url && (
+              <p className="text-xs text-amber-600 mt-2">Wala ka pang QR code. Mag-upload sa Profile mo para makapagbayad ang buyer sa iyo.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Mark as Delivered button */}
       {currentOrder.status === 'picked_up' && (

@@ -25,7 +25,7 @@ import {
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
   TrendingUp, DollarSign, Bell, Camera, Loader2, MessageCircle,
   Share2, Copy, ExternalLink, Search, ImageIcon, Wallet, Lock, AlertTriangle,
-  LogOut, Eye, EyeOff, Users, Radio, Shield, Sprout,
+  LogOut, Eye, EyeOff, Users, Radio, Shield, Sprout, Info,
 } from 'lucide-react';
 
 type Tab = 'dashboard' | 'products' | 'orders' | 'messages' | 'billing';
@@ -1627,6 +1627,14 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           {riderAssigned && (
             <p className="text-xs text-green-600 mt-2 font-medium">Na-assign na ang rider! Maghihintay na lang na tanggapin niya ang delivery.</p>
           )}
+          {currentOrder.payment_method !== 'cod' && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-2">
+              <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700 leading-relaxed">
+                Pwede na magbayad ang buyer sa rider via QR code para sa delivery fee (₱{currentOrder.delivery_fee.toFixed(2)}). Sabihin sa buyer na pwede na nilang i-scan ang QR code ng rider bago umalis.
+              </p>
+            </div>
+          )}
           {currentOrder.payment_method !== 'cod' && rider.rider_qr_code_url && (
             <div className="mt-3 pt-3 border-t border-gray-100">
               <p className="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1.5">
@@ -1662,6 +1670,14 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           <div className="mt-2">
             <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">Nasa daan na ang rider papunta sa buyer</span>
           </div>
+          {currentOrder.payment_method !== 'cod' && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-2">
+              <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700 leading-relaxed">
+                Pwede na magbayad ang buyer sa rider via QR code para sa delivery fee (₱{currentOrder.delivery_fee.toFixed(2)}). Sabihin sa buyer na pwede na nilang i-scan ang QR code ng rider.
+              </p>
+            </div>
+          )}
           {currentOrder.payment_method !== 'cod' && rider.rider_qr_code_url && (
             <div className="mt-3 pt-3 border-t border-gray-100">
               <p className="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1.5">
