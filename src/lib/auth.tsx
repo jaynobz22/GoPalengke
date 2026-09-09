@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type { Profile, UserRole } from './types';
@@ -7,6 +7,7 @@ interface AuthContextValue {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  pendingVerification: boolean;
   signUp: (email: string, password: string, fullName: string, role: UserRole, location: { barangay: string; district: string; city: string; region: string; phone: string }) => Promise<{ error: string | null; userId?: string }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null; needsVerification?: boolean; userId?: string }>;
   signOut: () => Promise<void>;
@@ -24,6 +25,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const pendingVerificationRef = useRef(false);
+
+  function setPendingVerif(value: boolean) {
+    pendingVerificationRef.current = value;
+    setPendingVerification(value);
+  }
 
   async function fetchProfile(userId: string) {
     const { data } = await supabase
@@ -45,23 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if (pendingVerificationRef.current) {
+        setSession(null);
+        setProfile(null);
+        return;
+      }
       setSession(newSession);
       if (newSession?.user) {
-        (async () => {
-          const { data: prof } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', newSession.user.id)
-            .maybeSingle();
-          const p = prof as Profile | null;
-          if (p && (!p.email_verified || !p.phone_verified)) {
-            await supabase.auth.signOut();
-            setSession(null);
-            setProfile(null);
-          } else {
-            setProfile(p);
-          }
-        })();
+        fetchProfile(newSession.user.id);
       } else {
         setProfile(null);
       }
@@ -77,9 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     role: UserRole,
     location: { barangay: string; district: string; city: string; region: string; phone: string }
   ): Promise<{ error: string | null; userId?: string }> {
+    setPendingVerif(true);
     const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) return { error: error.message };
-    if (!data.user) return { error: 'Hindi makapag-sign up. Subukan ulit.' };
+    if (error) { setPendingVerif(false); return { error: error.message }; }
+    if (!data.user) { setPendingVerif(false); return { error: 'Hindi makapag-sign up. Subukan ulit.' }; }
 
     const { error: profileError } = await supabase.from('profiles').insert({
       id: data.user.id,
@@ -96,18 +96,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       is_approved: role === 'seller',
     });
 
-    if (profileError) return { error: profileError.message };
+    if (profileError) { setPendingVerif(false); return { error: profileError.message }; }
 
-    // Sign out immediately so the session doesn't trigger auto-login
-    // before email/phone verification is complete.
     await supabase.auth.signOut();
     return { error: null, userId: data.user.id };
   }
 
   async function signIn(email: string, password: string): Promise<{ error: string | null; needsVerification?: boolean; userId?: string }> {
+    pendingVerificationRef.current = true;
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
-    if (!data.user) return { error: 'Hindi makapag-sign in. Subukan ulit.' };
+    if (error) { pendingVerificationRef.current = false; return { error: error.message }; }
+    if (!data.user) { pendingVerificationRef.current = false; return { error: 'Hindi makapag-sign in. Subukan ulit.' }; }
 
     const { data: prof } = await supabase
       .from('profiles')
@@ -118,9 +117,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const p = prof as { email_verified: boolean; phone_verified: boolean } | null;
     if (p && (!p.email_verified || !p.phone_verified)) {
       await supabase.auth.signOut();
+      setPendingVerif(true);
       return { error: null, needsVerification: true, userId: data.user.id };
     }
 
+    pendingVerificationRef.current = false;
+    setSession(data.session);
     await fetchProfile(data.user.id);
     return { error: null };
   }
@@ -149,6 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (userId) {
       await supabase.from('profiles').update({ email_verified: true }).eq('id', userId);
     }
+    await supabase.auth.signOut();
     return { error: null };
   }
 
@@ -166,6 +169,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (userId) {
       await supabase.from('profiles').update({ phone_verified: true }).eq('id', userId);
     }
+    await supabase.auth.signOut();
+    setPendingVerif(false);
     return { error: null };
   }
 
@@ -183,7 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signUp, signIn, signOut, refreshProfile, sendEmailOtp, verifyEmailOtp, sendPhoneOtp, verifyPhoneOtp, checkVerificationStatus }}>
+    <AuthContext.Provider value={{ session, profile, loading, pendingVerification, signUp, signIn, signOut, refreshProfile, sendEmailOtp, verifyEmailOtp, sendPhoneOtp, verifyPhoneOtp, checkVerificationStatus }}>
       {children}
     </AuthContext.Provider>
   );

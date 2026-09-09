@@ -49,7 +49,7 @@ function useLegalRoute() {
 }
 
 function AppContent() {
-  const { session, profile, loading } = useAuth();
+  const { session, profile, loading, pendingVerification } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
   const publicRoute = useHashRoute();
   const legalRoute = useLegalRoute();
@@ -73,6 +73,10 @@ function AppContent() {
         </div>
       </div>
     );
+  }
+
+  if (pendingVerification) {
+    return <AuthPage onBack={() => { window.location.hash = ''; }} />;
   }
 
   if (!session) {
