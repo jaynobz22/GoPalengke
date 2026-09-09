@@ -47,7 +47,6 @@ export function SellerApp() {
   const [sellerFee, setSellerFee] = useState<SellerFee | null>(null);
   const [showFreezeWarning, setShowFreezeWarning] = useState(false);
   const [isFeeFrozen, setIsFeeFrozen] = useState(false);
-  const [showStorePreview, setShowStorePreview] = useState(false);
   const { incomingCall, adminName, clearCall } = useIncomingAdminCall();
   const [activeAdminCall, setActiveAdminCall] = useState<{ roomId: string; callId: string; otherName: string } | null>(null);
   const { conversations: adminConvs, unreadCount: adminUnread } = useAdminConversations();
@@ -189,7 +188,7 @@ export function SellerApp() {
         </div>
       )}
       <div className="flex-1 pb-24 overflow-y-auto">
-        {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} onOpenMessages={() => setTab('messages')} onOpenOrders={() => setTab('orders')} onViewStore={() => setShowStorePreview(true)} onSignOut={signOut} unreadMessages={unreadCount} canAct={canAct} />}
+        {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} onOpenMessages={() => setTab('messages')} onOpenOrders={() => setTab('orders')} onViewStore={() => navigate(`/s/${store.slug}`)} onSignOut={signOut} unreadMessages={unreadCount} canAct={canAct} />}
         {tab === 'products' && (
           <SellerProducts store={store} onAdd={() => { setEditingProduct(null); setShowProductForm(true); }} onEdit={(p) => { setEditingProduct(p); setShowProductForm(true); }} />
         )}
@@ -265,13 +264,6 @@ export function SellerApp() {
 
       <SellerBottomNav tab={tab} setTab={setTab} storeId={store.id} unreadMessages={totalUnread} />
 
-      {showStorePreview && (
-        <div className="fixed inset-0 z-[60] bg-gray-50 max-w-md mx-auto overflow-y-auto">
-          <StorePreview store={store} onBack={() => setShowStorePreview(false)} />
-        </div>
-      )}
-
-      {/* Grace period warning popup */}
       {showFreezeWarning && sellerFee?.grace_deadline && (
         <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center px-5">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full">
@@ -550,7 +542,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
             <Edit size={14} /> I-edit ang tindahan
           </button>
           <button onClick={onViewStore} className="text-xs bg-white/20 px-3 py-1.5 rounded-full flex items-center gap-1">
-            <Eye size={14} /> Tingnan ang tindahan
+            <ExternalLink size={14} /> Buksan ang tindahan
           </button>
           <button
             onClick={toggleStoreOpen}
@@ -681,85 +673,6 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
           <ReviewSection userId={profile.id} />
         </div>
       )}
-    </div>
-  );
-}
-
-// ============= STORE PREVIEW (buyer view) =============
-function StorePreview({ store, onBack }: { store: Store; onBack: () => void }) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    supabase.from('products').select('*').eq('store_id', store.id).eq('is_available', true).order('created_at', { ascending: false }).limit(50)
-      .then(({ data }) => { setProducts(data || []); setLoading(false); });
-  }, [store.id]);
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="relative h-40 bg-gray-200">
-        {store.banner_url && <img src={store.banner_url} alt={store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        <button onClick={onBack} className="absolute top-12 left-4 w-10 h-10 rounded-full bg-white/90 shadow-md flex items-center justify-center active:scale-90 transition">
-          <ArrowLeft size={20} className="text-gray-700" />
-        </button>
-        <div className="absolute top-12 right-4 bg-black/50 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-1">
-          <Eye size={12} /> Preview Mode
-        </div>
-      </div>
-      <div className="px-5 -mt-8 relative">
-        <div className="flex items-end gap-3">
-          <div className="w-16 h-16 rounded-2xl bg-white shadow-md overflow-hidden border-2 border-white flex-shrink-0">
-            {store.logo_url && <img src={store.logo_url} alt={store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
-          </div>
-          <div className="pb-1">
-            <h1 className="text-xl font-bold text-gray-800">{store.name}</h1>
-            <div className="flex items-center gap-1">
-              <Star size={14} className="fill-amber-400 text-amber-400" />
-              <span className="text-sm text-gray-600">{store.rating}</span>
-              <span className="text-sm text-gray-300">·</span>
-              <span className="text-sm text-gray-500">{store.city}</span>
-            </div>
-            {store.palengke_name && (
-              <p className="text-xs text-brand-600 flex items-center gap-1 mt-1">
-                <MapPin size={12} />
-                Pwesto sa {store.palengke_name}
-              </p>
-            )}
-          </div>
-        </div>
-        {store.description && <p className="text-gray-600 text-sm mt-3">{store.description}</p>}
-        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
-          <MapPin size={16} />
-          <span>{store.barangay}, {store.district}, {store.city}, {store.region}</span>
-        </div>
-      </div>
-
-      <div className="px-5 py-4 pb-8">
-        <h3 className="font-bold text-gray-800 mb-3">Mga Paninda</h3>
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3">{[1,2,3,4].map(i => <div key={i} className="h-44 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
-        ) : products.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            <Package size={48} className="mx-auto mb-3 opacity-50" />
-            <p className="text-sm">Wala pang available na paninda.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {products.map(p => (
-              <div key={p.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100">
-                <div className="h-32 bg-gray-100">
-                  {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
-                </div>
-                <div className="p-2.5">
-                  <p className="font-semibold text-sm text-gray-800 line-clamp-1">{p.name}</p>
-                  <p className="font-bold text-brand-600 mt-1">₱{p.price}<span className="text-xs text-gray-400 font-normal">/{p.unit}</span></p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
