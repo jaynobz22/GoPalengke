@@ -2,9 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import type { Message, Conversation } from '@/lib/types';
-import { ArrowLeft, Send, Video, PhoneOff, Phone } from 'lucide-react';
+import { ArrowLeft, Send, Video, PhoneOff, Phone, ImagePlus, Trash2, X } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
 import { VideoCall } from '@/components/VideoCall';
+import { compressImage } from '@/lib/imageCompress';
 
 export function useChat(conversationId: string | null) {
   const { profile } = useAuth();
@@ -41,6 +42,13 @@ export function useChat(conversationId: string | null) {
           });
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
+        (payload: any) => {
+          setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+        }
+      )
       .subscribe();
     return () => { supabase.removeChannel(sub); };
   }, [conversationId]);
@@ -73,6 +81,35 @@ export function useChat(conversationId: string | null) {
     setSending(false);
   }, [conversationId, profile]);
 
+  const sendImage = useCallback(async (file: File) => {
+    if (!conversationId || !profile) return;
+    setSending(true);
+    try {
+      const compressed = await compressImage(file);
+      const fileName = `${profile.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from('chat-images')
+        .upload(fileName, compressed, { contentType: 'image/jpeg' });
+      if (uploadError) { setSending(false); return; }
+      const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(fileName);
+      const { data } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: profile.id,
+          body: null,
+          image_url: urlData.publicUrl,
+          message_type: 'image',
+        })
+        .select('*')
+        .single();
+      if (data) {
+        setMessages(prev => [...prev, data]);
+      }
+    } catch { /* ignore */ }
+    setSending(false);
+  }, [conversationId, profile]);
+
   const sendCallInvite = useCallback(async (roomId: string): Promise<Message | null> => {
     if (!conversationId || !profile) return null;
     const { data } = await supabase
@@ -101,7 +138,18 @@ export function useChat(conversationId: string | null) {
     setMessages(prev => prev.map(m => m.id === messageId ? { ...m, call_status: status as any } : m));
   }, []);
 
-  return { messages, loading, sending, sendMessage, sendCallInvite, updateCallStatus };
+  const deleteMessage = useCallback(async (messageId: string, imageUrl: string | null) => {
+    if (imageUrl) {
+      const pathMatch = imageUrl.match(/chat-images\/(.+)$/);
+      if (pathMatch) {
+        await supabase.storage.from('chat-images').remove([pathMatch[1]]);
+      }
+    }
+    await supabase.from('messages').delete().eq('id', messageId);
+    setMessages(prev => prev.filter(m => m.id !== messageId));
+  }, []);
+
+  return { messages, loading, sending, sendMessage, sendImage, sendCallInvite, updateCallStatus, deleteMessage };
 }
 
 export function getOrCreateConversation(
@@ -164,13 +212,17 @@ export function ChatView({
   onBack: () => void;
 }) {
   const { profile } = useAuth();
-  const { messages, loading, sending, sendMessage, sendCallInvite, updateCallStatus } = useChat(conversationId);
+  const { messages, loading, sending, sendMessage, sendImage, sendCallInvite, updateCallStatus, deleteMessage } = useChat(conversationId);
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [otherAvatar, setOtherAvatar] = useState<string | null>(null);
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
   const [activeCall, setActiveCall] = useState<{ roomId: string; isCaller: boolean } | null>(null);
   const [incomingCall, setIncomingCall] = useState<Message | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadAvatars() {
@@ -195,7 +247,6 @@ export function ChatView({
     }
   }, [messages]);
 
-  // Detect incoming video call (message_type = video_call, not from me, status pending)
   useEffect(() => {
     if (!profile) return;
     const latestCallMsg = [...messages].reverse().find(
@@ -213,6 +264,12 @@ export function ChatView({
     if (!input.trim() || sending) return;
     sendMessage(input);
     setInput('');
+  }
+
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) await sendImage(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
   async function startVideoCall() {
@@ -235,7 +292,6 @@ export function ChatView({
 
   function endActiveCall() {
     if (activeCall) {
-      // Find the call message and update its status to ended
       const callMsg = messages.find(m => m.call_room_id === activeCall.roomId);
       if (callMsg) {
         updateCallStatus(callMsg.id, 'ended');
@@ -244,7 +300,22 @@ export function ChatView({
     setActiveCall(null);
   }
 
-  // Show incoming call overlay if there's an incoming call and no active call
+  async function deleteConversation() {
+    setDeleting(true);
+    const imageMessages = messages.filter(m => m.image_url);
+    for (const msg of imageMessages) {
+      if (msg.image_url) {
+        const pathMatch = msg.image_url.match(/chat-images\/(.+)$/);
+        if (pathMatch) {
+          await supabase.storage.from('chat-images').remove([pathMatch[1]]);
+        }
+      }
+    }
+    await supabase.from('conversations').delete().eq('id', conversationId);
+    setDeleting(false);
+    onBack();
+  }
+
   if (incomingCall && !activeCall) {
     return (
       <div className="fixed inset-0 z-[80] bg-gradient-to-b from-blue-900 to-gray-900 flex flex-col items-center justify-center max-w-md mx-auto">
@@ -273,7 +344,6 @@ export function ChatView({
     );
   }
 
-  // Show active video call
   if (activeCall) {
     return (
       <VideoCall
@@ -293,8 +363,8 @@ export function ChatView({
           <ArrowLeft size={20} className="text-gray-600" />
         </button>
         <Avatar src={otherAvatar} name={otherName} size={40} />
-        <div className="flex-1">
-          <p className="font-semibold text-gray-800 text-sm">{otherName}</p>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-gray-800 text-sm truncate">{otherName}</p>
           <p className="text-xs text-gray-400">{otherRole}</p>
         </div>
         <button
@@ -303,6 +373,13 @@ export function ChatView({
           title="Video Call"
         >
           <Video size={20} className="text-blue-600" />
+        </button>
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center active:scale-90 transition flex-shrink-0"
+          title=" Burahin ang usapan"
+        >
+          <Trash2 size={20} className="text-red-500" />
         </button>
       </div>
 
@@ -321,7 +398,6 @@ export function ChatView({
         {messages.map(msg => {
           const isMine = msg.sender_id === profile?.id;
 
-          // Video call message card
           if (msg.message_type === 'video_call') {
             const status = msg.call_status;
             return (
@@ -343,7 +419,6 @@ export function ChatView({
                     {status === 'ended' && 'Natapos ang video call'}
                     {!status && 'Video call invite'}
                   </p>
-                  {/* Action buttons for pending incoming call */}
                   {!isMine && status === 'pending' && (
                     <div className="flex gap-2 mt-2">
                       <button
@@ -360,7 +435,6 @@ export function ChatView({
                       </button>
                     </div>
                   )}
-                  {/* Re-join button for accepted/ended calls */}
                   {isMine && status === 'pending' && (
                     <button
                       onClick={() => setActiveCall({ roomId: msg.call_room_id!, isCaller: true })}
@@ -378,7 +452,36 @@ export function ChatView({
             );
           }
 
-          // Regular text message
+          if (msg.message_type === 'image' && msg.image_url) {
+            return (
+              <div key={msg.id} className={`flex items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                {!isMine && <Avatar src={otherAvatar} name={otherName} size={28} />}
+                <div className={`max-w-[75%] rounded-2xl overflow-hidden ${isMine ? 'rounded-br-md' : 'rounded-bl-md bg-white border border-gray-100'}`}>
+                  <img
+                    src={msg.image_url}
+                    alt="Chat image"
+                    className="w-full max-h-60 object-cover cursor-pointer"
+                    onClick={() => setPreviewImage(msg.image_url)}
+                  />
+                  <div className={`flex items-center justify-between px-2 py-1 ${isMine ? 'bg-brand-600' : 'bg-white'}`}>
+                    <p className={`text-[10px] ${isMine ? 'text-brand-200' : 'text-gray-300'}`}>
+                      {new Date(msg.created_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
+                    </p>
+                    {isMine && (
+                      <button
+                        onClick={() => deleteMessage(msg.id, msg.image_url)}
+                        className="text-[10px] text-white/60 hover:text-white transition"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {isMine && <Avatar src={myAvatar} name={profile?.full_name} size={28} />}
+              </div>
+            );
+          }
+
           return (
             <div key={msg.id} className={`flex items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
               {!isMine && <Avatar src={otherAvatar} name={otherName} size={28} />}
@@ -388,9 +491,19 @@ export function ChatView({
                   : 'bg-white text-gray-800 border border-gray-100 rounded-bl-md'
               }`}>
                 <p className="text-sm whitespace-pre-wrap break-words">{msg.body}</p>
-                <p className={`text-[10px] mt-1 ${isMine ? 'text-brand-200' : 'text-gray-300'}`}>
-                  {new Date(msg.created_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className={`text-[10px] mt-1 ${isMine ? 'text-brand-200' : 'text-gray-300'}`}>
+                    {new Date(msg.created_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
+                  </p>
+                  {isMine && (
+                    <button
+                      onClick={() => deleteMessage(msg.id, null)}
+                      className="text-[10px] text-white/40 hover:text-white/80 transition mt-1"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  )}
+                </div>
               </div>
               {isMine && <Avatar src={myAvatar} name={profile?.full_name} size={28} />}
             </div>
@@ -398,8 +511,61 @@ export function ChatView({
         })}
       </div>
 
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div className="fixed inset-0 z-[90] bg-black/80 flex items-center justify-center" onClick={() => setPreviewImage(null)}>
+          <button className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+            <X size={24} className="text-white" />
+          </button>
+          <img src={previewImage} alt="Preview" className="max-w-full max-h-full object-contain" />
+        </div>
+      )}
+
+      {/* Delete Conversation Confirm */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center px-5" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={28} className="text-red-500" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-800 text-center mb-2">Burahin ang usapan?</h3>
+            <p className="text-sm text-gray-500 text-center mb-5">
+              Mabubura ang lahat ng messages sa usapang ito. Hindi na ito mababawi.
+            </p>
+            <button
+              onClick={deleteConversation}
+              disabled={deleting}
+              className="w-full py-3 bg-red-500 text-white rounded-xl font-semibold text-sm active:scale-95 transition disabled:opacity-50 mb-2"
+            >
+              {deleting ? 'Binubura...' : 'Oo, Burahin'}
+            </button>
+            <button
+              onClick={() => setShowDeleteConfirm(false)}
+              className="w-full py-2.5 bg-gray-100 text-gray-600 rounded-xl font-medium text-sm"
+            >
+              Huwag na
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <form onSubmit={handleSend} className="bg-blue-50 border-t border-blue-100 px-4 py-3 flex items-center gap-2 safe-bottom">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleImageSelect}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={sending}
+          className="w-11 h-11 rounded-full bg-white flex items-center justify-center active:scale-90 transition disabled:opacity-40 flex-shrink-0 shadow-sm"
+        >
+          <ImagePlus size={20} className="text-brand-600" />
+        </button>
         <input
           type="text"
           value={input}

@@ -181,14 +181,15 @@ export interface Conversation {
   updated_at: string;
 }
 
-export type MessageType = 'text' | 'video_call';
+export type MessageType = 'text' | 'video_call' | 'image';
 export type CallStatus = 'pending' | 'accepted' | 'declined' | 'ended';
 
 export interface Message {
   id: string;
   conversation_id: string;
   sender_id: string;
-  body: string;
+  body: string | null;
+  image_url: string | null;
   read_at: string | null;
   created_at: string;
   message_type: MessageType;
@@ -220,7 +221,8 @@ export interface AdminMessage {
   id: string;
   conversation_id: string;
   sender_id: string;
-  body: string;
+  body: string | null;
+  image_url: string | null;
   read_at: string | null;
   created_at: string;
 }
