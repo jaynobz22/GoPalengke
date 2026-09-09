@@ -1605,13 +1605,28 @@ function SettingsTab() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Resend API key state
+  const [resendKey, setResendKey] = useState('');
+  const [resendSaving, setResendSaving] = useState(false);
+  const [resendStatus, setResendStatus] = useState<'none' | 'configured' | 'missing'>('none');
+
+  const loadResendKey = useCallback(async () => {
+    const { data } = await supabase.from('platform_settings').select('value').eq('key', 'RESEND_API_KEY').maybeSingle();
+    if (data) {
+      setResendStatus('configured');
+      setResendKey('');
+    } else {
+      setResendStatus('missing');
+    }
+  }, []);
+
   const load = useCallback(async () => {
     const { data } = await supabase.from('platform_qr_codes').select('*').order('created_at', { ascending: false });
     setQrCodes((data || []) as PlatformQrCode[]);
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); loadResendKey(); }, [load, loadResendKey]);
 
   async function addQrCode() {
     if (!newImageUrl.trim() || !newLabel.trim()) return;
@@ -1663,6 +1678,56 @@ function SettingsTab() {
   return (
     <div className="px-5 py-4">
       <h2 className="text-lg font-bold text-gray-800 mb-4">Platform Settings</h2>
+
+      {/* Resend API Key Section */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Mail size={20} className="text-brand-600" />
+          <h3 className="font-semibold text-gray-800 text-sm">Resend Email API Key</h3>
+        </div>
+        <p className="text-xs text-gray-400 mb-3">
+          Ginagamit ito para sa pagpapadala ng email campaigns. Kung wala ito, hindi magagana ang Campaigns tab.
+        </p>
+        <div className="flex items-center gap-2 mb-3">
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+            resendStatus === 'configured' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+          }`}>
+            {resendStatus === 'configured' ? 'Configured' : 'Not Set'}
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="password"
+            value={resendKey}
+            onChange={e => setResendKey(e.target.value)}
+            placeholder={resendStatus === 'configured' ? 'Enter new key to replace' : 'Enter Resend API key'}
+            className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500"
+          />
+          <button
+            onClick={async () => {
+              if (!resendKey.trim()) return;
+              setResendSaving(true);
+              const { error } = await supabase.from('platform_settings').upsert({
+                key: 'RESEND_API_KEY',
+                value: resendKey.trim(),
+                updated_by: profile?.id,
+              });
+              setResendSaving(false);
+              if (error) { alert('Error: ' + error.message); return; }
+              setResendKey('');
+              setResendStatus('configured');
+              setSuccess('Nai-save ang Resend API key!');
+              setTimeout(() => setSuccess(null), 3000);
+              loadResendKey();
+            }}
+            disabled={resendSaving || !resendKey.trim()}
+            className="px-4 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-semibold active:scale-95 transition disabled:opacity-50 flex items-center gap-1.5"
+          >
+            {resendSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {resendSaving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
 
       {/* QR Codes Section */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">

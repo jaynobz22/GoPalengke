@@ -25,15 +25,6 @@ interface CampaignRow {
   status: string;
 }
 
-interface RecipientRow {
-  id: string;
-  campaign_id: string;
-  user_id: string | null;
-  email: string;
-  full_name: string | null;
-  status: string;
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -63,6 +54,22 @@ Deno.serve(async (req: Request) => {
     }
 
     const c = campaign as CampaignRow;
+
+    // Load Resend API key from platform_settings
+    const { data: setting } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "RESEND_API_KEY")
+      .maybeSingle();
+
+    const resendKey = (setting as { value: string } | null)?.value || Deno.env.get("RESEND_API_KEY");
+
+    if (!resendKey) {
+      return new Response(JSON.stringify({ error: "No Resend API key configured. Set RESEND_API_KEY in admin Settings." }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Mark as sending
     await supabase
@@ -96,9 +103,8 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Failed to load profiles: ${profError.message}`);
     }
 
-    const recipients = (profiles || []).filter((p: any) => p.email);
+    const recipients = (profiles || []).filter((p: { email: string | null }) => p.email);
 
-    // Insert recipient rows
     if (recipients.length === 0) {
       await supabase
         .from("email_campaigns")
@@ -109,6 +115,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Insert recipient rows
     const recipientRows = recipients.map((p: any) => ({
       campaign_id: campaignId,
       user_id: p.id,
@@ -121,7 +128,7 @@ Deno.serve(async (req: Request) => {
       .from("email_campaign_recipients")
       .insert(recipientRows);
 
-    // Send emails in batches of 50
+    // Send emails in batches of 50 via Resend
     const BATCH_SIZE = 50;
     let sentCount = 0;
     let failedCount = 0;
@@ -129,96 +136,40 @@ Deno.serve(async (req: Request) => {
     for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
       const batch = recipients.slice(i, i + BATCH_SIZE);
 
-      // Build personalized emails
-      const emailPayload = batch.map((p: any) => ({
-        email: p.email,
-        full_name: p.full_name || "Kamusta!",
+      const emails = batch.map((p: any) => ({
+        from: "GoPalengke <noreply@gopalengke.ph>",
+        to: [p.email],
+        subject: c.subject,
+        html: buildEmailHtml(c.body, p.full_name || ""),
       }));
 
-      // Send via Supabase auth admin invite or direct email
-      // We'll use the Resend API if RESEND_API_KEY is set, otherwise fall back to a simple SMTP relay
-      const resendKey = Deno.env.get("RESEND_API_KEY");
+      const res = await fetch("https://api.resend.com/emails/batch", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(emails),
+      });
 
-      if (resendKey) {
-        // Use Resend batch API
-        const emails = emailPayload.map((e) => ({
-          from: "GoPalengke <noreply@gopalengke.ph>",
-          to: [e.email],
-          subject: c.subject,
-          html: buildEmailHtml(c.body, e.full_name),
-        }));
-
-        const res = await fetch("https://api.resend.com/emails/batch", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${resendKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(emails),
-        });
-
-        if (res.ok) {
-          for (const e of emailPayload) {
-            await supabase
-              .from("email_campaign_recipients")
-              .update({ status: "sent", sent_at: new Date().toISOString() })
-              .eq("campaign_id", campaignId)
-              .eq("email", e.email);
-            sentCount++;
-          }
-        } else {
-          const errBody = await res.text();
-          for (const e of emailPayload) {
-            await supabase
-              .from("email_campaign_recipients")
-              .update({ status: "failed", error_message: errBody.slice(0, 500) })
-              .eq("campaign_id", campaignId)
-              .eq("email", e.email);
-            failedCount++;
-          }
+      if (res.ok) {
+        for (const p of batch) {
+          await supabase
+            .from("email_campaign_recipients")
+            .update({ status: "sent", sent_at: new Date().toISOString() })
+            .eq("campaign_id", campaignId)
+            .eq("email", (p as any).email);
+          sentCount++;
         }
       } else {
-        // Fallback: use Supabase's built-in email (admin inviteEmailByEmail)
-        // This sends a transactional email through Supabase's default email provider
-        for (const e of emailPayload) {
-          try {
-            const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
-              e.email,
-              {
-                redirectTo: `${SUPABASE_URL.replace(".supabase.co", "")}`,
-                data: {
-                  campaign_name: c.name,
-                  campaign_subject: c.subject,
-                  campaign_body: c.body,
-                },
-              }
-            );
-
-            if (inviteError) {
-              // If user already exists, inviteUserByEmail still sends an email
-              // Treat as sent since Supabase sends the invite email
-              await supabase
-                .from("email_campaign_recipients")
-                .update({ status: "sent", sent_at: new Date().toISOString() })
-                .eq("campaign_id", campaignId)
-                .eq("email", e.email);
-              sentCount++;
-            } else {
-              await supabase
-                .from("email_campaign_recipients")
-                .update({ status: "sent", sent_at: new Date().toISOString() })
-                .eq("campaign_id", campaignId)
-                .eq("email", e.email);
-              sentCount++;
-            }
-          } catch (err) {
-            await supabase
-              .from("email_campaign_recipients")
-              .update({ status: "failed", error_message: (err as Error).message.slice(0, 500) })
-              .eq("campaign_id", campaignId)
-              .eq("email", e.email);
-            failedCount++;
-          }
+        const errBody = await res.text();
+        for (const p of batch) {
+          await supabase
+            .from("email_campaign_recipients")
+            .update({ status: "failed", error_message: errBody.slice(0, 500) })
+            .eq("campaign_id", campaignId)
+            .eq("email", (p as any).email);
+          failedCount++;
         }
       }
     }
