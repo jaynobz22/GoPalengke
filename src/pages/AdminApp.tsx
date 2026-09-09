@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall, AdminConversation } from '@/lib/types';
+import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall, AdminConversation, Store } from '@/lib/types';
 import { ImageUploadField } from '@/components/ImageUploadField';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
 import { AdminChat, getOrCreateAdminConversation } from '@/components/AdminChat';
@@ -9,10 +9,10 @@ import {
   Megaphone, Plus, Trash2, Power, Check, Loader2, LogOut,
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
   AlertCircle, X, UserCheck, UserX, DollarSign, TrendingUp, Receipt,
-  Lock, Unlock, Video, MessageCircle, Shield, QrCode,
+  Lock, Unlock, Video, MessageCircle, Shield, QrCode, MapPin,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'users' | 'messages' | 'fees' | 'announcements' | 'settings';
+type Tab = 'overview' | 'users' | 'geographic' | 'messages' | 'fees' | 'announcements' | 'settings';
 
 export function AdminApp() {
   const { profile, signOut } = useAuth();
@@ -57,6 +57,7 @@ export function AdminApp() {
   const tabs: { id: Tab; label: string; icon: typeof Users }[] = [
     { id: 'overview', label: 'Overview', icon: Users },
     { id: 'users', label: 'Users', icon: UserCheck },
+    { id: 'geographic', label: 'Areas', icon: MapPin },
     { id: 'messages', label: 'Messages', icon: MessageCircle },
     { id: 'fees', label: 'Fees', icon: Wallet },
     { id: 'announcements', label: 'Announcements', icon: Megaphone },
@@ -104,6 +105,7 @@ export function AdminApp() {
 
       {tab === 'overview' && <OverviewTab />}
       {tab === 'users' && <UsersTab onStartCall={startAdminCall} onStartChat={startAdminChat} />}
+      {tab === 'geographic' && <GeographicTab />}
       {tab === 'messages' && <AdminMessagesTab onOpenChat={(convId, name) => setActiveChat({ conversationId: convId, otherName: name })} />}
       {tab === 'fees' && <FeesTab />}
       {tab === 'announcements' && <AnnouncementsTab />}
@@ -538,6 +540,278 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
                   </button>
                 </div>
               )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============= GEOGRAPHIC TAB =============
+type GeoLevel = 'region' | 'city' | 'barangay' | 'palengke';
+
+function GeographicTab() {
+  const [level, setLevel] = useState<GeoLevel>('region');
+  const [regionFilter, setRegionFilter] = useState<string>('');
+  const [cityFilter, setCityFilter] = useState<string>('');
+  const [barangayFilter, setBarangayFilter] = useState<string>('');
+  const [palengkeFilter, setPalengkeFilter] = useState<string>('');
+  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
+  const [allStores, setAllStores] = useState<Store[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const [profileRes, storeRes] = await Promise.all([
+        supabase.from('profiles').select('*'),
+        supabase.from('stores').select('*'),
+      ]);
+      setAllProfiles((profileRes.data || []) as Profile[]);
+      setAllStores((storeRes.data || []) as Store[]);
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  const activeProfiles = allProfiles.filter(p => p.is_active && p.is_approved && p.role !== 'admin');
+
+  // Build aggregation data
+  type Row = {
+    label: string;
+    sellers: number;
+    buyers: number;
+    riders: number;
+    total: number;
+  };
+
+  function getRowKey(p: Profile): string | null {
+    if (level === 'region') return p.region;
+    if (level === 'city') return p.city;
+    if (level === 'barangay') return p.barangay;
+    return null;
+  }
+
+  // For palengke level, we need to join with stores
+  function getPalengkeRows(): Row[] {
+    const sellerProfiles = activeProfiles.filter(p => p.role === 'seller');
+    const sellerIds = new Set(sellerProfiles.map(p => p.id));
+    const storesInFilter = allStores.filter(s => {
+      if (regionFilter && s.region !== regionFilter) return false;
+      if (cityFilter && s.city !== cityFilter) return false;
+      if (barangayFilter && s.barangay !== barangayFilter) return false;
+      return true;
+    });
+    const palengkeMap: Record<string, Row> = {};
+    for (const s of storesInFilter) {
+      if (!s.palengke_name) continue;
+      const seller = sellerProfiles.find(p => p.id === s.seller_id);
+      if (!seller) continue;
+      if (!palengkeMap[s.palengke_name]) {
+        palengkeMap[s.palengke_name] = { label: s.palengke_name, sellers: 0, buyers: 0, riders: 0, total: 0 };
+      }
+      palengkeMap[s.palengke_name].sellers++;
+      palengkeMap[s.palengke_name].total++;
+    }
+    return Object.values(palengkeMap).sort((a, b) => b.total - a.total);
+  }
+
+  function getRows(): Row[] {
+    if (level === 'palengke') return getPalengkeRows();
+
+    const filtered = activeProfiles.filter(p => {
+      if (regionFilter && p.region !== regionFilter) return false;
+      if (cityFilter && p.city !== cityFilter) return false;
+      if (barangayFilter && p.barangay !== barangayFilter) return false;
+      return true;
+    });
+
+    const map: Record<string, Row> = {};
+    for (const p of filtered) {
+      const key = getRowKey(p);
+      if (!key) continue;
+      if (!map[key]) {
+        map[key] = { label: key, sellers: 0, buyers: 0, riders: 0, total: 0 };
+      }
+      if (p.role === 'seller') map[key].sellers++;
+      else if (p.role === 'buyer') map[key].buyers++;
+      else if (p.role === 'rider') map[key].riders++;
+      map[key].total++;
+    }
+    return Object.values(map).sort((a, b) => b.total - a.total);
+  }
+
+  // Build available filter options based on current data
+  const regions = [...new Set(activeProfiles.map(p => p.region).filter(Boolean))].sort() as string[];
+  const cities = [...new Set(activeProfiles.filter(p => !regionFilter || p.region === regionFilter).map(p => p.city).filter(Boolean))].sort() as string[];
+  const barangays = [...new Set(activeProfiles.filter(p => (!regionFilter || p.region === regionFilter) && (!cityFilter || p.city === cityFilter)).map(p => p.barangay).filter(Boolean))].sort() as string[];
+  const palengkes = [...new Set(allStores.filter(s => {
+    if (regionFilter && s.region !== regionFilter) return false;
+    if (cityFilter && s.city !== cityFilter) return false;
+    if (barangayFilter && s.barangay !== barangayFilter) return false;
+    return true;
+  }).map(s => s.palengke_name).filter(Boolean))].sort() as string[];
+
+  const rows = getRows();
+  const maxTotal = Math.max(...rows.map(r => r.total), 1);
+
+  const levelLabels: Record<GeoLevel, string> = {
+    region: 'Region',
+    city: 'City/Municipality',
+    barangay: 'Barangay',
+    palengke: 'Palengke',
+  };
+
+  const levels: { id: GeoLevel; label: string }[] = [
+    { id: 'region', label: 'Region' },
+    { id: 'city', label: 'City' },
+    { id: 'barangay', label: 'Barangay' },
+    { id: 'palengke', label: 'Palengke' },
+  ];
+
+  function resetBelow(l: GeoLevel) {
+    if (l === 'region') { setCityFilter(''); setBarangayFilter(''); setPalengkeFilter(''); }
+    if (l === 'city') { setBarangayFilter(''); setPalengkeFilter(''); }
+    if (l === 'barangay') { setPalengkeFilter(''); }
+  }
+
+  return (
+    <div className="px-5 py-4">
+      <h2 className="text-lg font-bold text-gray-800 mb-1">Geographic Distribution</h2>
+      <p className="text-xs text-gray-400 mb-4">Tingnan ang dami ng active sellers, buyers, at riders bawat lugar.</p>
+
+      {/* Level selector */}
+      <div className="flex gap-2 mb-4 overflow-x-auto">
+        {levels.map(l => (
+          <button
+            key={l.id}
+            onClick={() => { setLevel(l.id); resetBelow(l.id); }}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+              level === l.id ? 'bg-brand-600 text-white' : 'bg-white border border-gray-200 text-gray-500'
+            }`}
+          >
+            {l.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="space-y-3 mb-4">
+        <div>
+          <label className="text-xs font-medium text-gray-500 mb-1 block">Region</label>
+          <select
+            value={regionFilter}
+            onChange={(e) => { setRegionFilter(e.target.value); resetBelow('region'); }}
+            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 bg-white"
+          >
+            <option value="">Lahat ng Region</option>
+            {regions.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-500 mb-1 block">City/Municipality</label>
+          <select
+            value={cityFilter}
+            onChange={(e) => { setCityFilter(e.target.value); resetBelow('city'); }}
+            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 bg-white disabled:bg-gray-50"
+            disabled={regions.length === 0}
+          >
+            <option value="">Lahat ng City</option>
+            {cities.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        {level !== 'palengke' && (
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Barangay</label>
+            <select
+              value={barangayFilter}
+              onChange={(e) => { setBarangayFilter(e.target.value); resetBelow('barangay'); }}
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 bg-white disabled:bg-gray-50"
+              disabled={cities.length === 0}
+            >
+              <option value="">Lahat ng Barangay</option>
+              {barangays.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+          </div>
+        )}
+        {level === 'palengke' && (
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Palengke</label>
+            <select
+              value={palengkeFilter}
+              onChange={(e) => setPalengkeFilter(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 bg-white disabled:bg-gray-50"
+              disabled={palengkes.length === 0}
+            >
+              <option value="">Lahat ng Palengke</option>
+              {palengkes.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* Summary cards */}
+      {!loading && (
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {[
+            { icon: StoreIcon, label: 'Sellers', value: rows.reduce((s, r) => s + r.sellers, 0), color: 'bg-orange-50 text-orange-600' },
+            { icon: ShoppingBag, label: 'Buyers', value: rows.reduce((s, r) => s + r.buyers, 0), color: 'bg-green-50 text-green-600' },
+            { icon: Bike, label: 'Riders', value: rows.reduce((s, r) => s + r.riders, 0), color: 'bg-blue-50 text-blue-600' },
+          ].map((c, i) => {
+            const Icon = c.icon;
+            return (
+              <div key={i} className="bg-white rounded-2xl border border-gray-100 p-3 text-center">
+                <div className={`w-10 h-10 rounded-xl ${c.color} flex items-center justify-center mb-2 mx-auto`}>
+                  <Icon size={20} />
+                </div>
+                <p className="text-xl font-bold text-gray-800">{c.value}</p>
+                <p className="text-xs text-gray-400">{c.label}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Results */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 size={24} className="animate-spin text-brand-500" />
+        </div>
+      ) : rows.length === 0 ? (
+        <p className="text-center text-gray-400 text-sm py-12">Walang data para sa mga filter na ito.</p>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-gray-500 mb-1">
+            {rows.length} {levelLabels[level]}{rows.length !== 1 ? 's' : ''} na may active users
+          </p>
+          {rows.map((row, i) => (
+            <div key={row.label} className="bg-white rounded-2xl border border-gray-100 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-xs font-bold text-gray-300 flex-shrink-0">#{i + 1}</span>
+                  <p className="font-semibold text-sm text-gray-800 truncate">{row.label}</p>
+                </div>
+                <span className="text-sm font-bold text-gray-700 flex-shrink-0">{row.total}</span>
+              </div>
+              {/* Bar */}
+              <div className="h-2 rounded-full bg-gray-100 overflow-hidden mb-2">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-brand-400 to-brand-600 transition-all"
+                  style={{ width: `${(row.total / maxTotal) * 100}%` }}
+                />
+              </div>
+              {/* Breakdown */}
+              <div className="flex gap-3 text-xs">
+                <span className="flex items-center gap-1 text-orange-600">
+                  <StoreIcon size={12} /> {row.sellers}
+                </span>
+                <span className="flex items-center gap-1 text-green-600">
+                  <ShoppingBag size={12} /> {row.buyers}
+                </span>
+                <span className="flex items-center gap-1 text-blue-600">
+                  <Bike size={12} /> {row.riders}
+                </span>
+              </div>
             </div>
           ))}
         </div>
