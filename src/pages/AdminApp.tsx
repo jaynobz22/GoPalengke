@@ -9,10 +9,10 @@ import {
   Megaphone, Plus, Trash2, Power, Check, Loader2, LogOut,
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
   AlertCircle, X, UserCheck, UserX, DollarSign, TrendingUp, Receipt,
-  Lock, Unlock, Video, MessageCircle, Shield, QrCode, MapPin,
+  Lock, Unlock, Video, MessageCircle, Shield, QrCode, MapPin, Mail, Send,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'users' | 'geographic' | 'messages' | 'fees' | 'announcements' | 'settings';
+type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'announcements' | 'settings';
 
 export function AdminApp() {
   const { profile, signOut } = useAuth();
@@ -58,6 +58,7 @@ export function AdminApp() {
     { id: 'overview', label: 'Overview', icon: Users },
     { id: 'users', label: 'Users', icon: UserCheck },
     { id: 'geographic', label: 'Areas', icon: MapPin },
+    { id: 'campaigns', label: 'Campaigns', icon: Mail },
     { id: 'messages', label: 'Messages', icon: MessageCircle },
     { id: 'fees', label: 'Fees', icon: Wallet },
     { id: 'announcements', label: 'Announcements', icon: Megaphone },
@@ -106,6 +107,7 @@ export function AdminApp() {
       {tab === 'overview' && <OverviewTab />}
       {tab === 'users' && <UsersTab onStartCall={startAdminCall} onStartChat={startAdminChat} />}
       {tab === 'geographic' && <GeographicTab />}
+      {tab === 'campaigns' && <CampaignsTab />}
       {tab === 'messages' && <AdminMessagesTab onOpenChat={(convId, name) => setActiveChat({ conversationId: convId, otherName: name })} />}
       {tab === 'fees' && <FeesTab />}
       {tab === 'announcements' && <AnnouncementsTab />}
@@ -814,6 +816,424 @@ function GeographicTab() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============= CAMPAIGNS TAB =============
+type EmailCampaign = {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  target_role: string;
+  target_region: string | null;
+  target_city: string | null;
+  target_barangay: string | null;
+  status: string;
+  sent_count: number;
+  failed_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+const CAMPAIGN_PRESETS = [
+  {
+    label: 'Pasko (Christmas)',
+    subject: 'Maligayang Pasko! Handa na ba ang inyong handaan?',
+    body: 'Maligayang Pasko!\n\nMalapit na ang Pasko at siguradong maraming handaan ang naghihintay. Bago pa lumipas ang oras, siguraduhing nakapamili na kayo ng sariwang ingredients para sa inyong Noche Buena at handaan.\n\nSa GoPalengke, pwede niyong i-order online ang inyong mga pangkape, gulay, karne, at iba pa — idedeliver diretso sa inyong bahay!\n\nMag-order na bago pa magkagulo sa palengke. Maligayang Pasko sa inyong pamilya!',
+  },
+  {
+    label: 'Bagong Taon (New Year)',
+    subject: 'Masayang Bagong Taon! Planuhin ang inyong handaan',
+    body: 'Masayang Bagong Taon!\n\nBago magsimula ang bagong taon, planuhin na ang inyong Media Noche. Sa GoPalengke, maraming sariwang pagkain ang pwede niyong i-order online — mula sa prutas, gulay, karne, hanggang sa inumin.\n\nHuwag nang magpaka-stress sa pila sa palengke. Mag-order na online at idedeliver diretso sa inyong tahanan.\n\nMasayang Bagong Taon sa inyong lahat!',
+  },
+  {
+    label: 'Fiesta / Pista sa Lugar',
+    subject: 'May fiesta ba sa inyong lugar? Maghanda na sa GoPalengke!',
+    body: 'Kamusta!\n\nNaririnig namin na may malapit na fiesta sa inyong lugar. Siguradong maraming handaan at paghahanda ang naghihintay!\n\nBago matapos ang araw, siguraduhing nakapamili na kayo ng sariwang ingredients para sa inyong mga lulutuin. Sa GoPalengke, pwede niyong i-order online ang lahat ng kailangan — gulay, karne, isda, prutas, at iba pa — at idedeliver sa inyong bahay.\n\nMag-order na habang maaga pa. Maligayang fiesta!',
+  },
+  {
+    label: 'Semana Santa (Holy Week)',
+    subject: 'Semana Santa na! Maghanda ng sariwang pagkain',
+    body: 'Kamusta!\n\nMalapit na ang Semana Santa. Panahon ito ng pagmumuni-muni at paghahanda ng sariwang pagkain para sa pamilya.\n\nSa GoPalengke, pwede niyong i-order online ang sariwang isda, gulay, prutas, at iba pang kailangan para sa inyong mga lutuin — walang pila, walang hassle.\n\nMag-order na nang maaga. Mapayapang Semana Santa sa inyong pamilya.',
+  },
+  {
+    label: 'Buwan ng Wika (August)',
+    subject: 'Buwan ng Wika! Sariwang ingredients para sa klasikong putahe',
+    body: 'Kamusta!\n\nIto ang Buwan ng Wika — tamang panahon para magluto ng mga klasikong Pilipinong putahe para sa pamilya.\n\nSa GoPalengke, pwede niyong i-order online ang sariwang gulay, karne, isda, at iba pang kailangan para sa adobo, sinigang, kare-kare, at higit pa. Idedeliver diretso sa inyong bahay.\n\nMag-order na at ipagdiwang ang ating sariling wika at lutuin!',
+  },
+  {
+    label: 'Ber Months Reminder',
+    subject: 'Ber months na! Simulan na ang paghahanda',
+    body: 'Kamusta!\n\nNagsimula na ang ber months! Unti-unting lumalamig ang panahon at siguradong maraming okasyon ang darating — pasko, reunion, handaan.\n\nSa GoPalengke, pwede niyong i-order online ang sariwang pagkain anumang oras. Walang pila, walang abala — idedeliver diretso sa inyong bahay.\n\nMag-order na at maging handa sa mga darating na okasyon!',
+  },
+];
+
+function CampaignsTab() {
+  const { profile } = useAuth();
+  const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [sending, setSending] = useState<string | null>(null);
+
+  // Form state
+  const [name, setName] = useState('');
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const [targetRole, setTargetRole] = useState<string>('all');
+  const [targetRegion, setTargetRegion] = useState('');
+  const [targetCity, setTargetCity] = useState('');
+  const [targetBarangay, setTargetBarangay] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  // Preview count
+  const [previewCount, setPreviewCount] = useState<number | null>(null);
+  const [counting, setCounting] = useState(false);
+
+  const load = useCallback(async () => {
+    const { data } = await supabase
+      .from('email_campaigns')
+      .select('*')
+      .order('created_at', { ascending: false });
+    setCampaigns((data || []) as EmailCampaign[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Count recipients for current filter
+  useEffect(() => {
+    async function countRecipients() {
+      if (!showCreate) { setPreviewCount(null); return; }
+      setCounting(true);
+      let q = supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_approved', true)
+        .eq('is_active', true)
+        .not('email', 'is', null);
+      if (targetRole !== 'all') q = q.eq('role', targetRole);
+      if (targetRegion) q = q.eq('region', targetRegion);
+      if (targetCity) q = q.eq('city', targetCity);
+      if (targetBarangay) q = q.eq('barangay', targetBarangay);
+      const { count } = await q;
+      setPreviewCount(count || 0);
+      setCounting(false);
+    }
+    countRecipients();
+  }, [showCreate, targetRole, targetRegion, targetCity, targetBarangay]);
+
+  function applyPreset(preset: typeof CAMPAIGN_PRESETS[0]) {
+    setName(preset.label);
+    setSubject(preset.subject);
+    setBody(preset.body);
+  }
+
+  async function handleCreate() {
+    if (!name.trim() || !subject.trim() || !body.trim()) return;
+    setSaving(true);
+    const { error } = await supabase.from('email_campaigns').insert({
+      name: name.trim(),
+      subject: subject.trim(),
+      body: body.trim(),
+      target_role: targetRole,
+      target_region: targetRegion || null,
+      target_city: targetCity || null,
+      target_barangay: targetBarangay || null,
+      status: 'draft',
+      created_by: profile?.id,
+    });
+    setSaving(false);
+    if (error) {
+      alert('Error: ' + error.message);
+      return;
+    }
+    setName(''); setSubject(''); setBody('');
+    setTargetRole('all'); setTargetRegion(''); setTargetCity(''); setTargetBarangay('');
+    setShowCreate(false);
+    load();
+  }
+
+  async function sendCampaign(campaign: EmailCampaign) {
+    if (!confirm(`Sigurado ka bang ipadala ang "${campaign.name}" sa lahat ng target recipients?`)) return;
+    setSending(campaign.id);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-campaign-emails`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ campaignId: campaign.id }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        alert('Error: ' + (result.error || 'Failed to send'));
+      }
+    } catch (err) {
+      alert('Error: ' + (err as Error).message);
+    }
+    setSending(null);
+    load();
+  }
+
+  async function deleteCampaign(campaign: EmailCampaign) {
+    if (!confirm(`Sigurado ka bang burahin ang "${campaign.name}"?`)) return;
+    await supabase.from('email_campaigns').delete().eq('id', campaign.id);
+    load();
+  }
+
+  // Get available regions/cities from profiles
+  const [allRegions, setAllRegions] = useState<string[]>([]);
+  const [allCities, setAllCities] = useState<string[]>([]);
+  const [allBarangays, setAllBarangays] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function loadLocations() {
+      const { data } = await supabase
+        .from('profiles')
+        .select('region, city, barangay')
+        .eq('is_approved', true)
+        .eq('is_active', true);
+      const profiles = (data || []) as any[];
+      setAllRegions([...new Set(profiles.map(p => p.region).filter(Boolean))] as string[]);
+      setAllCities([...new Set(profiles.filter(p => !targetRegion || p.region === targetRegion).map(p => p.city).filter(Boolean))] as string[]);
+      setAllBarangays([...new Set(profiles.filter(p => (!targetRegion || p.region === targetRegion) && (!targetCity || p.city === targetCity)).map(p => p.barangay).filter(Boolean))] as string[]);
+    }
+    if (showCreate) loadLocations();
+  }, [showCreate, targetRegion, targetCity]);
+
+  const roleOptions = [
+    { id: 'all', label: 'Lahat ng Users' },
+    { id: 'buyer', label: 'Buyers Only' },
+    { id: 'seller', label: 'Sellers Only' },
+    { id: 'rider', label: 'Riders Only' },
+  ];
+
+  return (
+    <div className="px-5 py-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h2 className="text-lg font-bold text-gray-800">Email Campaigns</h2>
+          <p className="text-xs text-gray-400">Magpadala ng email reminders sa users para sa okasyon at events.</p>
+        </div>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-semibold active:scale-95 transition"
+        >
+          <Plus size={16} /> Bagong Campaign
+        </button>
+      </div>
+
+      {/* Campaign List */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 size={24} className="animate-spin text-brand-500" />
+        </div>
+      ) : campaigns.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+            <Mail size={28} className="text-gray-300" />
+          </div>
+          <p className="text-gray-400 text-sm">Wala pang campaigns.</p>
+          <p className="text-gray-400 text-xs mt-1">Gumawa ng bagong email campaign para sa okason o event.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {campaigns.map(c => (
+            <div key={c.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-gray-800 truncate">{c.name}</p>
+                  <p className="text-xs text-gray-400 truncate mt-0.5">Subject: {c.subject}</p>
+                </div>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                  c.status === 'sent' ? 'bg-green-100 text-green-700' :
+                  c.status === 'sending' ? 'bg-blue-100 text-blue-700' :
+                  c.status === 'failed' ? 'bg-red-100 text-red-700' :
+                  'bg-gray-100 text-gray-600'
+                }`}>
+                  {c.status === 'sent' ? 'Sent' : c.status === 'sending' ? 'Sending...' : c.status === 'failed' ? 'Failed' : 'Draft'}
+                </span>
+              </div>
+
+              {/* Target info */}
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 font-medium">
+                  {c.target_role === 'all' ? 'All Users' : c.target_role === 'buyer' ? 'Buyers' : c.target_role === 'seller' ? 'Sellers' : 'Riders'}
+                </span>
+                {c.target_region && <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{c.target_region}</span>}
+                {c.target_city && <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{c.target_city}</span>}
+                {c.target_barangay && <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{c.target_barangay}</span>}
+              </div>
+
+              {/* Stats */}
+              {c.status === 'sent' && (
+                <div className="flex gap-3 text-xs text-gray-500 mb-3">
+                  <span className="flex items-center gap-1 text-green-600"><Check size={12} /> Sent: {c.sent_count}</span>
+                  {c.failed_count > 0 && <span className="flex items-center gap-1 text-red-500"><X size={12} /> Failed: {c.failed_count}</span>}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                {c.status === 'draft' && (
+                  <button
+                    onClick={() => sendCampaign(c)}
+                    disabled={sending === c.id}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold bg-brand-600 text-white active:scale-95 transition disabled:opacity-50"
+                  >
+                    {sending === c.id ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                    {sending === c.id ? 'Nagpapadala...' : 'Ipadala'}
+                  </button>
+                )}
+                <button
+                  onClick={() => deleteCampaign(c)}
+                  className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-semibold bg-red-50 text-red-500 border border-red-200 active:scale-95 transition"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center px-5" onClick={() => setShowCreate(false)}>
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-800">Bagong Email Campaign</h3>
+              <button onClick={() => setShowCreate(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <X size={18} className="text-gray-500" />
+              </button>
+            </div>
+
+            {/* Presets */}
+            <div className="mb-4">
+              <p className="text-xs font-medium text-gray-500 mb-2">Preset Templates</p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {CAMPAIGN_PRESETS.map(preset => (
+                  <button
+                    key={preset.label}
+                    onClick={() => applyPreset(preset)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-brand-50 text-brand-700 border border-brand-100 whitespace-nowrap active:scale-95 transition"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Form */}
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Pangalan ng Campaign</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="Hal. Pasko 2026 Reminder"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Email Subject</label>
+                <input
+                  type="text"
+                  value={subject}
+                  onChange={e => setSubject(e.target.value)}
+                  placeholder="Subject ng email"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Email Body</label>
+                <textarea
+                  value={body}
+                  onChange={e => setBody(e.target.value)}
+                  placeholder="Laman ng email..."
+                  rows={6}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 resize-none"
+                />
+              </div>
+
+              {/* Target */}
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Target Users</label>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {roleOptions.map(r => (
+                    <button
+                      key={r.id}
+                      onClick={() => setTargetRole(r.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
+                        targetRole === r.id ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-500'
+                      }`}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Region (optional)</label>
+                <select
+                  value={targetRegion}
+                  onChange={e => { setTargetRegion(e.target.value); setTargetCity(''); setTargetBarangay(''); }}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 bg-white"
+                >
+                  <option value="">Lahat ng Region</option>
+                  {allRegions.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">City (optional)</label>
+                <select
+                  value={targetCity}
+                  onChange={e => { setTargetCity(e.target.value); setTargetBarangay(''); }}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 bg-white disabled:bg-gray-50"
+                  disabled={allCities.length === 0}
+                >
+                  <option value="">Lahat ng City</option>
+                  {allCities.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Barangay (optional)</label>
+                <select
+                  value={targetBarangay}
+                  onChange={e => setTargetBarangay(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 bg-white disabled:bg-gray-50"
+                  disabled={allBarangays.length === 0}
+                >
+                  <option value="">Lahat ng Barangay</option>
+                  {allBarangays.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
+
+              {/* Recipient count preview */}
+              <div className="bg-brand-50 rounded-xl p-3 flex items-center gap-2">
+                <Users size={16} className="text-brand-600 flex-shrink-0" />
+                <p className="text-xs text-brand-700 font-medium">
+                  {counting ? 'Nagbibilang...' : `${previewCount ?? 0} recipients ang makakatanggap`}
+                </p>
+              </div>
+
+              <button
+                onClick={handleCreate}
+                disabled={saving || !name.trim() || !subject.trim() || !body.trim()}
+                className="w-full py-3 bg-brand-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                {saving ? 'Nagsasave...' : 'I-save ang Campaign'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

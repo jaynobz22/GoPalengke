@@ -3,3 +3,6 @@ verify_jwt = true
 
 [functions.og-preview]
 verify_jwt = false
+
+[functions.send-campaign-emails]
+verify_jwt = true
