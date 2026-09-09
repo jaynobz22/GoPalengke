@@ -14,9 +14,6 @@ interface AuthContextValue {
   refreshProfile: () => Promise<void>;
   sendEmailOtp: (email: string) => Promise<{ error: string | null }>;
   verifyEmailOtp: (email: string, token: string) => Promise<{ error: string | null }>;
-  sendPhoneOtp: (phone: string) => Promise<{ error: string | null }>;
-  verifyPhoneOtp: (phone: string, token: string) => Promise<{ error: string | null }>;
-  checkVerificationStatus: (userId: string) => Promise<{ emailVerified: boolean; phoneVerified: boolean }>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -92,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       city: location.city || null,
       region: location.region || null,
       email_verified: false,
-      phone_verified: false,
+      phone_verified: true,
       is_approved: role === 'seller',
     });
 
@@ -115,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
 
     const p = prof as { email_verified: boolean; phone_verified: boolean } | null;
-    if (p && (!p.email_verified || !p.phone_verified)) {
+    if (p && !p.email_verified) {
       await supabase.auth.signOut();
       setPendingVerif(true);
       return { error: null, needsVerification: true, userId: data.user.id };
@@ -152,43 +149,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.from('profiles').update({ email_verified: true }).eq('id', userId);
     }
     await supabase.auth.signOut();
-    return { error: null };
-  }
-
-  async function sendPhoneOtp(phone: string): Promise<{ error: string | null }> {
-    const { error } = await supabase.auth.signInWithOtp({ phone, options: { shouldCreateUser: false } });
-    if (error) return { error: error.message };
-    return { error: null };
-  }
-
-  async function verifyPhoneOtp(phone: string, token: string): Promise<{ error: string | null }> {
-    const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: 'sms' });
-    if (error) return { error: error.message };
-
-    const userId = data.user?.id;
-    if (userId) {
-      await supabase.from('profiles').update({ phone_verified: true }).eq('id', userId);
-    }
-    await supabase.auth.signOut();
     setPendingVerif(false);
     return { error: null };
   }
 
-  async function checkVerificationStatus(userId: string): Promise<{ emailVerified: boolean; phoneVerified: boolean }> {
-    const { data } = await supabase
-      .from('profiles')
-      .select('email_verified, phone_verified')
-      .eq('id', userId)
-      .maybeSingle();
-    const p = data as { email_verified: boolean; phone_verified: boolean } | null;
-    return {
-      emailVerified: p?.email_verified ?? false,
-      phoneVerified: p?.phone_verified ?? false,
-    };
-  }
-
   return (
-    <AuthContext.Provider value={{ session, profile, loading, pendingVerification, signUp, signIn, signOut, refreshProfile, sendEmailOtp, verifyEmailOtp, sendPhoneOtp, verifyPhoneOtp, checkVerificationStatus }}>
+    <AuthContext.Provider value={{ session, profile, loading, pendingVerification, signUp, signIn, signOut, refreshProfile, sendEmailOtp, verifyEmailOtp }}>
       {children}
     </AuthContext.Provider>
   );

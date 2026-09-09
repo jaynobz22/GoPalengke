@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import type { UserRole } from '@/lib/types';
-import { Store, Bike, ShoppingCart, ArrowLeft, Check, Mail, Phone, ShieldCheck } from 'lucide-react';
+import { Store, Bike, ShoppingCart, ArrowLeft, Check, Mail, ShieldCheck } from 'lucide-react';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
 
 const ROLES = [
@@ -11,8 +11,8 @@ const ROLES = [
 ];
 
 export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: boolean; onBack?: () => void }) {
-  const { signIn, signUp, sendEmailOtp, verifyEmailOtp, sendPhoneOtp, verifyPhoneOtp, checkVerificationStatus } = useAuth();
-  const [mode, setMode] = useState<'welcome' | 'signin' | 'signup-role' | 'signup-form' | 'verify-email' | 'verify-phone'>(needsProfile ? 'signup-role' : 'welcome');
+  const { signIn, signUp, sendEmailOtp, verifyEmailOtp } = useAuth();
+  const [mode, setMode] = useState<'welcome' | 'signin' | 'signup-role' | 'signup-form' | 'verify-email'>(needsProfile ? 'signup-role' : 'welcome');
   const [selectedRole, setSelectedRole] = useState<UserRole>('buyer');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,12 +47,10 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
       setError(result.error);
     } else if (result.needsVerification && result.userId) {
       setUserId(result.userId);
-      const status = await checkVerificationStatus(result.userId);
       setMode('verify-email');
-      if (status.emailVerified) {
-        setMode('verify-phone');
-      }
-      setInfo('Kailangan i-verify ang email at phone number mo bago makapag-login.');
+      setInfo('Kailangan i-verify ang email mo bago makapag-login.');
+      await sendEmailOtp(email);
+      startResendCooldown();
     }
   }
 
@@ -83,24 +81,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
     if (error) {
       setError(error);
     } else {
-      setOtpCode('');
-      setMode('verify-phone');
-      setInfo('Nai-verify ang email! Nagpadala na kami ng verification code sa phone number mo.');
-      await sendPhoneOtp(formatPhone(phone));
-      startResendCooldown();
-    }
-  }
-
-  async function handleVerifyPhone(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-    const { error } = await verifyPhoneOtp(formatPhone(phone), otpCode);
-    setSubmitting(false);
-    if (error) {
-      setError(error);
-    } else {
-      setInfo('Nai-verify na ang email at phone number mo! Makakapag-login ka na.');
+      setInfo('Nai-verify na ang email mo! Makakapag-login ka na.');
       setMode('signin');
       setOtpCode('');
     }
@@ -118,18 +99,6 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
     }
   }
 
-  async function handleResendPhone() {
-    if (resendCooldown > 0) return;
-    setError(null);
-    const { error } = await sendPhoneOtp(formatPhone(phone));
-    if (error) {
-      setError(error);
-    } else {
-      setInfo('Nagpadala ulit ng bagong verification code sa phone mo.');
-      startResendCooldown();
-    }
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-orange-50 flex flex-col">
       {/* Header */}
@@ -140,7 +109,6 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
               if (mode === 'signin') setMode('welcome');
               else if (mode === 'signup-form') setMode('signup-role');
               else if (mode === 'verify-email') setMode('signup-form');
-              else if (mode === 'verify-phone') setMode('verify-email');
               else setMode('welcome');
               setError(null);
               setInfo(null);
@@ -302,7 +270,6 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
                 required
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
               />
-              <p className="text-xs text-gray-400 mt-1">Kailangan i-verify ang phone number mo gamit ang SMS OTP.</p>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-600 mb-1 block">Email</label>
@@ -314,7 +281,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
                 required
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
               />
-              <p className="text-xs text-gray-400 mt-1">Kailangan i-verify ang email mo gamit ang OTP code.</p>
+              <p className="text-xs text-gray-400 mt-1">Kailangan i-verify ang email mo gamit ang verification code.</p>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-600 mb-1 block">Password</label>
@@ -395,69 +362,12 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
               {resendCooldown > 0 ? `Magpadala ulit sa ${resendCooldown}s` : 'Magpadala ulit ng code'}
             </button>
           </form>
-        </div>
-      )}
-
-      {/* Verify Phone */}
-      {mode === 'verify-phone' && (
-        <div className="flex-1 px-5 flex flex-col">
-          <div className="flex justify-center mb-6 mt-4">
-            <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center">
-              <Phone size={32} className="text-brand-600" />
-            </div>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">I-verify ang Phone Number</h2>
-          <p className="text-gray-500 text-center mb-6">
-            Nagpadala kami ng verification code sa <strong>{formatPhone(phone)}</strong> via SMS.
-          </p>
-          <form onSubmit={handleVerifyPhone} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-gray-600 mb-1 block">Verification Code</label>
-              <input
-                type="text"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                placeholder="00000000"
-                required
-                maxLength={8}
-                inputMode="numeric"
-                className="w-full px-4 py-4 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition text-center text-2xl font-bold tracking-[0.4em]"
-              />
-            </div>
-            {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
-            {info && <p className="text-brand-600 text-sm bg-brand-50 px-4 py-2 rounded-lg">{info}</p>}
-            <button
-              type="submit"
-              disabled={submitting || otpCode.length < 6}
-              className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50"
-            >
-              {submitting ? 'Nagve-verify...' : 'I-verify ang Phone'}
-            </button>
-            <button
-              type="button"
-              onClick={handleResendPhone}
-              disabled={resendCooldown > 0}
-              className="w-full py-3 text-brand-600 font-medium text-sm disabled:text-gray-400"
-            >
-              {resendCooldown > 0 ? `Magpadala ulit sa ${resendCooldown}s` : 'Magpadala ulit ng code'}
-            </button>
-          </form>
-          <div className="mt-6 flex items-center justify-center gap-2 text-sm text-green-600">
+          <div className="mt-6 flex items-center justify-center gap-2 text-sm text-gray-400">
             <ShieldCheck size={18} />
-            <span>Email na-verify</span>
+            <span>Para sa seguridad ng iyong account</span>
           </div>
         </div>
       )}
     </div>
   );
-}
-
-function formatPhone(p: string): string {
-  let cleaned = p.replace(/\D/g, '');
-  if (cleaned.startsWith('0')) {
-    cleaned = '63' + cleaned.slice(1);
-  } else if (!cleaned.startsWith('63')) {
-    cleaned = '63' + cleaned;
-  }
-  return '+' + cleaned;
 }
