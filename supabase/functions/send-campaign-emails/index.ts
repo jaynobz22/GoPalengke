@@ -137,7 +137,7 @@ Deno.serve(async (req: Request) => {
       const batch = recipients.slice(i, i + BATCH_SIZE);
 
       const emails = batch.map((p: any) => ({
-        from: "GoPalengke <noreply@gopalengke.ph>",
+        from: "GoPalengke <noreply@gopalengke.net>",
         to: [p.email],
         subject: c.subject,
         html: buildEmailHtml(c.body, p.full_name || ""),
@@ -226,7 +226,7 @@ function buildEmailHtml(body: string, fullName: string): string {
           </tr>
           <tr>
             <td style="padding:0 32px 32px;">
-              <a href="https://gopalengke.ph" style="display:inline-block;background-color:#16a34a;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:600;">Mag-shopping na sa GoPalengke</a>
+              <a href="https://gopalengke.net" style="display:inline-block;background-color:#16a34a;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:600;">Mag-shopping na sa GoPalengke</a>
             </td>
           </tr>
           <tr>
