@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { navigate } from '@/lib/router';
 import type { Store, Product, Category, Announcement } from '@/lib/types';
 import {
   MapPin, Star, Plus, ArrowRight, ShoppingBag, Bike, Store as StoreIcon,
@@ -535,10 +536,10 @@ function CTASection({ onGetStarted }: { onGetStarted?: () => void }) {
 // ============= FOOTER =============
 function Footer() {
   const legalLinks = [
-    { label: 'Terms and Conditions', hash: '#/legal/terms' },
-    { label: 'Disclaimer', hash: '#/legal/disclaimer' },
-    { label: 'Privacy Policy', hash: '#/legal/privacy' },
-    { label: 'FAQ', hash: '#/legal/faq' },
+    { label: 'Terms and Conditions', hash: '/legal/terms' },
+    { label: 'Disclaimer', hash: '/legal/disclaimer' },
+    { label: 'Privacy Policy', hash: '/legal/privacy' },
+    { label: 'FAQ', hash: '/legal/faq' },
   ];
 
   return (
@@ -555,7 +556,7 @@ function Footer() {
           {legalLinks.map((link) => (
             <button
               key={link.hash}
-              onClick={() => { window.location.hash = link.hash; }}
+              onClick={() => navigate(link.hash.replace('#', ''))}
               className="text-xs md:text-sm text-gray-400 hover:text-white transition"
             >
               {link.label}

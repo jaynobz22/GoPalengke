@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
+import { navigate } from '@/lib/router';
 import type { Order, OrderItem, Store, Conversation, AdminConversation } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { estimateDistanceKm, computeDeliveryFee, PER_KM_RATE, BASE_DELIVERY_FEE, getStoreCoords, getDeliveryCoords, type Coords } from '@/lib/deliveryFee';
@@ -1344,7 +1345,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
               <Copy size={16} className="text-blue-600" />
             </button>
             <button
-              onClick={() => { window.location.hash = `/u/${profile.slug}`; }}
+              onClick={() => navigate(`/u/${profile.slug}`)}
               className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center active:scale-95 transition flex-shrink-0"
             >
               <ExternalLink size={16} className="text-blue-600" />

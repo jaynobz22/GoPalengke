@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
+import { navigate } from '@/lib/router';
 import type { Store, Product, Order, OrderItem, OrderStatus, Conversation, SellerFee, AdminConversation } from '@/lib/types';
 import { PAYMENT_THRESHOLD } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
@@ -1855,14 +1856,14 @@ function SellerSettings({ store, onEditStore, onSignOut }: { store: Store; onEdi
         <ShareableLinkSection
           label="Link ng Tindahan"
           url={`${window.location.origin}/#/s/${store.slug}`}
-          onOpen={() => { window.location.hash = `/s/${store.slug}`; }}
+          onOpen={() => navigate(`/s/${store.slug}`)}
         />
       )}
       {profile?.slug && (
         <ShareableLinkSection
           label="Link ng Profile"
           url={`${window.location.origin}/#/u/${profile.slug}`}
-          onOpen={() => { window.location.hash = `/u/${profile.slug}`; }}
+          onOpen={() => navigate(`/u/${profile.slug}`)}
         />
       )}
 

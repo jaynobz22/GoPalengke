@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Clock } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { AuthProvider, useAuth } from './lib/auth';
+import { navigate, useRoute, useLegalRoute } from './lib/router';
 import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 import { BuyerApp } from './pages/BuyerApp';
@@ -11,52 +12,15 @@ import { AdminApp } from './pages/AdminApp';
 import { PublicPages } from './components/PublicPages';
 import { LegalPages, type LegalPageType } from './components/LegalPages';
 
-function useHashRoute() {
-  const [hash, setHash] = useState(window.location.hash);
-
-  useEffect(() => {
-    function onChange() { setHash(window.location.hash); }
-    window.addEventListener('hashchange', onChange);
-    return () => window.removeEventListener('hashchange', onChange);
-  }, []);
-
-  const clean = hash.replace(/^#/, '');
-  const parts = clean.split('/');
-  if (parts.length >= 3 && parts[0] === '' && (parts[1] === 's' || parts[1] === 'u')) {
-    return { type: parts[1], slug: decodeURIComponent(parts[2]) };
-  }
-  return null;
-}
-
-function useLegalRoute() {
-  const [hash, setHash] = useState(window.location.hash);
-
-  useEffect(() => {
-    function onChange() { setHash(window.location.hash); }
-    window.addEventListener('hashchange', onChange);
-    return () => window.removeEventListener('hashchange', onChange);
-  }, []);
-
-  const clean = hash.replace(/^#/, '');
-  const parts = clean.split('/');
-  if (parts.length >= 2 && parts[0] === '' && parts[1] === 'legal') {
-    const page = parts[2];
-    if (page === 'terms' || page === 'disclaimer' || page === 'privacy' || page === 'faq') {
-      return page as LegalPageType;
-    }
-  }
-  return null;
-}
-
 function AppContent() {
   const { session, profile, loading, pendingVerification } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
-  const publicRoute = useHashRoute();
+  const publicRoute = useRoute();
   const legalRoute = useLegalRoute();
 
   // Legal pages — visible even without login
   if (legalRoute) {
-    return <LegalPages type={legalRoute} onBack={() => { window.location.hash = ''; }} />;
+    return <LegalPages type={legalRoute as LegalPageType} onBack={() => navigate('/')} />;
   }
 
   // Public profile/store pages take priority — visible even without login
@@ -76,7 +40,7 @@ function AppContent() {
   }
 
   if (pendingVerification) {
-    return <AuthPage onBack={() => { window.location.hash = ''; }} />;
+    return <AuthPage onBack={() => navigate('/')} />;
   }
 
   if (!session) {

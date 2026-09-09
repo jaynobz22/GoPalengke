@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
+import { navigate, useRoute } from '@/lib/router';
 import type { Store, Product, Profile } from '@/lib/types';
 import {
   MapPin, Star, ShoppingBag, Bike, Store as StoreIcon, ArrowLeft,
@@ -73,29 +74,8 @@ function ProductShareBar({ url, text }: { url: string; text: string }) {
   );
 }
 
-function useHashRoute() {
-  const [route, setRoute] = useState<{ type: string; slug: string } | null>(null);
-
-  useEffect(() => {
-    function parse() {
-      const hash = window.location.hash.replace(/^#/, '');
-      const parts = hash.split('/');
-      if (parts.length >= 3 && parts[0] === '' && (parts[1] === 's' || parts[1] === 'u')) {
-        setRoute({ type: parts[1], slug: decodeURIComponent(parts[2]) });
-      } else {
-        setRoute(null);
-      }
-    }
-    parse();
-    window.addEventListener('hashchange', parse);
-    return () => window.removeEventListener('hashchange', parse);
-  }, []);
-
-  return route;
-}
-
 export function PublicPages() {
-  const route = useHashRoute();
+  const route = useRoute();
 
   if (!route) return null;
   if (route.type === 's') return <PublicStorePage slug={route.slug} />;
@@ -178,14 +158,14 @@ function PublicStorePage({ slug }: { slug: string }) {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-5">
         <StoreIcon size={48} className="text-gray-300 mb-3" />
         <p className="text-gray-500 font-medium">Hindi nahanap ang tindahan</p>
-        <button onClick={() => { window.location.hash = ''; }} className="mt-4 px-6 py-3 bg-brand-600 text-white rounded-xl font-medium">
+        <button onClick={() => navigate('/')} className="mt-4 px-6 py-3 bg-brand-600 text-white rounded-xl font-medium">
           Bumalik sa GoPalengke
         </button>
       </div>
     );
   }
 
-  const fullUrl = `${window.location.origin}/#/s/${store.slug}`;
+  const fullUrl = `${window.location.origin}/s/${store.slug}`;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -196,7 +176,7 @@ function PublicStorePage({ slug }: { slug: string }) {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
         <div className="absolute top-3 left-3">
-          <button onClick={() => { window.location.hash = ''; }} className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center active:scale-95 transition">
+          <button onClick={() => navigate('/')} className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center active:scale-95 transition">
             <ArrowLeft size={20} className="text-white" />
           </button>
         </div>
@@ -266,7 +246,7 @@ function PublicStorePage({ slug }: { slug: string }) {
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {products.map(p => {
-              const productUrl = `${window.location.origin}/#/s/${store.slug}`;
+              const productUrl = `${window.location.origin}/s/${store.slug}`;
               const shareText = `${p.name} - ₱${p.price}/${p.unit} sa ${store.name} | GoPalengke`;
               return (
               <div key={p.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -300,7 +280,7 @@ function PublicStorePage({ slug }: { slug: string }) {
             <p className="text-white font-bold">Gusto mo bang umorder dito?</p>
             <p className="text-brand-100 text-sm mt-1">Mag-sign up para makapag-order sa {store.name}!</p>
             <button
-              onClick={() => { window.location.hash = ''; }}
+              onClick={() => navigate('/')}
               className="mt-3 px-6 py-3 bg-white text-brand-700 rounded-xl font-bold active:scale-95 transition"
             >
               Mag-sign Up
@@ -346,14 +326,14 @@ function PublicUserPage({ slug }: { slug: string }) {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-5">
         <User size={48} className="text-gray-300 mb-3" />
         <p className="text-gray-500 font-medium">Hindi nahanap ang profile</p>
-        <button onClick={() => { window.location.hash = ''; }} className="mt-4 px-6 py-3 bg-brand-600 text-white rounded-xl font-medium">
+        <button onClick={() => navigate('/')} className="mt-4 px-6 py-3 bg-brand-600 text-white rounded-xl font-medium">
           Bumalik sa GoPalengke
         </button>
       </div>
     );
   }
 
-  const fullUrl = `${window.location.origin}/#/u/${profile.slug}`;
+  const fullUrl = `${window.location.origin}/u/${profile.slug}`;
   const roleLabel = profile.role === 'buyer' ? 'Mamimili' : profile.role === 'seller' ? 'Tindera/Tindero' : 'Rider';
   const roleIcon = profile.role === 'rider' ? Bike : profile.role === 'seller' ? StoreIcon : ShoppingBag;
   const RoleIcon = roleIcon;
@@ -363,7 +343,7 @@ function PublicUserPage({ slug }: { slug: string }) {
       {/* Header */}
       <div className="relative bg-gradient-to-br from-brand-600 to-brand-700 px-5 pt-12 pb-6 text-white">
         <div className="absolute top-3 left-3">
-          <button onClick={() => { window.location.hash = ''; }} className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center active:scale-95 transition">
+          <button onClick={() => navigate('/')} className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center active:scale-95 transition">
             <ArrowLeft size={20} className="text-white" />
           </button>
         </div>
@@ -486,7 +466,7 @@ function PublicUserPage({ slug }: { slug: string }) {
         {/* If seller, link to store */}
         {profile.role === 'seller' && store && (
           <button
-            onClick={() => { window.location.hash = `/s/${store.slug}`; }}
+            onClick={() => navigate(`/s/${store.slug}`)}
             className="w-full mt-3 bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3 active:scale-[0.98] transition text-left"
           >
             <div className="w-12 h-12 rounded-xl overflow-hidden bg-brand-100 flex-shrink-0">
@@ -511,7 +491,7 @@ function PublicUserPage({ slug }: { slug: string }) {
             <p className="text-white font-bold">Sali na ang GoPalengke!</p>
             <p className="text-brand-100 text-sm mt-1">Mag-sign up para makapag-order o magtinda.</p>
             <button
-              onClick={() => { window.location.hash = ''; }}
+              onClick={() => navigate('/')}
               className="mt-3 px-6 py-3 bg-white text-brand-700 rounded-xl font-bold active:scale-95 transition"
             >
               Mag-sign Up

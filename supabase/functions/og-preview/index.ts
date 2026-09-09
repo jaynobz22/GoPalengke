@@ -141,7 +141,7 @@ Deno.serve(async (req: Request) => {
     const isBot = isCrawler(userAgent);
 
     const parts = path.split("/");
-    const appUrl = `https://${url.host}/#/`;
+    const appUrl = `https://${url.host}/`;
 
     // For humans, redirect to the app
     if (!isBot) {

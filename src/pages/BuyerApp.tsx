@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
+import { navigate } from '@/lib/router';
 import type { Product, Store, Category, CartItem, Order, OrderItem, OrderStatus, Conversation, AdminConversation } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
@@ -2575,7 +2576,7 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
               <Copy size={16} className="text-brand-600" />
             </button>
             <button
-              onClick={() => { window.location.hash = `/u/${profile.slug}`; }}
+              onClick={() => navigate(`/u/${profile.slug}`)}
               className="w-9 h-9 rounded-lg bg-brand-50 flex items-center justify-center active:scale-95 transition flex-shrink-0"
             >
               <ExternalLink size={16} className="text-brand-600" />
