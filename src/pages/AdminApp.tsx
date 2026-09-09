@@ -180,6 +180,13 @@ function OverviewTab() {
       setLoading(false);
     }
     load();
+
+    // Realtime: reload when seller_fees or orders change so platform earnings stay live
+    const sub = supabase.channel('admin-overview-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'seller_fees' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
   }, []);
 
   if (loading) {
