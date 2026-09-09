@@ -1396,7 +1396,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
     supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', order.buyer_id).maybeSingle().then(({ data }) => setBuyer(data as any));
     if (order.rider_id) {
-      supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', order.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
+      supabase.from('profiles').select('full_name, phone, avatar_url, rider_qr_code_url').eq('id', order.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
     }
 
     const sub = supabase.channel(`seller-order-${order.id}`)
@@ -1404,7 +1404,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         const newOrder = payload.new as Order;
         setCurrentOrder(newOrder);
         if (newOrder.rider_id && !rider) {
-          supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', newOrder.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
+          supabase.from('profiles').select('full_name, phone, avatar_url, rider_qr_code_url').eq('id', newOrder.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
         }
       })
       .subscribe();
@@ -1425,7 +1425,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
     setRiderAssigned(true);
     setAssigningRider(null);
     setShowRiderPicker(false);
-    supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', riderId).maybeSingle().then(({ data }) => setRider(data as any));
+    supabase.from('profiles').select('full_name, phone, avatar_url, rider_qr_code_url').eq('id', riderId).maybeSingle().then(({ data }) => setRider(data as any));
   }
 
   async function updateStatus(status: OrderStatus) {
@@ -1627,6 +1627,17 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           {riderAssigned && (
             <p className="text-xs text-green-600 mt-2 font-medium">Na-assign na ang rider! Maghihintay na lang na tanggapin niya ang delivery.</p>
           )}
+          {currentOrder.payment_method !== 'cod' && rider.rider_qr_code_url && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <p className="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1.5">
+                <QrCode size={14} className="text-brand-600" /> QR Code ng Rider para sa Delivery Fee
+              </p>
+              <div className="bg-gray-50 rounded-xl p-3 flex justify-center">
+                <img src={rider.rider_qr_code_url} alt="QR Code ng Rider" loading="lazy" decoding="async" className="w-36 h-36 rounded-xl object-contain" />
+              </div>
+              <p className="text-xs text-gray-400 mt-2 text-center">I-scan para mabayaran ang delivery fee (₱{currentOrder.delivery_fee.toFixed(2)}) ng rider bago umalis.</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -1651,6 +1662,17 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           <div className="mt-2">
             <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">Nasa daan na ang rider papunta sa buyer</span>
           </div>
+          {currentOrder.payment_method !== 'cod' && rider.rider_qr_code_url && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <p className="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1.5">
+                <QrCode size={14} className="text-brand-600" /> QR Code ng Rider para sa Delivery Fee
+              </p>
+              <div className="bg-gray-50 rounded-xl p-3 flex justify-center">
+                <img src={rider.rider_qr_code_url} alt="QR Code ng Rider" loading="lazy" decoding="async" className="w-36 h-36 rounded-xl object-contain" />
+              </div>
+              <p className="text-xs text-gray-400 mt-2 text-center">I-scan para mabayaran ang delivery fee (₱{currentOrder.delivery_fee.toFixed(2)}) ng rider.</p>
+            </div>
+          )}
         </div>
       )}
 

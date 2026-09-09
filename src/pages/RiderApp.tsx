@@ -20,7 +20,7 @@ import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
   Share2, Copy, ExternalLink, Power, Timer, Star, UserCheck, LogOut, Shield,
-  QrCode, Download, DollarSign,
+  QrCode, Download, DollarSign, X,
 } from 'lucide-react';
 
 type Tab = 'deliveries' | 'messages' | 'history' | 'profile';
@@ -170,6 +170,37 @@ function groupOrders(orders: (Order & { store: Store; buyer: { full_name: string
   return Array.from(map.entries()).map(([key, orders]) => ({ key, orders }));
 }
 
+// ============= RIDER REMINDER BANNER =============
+function RiderReminderBanner() {
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed) return null;
+  return (
+    <div className="px-5 pt-3">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-4 text-white relative shadow-lg shadow-blue-600/20">
+        <button
+          onClick={() => setDismissed(true)}
+          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition"
+        >
+          <X size={16} className="text-white" />
+        </button>
+        <div className="flex items-start gap-3 pr-6">
+          <div className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0">
+            <Star size={20} className="text-amber-300" />
+          </div>
+          <div className="space-y-1">
+            <p className="font-bold text-sm">Paalala, Rider!</p>
+            <ul className="text-xs text-blue-50 space-y-0.5 leading-relaxed">
+              <li>- Inga'tan ang mga parcel lagi. Huwag sirain o mabasa.</li>
+              <li>- Maging magalang sa seller at buyer para tumaas ang rating mo.</li>
+              <li>- Kung hindi COD ang order, kunin ang delivery fee sa seller bago umalis.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ============= DELIVERIES =============
 function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o: Order) => void; canAct: boolean; onSignOut: () => void }) {
   const { profile } = useAuth();
@@ -255,6 +286,9 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
         </div>
         <p className="text-blue-100 text-sm">Kumusta, {profile?.full_name?.split(' ')[0]}! Handa ka na ba mag-deliver?</p>
       </div>
+
+      {/* Floating Reminder */}
+      <RiderReminderBanner />
 
       {/* Availability Toggle */}
       <div className="px-5 py-4">
@@ -1314,6 +1348,23 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           }}
         />
         {idUploading && <p className="text-xs text-blue-500 mt-1">Nag-a-upload...</p>}
+      </div>
+
+      {/* Rider QR Code for receiving delivery fee from seller */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+        <ImageUploadField
+          label="QR Code para sa Delivery Fee"
+          value={profile?.rider_qr_code_url || ''}
+          bucket="store-images"
+          folder={`rider-qr/${profile?.id}`}
+          aspectClass="h-48"
+          hint="Mag-upload ng GCash/Maya QR code mo. Makikita ito ng seller kapag kinukuha mo ang order, para mabayaran ka ng delivery fee kung hindi COD ang order."
+          onChange={async (url) => {
+            if (!profile) return;
+            await supabase.from('profiles').update({ rider_qr_code_url: url || null }).eq('id', profile.id);
+            await refreshProfile();
+          }}
+        />
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">

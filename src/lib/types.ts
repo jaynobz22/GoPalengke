@@ -23,6 +23,7 @@ export interface Profile {
   rider_valid_id_url: string | null;
   rider_plate_number: string | null;
   rider_motor_model: string | null;
+  rider_qr_code_url: string | null;
   created_at: string;
   updated_at: string;
 }
