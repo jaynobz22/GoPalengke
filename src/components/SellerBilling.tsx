@@ -23,14 +23,14 @@ export function SellerBilling() {
 
   const load = useCallback(async () => {
     if (!profile) return;
-    const [{ data: feeData }, { data: payData }, { data: settingsData }] = await Promise.all([
+    const [{ data: feeData }, { data: payData }, { data: activeQr }] = await Promise.all([
       supabase.from('seller_fees').select('*').eq('seller_id', profile.id).maybeSingle(),
       supabase.from('fee_payments').select('*').eq('seller_id', profile.id).order('created_at', { ascending: false }),
-      supabase.from('platform_settings').select('*').eq('key', 'admin_qr_code').maybeSingle(),
+      supabase.from('platform_qr_codes').select('*').eq('is_active', true).maybeSingle(),
     ]);
     setFee(feeData as SellerFee | null);
     setPayments((payData || []) as FeePayment[]);
-    if (settingsData?.value) setQrCodeUrl(settingsData.value);
+    if (activeQr?.image_url) setQrCodeUrl(activeQr.image_url);
     setLoading(false);
   }, [profile]);
 

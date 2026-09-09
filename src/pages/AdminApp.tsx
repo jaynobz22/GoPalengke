@@ -9,7 +9,7 @@ import {
   Megaphone, Plus, Trash2, Power, Check, Loader2, LogOut,
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
   AlertCircle, X, UserCheck, UserX, DollarSign, TrendingUp, Receipt,
-  Lock, Unlock, Video, MessageCircle, Shield,
+  Lock, Unlock, Video, MessageCircle, Shield, QrCode,
 } from 'lucide-react';
 
 type Tab = 'overview' | 'users' | 'messages' | 'fees' | 'announcements' | 'settings';
@@ -318,19 +318,23 @@ function OverviewTab() {
 }
 
 // ============= USERS TAB =============
+type UserSubtab = 'active' | 'inactive' | 'pending';
+
 function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) => void; onStartChat: (user: Profile) => void }) {
   const { profile: adminProfile } = useAuth();
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<UserRole | 'all'>('all');
+  const [subtab, setSubtab] = useState<UserSubtab>('active');
+  const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     let q = supabase.from('profiles').select('*').order('created_at', { ascending: false });
-    if (filter !== 'all') q = q.eq('role', filter);
+    if (roleFilter !== 'all') q = q.eq('role', roleFilter);
     const { data } = await q;
     setUsers((data || []) as Profile[]);
     setLoading(false);
-  }, [filter]);
+  }, [roleFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -344,6 +348,41 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
     load();
   }
 
+  async function deleteUser(user: Profile) {
+    if (!adminProfile) return;
+    if (!confirm(`Sigurado ka bang gusto mong PERMANENTENG burahin ang account ni ${user.full_name}? Hindi na ito maaaring bawiin. Mabubura rin ang lahat ng kaugnay na data (tindahan, orders, messages, atbp.)`)) return;
+    setDeleting(user.id);
+    const { error } = await supabase.rpc('admin_delete_user', {
+      p_user_id: user.id,
+      p_admin_id: adminProfile.id,
+    });
+    setDeleting(null);
+    if (error) {
+      alert('Error: ' + error.message);
+    } else {
+      load();
+    }
+  }
+
+  const filtered = users.filter(u => {
+    if (subtab === 'active') return u.is_approved && u.is_active;
+    if (subtab === 'inactive') return u.is_approved && !u.is_active;
+    if (subtab === 'pending') return !u.is_approved;
+    return true;
+  });
+
+  const counts = {
+    active: users.filter(u => u.is_approved && u.is_active).length,
+    inactive: users.filter(u => u.is_approved && !u.is_active).length,
+    pending: users.filter(u => !u.is_approved).length,
+  };
+
+  const subtabs: { id: UserSubtab; label: string; count: number }[] = [
+    { id: 'active', label: 'Active', count: counts.active },
+    { id: 'inactive', label: 'Inactive', count: counts.inactive },
+    { id: 'pending', label: 'Pending Approval', count: counts.pending },
+  ];
+
   const roleFilters: { id: UserRole | 'all'; label: string }[] = [
     { id: 'all', label: 'Lahat' },
     { id: 'seller', label: 'Sellers' },
@@ -355,14 +394,34 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
     <div className="px-5 py-4">
       <h2 className="text-lg font-bold text-gray-800 mb-3">User Management</h2>
 
-      {/* Filter */}
+      {/* Subtabs */}
+      <div className="flex gap-1 mb-3 bg-gray-100 rounded-xl p-1">
+        {subtabs.map(st => (
+          <button
+            key={st.id}
+            onClick={() => setSubtab(st.id)}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition ${
+              subtab === st.id ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'
+            }`}
+          >
+            {st.label}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+              subtab === st.id ? 'bg-brand-100 text-brand-700' : 'bg-gray-200 text-gray-500'
+            }`}>
+              {st.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Role Filter */}
       <div className="flex gap-2 mb-4 overflow-x-auto">
         {roleFilters.map(f => (
           <button
             key={f.id}
-            onClick={() => setFilter(f.id)}
+            onClick={() => setRoleFilter(f.id)}
             className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition ${
-              filter === f.id ? 'bg-brand-600 text-white' : 'bg-white border border-gray-200 text-gray-500'
+              roleFilter === f.id ? 'bg-brand-600 text-white' : 'bg-white border border-gray-200 text-gray-500'
             }`}
           >
             {f.label}
@@ -374,11 +433,11 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
         <div className="flex items-center justify-center py-12">
           <Loader2 size={24} className="animate-spin text-brand-500" />
         </div>
-      ) : users.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <p className="text-center text-gray-400 text-sm py-12">Walang users na nakita.</p>
       ) : (
         <div className="space-y-2">
-          {users.map(user => (
+          {filtered.map(user => (
             <div key={user.id} className="bg-white rounded-2xl border border-gray-100 p-3">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex-1 min-w-0">
@@ -416,6 +475,29 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
 
               {/* Actions */}
               <div className="flex gap-2">
+                {subtab === 'pending' ? (
+                  <button
+                    onClick={() => toggleApproved(user)}
+                    disabled={user.id === adminProfile?.id}
+                    className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-medium bg-green-600 text-white active:scale-95 transition disabled:opacity-30"
+                  >
+                    <UserCheck size={14} />
+                    Approve
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => toggleActive(user)}
+                    disabled={user.id === adminProfile?.id}
+                    className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-medium transition disabled:opacity-30 ${
+                      user.is_active
+                        ? 'bg-red-50 text-red-600'
+                        : 'bg-brand-50 text-brand-600'
+                    }`}
+                  >
+                    <Power size={14} />
+                    {user.is_active ? 'Deactivate' : 'Activate'}
+                  </button>
+                )}
                 <button
                   onClick={() => toggleApproved(user)}
                   disabled={user.id === adminProfile?.id}
@@ -428,21 +510,9 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
                   {user.is_approved ? <UserX size={14} /> : <UserCheck size={14} />}
                   {user.is_approved ? 'Disapprove' : 'Approve'}
                 </button>
-                <button
-                  onClick={() => toggleActive(user)}
-                  disabled={user.id === adminProfile?.id}
-                  className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-medium transition disabled:opacity-30 ${
-                    user.is_active
-                      ? 'bg-red-50 text-red-600'
-                      : 'bg-brand-50 text-brand-600'
-                  }`}
-                >
-                  <Power size={14} />
-                  {user.is_active ? 'Deactivate' : 'Activate'}
-                </button>
               </div>
 
-              {/* Chat + Video Call Buttons */}
+              {/* Chat + Video Call + Delete */}
               {user.id !== adminProfile?.id && (
                 <div className="flex gap-2 mt-2">
                   <button
@@ -458,6 +528,13 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
                   >
                     <Video size={15} />
                     Video Call
+                  </button>
+                  <button
+                    onClick={() => deleteUser(user)}
+                    disabled={deleting === user.id}
+                    className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-semibold bg-red-50 text-red-600 border border-red-200 active:scale-95 transition disabled:opacity-50"
+                  >
+                    {deleting === user.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
                   </button>
                 </div>
               )}
@@ -816,35 +893,69 @@ function AnnouncementsTab() {
 }
 
 // ============= SETTINGS TAB =============
+type PlatformQrCode = {
+  id: string;
+  label: string;
+  image_url: string;
+  is_active: boolean;
+  created_at: string;
+};
+
 function SettingsTab() {
   const { profile } = useAuth();
-  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [qrCodes, setQrCodes] = useState<PlatformQrCode[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const [newImageUrl, setNewImageUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      const { data } = await supabase.from('platform_settings').select('*').eq('key', 'admin_qr_code').maybeSingle();
-      if (data?.value) setQrCodeUrl(data.value);
-      setLoading(false);
-    }
-    load();
+  const load = useCallback(async () => {
+    const { data } = await supabase.from('platform_qr_codes').select('*').order('created_at', { ascending: false });
+    setQrCodes((data || []) as PlatformQrCode[]);
+    setLoading(false);
   }, []);
 
-  async function saveQrCode(url: string) {
+  useEffect(() => { load(); }, [load]);
+
+  async function addQrCode() {
+    if (!newImageUrl.trim() || !newLabel.trim()) return;
     setSaving(true);
     setSuccess(null);
-    const { data: existing } = await supabase.from('platform_settings').select('*').eq('key', 'admin_qr_code').maybeSingle();
-    if (existing) {
-      await supabase.from('platform_settings').update({ value: url, updated_by: profile?.id, updated_at: new Date().toISOString() }).eq('key', 'admin_qr_code');
-    } else {
-      await supabase.from('platform_settings').insert({ key: 'admin_qr_code', value: url, updated_by: profile?.id });
-    }
-    setQrCodeUrl(url);
+    const { error } = await supabase.from('platform_qr_codes').insert({
+      label: newLabel.trim(),
+      image_url: newImageUrl.trim(),
+      is_active: qrCodes.length === 0,
+      created_by: profile?.id,
+    });
     setSaving(false);
-    setSuccess('Nai-save ang QR code!');
-    setTimeout(() => setSuccess(null), 3000);
+    if (error) {
+      alert('Error: ' + error.message);
+    } else {
+      setNewLabel('');
+      setNewImageUrl('');
+      setShowAddModal(false);
+      setSuccess('Nai-save ang QR code!');
+      setTimeout(() => setSuccess(null), 3000);
+      load();
+    }
+  }
+
+  async function toggleActiveQr(qr: PlatformQrCode) {
+    if (qr.is_active) {
+      await supabase.from('platform_qr_codes').update({ is_active: false }).eq('id', qr.id);
+    } else {
+      await supabase.from('platform_qr_codes').update({ is_active: false }).eq('is_active', true);
+      await supabase.from('platform_qr_codes').update({ is_active: true }).eq('id', qr.id);
+    }
+    load();
+  }
+
+  async function deleteQr(qr: PlatformQrCode) {
+    if (!confirm(`Sigurado ka bang burahin ang "${qr.label}" QR code?`)) return;
+    await supabase.from('platform_qr_codes').delete().eq('id', qr.id);
+    load();
   }
 
   if (loading) {
@@ -859,27 +970,117 @@ function SettingsTab() {
     <div className="px-5 py-4">
       <h2 className="text-lg font-bold text-gray-800 mb-4">Platform Settings</h2>
 
+      {/* QR Codes Section */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
-        <h3 className="font-semibold text-gray-800 mb-2 text-sm">Admin GCash/Maya QR Code</h3>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <QrCode size={20} className="text-brand-600" />
+            <h3 className="font-semibold text-gray-800 text-sm">Payment QR Codes</h3>
+          </div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-1 px-3 py-1.5 bg-brand-600 text-white rounded-lg text-xs font-semibold active:scale-95 transition"
+          >
+            <Plus size={14} />
+            Add QR
+          </button>
+        </div>
         <p className="text-xs text-gray-400 mb-4">
-            I-upload ang QR code na ipapakita sa mga seller kapag magbabayad sila ng fees.
+          Mag-upload ng maraming QR codes (GCash, Maya, bank transfer, atbp). I-toggle kung alin ang kasalukuyang ginagamit — iyon ang lalabas sa billing page ng mga seller.
         </p>
-        <ImageUploadField
-          label="QR Code Image"
-          value={qrCodeUrl}
-          onChange={saveQrCode}
-          bucket="store-images"
-          folder="admin-qr"
-          aspectClass="h-48"
-          hint="PNG o JPG. Makikita ito ng mga seller sa billing page nila."
-        />
-        {saving && <p className="text-xs text-brand-500 mt-2">Nagsasave...</p>}
+
+        {qrCodes.length === 0 ? (
+          <p className="text-center text-gray-400 text-sm py-6">Wala pang QR codes. Magdagdag ng isa.</p>
+        ) : (
+          <div className="space-y-3">
+            {qrCodes.map(qr => (
+              <div key={qr.id} className={`rounded-xl border-2 p-3 transition ${qr.is_active ? 'border-green-300 bg-green-50/50' : 'border-gray-100 bg-white'}`}>
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
+                    <img src={qr.image_url} alt={qr.label} className="w-full h-full object-contain" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-gray-800 truncate">{qr.label}</p>
+                    <p className="text-xs text-gray-400">{new Date(qr.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                    {qr.is_active && (
+                      <span className="inline-flex items-center gap-1 text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium mt-1">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      onClick={() => toggleActiveQr(qr)}
+                      className={`flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                        qr.is_active ? 'bg-gray-100 text-gray-600' : 'bg-green-50 text-green-600'
+                      }`}
+                    >
+                      <Power size={12} />
+                      {qr.is_active ? 'Off' : 'On'}
+                    </button>
+                    <button
+                      onClick={() => deleteQr(qr)}
+                      className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-50 text-red-500 transition"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {success && (
-          <div className="flex items-center gap-2 text-green-600 text-sm bg-green-50 px-4 py-2 rounded-lg mt-2">
+          <div className="flex items-center gap-2 text-green-600 text-sm bg-green-50 px-4 py-2 rounded-lg mt-3">
             <Check size={16} /> {success}
           </div>
         )}
       </div>
+
+      {/* Add QR Code Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center px-5" onClick={() => setShowAddModal(false)}>
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-800">Bagong QR Code</h3>
+              <button onClick={() => setShowAddModal(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <X size={18} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Label (Hal. GCash, Maya, BPI)</label>
+                <input
+                  type="text"
+                  value={newLabel}
+                  onChange={e => setNewLabel(e.target.value)}
+                  placeholder="GCash"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500"
+                />
+              </div>
+              <ImageUploadField
+                label="QR Code Image"
+                value={newImageUrl}
+                onChange={setNewImageUrl}
+                bucket="store-images"
+                folder="admin-qr"
+                aspectClass="h-40"
+                hint="PNG o JPG. Makikita ito ng mga seller sa billing page nila."
+              />
+              <button
+                onClick={addQrCode}
+                disabled={saving || !newLabel.trim() || !newImageUrl.trim()}
+                className="w-full py-3 bg-brand-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                {saving ? 'Nagsasave...' : 'I-save ang QR Code'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
