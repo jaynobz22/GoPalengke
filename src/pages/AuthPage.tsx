@@ -361,7 +361,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">I-verify ang Email</h2>
           <p className="text-gray-500 text-center mb-6">
-            Nagpadala kami ng 6-digit na verification code sa <strong>{email}</strong>. I-check ang inbox at spam folder.
+            Nagpadala kami ng verification code sa <strong>{email}</strong>. I-check ang inbox at spam folder.
           </p>
           <form onSubmit={handleVerifyEmail} className="space-y-4">
             <div>
@@ -369,19 +369,19 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
               <input
                 type="text"
                 value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                placeholder="00000000"
                 required
-                maxLength={6}
+                maxLength={8}
                 inputMode="numeric"
-                className="w-full px-4 py-4 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition text-center text-2xl font-bold tracking-[0.5em]"
+                className="w-full px-4 py-4 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition text-center text-2xl font-bold tracking-[0.4em]"
               />
             </div>
             {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
             {info && <p className="text-brand-600 text-sm bg-brand-50 px-4 py-2 rounded-lg">{info}</p>}
             <button
               type="submit"
-              disabled={submitting || otpCode.length !== 6}
+              disabled={submitting || otpCode.length < 6}
               className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50"
             >
               {submitting ? 'Nagve-verify...' : 'I-verify ang Email'}
@@ -408,7 +408,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">I-verify ang Phone Number</h2>
           <p className="text-gray-500 text-center mb-6">
-            Nagpadala kami ng 6-digit na verification code sa <strong>{formatPhone(phone)}</strong> via SMS.
+            Nagpadala kami ng verification code sa <strong>{formatPhone(phone)}</strong> via SMS.
           </p>
           <form onSubmit={handleVerifyPhone} className="space-y-4">
             <div>
@@ -416,19 +416,19 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
               <input
                 type="text"
                 value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                placeholder="00000000"
                 required
-                maxLength={6}
+                maxLength={8}
                 inputMode="numeric"
-                className="w-full px-4 py-4 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition text-center text-2xl font-bold tracking-[0.5em]"
+                className="w-full px-4 py-4 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition text-center text-2xl font-bold tracking-[0.4em]"
               />
             </div>
             {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
             {info && <p className="text-brand-600 text-sm bg-brand-50 px-4 py-2 rounded-lg">{info}</p>}
             <button
               type="submit"
-              disabled={submitting || otpCode.length !== 6}
+              disabled={submitting || otpCode.length < 6}
               className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50"
             >
               {submitting ? 'Nagve-verify...' : 'I-verify ang Phone'}

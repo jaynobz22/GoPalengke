@@ -47,7 +47,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       if (newSession?.user) {
-        fetchProfile(newSession.user.id);
+        (async () => {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', newSession.user.id)
+            .maybeSingle();
+          const p = prof as Profile | null;
+          if (p && (!p.email_verified || !p.phone_verified)) {
+            await supabase.auth.signOut();
+            setSession(null);
+            setProfile(null);
+          } else {
+            setProfile(p);
+          }
+        })();
       } else {
         setProfile(null);
       }
@@ -83,6 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (profileError) return { error: profileError.message };
+
+    // Sign out immediately so the session doesn't trigger auto-login
+    // before email/phone verification is complete.
+    await supabase.auth.signOut();
     return { error: null, userId: data.user.id };
   }
 
