@@ -21,14 +21,14 @@ import { LoginReminderPopup } from '@/components/LoginReminderPopup';
 import { useIncomingAdminCall } from '@/lib/useAdminCall';
 import { useAdminConversations } from '@/lib/useAdminChat';
 import {
-  Store as StoreIcon, Package, Settings, Plus, ArrowLeft, Edit, Trash2, X,
+  Store as StoreIcon, Package, Plus, ArrowLeft, Edit, Trash2, X,
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
   TrendingUp, DollarSign, Bell, Camera, Loader2, MessageCircle,
   Share2, Copy, ExternalLink, Search, ImageIcon, Wallet, Lock, AlertTriangle,
   LogOut, Eye, EyeOff, Users, Radio, Shield, Sprout,
 } from 'lucide-react';
 
-type Tab = 'dashboard' | 'products' | 'orders' | 'messages' | 'billing' | 'settings';
+type Tab = 'dashboard' | 'products' | 'orders' | 'messages' | 'billing';
 
 export function SellerApp() {
   const { profile, signOut } = useAuth();
@@ -205,7 +205,6 @@ export function SellerApp() {
           }} />
         )}
         {tab === 'billing' && <SellerBilling />}
-        {tab === 'settings' && <SellerSettings store={store} onEditStore={() => setShowStoreForm(true)} onSignOut={signOut} />}
 
         {showChat && activeConversationId && (
           <div className="fixed inset-0 z-[60] bg-gray-50 max-w-md mx-auto">
@@ -319,6 +318,8 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
   const [palengkeCustom, setPalengkeCustom] = useState('');
   const [sellerType, setSellerType] = useState<'palengke' | 'farm' | ''>('');
   const [farmType, setFarmType] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -329,6 +330,9 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
     e.preventDefault();
     if (!profile) return;
     setCreating(true);
+    if (avatarUrl && avatarUrl !== profile.avatar_url) {
+      await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', profile.id);
+    }
     const { error } = await supabase.from('stores').insert({
       seller_id: profile.id,
       name, description,
@@ -422,6 +426,27 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
             </select>
           </div>
         )}
+        <div>
+          <label className="text-sm font-medium text-gray-600 mb-1 block">Profile Picture ng May-ari</label>
+          <p className="text-xs text-gray-400 mb-2">Mag-upload ng larawan para makilala ka ng buyers at riders. Para sa transparency ng transaction.</p>
+          <ImageUploadField
+            label="Profile Picture"
+            value={avatarUrl}
+            onChange={async (url) => {
+              setAvatarUrl(url);
+              if (profile) {
+                setAvatarUploading(true);
+                await supabase.from('profiles').update({ avatar_url: url || null }).eq('id', profile.id);
+                setAvatarUploading(false);
+              }
+            }}
+            bucket="profile-images"
+            folder={`avatars/${profile?.id}`}
+            aspectClass="h-32"
+            icon={<Camera size={16} />}
+          />
+          {avatarUploading && <p className="text-xs text-brand-500 mt-1">Nag-a-upload...</p>}
+        </div>
         <ImageUploadField
           label="Logo ng Tindahan"
           value={logoUrl}
@@ -459,7 +484,8 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
 
 // ============= DASHBOARD =============
 function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onViewStore, onSignOut, unreadMessages, canAct }: { store: Store; onEditStore: () => void; onOpenMessages: () => void; onOpenOrders: () => void; onViewStore: () => void; onSignOut: () => void; unreadMessages: number; canAct: boolean }) {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [stats, setStats] = useState({ totalOrders: 0, pendingOrders: 0, totalRevenue: 0, productCount: 0, paidOrders: 0 });
   const [recentOrders, setRecentOrders] = useState<(Order & { buyer: { full_name: string } })[]>([]);
   const [isOpen, setIsOpen] = useState(store.is_open);
@@ -665,6 +691,58 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
           </div>
         )}
       </div>
+
+      {/* Profile Picture Upload */}
+      {profile && (
+        <div className="px-5 pb-4">
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <div className="flex items-center gap-3 mb-4">
+              <Avatar src={profile?.avatar_url} name={profile?.full_name} size={64} />
+              <div>
+                <p className="font-bold text-gray-800">{profile?.full_name}</p>
+                <p className="text-sm text-gray-400">{profile?.email}</p>
+                <span className="inline-block mt-1 text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Tindera/Tindero</span>
+              </div>
+            </div>
+            <ImageUploadField
+              label="Profile Picture"
+              value={profile?.avatar_url || ''}
+              bucket="profile-images"
+              folder={`avatars/${profile?.id}`}
+              aspectClass="h-32"
+              hint="Mag-upload ng larawan para makilala ka ng buyers at riders. Para sa transparency ng transaction."
+              onChange={async (url) => {
+                if (!profile) return;
+                setAvatarUploading(true);
+                await supabase.from('profiles').update({ avatar_url: url || null }).eq('id', profile.id);
+                await refreshProfile();
+                setAvatarUploading(false);
+              }}
+            />
+            {avatarUploading && <p className="text-xs text-brand-500 mt-1">Nag-a-upload...</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Shareable Links */}
+      {store.slug && (
+        <div className="px-5 pb-4">
+          <ShareableLinkSection
+            label="Link ng Tindahan"
+            url={`${window.location.origin}/s/${store.slug}`}
+            onOpen={() => navigate(`/s/${store.slug}`)}
+          />
+        </div>
+      )}
+      {profile?.slug && (
+        <div className="px-5 pb-4">
+          <ShareableLinkSection
+            label="Link ng Profile"
+            url={`${window.location.origin}/u/${profile.slug}`}
+            onOpen={() => navigate(`/u/${profile.slug}`)}
+          />
+        </div>
+      )}
 
       {/* Reviews */}
       {profile && (
@@ -1719,74 +1797,6 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
 }
 
 // ============= SELLER SETTINGS =============
-function SellerSettings({ store, onEditStore, onSignOut }: { store: Store; onEditStore: () => void; onSignOut: () => void }) {
-  const { profile, refreshProfile } = useAuth();
-  const [avatarUploading, setAvatarUploading] = useState(false);
-  return (
-    <div className="px-5 py-4 pb-28">
-      <h2 className="text-xl font-bold text-gray-800 mb-4">Settings</h2>
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
-        <div className="flex items-center gap-3 mb-4">
-          <Avatar src={profile?.avatar_url} name={profile?.full_name} size={64} />
-          <div>
-            <p className="font-bold text-gray-800">{profile?.full_name}</p>
-            <p className="text-sm text-gray-400">{profile?.email}</p>
-            <span className="inline-block mt-1 text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Tindera/Tindero</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Profile Picture Upload */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
-        <ImageUploadField
-          label="Profile Picture"
-          value={profile?.avatar_url || ''}
-          bucket="profile-images"
-          folder={`avatars/${profile?.id}`}
-          aspectClass="h-32"
-          hint="Mag-upload ng larawan para makilala ka ng buyers at riders. Para sa transparency ng transaction."
-          onChange={async (url) => {
-            if (!profile) return;
-            setAvatarUploading(true);
-            await supabase.from('profiles').update({ avatar_url: url || null }).eq('id', profile.id);
-            await refreshProfile();
-            setAvatarUploading(false);
-          }}
-        />
-        {avatarUploading && <p className="text-xs text-brand-500 mt-1">Nag-a-upload...</p>}
-      </div>
-
-      <button onClick={onEditStore} className="w-full bg-white rounded-2xl border border-gray-100 p-4 mb-2 flex items-center justify-between active:scale-[0.98] transition">
-        <div className="flex items-center gap-3">
-          <StoreIcon size={20} className="text-gray-500" />
-          <span className="font-medium text-gray-700">I-edit ang Tindahan</span>
-        </div>
-        <ArrowLeft size={18} className="text-gray-300 rotate-180" />
-      </button>
-
-      {/* Shareable Store URL */}
-      {store.slug && (
-        <ShareableLinkSection
-          label="Link ng Tindahan"
-          url={`${window.location.origin}/#/s/${store.slug}`}
-          onOpen={() => navigate(`/s/${store.slug}`)}
-        />
-      )}
-      {profile?.slug && (
-        <ShareableLinkSection
-          label="Link ng Profile"
-          url={`${window.location.origin}/#/u/${profile.slug}`}
-          onOpen={() => navigate(`/u/${profile.slug}`)}
-        />
-      )}
-
-      <button onClick={onSignOut} className="w-full bg-white text-red-500 border border-red-200 rounded-2xl font-semibold py-4 active:scale-[0.98] transition mt-4">
-        Mag-sign Out
-      </button>
-    </div>
-  );
-}
-
 // ============= SHAREABLE LINK SECTION =============
 function ShareableLinkSection({ label, url, onOpen }: { label: string; url: string; onOpen: () => void }) {
   const [copied, setCopied] = useState(false);
@@ -2029,7 +2039,6 @@ function SellerBottomNav({ tab, setTab, storeId, unreadMessages }: { tab: Tab; s
     { id: 'orders', icon: ShoppingBag, label: 'Orders', badge: orderBadge, alert: orderAlert },
     { id: 'messages', icon: MessageCircle, label: 'Messages', badge: unreadMessages },
     { id: 'billing', icon: Wallet, label: 'Billing' },
-    { id: 'settings', icon: Settings, label: 'Settings' },
   ];
 
   return (
