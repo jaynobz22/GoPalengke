@@ -648,8 +648,6 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
         </div>
       </div>
 
-      {/* Share to Social Media */}
-
       {/* Recent Orders */}
       <div className="px-5 pb-4">
         <h3 className="font-bold text-gray-800 mb-3">Mga Bagong Orders</h3>
@@ -1856,14 +1854,14 @@ function SellerSettings({ store, onEditStore, onSignOut }: { store: Store; onEdi
       {store.slug && (
         <ShareableLinkSection
           label="Link ng Tindahan"
-          url={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/og-preview/s/${store.slug}`}
+          url={`${window.location.origin}/#/s/${store.slug}`}
           onOpen={() => { window.location.hash = `/s/${store.slug}`; }}
         />
       )}
       {profile?.slug && (
         <ShareableLinkSection
           label="Link ng Profile"
-          url={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/og-preview/u/${profile.slug}`}
+          url={`${window.location.origin}/#/u/${profile.slug}`}
           onOpen={() => { window.location.hash = `/u/${profile.slug}`; }}
         />
       )}

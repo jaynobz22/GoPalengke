@@ -97,27 +97,35 @@ function buildHtml(opts: {
   <meta name="twitter:description" content="${desc}" />
   <meta name="twitter:image" content="${img}" />
 
-  <style>
-    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #f9fafb; }
-    .card { max-width: 500px; margin: 40px auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
-    .banner { width: 100%; height: 200px; object-fit: cover; background: #e5e7eb; }
-    .info { padding: 20px; }
-    h1 { margin: 0 0 8px; font-size: 20px; color: #1f2937; }
-    p { margin: 0 0 4px; font-size: 14px; color: #6b7280; }
-    .cta { display: inline-block; margin-top: 16px; padding: 12px 28px; background: #ea580c; color: #fff; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 15px; }
-  </style>
+  <meta http-equiv="refresh" content="0; url=${url}" />
 </head>
 <body>
-  <div class="card">
-    <img class="banner" src="${img}" alt="${title}" />
-    <div class="info">
-      <h1>${title}</h1>
-      <p>${desc}</p>
-      <a class="cta" href="${url}">View on GoPalengke</a>
-    </div>
-  </div>
+  <p>Redirecting to <a href="${url}">${url}</a></p>
 </body>
 </html>`;
+}
+
+function isCrawler(userAgent: string): boolean {
+  const ua = userAgent.toLowerCase();
+  const crawlers = [
+    "facebookexternalhit", "facebookcatalog", "facebook", "meta",
+    "twitterbot", "linkedinbot", "telegrambot", "whatsapp",
+    "googlebot", "bingbot", "slackbot", "discordbot",
+    "applebot", "pinterest", "skypesharing", "snapchat",
+  "tiktok", "crawler", "bot", "spider", "preview",
+  "developers.google.com", "googleimage", "googleweblight",
+  "nginx_configuration_check",
+  "chrome-lighthouse", "pagead",
+  "openssl", "curl", "python-requests", "java",
+    "go-http-client", "okhttp", "node-fetch",
+  "quora", "ia_archiver", "wayback",
+    "yeti", "naver", "daum", "yandex",
+    "semrush", "ahrefs", "moz",
+    "uptimerobot", "pingdom", "site24x7",
+    "embedly", "iframely", "unfurl",
+    "line/", "linebot",
+  ];
+  return crawlers.some((c) => ua.includes(c));
 }
 
 Deno.serve(async (req: Request) => {
@@ -129,9 +137,56 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const path = url.pathname.replace(/^\/og-preview\/?/, "");
 
-    // path format: s/{slug} or p/{productId}
+    const userAgent = req.headers.get("user-agent") || "";
+    const isBot = isCrawler(userAgent);
+
     const parts = path.split("/");
     const appUrl = `https://${url.host}/#/`;
+
+    // For humans, redirect to the app
+    if (!isBot) {
+      if (parts.length >= 2 && parts[0] === "s") {
+        const slug = decodeURIComponent(parts[1]);
+        return new Response(null, {
+          status: 302,
+          headers: { ...corsHeaders, Location: `${appUrl}s/${slug}` },
+        });
+      }
+      if (parts.length >= 2 && parts[0] === "u") {
+        const slug = decodeURIComponent(parts[1]);
+        return new Response(null, {
+          status: 302,
+          headers: { ...corsHeaders, Location: `${appUrl}u/${slug}` },
+        });
+      }
+      if (parts.length >= 2 && parts[0] === "p") {
+        const productId = decodeURIComponent(parts[1]);
+        const { data: product } = await supabase
+          .from("products")
+          .select("store_id")
+          .eq("id", productId)
+          .maybeSingle();
+        if (product) {
+          const { data: store } = await supabase
+            .from("stores")
+            .select("slug")
+            .eq("id", (product as { store_id: string }).store_id)
+            .maybeSingle();
+          if (store) {
+            return new Response(null, {
+              status: 302,
+              headers: { ...corsHeaders, Location: `${appUrl}s/${(store as { slug: string }).slug}` },
+            });
+          }
+        }
+      }
+      return new Response(null, {
+        status: 302,
+        headers: { ...corsHeaders, Location: appUrl },
+      });
+    }
+
+    // For crawlers, serve the OG preview HTML
 
     if (parts.length >= 2 && parts[0] === "s") {
       const slug = decodeURIComponent(parts[1]);
@@ -228,7 +283,6 @@ Deno.serve(async (req: Request) => {
 
       const p = profile as { id: string; full_name: string; role: string; avatar_url: string | null; city: string | null; barangay: string | null };
 
-      // If seller, find their store and use store banner as OG image
       let storeData: Partial<StoreRow> | null = null;
       if (p.role === "seller") {
         const { data: s } = await supabase
