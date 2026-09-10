@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   ArrowLeft, FileText, Shield, HelpCircle, AlertTriangle, ChevronDown, Ban,
   Clock, Package, CreditCard, AlertCircle, ShieldCheck, Eye, MapPin,
@@ -60,148 +60,145 @@ export function LegalPages({ type, onBack }: { type: LegalPageType; onBack: () =
 function TermsContent() {
   return (
     <div className="space-y-6 text-sm md:text-[15px] text-gray-700 leading-relaxed">
-      <Section title="1. Pagtanggap ng Terms">
+      <Section title="1. Acceptance of Terms">
         <p>
-          Sa pag-sign up at paggamit ng GoPalengke platform, sumasang-ayon ka sa mga sumusunod na Terms and Conditions.
-          Kung hindi ka sang-ayon sa alinman sa mga tuntunin na ito, huwag gamitin ang platform.
+          By signing up and using the GoPalengke platform, you agree to the following Terms and Conditions.
+          If you do not agree to any of these terms, please do not use the platform.
         </p>
       </Section>
 
-      <Section title="2. Tungkol sa GoPalengke">
+      <Section title="2. About GoPalengke">
         <p>
-          Ang GoPalengke ay isang online wet market platform na nag-uugnay ng mga tindera/tindero sa palengke
-          sa mga mamimili sa buong Pilipinas. Nagbibigay ito ng online marketplace kung saan maaaring mag-post
-          ng mga paninda ang mga seller, mag-order ang mga buyer, at maghatid ang mga rider ng mga order
-          diretso sa bahay ng mamimili. Ang platform ay sumusuporta sa QR Code payment (GCash/Maya) at
-          Cash on Delivery (COD) bilang mga paraan ng pagbabayad.
+          GoPalengke is an online wet market platform that connects market vendors to buyers across the
+          Philippines. It provides an online marketplace where sellers can post their products, buyers can
+          place orders, and riders can deliver orders directly to the buyer's home. The platform supports
+          QR Code payment (GCash/Maya) and Cash on Delivery (COD) as payment methods.
         </p>
       </Section>
 
-      <Section title="3. Mga Uri ng User Account">
+      <Section title="3. Types of User Accounts">
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Buyer (Mamimili)</strong> — Maaaring mag-browse, mag-order, at makipag-chat o video call sa seller bago bumili.</li>
-          <li><strong>Seller (Tindera/Tindero)</strong> — Maaaring mag-set up ng store, mag-post ng produkto, at tumanggap ng orders. Kailangan magbayad ng 3% commission sa bawat sale at ₱499/month na subscription fee kapag umabot na ang total sales sa ₱5,000.</li>
-          <li><strong>Rider</strong> — Maaaring tumanggap ng delivery assignments, mag-update ng order status, at maghatid ng order sa buyer. Kailangan magpasa ng identity verification (valid ID, plate number, motor model, atbp.).</li>
-          <li><strong>Admin</strong> — Namamahala sa platform approval, announcements, commission, at moderation.</li>
+          <li><strong>Buyer</strong> — Can browse, order, and chat or video call with the seller before purchasing.</li>
+          <li><strong>Seller</strong> — Can set up a store, post products, and receive orders. Required to pay a 3% commission on each sale and a ₱499/month subscription fee once total sales reach ₱5,000.</li>
+          <li><strong>Rider</strong> — Can accept delivery assignments, update order status, and deliver orders to buyers. Required to submit identity verification (valid ID, plate number, motor model, etc.).</li>
+          <li><strong>Admin</strong> — Manages platform approvals, announcements, commission, and moderation.</li>
         </ul>
       </Section>
 
-      <Section title="4. Account Registration at Verification">
+      <Section title="4. Account Registration and Verification">
         <p>
-          Kailangan ng wastong email address at phone number para sa pag-register. Ang lahat ng accounts
-          ay dadaan sa admin approval bago makagamit ng platform. Ang mga rider ay kailangan magpasa ng
-          valid ID at iba pang verification details. Ang anumang maling impormasyon na ibinigay ay maaaring
-          magresulta sa pag-suspend o pag-delete ng account.
+          A valid email address and phone number are required for registration. All accounts must go
+          through admin approval before being able to use the platform. Riders are required to submit a
+          valid ID and other verification details. Any false information provided may result in account
+          suspension or deletion.
         </p>
       </Section>
 
-      <Section title="5. Mga Pananagutan ng Seller">
+      <Section title="5. Seller Responsibilities">
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Class A at sariwang produkto lamang.</strong> Hindi pwede ang bulok, luma, o sira na paninda.</li>
-          <li><strong>Isang negative review lang tungkol sa bulok o sira na food products — aalisin agad ang seller sa platform. Walang second chance.</strong></li>
-          <li>Totoong tindahan o may pwesto sa palengke ang dapat na irerehistro. Maaaring magtinda rin kahit walang pwesto kung legitimate na negosyo.</li>
-          <li>Kailangan panatilihin ang updated na stock at presyo ng mga produkto.</li>
-          <li>Ang seller ay mananagot sa kasapatan at kalidad ng produkto na ibinebenta.</li>
+          <li><strong>Class A and fresh products only.</strong> Spoiled, old, or damaged goods are not allowed.</li>
+          <li><strong>A single negative review regarding spoiled or damaged food products will result in immediate removal from the platform. No second chances.</strong></li>
+          <li>A real store or market stall should be registered. Selling without a physical stall is allowed if it is a legitimate business.</li>
+          <li>Sellers must keep product stock and prices updated at all times.</li>
+          <li>The seller is responsible for the freshness and quality of the products they sell.</li>
         </ul>
       </Section>
 
-      <Section title="6. Mga Pananagutan ng Buyer">
+      <Section title="6. Buyer Responsibilities">
         <ul className="list-disc pl-5 space-y-2">
-          <li>Bago bumili, i-chat at i-video call muna ang seller gamit ang Messages tab sa dashboard para siguraduhing legit at makita ang produktong bibilhin.</li>
-          <li>Kung COD, siguraduhing may tao sa bahay para magbayad at tatanggap ng order pagdating ng rider.</li>
-          <li>Magbigay ng tamang delivery address at contact number.</li>
-          <li>Huwag mag-order kung hindi sigurado na tatanggapin ang order.</li>
+          <li>Before purchasing, chat and video call the seller using the Messages tab in the dashboard to verify legitimacy and see the actual product.</li>
+          <li>For COD orders, ensure someone is home to pay and receive the order upon the rider's arrival.</li>
+          <li>Provide an accurate delivery address and contact number.</li>
+          <li>Do not place an order if you are not certain you will accept it.</li>
         </ul>
       </Section>
 
-      <Section title="7. Mga Pananagutan ng Rider">
+      <Section title="7. Rider Responsibilities">
         <ul className="list-disc pl-5 space-y-2">
-          <li>Maghatid ng order nang mabilis at ligtas sa tamang address.</li>
-          <li>I-update ang order status (picked up, delivered) sa app.</li>
-          <li>Panatilihin ang availability status updated sa dashboard.</li>
-          <li>Siguraduhing tama ang pagbabalik ng sukli kung COD.</li>
-          <li>Huwag i-cancel ang delivery assignment kung naka-accept na, maliban kung may lehitimong dahilan.</li>
+          <li>Deliver orders promptly and safely to the correct address.</li>
+          <li>Update order status (picked up, delivered) in the app.</li>
+          <li>Keep availability status updated on the dashboard.</li>
+          <li>Ensure correct change is given for COD orders.</li>
+          <li>Do not cancel a delivery assignment once accepted, except for legitimate reasons.</li>
         </ul>
       </Section>
 
-      <Section title="8. Commission at Subscription Fee">
+      <Section title="8. Commission and Subscription Fee">
         <p>
-          Ang bawat seller ay may obligasyon na magbayad ng 3% commission sa bawat completed sale. Kapag
-          umabot na ang total sales ng seller sa ₱5,000, may monthly subscription fee na ₱499. Ang kabuuang
-          halaga na kailangan bayaran ay makikita sa Billing tab ng seller dashboard. Kapag hindi nabayaran
-          ang fees within the grace period, maaaring i-freeze ang account ng seller hanggang sa mabayaran.
+          Each seller is obligated to pay a 3% commission on every completed sale. Once the seller's total
+          sales reach ₱5,000, a monthly subscription fee of ₱499 applies. The total amount due can be viewed
+          in the Billing tab of the seller dashboard. If fees are not paid within the grace period, the
+          seller's account may be frozen until payment is made.
         </p>
       </Section>
 
       <Section title="9. Payment Methods">
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>QR Code (GCash/Maya)</strong> — Magbabayad ang buyer sa seller gamit ang QR code na ipapakita sa store page. Kailangan mag-input ng reference number bilang proof of payment.</li>
-          <li><strong>Cash on Delivery (COD)</strong> — Magbabayad ang buyer sa rider pagdating ng order. Ang rider ay magre-report ng payment acceptance sa app.</li>
+          <li><strong>QR Code (GCash/Maya)</strong> — The buyer pays the seller using the QR code displayed on the store page. A reference number must be entered as proof of payment.</li>
+          <li><strong>Cash on Delivery (COD)</strong> — The buyer pays the rider upon delivery. The rider reports payment acceptance in the app.</li>
         </ul>
         <p className="mt-2">
-          Ang GoPalengke ay hindi direktang nagpo-process ng payments. Ang transaksyon ay sa pagitan ng
-          buyer at seller (para sa QR) o buyer at rider (para sa COD).
+          GoPalengke does not directly process payments. Transactions are between the buyer and seller
+          (for QR) or buyer and rider (for COD).
         </p>
       </Section>
 
-      <Section title="10. Reviews at Ratings">
+      <Section title="10. Reviews and Ratings">
         <p>
-          Maaaring mag-iwan ng review at rating ang buyer para sa seller at rider pagkatapos ng delivered order.
-          Ang reviews ay mahalaga para mapanatili ang kalidad ng service sa platform. Ang mga seller na
-          makatanggap ng negative review tungkol sa bulok o sira na produkto ay aalisin agad sa platform.
+          Buyers may leave a review and rating for the seller and rider after a delivered order. Reviews
+          are important to maintain service quality on the platform. Sellers who receive a negative review
+          regarding spoiled or damaged products will be immediately removed from the platform.
         </p>
       </Section>
 
-      <Section title="11. Messaging at Video Call">
+      <Section title="11. Messaging and Video Call">
         <p>
-          Ang platform ay may built-in chat at video call feature para sa komunikasyon ng buyer at seller,
-          at buyer at rider. Ang lahat ng conversations ay nakabase sa specific order. Mayroon ding admin
-          messaging at video call para sa suporta at verification ng mga users.
+          The platform has a built-in chat and video call feature for communication between buyer and
+          seller, and buyer and rider. All conversations are based on a specific order. There is also
+          admin messaging and video call for support and user verification.
         </p>
       </Section>
 
       <Section title="12. Prohibited Activities">
         <ul className="list-disc pl-5 space-y-2">
-          <li>Huwag mag-post ng fake o misleading na produkto.</li>
-          <li>Huwag mag-benta ng contraband, expired, o hindi pinapayagang produkto.</li>
-          <li>Huwag mang-harass o mang-abuso sa kapwa user.</li>
-          <li>Huwag gumamit ng fake account o maling identity.</li>
-          <li>Huwag i-bypass ang payment system ng platform.</li>
-          <li>Huwag mag-spam sa chat o magpadala ng malicious links.</li>
+          <li>Do not post fake or misleading products.</li>
+          <li>Do not sell contraband, expired, or prohibited products.</li>
+          <li>Do not harass or abuse other users.</li>
+          <li>Do not use fake accounts or false identities.</li>
+          <li>Do not bypass the platform's payment system.</li>
+          <li>Do not spam the chat or send malicious links.</li>
         </ul>
       </Section>
 
-      <Section title="13. Account Suspension at Termination">
+      <Section title="13. Account Suspension and Termination">
         <p>
-          Maaaring i-suspend, i-freeze, o i-delete ng admin ang anumang account na lumabag sa mga tuntunin
-          na ito. Ang seller freeze ay automatic when fees are not paid within the grace period.
-          Ang anumang account na na-suspend for selling spoiled or damaged products will be permanently
-          aalisin — walang second chance.
+          The admin may suspend, freeze, or delete any account that violates these terms. A seller freeze
+          is automatic when fees are not paid within the grace period. Any account suspended for selling
+          spoiled or damaged products will be permanently removed — no second chances.
         </p>
       </Section>
 
       <Section title="14. Limitation of Liability">
         <p>
-          Ang GoPalengke ay isang platform lamang na nag-uugnay ng buyers, sellers, at riders. Hindi kami
-          mananagot sa kalidad, kasapatan, o safety ng mga produkto na ibinebenta ng sellers. Hindi rin kami
-          mananagot sa pagka-late, pagka-damage, o pagkawala ng order habang nasa delivery. Ang mga
-          transaksyon ay sa pagitan ng users at ang GoPalengke ay hindi kasapi sa anumang kontrata sa pagitan
-          ng buyer at seller.
+          GoPalengke is a platform that connects buyers, sellers, and riders. We are not responsible for
+          the quality, freshness, or safety of products sold by sellers. We are also not responsible for
+          delays, damage, or loss of orders during delivery. Transactions are between users, and
+          GoPalengke is not a party to any contract between buyer and seller.
         </p>
       </Section>
 
-      <Section title="15. Pagbabago ng Terms">
+      <Section title="15. Changes to Terms">
         <p>
-          Maaaring baguhin ng GoPalengke ang mga Terms and Conditions na ito anumang oras. Ang mga pagbabago
-          ay magkakabisa agad pagkatapos i-post sa platform. Ang patuloy na paggamit ng platform pagkatapos
-          ng mga pagbabago ay nangangahulugang sang-ayon ka sa mga updated na terms.
+          GoPalengke may change these Terms and Conditions at any time. Changes take effect immediately
+          after being posted on the platform. Continued use of the platform after changes means you agree
+          to the updated terms.
         </p>
       </Section>
 
       <Section title="16. Contact">
         <p>
-          Para sa mga tanong tungkol sa mga Terms na ito, maaaring makipag-ugnayan sa admin gamit ang
-          admin messaging feature sa platform.
+          For questions about these Terms, you may contact the admin using the admin messaging feature
+          on the platform.
         </p>
       </Section>
     </div>
@@ -214,76 +211,72 @@ function DisclaimerContent() {
     <div className="space-y-6 text-sm md:text-[15px] text-gray-700 leading-relaxed">
       <Section title="General Disclaimer">
         <p>
-          Ang GoPalengke ay isang online marketplace platform lamang. Hindi kami ang nagbebenta ng mga
-          produkto na ipinapakita sa platform. Ang mga produkto ay pag-aari at pananagutan ng mga
-          registered sellers. Ang GoPalengke ay hindi bahagi ng anumang transaksyon sa pagitan ng buyer
-          at seller bukod sa pagbibigay ng platform para sa kanilang interaksyon.
+          GoPalengke is an online marketplace platform only. We do not sell the products displayed on the
+          platform. Products are owned and managed by registered sellers. GoPalengke is not part of any
+          transaction between buyer and seller other than providing the platform for their interaction.
         </p>
       </Section>
 
-      <Section title="Kalidad ng Produkto">
+      <Section title="Product Quality">
         <p>
-          Inu-encourage namin ang lahat ng sellers na magbenta ng Class A at sariwang produkto lamang.
-          Subalit, hindi namin personally na sinusuri ang bawat produkto bago ito ma-post. Ang pananagutan
-          sa kasapatan, kalidad, at safety ng produkto ay nasa seller. Ang anumang reklamo tungkol sa
-          produkto ay direktang dapat i-address sa seller gamit ang chat feature ng platform.
+          We encourage all sellers to sell only Class A and fresh products. However, we do not personally
+          inspect each product before it is posted. The responsibility for freshness, quality, and safety
+          of products lies with the seller. Any complaint about a product should be addressed directly to
+          the seller using the chat feature on the platform.
         </p>
         <p className="mt-2 font-semibold text-red-600">
-          Babala: Isang negative review lang ng buyer tungkol sa bulok o sira na food products — aalisin
-          agad ang seller sa platform. Walang second chance.
+          Warning: A single negative review from a buyer regarding spoiled or damaged food products will
+          result in immediate removal of the seller from the platform. No second chances.
         </p>
       </Section>
 
-      <Section title="Delivery at Logistics">
+      <Section title="Delivery and Logistics">
         <p>
-          Ang paghatid ng order ay ginagawa ng mga registered riders. Ang GoPalengke ay hindi mananagot
-          sa pagka-late, pagka-damage, pagkawala, o maling paghatid ng order. Ang rider ang direktang
-          pananagutan sa safe at napapanahong paghatid ng order. Maaaring mag-iwan ng review ang buyer
-          para sa rider pagkatapos ng delivery.
+          Order delivery is handled by registered riders. GoPalengke is not responsible for delays,
+          damage, loss, or incorrect delivery of orders. The rider is directly responsible for safe and
+          timely delivery. Buyers may leave a review for the rider after delivery.
         </p>
       </Section>
 
       <Section title="Payment Transactions">
         <p>
-          Ang GoPalengke ay hindi direktang nagpo-process ng payments. Para sa QR Code payments, ang
-          transaksyon ay direktang sa pagitan ng buyer at seller gamit ang GCash o Maya. Para sa COD,
-          ang transaksyon ay sa pagitan ng buyer at rider. Hindi kami mananagot sa anumang dispute
-          tungkol sa payment. Inirerekomenda namin na mag-ingat sa pagbabayad at palaging humingi ng
-          reference number o resibo.
+          GoPalengke does not directly process payments. For QR Code payments, the transaction is directly
+          between buyer and seller using GCash or Maya. For COD, the transaction is between buyer and
+          rider. We are not responsible for any payment disputes. We recommend exercising caution when
+          paying and always requesting a reference number or receipt.
         </p>
       </Section>
 
-      <Section title="Reviews at Ratings">
+      <Section title="Reviews and Ratings">
         <p>
-          Ang mga reviews at ratings sa platform ay opinions ng mga users at hindi necessarily reflect
-          ang opinyon ng GoPalengke. Hindi kami mananagot sa anumang content ng reviews. Ang mga review
-          ay subject sa moderation kung ito ay offensive, fake, o misleading.
+          Reviews and ratings on the platform are opinions of users and do not necessarily reflect the
+          views of GoPalengke. We are not responsible for the content of reviews. Reviews are subject to
+          moderation if they are offensive, fake, or misleading.
         </p>
       </Section>
 
       <Section title="External Links">
         <p>
-          Ang platform ay maaaring maglaman ng links sa external websites (hal. GCash, Maya). Hindi kami
-          mananagot sa content o practices ng mga external websites na ito. Basahin ang kanilang sariling
-          terms at privacy policies.
+          The platform may contain links to external websites (e.g., GCash, Maya). We are not responsible
+          for the content or practices of these external websites. Please read their respective terms and
+          privacy policies.
         </p>
       </Section>
 
       <Section title="No Warranty">
         <p>
-          Ang platform ay ibinibigay "as is" at "as available" nang walang anumang warranty, expressed o
-          implied. Hindi namin ginagarantiya na ang platform ay laging available, error-free, o walang
-          interruption. Hindi kami mananagot sa anumang direct, indirect, incidental, o consequential
-          damages na maaaring magmula sa paggamit ng platform.
+          The platform is provided "as is" and "as available" without any warranty, expressed or implied.
+          We do not guarantee that the platform will always be available, error-free, or uninterrupted. We
+          are not responsible for any direct, indirect, incidental, or consequential damages that may arise
+          from the use of the platform.
         </p>
       </Section>
 
       <Section title="Verification">
         <p>
-          Bagama't naghahabol kami na i-verify ang lahat ng sellers at riders sa platform, hindi namin
-          garantiya na ang lahat ng impormasyon na ibinigay ng users ay totoo. Inirerekomenda namin na
-          gamitin ang video call feature bago bumili para personally na makita ang produkto at ma-verify
-          ang seller.
+          While we strive to verify all sellers and riders on the platform, we cannot guarantee that all
+          information provided by users is accurate. We recommend using the video call feature before
+          purchasing to personally inspect the product and verify the seller.
         </p>
       </Section>
     </div>
@@ -294,149 +287,146 @@ function DisclaimerContent() {
 function PrivacyContent() {
   return (
     <div className="space-y-6 text-sm md:text-[15px] text-gray-700 leading-relaxed">
-      <Section title="1. Panimula">
+      <Section title="1. Introduction">
         <p>
           GoPalengke complies with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong>
-          ng Pilipinas. Ang Privacy Policy na ito ay nagpapaliwanag kung paano namin kinokolekta, ginagamit,
-          at pinoprotektahan ang iyong personal na impormasyon. Sa pag-sign up at paggamit ng platform,
-          ikaw ay nagbibigay ng pahintulot na kolektahin at gamitin ang iyong data ayon sa policy na ito.
+          of the Philippines. This Privacy Policy explains how we collect, use, and protect your personal
+          information. By signing up and using the platform, you consent to the collection and use of your
+          data in accordance with this policy.
         </p>
       </Section>
 
-      <Section title="2. Personal Information na Kinokolekta">
-        <p>Kapag nag-register ka sa GoPalengke, maaaring kolektahin ang mga sumusunod:</p>
+      <Section title="2. Personal Information Collected">
+        <p>When you register on GoPalengke, the following may be collected:</p>
         <ul className="list-disc pl-5 space-y-2 mt-2">
-          <li><strong>Pangalan</strong> — full name na ibinibigay sa registration</li>
-          <li><strong>Email address</strong> — para sa account at communication</li>
-          <li><strong>Phone number</strong> — para sa verification at contact</li>
-          <li><strong>Address</strong> — barangay, city, region para sa delivery at store location</li>
-          <li><strong>Profile photo / avatar</strong> — opsyonal, para sa public profile</li>
-          <li><strong>Rider verification details</strong> — edad, family status, residence address, plate number, motor model, at valid ID photo (para sa riders lamang)</li>
-          <li><strong>Store information</strong> — store name, description, logo, banner, QR code, at palengke name (para sa sellers lamang)</li>
-          <li><strong>Location data</strong> — live GPS coordinates ng rider habang may active delivery, at store coordinates ng seller</li>
-          <li><strong>Order at payment details</strong> — order history, payment method, reference numbers</li>
-          <li><strong>Chat messages at video call records</strong> — para sa buyer-seller, buyer-rider, at admin-user conversations</li>
+          <li><strong>Name</strong> — full name provided during registration</li>
+          <li><strong>Email address</strong> — for account and communication</li>
+          <li><strong>Phone number</strong> — for verification and contact</li>
+          <li><strong>Address</strong> — barangay, city, region for delivery and store location</li>
+          <li><strong>Profile photo / avatar</strong> — optional, for public profile</li>
+          <li><strong>Rider verification details</strong> — age, family status, residence address, plate number, motor model, and valid ID photo (riders only)</li>
+          <li><strong>Store information</strong> — store name, description, logo, banner, QR code, and palengke name (sellers only)</li>
+          <li><strong>Location data</strong> — live GPS coordinates of the rider during active delivery, and store coordinates of the seller</li>
+          <li><strong>Order and payment details</strong> — order history, payment method, reference numbers</li>
+          <li><strong>Chat messages and video call records</strong> — for buyer-seller, buyer-rider, and admin-user conversations</li>
         </ul>
       </Section>
 
-      <Section title="3. Paano Ginagamit ang Personal Information">
-        <p>Ginagamit ang iyong personal information para sa mga sumusunod na layunin:</p>
+      <Section title="3. How Personal Information Is Used">
+        <p>Your personal information is used for the following purposes:</p>
         <ul className="list-disc pl-5 space-y-2 mt-2">
-          <li>Paglikha at pamamahala ng iyong account</li>
-          <li>Pag-process at paghatid ng iyong mga order</li>
-          <li>Komunikasyon sa pagitan ng buyers, sellers, riders, at admin</li>
-          <li>Verification ng identity lalo na para sa mga rider at seller</li>
-          <li>Pag-compute at pag-collect ng commission at subscription fees mula sa sellers</li>
-          <li>Pagpapakita ng public profile at store page sa ibang users</li>
-          <li>Live tracking ng rider location habang may active delivery</li>
-          <li>Reviews at ratings system</li>
-          <li>Customer support at dispute resolution</li>
-          <li>Platform security at fraud prevention</li>
+          <li>Creating and managing your account</li>
+          <li>Processing and delivering your orders</li>
+          <li>Communication between buyers, sellers, riders, and admin</li>
+          <li>Identity verification, especially for riders and sellers</li>
+          <li>Computing and collecting commission and subscription fees from sellers</li>
+          <li>Displaying public profiles and store pages to other users</li>
+          <li>Live tracking of rider location during active delivery</li>
+          <li>Reviews and ratings system</li>
+          <li>Customer support and dispute resolution</li>
+          <li>Platform security and fraud prevention</li>
         </ul>
       </Section>
 
-      <Section title="4. Legal Basis sa ilalim ng Data Privacy Act">
+      <Section title="4. Legal Basis Under the Data Privacy Act">
         <p>
-          Ang pagproseso ng iyong personal data ay batay sa:
+          The processing of your personal data is based on:
         </p>
         <ul className="list-disc pl-5 space-y-2 mt-2">
-          <li><strong>Consent</strong> — ibinigay mo ang pahintulot sa pag-sign up</li>
-          <li><strong>Contractual necessity</strong> — kinakailangan para ma-deliver ang serbisyo na hinihingi mo</li>
-          <li><strong>Legitimate interest</strong> — para sa platform security, fraud prevention, at service improvement</li>
-          <li><strong>Legal obligation</strong> — kung kinakailangan ng batas</li>
+          <li><strong>Consent</strong> — you gave permission upon signing up</li>
+          <li><strong>Contractual necessity</strong> — required to deliver the service you requested</li>
+          <li><strong>Legitimate interest</strong> — for platform security, fraud prevention, and service improvement</li>
+          <li><strong>Legal obligation</strong> — when required by law</li>
         </ul>
       </Section>
 
-      <Section title="5. Pagbabahagi ng Personal Information">
+      <Section title="5. Sharing of Personal Information">
         <p>
-          Hindi namin ibinebenta ang iyong personal data. Maaari naming ibahagi ang iyong data sa mga
-          sumusunod na sitwasyon:
+          We do not sell your personal data. We may share your data in the following situations:
         </p>
         <ul className="list-disc pl-5 space-y-2 mt-2">
-          <li><strong>Sa pagitan ng users</strong> — Ang iyong pangalan, profile photo, phone number, at address ay makikita ng kausap mo sa chat o order transaction. Ang store information ng seller ay public.</li>
-          <li><strong>Sa Supabase</strong> — Ang aming database at authentication ay pinapagana ng Supabase, na nag-i-store ng data sa secure servers.</li>
-          <li><strong>Sa payment providers</strong> — Kung gumamit ka ng GCash o Maya, ang payment transaction ay subject sa privacy policy ng nasabing provider.</li>
-          <li><strong>Sa awtoridad</strong> — Kung kinakailangan ng batas o legal na utos, maaaring ibahagi ang data sa tamang awtoridad.</li>
+          <li><strong>Between users</strong> — Your name, profile photo, phone number, and address are visible to the person you are chatting with in a chat or order transaction. Seller store information is public.</li>
+          <li><strong>With Supabase</strong> — Our database and authentication are powered by Supabase, which stores data on secure servers.</li>
+          <li><strong>With payment providers</strong> — If you use GCash or Maya, the payment transaction is subject to the privacy policy of the respective provider.</li>
+          <li><strong>With authorities</strong> — If required by law or legal order, data may be shared with the appropriate authorities.</li>
         </ul>
       </Section>
 
       <Section title="6. Data Retention">
         <p>
-          Ginagawa namin ang lahat na panatilihin ang iyong personal data lamang hangga't kinakailangan
-          para sa mga layunin na nakasaad sa policy na ito. Ang account data, order history, at chat
-          messages ay mananatili habgang active ang iyong account. Kapag na-delete ang account, ang data
-          ay maaaring manatili sa aming database para sa legal o audit purposes sa loob ng reasonable
-          na panahon, pagkatapos ay permanenteng buburahin.
+          We make every effort to retain your personal data only for as long as necessary for the purposes
+          stated in this policy. Account data, order history, and chat messages remain while your account
+          is active. Upon account deletion, data may be retained in our database for legal or audit purposes
+          for a reasonable period, after which it will be permanently erased.
         </p>
       </Section>
 
       <Section title="7. Data Security">
         <p>
-          Gumagamit kami ng mga sumusunod na hakbang para protektahan ang iyong personal data:
+          We take the following measures to protect your personal data:
         </p>
         <ul className="list-disc pl-5 space-y-2 mt-2">
-          <li><strong>Row Level Security (RLS)</strong> — Ang lahat ng database tables ay may RLS policies na nagsisiguro na lamang ang may-ari ng data ang makakapag-access o makakapag-edit.</li>
-          <li><strong>Encrypted authentication</strong> — Ang passwords ay hashed at hindi namin makita ang iyong password.</li>
-          <li><strong>Secure storage</strong> — Ang mga larawan (profile, store, valid ID) ay naka-store sa secure storage buckets na may access control.</li>
-          <li><strong>Role-based access</strong> — Ang admin access ay limitado lamang sa mga authorized admin accounts.</li>
-          <li><strong>Session management</strong> — Ang login sessions ay managed nang ligtas gamit ang secure tokens.</li>
+          <li><strong>Row Level Security (RLS)</strong> — All database tables have RLS policies ensuring that only the data owner can access or edit their data.</li>
+          <li><strong>Encrypted authentication</strong> — Passwords are hashed and we cannot see your password.</li>
+          <li><strong>Secure storage</strong> — Images (profile, store, valid ID) are stored in secure storage buckets with access control.</li>
+          <li><strong>Role-based access</strong> — Admin access is limited to authorized admin accounts only.</li>
+          <li><strong>Session management</strong> — Login sessions are managed securely using secure tokens.</li>
         </ul>
       </Section>
 
-      <Section title="8. Mga Karapatan ng User sa ilalim ng Data Privacy Act">
-        <p>Bilang user sa ilalim ng Data Privacy Act of 2012, may karapatan ka na:</p>
+      <Section title="8. User Rights Under the Data Privacy Act">
+        <p>As a user under the Data Privacy Act of 2012, you have the right to:</p>
         <ul className="list-disc pl-5 space-y-2 mt-2">
-          <li><strong>Right to be informed</strong> — Malaman kung paano ginagamit ang iyong data (ito ang policy na ito)</li>
-          <li><strong>Right to access</strong> — Hingin ang kopya ng personal data na hawak namin tungkol sa iyo</li>
-          <li><strong>Right to object</strong> Tutol sa pagproseso ng iyong data para sa mga layuning hindi mo pinapayagan</li>
-          <li><strong>Right to erasure o blocking</strong> — Hingin na burahin o i-block ang iyong data kung hindi na kinakailangan</li>
-          <li><strong>Right to data portability</strong> — Hingin ang iyong data sa format na maaaring ilipat sa ibang service</li>
-          <li><strong>Right to rectify</strong> — Itama ang anumang mali o hindi updated na impormasyon</li>
-          <li><strong>Right to file a complaint</strong> — Mag-file ng reklamo sa National Privacy Commission kung nalabag ang iyong karapatan</li>
+          <li><strong>Right to be informed</strong> — Know how your data is used (this policy)</li>
+          <li><strong>Right to access</strong> — Request a copy of the personal data we hold about you</li>
+          <li><strong>Right to object</strong> — Object to the processing of your data for purposes you have not permitted</li>
+          <li><strong>Right to erasure or blocking</strong> — Request that your data be deleted or blocked if no longer necessary</li>
+          <li><strong>Right to data portability</strong> — Request your data in a format that can be transferred to another service</li>
+          <li><strong>Right to rectify</strong> — Correct any inaccurate or outdated information</li>
+          <li><strong>Right to file a complaint</strong> — File a complaint with the National Privacy Commission if your rights have been violated</li>
         </ul>
         <p className="mt-2">
-          Para gamitin ang alinman sa mga karapatang ito, maaaring makipag-ugnayan sa admin gamit ang
-          admin messaging feature sa platform.
+          To exercise any of these rights, you may contact the admin using the admin messaging feature on
+          the platform.
         </p>
       </Section>
 
-      <Section title="9. Cookies at Tracking">
+      <Section title="9. Cookies and Tracking">
         <p>
-          Gumagamit ang platform ng browser storage at session storage para sa authentication at user
-          preferences. Hindi gumagamit ang platform ng third-party tracking cookies para sa advertising.
+          The platform uses browser storage and session storage for authentication and user preferences.
+          The platform does not use third-party tracking cookies for advertising.
         </p>
       </Section>
 
       <Section title="10. Location Data">
         <p>
-          Ang live location ng rider ay kinokolekta at ipinapakita sa buyer habang may active delivery
-          para sa tracking purposes. Pagkatapos ma-deliver ang order, hindi na kinokolekta ang live location.
-          Ang store coordinates ng seller ay static at ginagamit para sa delivery fee computation at
-          map display.
+          The rider's live location is collected and displayed to the buyer during active delivery for
+          tracking purposes. After the order is delivered, live location is no longer collected. The
+          seller's store coordinates are static and used for delivery fee computation and map display.
         </p>
       </Section>
 
-      <Section title="11. Mga Bata">
+      <Section title="11. Children">
         <p>
-          Ang platform ay hindi para sa mga bata wala pang 18 taong gulang. Hindi namin sinasadyang
-          kolektahin ang personal data ng mga bata. Kung naniniwala ka na nakolekta namin ang data ng
-          isang bata nang walang pahintulot ng magulang, maaaring makipag-ugnayan sa admin para burahin ito.
+          The platform is not intended for children under 18 years of age. We do not knowingly collect
+          personal data from children. If you believe we have collected data from a child without parental
+          consent, you may contact the admin to have it deleted.
         </p>
       </Section>
 
-      <Section title="12. Mga Pagbabago sa Privacy Policy">
+      <Section title="12. Changes to the Privacy Policy">
         <p>
-          Maaaring baguhin ang Privacy Policy na ito paminsan-minsan. Ang mga pagbabago ay magkakabisa
-          agad pagkatapos i-post sa platform. Inirerekomenda namin na suriin ang policy paminsan-minsan.
+          This Privacy Policy may be updated from time to time. Changes take effect immediately after
+          being posted on the platform. We recommend reviewing the policy periodically.
         </p>
       </Section>
 
-      <Section title="13. Contact para sa Privacy Concerns">
+      <Section title="13. Contact for Privacy Concerns">
         <p>
-          Para sa anumang tanong o reklamo tungkol sa privacy, maaaring makipag-ugnayan sa admin gamit
-          ang admin messaging feature sa platform. Maaari ring mag-file ng reklamo sa National Privacy
-          Commission (NPC) sa www.privacy.gov.ph kung naniniwala ka na nalabag ang iyong mga karapatan
-          sa ilalim ng Data Privacy Act of 2012.
+          For any questions or complaints regarding privacy, you may contact the admin using the admin
+          messaging feature on the platform. You may also file a complaint with the National Privacy
+          Commission (NPC) at www.privacy.gov.ph if you believe your rights under the Data Privacy Act
+          of 2012 have been violated.
         </p>
       </Section>
     </div>
@@ -467,7 +457,7 @@ function CancellationContent() {
       </Section>
 
       <Section title="2. Cancellation Window — Before Preparation">
-      <div className="space-y-3">
+        <div className="space-y-3">
           <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl p-3">
             <Clock size={18} className="text-green-600 flex-shrink-0 mt-0.5" />
             <div>
@@ -634,7 +624,7 @@ function AntiscamContent() {
         <div>
           <p className="font-bold text-red-700 text-sm">Zero-Tolerance Policy Against Scam and Spam</p>
           <p className="text-red-600 text-xs mt-1">
-            Ang GoPalengke ay may zero-tolerance na patakaran laban sa anumang uri ng scam, fraud, at spam.
+            GoPalengke maintains a zero-tolerance policy against any form of scam, fraud, and spam.
             Any user caught engaging in these activities will be penalized according to the severity of the violation,
             including permanent banning and blocking of hardware and IP addresses.
           </p>
@@ -708,8 +698,8 @@ function AntiscamContent() {
               <p className="font-semibold text-blue-700 text-sm">Suspicious Activity Monitoring</p>
               <p className="text-blue-600 text-xs mt-1">
                 The system automatically detects unusual behavior such as consecutive
-                maramihang order sa maikling panahon, multi-store checkout sa parehong oras, at mabilis na
-                pagbabago ng IP address sa isang session.
+                bulk orders in a short period, multi-store checkout at the same time, and rapid
+                IP address changes within a single session.
               </p>
             </div>
           </div>
@@ -749,7 +739,7 @@ function AntiscamContent() {
             <div>
               <p className="font-semibold text-orange-700 text-sm">Suspension of Account</p>
               <p className="text-orange-600 text-xs mt-1">
-                Repetitive cancellations, fake orders, or failed COD will trigger automatic
+                Repeated cancellations, fake orders, or failed COD will trigger automatic
                 removal of the Cash on Delivery (COD) payment option from the user's account. From then on, online
                 payment (QR Code) will be the only available option.
               </p>
@@ -784,7 +774,7 @@ function AntiscamContent() {
       <Section title="5. Contact">
         <p>
           For questions about this policy, you may contact the admin using the admin
-          messaging feature sa platform dashboard.
+          messaging feature on the platform dashboard.
         </p>
       </Section>
     </div>
@@ -795,100 +785,100 @@ function AntiscamContent() {
 function FaqContent() {
   const faqs = [
     {
-      q: 'Ano ang GoPalengke?',
-      a: 'Ang GoPalengke ay ang unang online wet market sa Pilipinas. Ito ay isang platform na nag-uugnay ng mga tindera/tindero sa palengke sa mga mamimili. Maaaring mag-order ng sariwang isda, karne, gulay, prutas, at iba pang paninda galing sa palengke na pinakamalapit sa iyo, at ipapa-deliver diretso sa bahay.',
+      q: 'What is GoPalengke?',
+      a: 'GoPalengke is the first online wet market in the Philippines. It is a platform that connects market vendors to buyers. You can order fresh fish, meat, vegetables, fruits, and other goods from the palengke nearest to you, and have them delivered directly to your home.',
     },
     {
-      q: 'Paano ako mag-sign up?',
-      a: 'I-click ang "Mag-sign Up" sa homepage. Piliin ang role mo — Buyer, Seller, o Rider. Mag-input ng email, password, pangalan, at phone number. Pagkatapos mag-sign up, mahihintay mo ang approval ng admin bago makagamit ng platform.',
+      q: 'How do I sign up?',
+      a: 'Click "Sign Up" on the homepage. Choose your role — Buyer, Seller, or Rider. Enter your email, password, name, and phone number. After signing up, you will need to wait for admin approval before you can use the platform.',
     },
     {
-      q: 'Ano ang pagkakaiba ng Buyer, Seller, at Rider?',
-      a: 'Ang Buyer ay ang mamimili na nag-o-order ng paninda. Ang Seller ay ang tindera/tindero na nagpo-post ng produkto at tumatanggap ng orders. Ang Rider ay ang naghahatid ng order mula sa seller patungo sa buyer. Ang Admin ay ang nagpapasya sa approvals, announcements, at moderation ng platform.',
+      q: 'What is the difference between a Buyer, Seller, and Rider?',
+      a: 'A Buyer is a customer who places orders. A Seller is a vendor who posts products and receives orders. A Rider is the person who delivers orders from the seller to the buyer. The Admin handles approvals, announcements, and platform moderation.',
     },
     {
-      q: 'Paano mag-order bilang Buyer?',
-      a: 'Mag-browse ng mga tindahan o produkto sa dashboard. Idagdag sa cart ang mga gustong bilhin. Pumili ng payment method — QR Code (GCash/Maya) o Cash on Delivery (COD). Mag-checkout at hintayin na ma-confirm ng seller. Makikipag-chat ka sa seller at rider sa Messages tab para sa updates.',
+      q: 'How do I order as a Buyer?',
+      a: 'Browse stores or products on the dashboard. Add items to your cart. Choose a payment method — QR Code (GCash/Maya) or Cash on Delivery (COD). Checkout and wait for the seller to confirm. You can chat with the seller and rider in the Messages tab for updates.',
     },
     {
-      q: 'Bakit kailangan mag-chat at video call bago bumili?',
-      a: 'Para siguraduhing legit ang seller at makita mo ang aktwal na produkto bago ka bumili. Gamit ang Messages tab sa dashboard mo, maaari kang mag-chat at mag-video call sa seller. Ito ay para sa iyong proteksyon at seguridad.',
+      q: 'Why do I need to chat and video call before buying?',
+      a: 'To ensure the seller is legitimate and to see the actual product before you buy. Using the Messages tab in your dashboard, you can chat and video call the seller. This is for your protection and security.',
     },
     {
-      q: 'Ano ang mga payment methods?',
-      a: 'Dalawang paraan ng pagbabayad: (1) QR Code — magbabayad ka gamit ang GCash o Maya sa QR code ng seller, at mag-input ng reference number bilang proof of payment. (2) Cash on Delivery (COD) — magbabayad ka sa rider pagdating ng order sa bahay mo.',
+      q: 'What are the payment methods?',
+      a: 'Two payment methods: (1) QR Code — pay using GCash or Maya to the seller\'s QR code, and enter a reference number as proof of payment. (2) Cash on Delivery (COD) — pay the rider in cash upon delivery to your home.',
     },
     {
-      q: 'Ano ang COD at paano ito gumagana?',
-      a: 'Sa Cash on Delivery, magbabayad ka ng cash sa rider pagdating ng order. Siguraduhing may tao sa bahay para magbayad at tatanggap ng order. Ang rider ay magre-report sa app na natanggap ang payment.',
+      q: 'What is COD and how does it work?',
+      a: 'With Cash on Delivery, you pay cash to the rider upon delivery. Make sure someone is home to pay and receive the order. The rider will report in the app that payment has been received.',
     },
     {
-      q: 'Paano magsimula bilang Seller?',
-      a: 'Pagkatapos ma-approve ng admin, mag-set up ka ng store sa dashboard — store name, description, logo, banner, at palengke location. Mag-post ng mga produkto na may presyo, stock, at larawan. Kapag may order, makakatanggap ka ng notification at makakapag-chat sa buyer.',
+      q: 'How do I get started as a Seller?',
+      a: 'After being approved by the admin, set up your store on the dashboard — store name, description, logo, banner, and palengke location. Post products with prices, stock, and photos. When you receive an order, you will get a notification and can chat with the buyer.',
     },
     {
-      q: 'Magkano ang commission at subscription fee para sa Seller?',
-      a: 'Ang bawat sale ay may 3% commission na ibibigay sa platform. Kapag umabot na ang total sales mo sa ₱5,000, may monthly subscription fee na ₱499. Makikita ang kabuuang halaga na kailangan bayaran sa Billing tab ng seller dashboard.',
+      q: 'How much is the commission and subscription fee for Sellers?',
+      a: 'Each sale has a 3% commission paid to the platform. Once your total sales reach ₱5,000, a monthly subscription fee of ₱499 applies. The total amount due can be viewed in the Billing tab of the seller dashboard.',
     },
     {
-      q: 'Anong mangyayari kung hindi ako makabayad ng fees bilang Seller?',
-      a: 'May grace period na ibinibigay ang platform. Kapag hindi ka pa rin nakabayad within the grace period, ma-freeze ang iyong account — hindi ka makakapag-post ng produkto o makakatanggap ng orders hanggang sa mabayaran mo ang outstanding balance.',
+      q: 'What happens if I cannot pay my fees as a Seller?',
+      a: 'The platform provides a grace period. If you still have not paid within the grace period, your account will be frozen — you will not be able to post products or receive orders until the outstanding balance is paid.',
     },
     {
-      q: 'Ano ang mangyayari kung may negative review tungkol sa bulok o sira na produkto?',
-      a: 'Isang negative review lang ng buyer tungkol sa bulok, luma, o sira na food products — aalisin agad ang seller sa platform. Walang second chance. Kaya siguraduhin na Class A at sariwa palagi ang iyong paninda.',
+      q: 'What happens if there is a negative review about spoiled or damaged products?',
+      a: 'A single negative review from a buyer regarding spoiled, old, or damaged food products will result in immediate removal of the seller from the platform. No second chances. Always ensure your products are Class A and fresh.',
     },
     {
-      q: 'Paano magsimula bilang Rider?',
-      a: 'Pagkatapos mag-sign up bilang rider at ma-approve ng admin, kailangan mong magpasa ng identity verification — edad, family status, residence address, plate number, motor model, at valid ID photo. Pagkatapos, maaari ka nang tumanggap ng delivery assignments sa dashboard.',
+      q: 'How do I get started as a Rider?',
+      a: 'After signing up as a rider and being approved by the admin, you must submit identity verification — age, family status, residence address, plate number, motor model, and a valid ID photo. After that, you can accept delivery assignments on the dashboard.',
     },
     {
-      q: 'Paano tumanggap ng delivery assignment bilang Rider?',
-      a: 'Sa rider dashboard, makikita mo ang available na deliveries. I-accept ang order, pumunta sa store para i-pick up ang order, i-update ang status sa app (picked up), at ihatid sa buyer. I-update ulit ang status sa delivered pagkatapos maihatid.',
+      q: 'How do I accept a delivery assignment as a Rider?',
+      a: 'On the rider dashboard, you will see available deliveries. Accept the order, go to the store to pick up the order, update the status in the app (picked up), and deliver to the buyer. Update the status to delivered after completing the delivery.',
     },
     {
-      q: 'Paano gumagana ang live tracking?',
-      a: 'Habang may active delivery, ang live GPS location mo (bilang rider) ay ipinapakita sa buyer sa mapa. Makikita ng buyer kung saan ka na at kailan ka darating. Pagkatapos ma-deliver, hindi na kinokolekta ang live location.',
+      q: 'How does live tracking work?',
+      a: 'During an active delivery, your live GPS location (as a rider) is shown to the buyer on a map. The buyer can see where you are and when you will arrive. After delivery is completed, live location is no longer collected.',
     },
     {
-      q: 'Paano ang delivery fee computation?',
-      a: 'Ang delivery fee ay nakabase sa distansya sa pagitan ng store at delivery address ng buyer. Awto-compute ito ng platform kapag mag-checkout ang buyer.',
+      q: 'How is the delivery fee computed?',
+      a: 'The delivery fee is based on the distance between the store and the buyer\'s delivery address. It is automatically computed by the platform when the buyer checks out.',
     },
     {
-      q: 'Paano makipag-chat sa seller o rider?',
-      a: 'Pumunta sa Messages tab sa dashboard. Conversations are automatically created based on your order. Maaari kang mag-send ng text message o mag-video call sa seller bago bumili, at sa rider habang may ongoing delivery.',
+      q: 'How do I chat with the seller or rider?',
+      a: 'Go to the Messages tab on the dashboard. Conversations are automatically created based on your order. You can send text messages or video call the seller before buying, and the rider during an ongoing delivery.',
     },
     {
-      q: 'Paano gumagana ang video call?',
-      a: 'Sa Messages tab, maaari kang mag-video call sa seller o rider. I-click ang video call icon at hihintayin na tanggapin ng kabilang panig. Ang video call ay mahalaga para ma-verify ang produkto o ma-clarify ang order details.',
+      q: 'How does video call work?',
+      a: 'In the Messages tab, you can video call the seller or rider. Click the video call icon and wait for the other party to accept. Video calls are important for verifying products or clarifying order details.',
     },
     {
-      q: 'Paano mag-iwan ng review?',
-      a: 'Pagkatapos ma-deliver ang order, maaari kang mag-iwan ng rating (1-5 stars) at comment para sa seller at rider. Ang reviews ay mahalaga para mapanatili ang kalidad ng service at protektahan ang ibang buyers.',
+      q: 'How do I leave a review?',
+      a: 'After the order is delivered, you can leave a rating (1-5 stars) and a comment for the seller and rider. Reviews are important to maintain service quality and protect other buyers.',
     },
     {
-      q: 'May public profile ba ang bawat user?',
-      a: 'Oo. Ang bawat user ay may public profile page na makikita ng iba. Para sa seller, kasama rito ang store page na nagpapakita ng produkto. Para sa rider, kasama ang verification details. Maaaring i-share ang link ng profile o store page.',
+      q: 'Does each user have a public profile?',
+      a: 'Yes. Each user has a public profile page visible to others. For sellers, this includes a store page showing products. For riders, it includes verification details. Profile or store page links can be shared.',
     },
     {
-      q: 'Paano ko ma-update ang aking store information?',
-      a: 'Bilang seller, pumunta sa store settings sa dashboard. Maaari mong i-update ang store name, description, logo, banner, QR code, location, at palengke name. Maaari ring idagdag o baguhin ang mga produkto anumang oras.',
+      q: 'How do I update my store information?',
+      a: 'As a seller, go to store settings on the dashboard. You can update the store name, description, logo, banner, QR code, location, and palengke name. You can also add or change products at any time.',
     },
     {
-      q: 'Ano ang mangyayari kung may problema sa order?',
-      a: 'Maaari kang makipag-chat sa seller o rider gamit ang Messages tab. Kung hindi malutas, maaari kang makipag-ugnayan sa admin gamit ang admin messaging feature. Ang admin ay maaari ring mag-video call para sa suporta.',
+      q: 'What happens if there is a problem with an order?',
+      a: 'You can chat with the seller or rider using the Messages tab. If unresolved, you can contact the admin using the admin messaging feature. The admin can also video call you for support.',
     },
     {
-      q: 'Paano ko mapoprotektahan ang aking personal data?',
-      a: 'GoPalengke complies with the Data Privacy Act of 2012. Ang lahat ng database tables ay may Row Level Security na nagsisiguro na ikaw lamang ang makaka-access sa iyong data. Hindi namin ibinebenta ang iyong data. Basahin ang Privacy Policy para sa detalye.',
+      q: 'How do I protect my personal data?',
+      a: 'GoPalengke complies with the Data Privacy Act of 2012. All database tables have Row Level Security ensuring that only you can access your data. We do not sell your data. Read the Privacy Policy for details.',
     },
     {
-      q: 'Paano ako makikipag-ugnayan sa admin?',
-      a: 'Gamit ang admin messaging feature sa dashboard, maaari kang mag-send ng message sa admin para sa anumang tanong, reklamo, o hiling. Maaari ring mag-video call ang admin sa iyo para sa verification o suporta.',
+      q: 'How do I contact the admin?',
+      a: 'Using the admin messaging feature on the dashboard, you can send a message to the admin for any question, complaint, or request. The admin can also video call you for verification or support.',
     },
     {
-      q: 'Maaari ba akong magtinda kahit walang pwesto sa palengke?',
-      a: 'Oo. You can sell on GoPalengke even without a physical stall in the palengke, basta legitimate na negosyo at Class A at sariwa ang produkto. Subalit, kung may pwesto ka sa palengke, maaari mong ilagay ang palengke name sa store settings.',
+      q: 'Can I sell even without a stall in the palengke?',
+      a: 'Yes. You can sell on GoPalengke even without a physical stall in the palengke, as long as it is a legitimate business and products are Class A and fresh. However, if you do have a stall in the palengke, you can enter the palengke name in store settings.',
     },
   ];
 
