@@ -1,18 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import type { SellerFee, FeePayment } from '@/lib/types';
+import type { SellerFee, FeePayment, Order } from '@/lib/types';
 import { COMMISSION_RATE, SUBSCRIPTION_FEE, SUBSCRIPTION_THRESHOLD, PAYMENT_THRESHOLD } from '@/lib/types';
 import {
   DollarSign, TrendingUp, Calendar, Loader2, Check, X, QrCode,
-  AlertCircle, Wallet, Receipt,
+  AlertCircle, Wallet, Receipt, ListOrdered,
 } from 'lucide-react';
+
+type BillingTab = 'summary' | 'transactions' | 'payments';
+
+interface CommissionTransaction {
+  order: Order & { buyer: { full_name: string } | null };
+  commissionAmount: number;
+  orderTotal: number;
+  date: string;
+}
 
 export function SellerBilling() {
   const { profile } = useAuth();
   const [fee, setFee] = useState<SellerFee | null>(null);
   const [payments, setPayments] = useState<FeePayment[]>([]);
+  const [transactions, setTransactions] = useState<CommissionTransaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<BillingTab>('summary');
   const [showPayModal, setShowPayModal] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
@@ -23,14 +34,34 @@ export function SellerBilling() {
 
   const load = useCallback(async () => {
     if (!profile) return;
-    const [{ data: feeData }, { data: payData }, { data: activeQr }] = await Promise.all([
+    const [{ data: feeData }, { data: payData }, { data: activeQr }, { data: stores }] = await Promise.all([
       supabase.from('seller_fees').select('*').eq('seller_id', profile.id).maybeSingle(),
       supabase.from('fee_payments').select('*').eq('seller_id', profile.id).order('created_at', { ascending: false }),
       supabase.from('platform_qr_codes').select('*').eq('is_active', true).maybeSingle(),
+      supabase.from('stores').select('id').eq('seller_id', profile.id),
     ]);
     setFee(feeData as SellerFee | null);
     setPayments((payData || []) as FeePayment[]);
     if (activeQr?.image_url) setQrCodeUrl(activeQr.image_url);
+
+    if (stores && stores.length > 0) {
+      const storeIds = stores.map(s => s.id);
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('*, buyer:profiles!orders_buyer_id_fkey(full_name)')
+        .in('store_id', storeIds)
+        .eq('commission_applied', true)
+        .order('created_at', { ascending: false });
+      if (orders) {
+        setTransactions(orders.map(o => ({
+          order: o as any,
+          commissionAmount: o.commission_amount,
+          orderTotal: o.total,
+          date: o.created_at,
+        })));
+      }
+    }
+
     setLoading(false);
   }, [profile]);
 
@@ -125,85 +156,195 @@ export function SellerBilling() {
         )}
       </div>
 
-      {/* Breakdown */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <TrendingUp size={16} className="text-brand-600" />
-            <span className="text-sm text-gray-600">3% Commission (naipon)</span>
-          </div>
-          <span className="font-semibold text-sm text-gray-800">₱{commissionBalance.toFixed(2)}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Calendar size={16} className="text-blue-500" />
-            <span className="text-sm text-gray-600">Monthly Subscription</span>
-          </div>
-          <span className="font-semibold text-sm text-gray-800">₱{subscriptionBalance.toFixed(2)}</span>
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-4">
+        <button
+          onClick={() => setActiveTab('summary')}
+          className={`flex-1 py-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+            activeTab === 'summary' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-400'
+          }`}
+        >
+          <TrendingUp size={14} /> Buod
+        </button>
+        <button
+          onClick={() => setActiveTab('transactions')}
+          className={`flex-1 py-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+            activeTab === 'transactions' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-400'
+          }`}
+        >
+          <ListOrdered size={14} /> Transaksyon
+        </button>
+        <button
+          onClick={() => setActiveTab('payments')}
+          className={`flex-1 py-2.5 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 ${
+            activeTab === 'payments' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-400'
+          }`}
+        >
+          <Receipt size={14} /> Bayaran
+        </button>
       </div>
 
-      {/* Sales Progress */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-600">Total Sales</span>
-          <span className="text-sm font-bold text-gray-800">₱{totalSales.toFixed(2)}</span>
-        </div>
-        <div className="h-3 bg-gray-100 rounded-full overflow-hidden mb-2">
-          <div
-            className={`h-full rounded-full transition-all ${subscriptionActive ? 'bg-green-500' : 'bg-brand-500'}`}
-            style={{ width: `${salesProgress}%` }}
-          />
-        </div>
-        <p className="text-xs text-gray-400">
-          {subscriptionActive
-            ? 'Aktibo na ang monthly subscription (₱499/buwan).'
-            : `₱${(SUBSCRIPTION_THRESHOLD - totalSales).toFixed(2)} pa bago ma-activate ang monthly subscription.`
-          }
-        </p>
-      </div>
-
-      {/* How it works */}
-      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-4">
-        <p className="text-xs text-blue-700 font-medium mb-2">Paano ito gumagana:</p>
-        <ul className="text-xs text-blue-600 space-y-1">
-          <li>• 3% ng bawat benta ang commission ng platform</li>
-          <li>• Kapag ₱{SUBSCRIPTION_THRESHOLD.toFixed(0)} na benta, mag-activate ang ₱{SUBSCRIPTION_FEE}/buwan subscription</li>
-          <li>• Kapag ₱{PAYMENT_THRESHOLD.toFixed(0)} na ang total payable, pwede na magbayad</li>
-          <li>• I-scan ang QR code ng admin, magbayad, at ilagay ang reference number</li>
-        </ul>
-      </div>
-
-      {/* Payment History */}
-      <div>
-        <h3 className="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2">
-          <Receipt size={16} /> Kasaysayan ng Bayaran
-        </h3>
-        {payments.length === 0 ? (
-          <p className="text-center text-gray-400 text-sm py-6">Wala pang payment history.</p>
-        ) : (
-          <div className="space-y-2">
-            {payments.map(p => (
-              <div key={p.id} className="bg-white rounded-2xl border border-gray-100 p-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-semibold text-sm text-gray-800">₱{p.amount.toFixed(2)}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    p.status === 'approved' ? 'bg-green-100 text-green-700' :
-                    p.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    {p.status === 'approved' ? 'Na-aprubahan' : p.status === 'pending' ? 'Naghihintay' : 'Hindi na-aprubahan'}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-400">Ref: {p.reference_number}</p>
-                <p className="text-xs text-gray-400">
-                  {new Date(p.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </p>
+      {/* Summary Tab */}
+      {activeTab === 'summary' && (
+        <>
+          {/* Breakdown */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp size={16} className="text-brand-600" />
+                <span className="text-sm text-gray-600">3% Commission (naipon)</span>
               </div>
-            ))}
+              <span className="font-semibold text-sm text-gray-800">₱{commissionBalance.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Calendar size={16} className="text-blue-500" />
+                <span className="text-sm text-gray-600">Monthly Subscription</span>
+              </div>
+              <span className="font-semibold text-sm text-gray-800">₱{subscriptionBalance.toFixed(2)}</span>
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* Sales Progress */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600">Total Sales</span>
+              <span className="text-sm font-bold text-gray-800">₱{totalSales.toFixed(2)}</span>
+            </div>
+            <div className="h-3 bg-gray-100 rounded-full overflow-hidden mb-2">
+              <div
+                className={`h-full rounded-full transition-all ${subscriptionActive ? 'bg-green-500' : 'bg-brand-500'}`}
+                style={{ width: `${salesProgress}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-400">
+              {subscriptionActive
+                ? 'Aktibo na ang monthly subscription (₱499/buwan).'
+                : `₱${(SUBSCRIPTION_THRESHOLD - totalSales).toFixed(2)} pa bago ma-activate ang monthly subscription.`
+              }
+            </p>
+          </div>
+
+          {/* How it works */}
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-4">
+            <p className="text-xs text-blue-700 font-medium mb-2">Paano ito gumagana:</p>
+            <ul className="text-xs text-blue-600 space-y-1">
+              <li>• 3% ng bawat benta ang commission ng platform</li>
+              <li>• Kapag ₱{SUBSCRIPTION_THRESHOLD.toFixed(0)} na benta, mag-activate ang ₱{SUBSCRIPTION_FEE}/buwan subscription</li>
+              <li>• Kapag ₱{PAYMENT_THRESHOLD.toFixed(0)} na ang total payable, pwede na magbayad</li>
+              <li>• I-scan ang QR code ng admin, magbayad, at ilagay ang reference number</li>
+            </ul>
+          </div>
+        </>
+      )}
+
+      {/* Transactions Tab */}
+      {activeTab === 'transactions' && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+              <ListOrdered size={16} /> Kasaysayan ng Transaksyon
+            </h3>
+            <span className="text-xs text-gray-400">{transactions.length} order{transactions.length !== 1 ? 's' : ''}</span>
+          </div>
+
+          {transactions.length === 0 ? (
+            <div className="text-center py-12">
+              <ListOrdered size={40} className="mx-auto mb-3 text-gray-200" />
+              <p className="text-sm text-gray-400">Wala pang transaksyon na nagdagdag ng commission.</p>
+              <p className="text-xs text-gray-300 mt-1">Makikita rito ang bawat order na nag-ambag sa 3% commission mo.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {/* Total commission summary */}
+              <div className="bg-brand-50 border border-brand-100 rounded-2xl p-3 mb-2 flex items-center justify-between">
+                <span className="text-xs font-medium text-brand-700">Kabuuang Commission mula sa Orders</span>
+                <span className="font-bold text-sm text-brand-700">₱{transactions.reduce((s, t) => s + t.commissionAmount, 0).toFixed(2)}</span>
+              </div>
+
+              {transactions.map(t => (
+                <div key={t.order.id} className="bg-white rounded-2xl border border-gray-100 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-brand-100 flex items-center justify-center flex-shrink-0">
+                        <TrendingUp size={14} className="text-brand-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-800">
+                          {t.order.buyer?.full_name || 'Buyer'}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {new Date(t.date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-brand-600">+₱{t.commissionAmount.toFixed(2)}</p>
+                      <p className="text-xs text-gray-400">3% ng ₱{t.orderTotal.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className={`px-2 py-0.5 rounded-full font-medium ${
+                      t.order.status === 'delivered' ? 'bg-green-100 text-green-700' :
+                      t.order.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                      'bg-gray-100 text-gray-600'
+                    }`}>
+                      {t.order.status === 'delivered' ? 'Naihatid' :
+                       t.order.status === 'cancelled' ? 'Nakansela' :
+                       t.order.status}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full font-medium ${
+                      t.order.payment_status === 'paid' ? 'bg-green-100 text-green-700' :
+                      'bg-amber-100 text-amber-700'
+                    }`}>
+                      {t.order.payment_status === 'paid' ? 'Bayad' : 'Hindi pa bayad'}
+                    </span>
+                    <span className="text-gray-400 capitalize">
+                      {t.order.payment_method === 'qr_code' ? 'QR Code' : 'COD'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Payments Tab */}
+      {activeTab === 'payments' && (
+        <div>
+          <h3 className="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2">
+            <Receipt size={16} /> Kasaysayan ng Bayaran
+          </h3>
+          {payments.length === 0 ? (
+            <div className="text-center py-12">
+              <Receipt size={40} className="mx-auto mb-3 text-gray-200" />
+              <p className="text-sm text-gray-400">Wala pang payment history.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {payments.map(p => (
+                <div key={p.id} className="bg-white rounded-2xl border border-gray-100 p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-sm text-gray-800">₱{p.amount.toFixed(2)}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      p.status === 'approved' ? 'bg-green-100 text-green-700' :
+                      p.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {p.status === 'approved' ? 'Na-aprubahan' : p.status === 'pending' ? 'Naghihintay' : 'Hindi na-aprubahan'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400">Ref: {p.reference_number}</p>
+                  <p className="text-xs text-gray-400">
+                    {new Date(p.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Pay Modal */}
       {showPayModal && (
