@@ -8,9 +8,16 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#ea580c" />
-    <!-- Removed apple-mobile-web-app-capable to allow camera/mic access for video calls.
-         With this tag, iOS opens the app in a restricted standalone WebView where getUserMedia
-         is unreliable. Without it, the home screen icon opens in Safari with full camera support. -->
+    <!-- PWA standalone mode for both Android and iOS -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="GoPalengke" />
+    <!-- Allow camera and microphone access in standalone PWA WebView -->
+    <meta name="permissions" content="camera,microphone" />
+    <meta name="webkitallowfullscreen" content="true" />
+    <meta name="mozallowfullscreen" content="true" />
+    <meta name="allow" content="camera; microphone; autoplay; fullscreen" />
     <title>GoPalengke Online Wet Market Platform</title>
     <meta property="og:image" content="https://melwjygaczevpasgazfo.supabase.co/storage/v1/object/public/store-images/landing/Copilot_20260906_113445.png" />
     <meta name="twitter:card" content="summary_large_image" />

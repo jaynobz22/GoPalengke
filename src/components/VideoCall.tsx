@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, Loader2 } from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, Loader2, Camera, CameraOff } from 'lucide-react';
 
 type CallPhase = 'outgoing' | 'connecting' | 'connected' | 'ended';
+type PermissionState = 'granted' | 'denied' | 'prompt' | 'unknown';
 
 interface VideoCallProps {
   roomId: string;
@@ -11,6 +12,92 @@ interface VideoCallProps {
   otherName: string;
   autoAccept?: boolean;
   onEnd: () => void;
+}
+
+async function checkPermission(name: 'camera' | 'microphone'): Promise<PermissionState> {
+  try {
+    if (navigator.permissions && navigator.permissions.query) {
+      const result = await navigator.permissions.query({ name: name as PermissionName });
+      return result.state as PermissionState;
+    }
+  } catch {
+    // navigator.permissions not supported (e.g., iOS Safari) — fall through
+  }
+  return 'unknown';
+}
+
+async function requestCameraAndMic(): Promise<MediaStream> {
+  const constraints: MediaStreamConstraints = {
+    video: {
+      facingMode: 'user',
+      width: { ideal: 640 },
+      height: { ideal: 480 },
+    },
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    },
+  };
+
+  // Check current permission states
+  const [camPerm, micPerm] = await Promise.all([
+    checkPermission('camera'),
+    checkPermission('microphone'),
+  ]);
+
+  // If either is explicitly denied, try requesting anyway — the browser may
+  // re-prompt in some WebView contexts. If it throws, we catch and guide the user.
+  if (camPerm === 'denied' || micPerm === 'denied') {
+    // Try anyway — some WebView contexts report 'denied' but still allow re-prompt
+  }
+
+  // First attempt: request both together
+  try {
+    return await navigator.mediaDevices.getUserMedia(constraints);
+  } catch (err: any) {
+    // If combined request failed, try audio-only then video-only
+    // This helps in cases where one device is unavailable
+    if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
+      // No devices found — try with just what's available
+    }
+
+    // Try audio only first (camera might be blocked but mic works)
+    try {
+      const audioStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: false,
+      });
+
+      // Then try to add video
+      try {
+        const videoStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false,
+        });
+        // Combine both streams
+        const combined = new MediaStream();
+        audioStream.getAudioTracks().forEach(t => combined.addTrack(t));
+        videoStream.getVideoTracks().forEach(t => combined.addTrack(t));
+        return combined;
+      } catch {
+        // Video failed — return audio-only stream
+        return audioStream;
+      }
+    } catch (audioErr) {
+      // Audio also failed — try video only
+      try {
+        const videoStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false,
+        });
+        return videoStream;
+      } catch {
+        // Both failed — rethrow the original error
+        throw err;
+      }
+    }
+  }
 }
 
 export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: VideoCallProps) {
@@ -25,11 +112,17 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
   const gotCameraRef = useRef(false);
   const myUserIdRef = useRef<string | null>(null);
   const processedSignalIdsRef = useRef<Set<string>>(new Set());
+  const retryCountRef = useRef(0);
 
   const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'connecting');
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [permStatus, setPermStatus] = useState<{ camera: PermissionState; mic: PermissionState }>({
+    camera: 'unknown',
+    mic: 'unknown',
+  });
+  const [showPermGuide, setShowPermGuide] = useState(false);
 
   const cleanup = useCallback(() => {
     if (localStreamRef.current) {
@@ -40,13 +133,13 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
       pcRef.current.close();
       pcRef.current = null;
     }
-    // Delete all signals for this room
     supabase.from('call_signals').delete().eq('room_id', roomId).then(() => {});
     gotCameraRef.current = false;
     remoteDescriptionSetRef.current = false;
     pendingOfferRef.current = null;
     iceCandidatesRef.current = [];
     processedSignalIdsRef.current.clear();
+    retryCountRef.current = 0;
   }, [roomId]);
 
   const sendSignal = useCallback(async (event: string, payload: Record<string, unknown>) => {
@@ -61,17 +154,54 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
 
   const getCamera = useCallback(async (): Promise<MediaStream | null> => {
     if (gotCameraRef.current && localStreamRef.current) return localStreamRef.current;
+
+    // Check permissions first
+    const [camPerm, micPerm] = await Promise.all([
+      checkPermission('camera'),
+      checkPermission('microphone'),
+    ]);
+    setPermStatus({ camera: camPerm, mic: micPerm });
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-        audio: { echoCancellation: true, noiseSuppression: true },
-      });
+      const stream = await requestCameraAndMic();
       localStreamRef.current = stream;
       gotCameraRef.current = true;
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+
+      // Update permission status after successful access
+      setPermStatus({ camera: 'granted', mic: 'granted' });
       return stream;
     } catch (err: any) {
-      setError(`Hindi ma-access ang camera/mic: ${err?.message || err}. I-allow ang camera at microphone sa browser settings.`);
+      const errName = err?.name || '';
+      const errMsg = err?.message || String(err);
+
+      if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
+        setError('Hindi pinapayagan ang camera/microphone. Pumunta sa browser o app settings at i-allow ang camera at microphone para sa GoPalengke, then try again.');
+        setShowPermGuide(true);
+      } else if (errName === 'NotFoundError' || errName === 'DevicesNotFoundError') {
+        setError('Walang nakitang camera o microphone ang device. Siguraduhing may camera/mic ang device at naka-connect properly.');
+      } else if (errName === 'NotReadableError' || errName === 'TrackStartError') {
+        // Camera/mic in use by another app — retry after brief delay
+        if (retryCountRef.current < 3) {
+          retryCountRef.current++;
+          await new Promise(r => setTimeout(r, 500));
+          return getCamera();
+        }
+        setError('Ginagamit ng ibang app ang camera/microphone. Isara ang ibang app na gumagamit ng camera then try again.');
+      } else if (errName === 'OverconstrainedError') {
+        // Try with less strict constraints
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          localStreamRef.current = stream;
+          gotCameraRef.current = true;
+          if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+          return stream;
+        } catch {
+          setError(`Hindi ma-access ang camera/mic: ${errMsg}`);
+        }
+      } else {
+        setError(`Hindi ma-access ang camera/mic: ${errMsg}`);
+      }
       return null;
     }
   }, []);
@@ -143,7 +273,6 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     iceCandidatesRef.current = [];
   }, []);
 
-  // Caller: create and send offer
   const createAndSendOffer = useCallback(async () => {
     const stream = await getCamera();
     if (!stream) return;
@@ -154,7 +283,6 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     await sendSignal('offer', { sdp: offer.toJSON() });
   }, [getCamera, setupPeerConnection, sendSignal]);
 
-  // Receiver: set up peer connection and process pending offer
   const acceptCallInternal = useCallback(async () => {
     const stream = await getCamera();
     if (!stream) return;
@@ -175,11 +303,8 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     }
   }, [getCamera, setupPeerConnection, sendSignal, flushPendingCandidates]);
 
-  // Process incoming signal from database
   const handleSignal = useCallback(async (signal: { id: string; event: string; payload: any; sender_id: string }) => {
-    // Skip our own signals
     if (signal.sender_id === myUserIdRef.current) return;
-    // Skip already-processed signals
     if (processedSignalIdsRef.current.has(signal.id)) return;
     processedSignalIdsRef.current.add(signal.id);
 
@@ -224,7 +349,6 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     }
   }, [isCaller, autoAccept, createAndSendOffer, sendSignal, flushPendingCandidates]);
 
-  // Set up: load existing signals + subscribe to new ones
   useEffect(() => {
     if (!profile?.id) return;
     myUserIdRef.current = profile.id;
@@ -232,7 +356,6 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     let subscription: ReturnType<typeof supabase.channel> | null = null;
 
     (async () => {
-      // 1. Load any existing signals for this room (in case we joined late)
       const { data: existing } = await supabase
         .from('call_signals')
         .select('*')
@@ -245,7 +368,6 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
         }
       }
 
-      // 2. Subscribe to new signals via realtime
       subscription = supabase
         .channel(`call-${roomId}`)
         .on(
@@ -257,7 +379,6 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
         )
         .subscribe();
 
-      // 3. Start our role
       if (isCaller) {
         sendSignal('caller_present', {});
         getCamera();
@@ -294,6 +415,25 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     onEnd();
   }
 
+  async function retryCamera() {
+    setError(null);
+    setShowPermGuide(false);
+    gotCameraRef.current = false;
+    retryCountRef.current = 0;
+    const stream = await getCamera();
+    if (stream && pcRef.current) {
+      // Replace tracks on existing peer connection
+      stream.getTracks().forEach(track => {
+        const sender = pcRef.current!.getSenders().find(s => s.track?.kind === track.kind);
+        if (sender) {
+          sender.replaceTrack(track);
+        } else {
+          pcRef.current!.addTrack(track, stream);
+        }
+      });
+    }
+  }
+
   // Ended state
   if (phase === 'ended') {
     return (
@@ -328,7 +468,16 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
           <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
           <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
         </div>
-        {error && <p className="text-red-300 text-sm mt-4 text-center px-6">{error}</p>}
+        {error && (
+          <div className="mt-4 px-6 max-w-sm">
+            <p className="text-red-300 text-sm text-center">{error}</p>
+            {showPermGuide && (
+              <button onClick={retryCamera} className="mt-3 px-6 py-2 bg-white/15 text-white rounded-xl text-sm font-semibold active:scale-95 transition">
+                Subukang Muli
+              </button>
+            )}
+          </div>
+        )}
         <button onClick={endCall} className="mt-10 w-16 h-16 rounded-full bg-red-500 flex items-center justify-center active:scale-90 transition shadow-lg">
           <PhoneOff size={28} className="text-white" />
         </button>
@@ -358,8 +507,15 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
           </div>
         </div>
         {error && (
-          <div className="absolute top-4 left-4 right-4 bg-red-500/90 text-white text-sm px-4 py-2 rounded-xl z-10">
-            {error}
+          <div className="absolute top-4 left-4 right-4 z-10">
+            <div className="bg-red-500/90 text-white text-sm px-4 py-3 rounded-xl">
+              {error}
+            </div>
+            {showPermGuide && (
+              <button onClick={retryCamera} className="mt-2 w-full px-6 py-2 bg-white/15 text-white rounded-xl text-sm font-semibold active:scale-95 transition">
+                Subukang Muli
+              </button>
+            )}
           </div>
         )}
         <div className="pb-8 pt-4 px-6 flex items-center justify-center">
@@ -375,8 +531,15 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
   return (
     <div className="fixed inset-0 z-[80] bg-gray-900 flex flex-col max-w-md mx-auto">
       {error && (
-        <div className="absolute top-4 left-4 right-4 bg-red-500/90 text-white text-sm px-4 py-2 rounded-xl z-10">
-          {error}
+        <div className="absolute top-4 left-4 right-4 z-20">
+          <div className="bg-red-500/90 text-white text-sm px-4 py-3 rounded-xl flex items-start gap-2">
+            <span className="flex-1">{error}</span>
+            {showPermGuide && (
+              <button onClick={retryCamera} className="text-white font-semibold underline text-xs whitespace-nowrap">
+                Retry
+              </button>
+            )}
+          </div>
         </div>
       )}
 
