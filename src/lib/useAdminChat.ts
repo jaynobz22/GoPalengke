@@ -10,6 +10,18 @@ export function useAdminConversations() {
 
   const load = useCallback(async () => {
     if (!profile) return;
+
+    // Auto-create a default admin conversation if none exists yet
+    const { data: existing } = await supabase
+      .from('admin_conversations')
+      .select('id')
+      .eq('user_id', profile.id)
+      .limit(1);
+
+    if (!existing || existing.length === 0) {
+      await supabase.rpc('get_or_create_admin_conversation');
+    }
+
     const { data } = await supabase
       .from('admin_conversations')
       .select('*')
