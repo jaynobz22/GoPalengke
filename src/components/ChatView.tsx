@@ -166,24 +166,39 @@ export function useChat(conversationId: string | null) {
     setMessages(prev => [...prev, placeholder]);
 
     try {
-      // Compress the image to a clean Blob for reliable backend ingestion
-      const compressed = await compressImage(file);
-      const blob = new Blob([compressed], { type: compressed.type || 'image/jpeg' });
-      const ext = (compressed.name.split('.').pop() || 'jpg').toLowerCase();
-      const contentType = compressed.type || `image/${ext}`;
+      // Try to compress the image; if compression fails (e.g. HEIC from iPhone,
+      // older browsers without canvas.toBlob support), fall back to the original file.
+      let uploadFile: File = file;
+      let uploadContentType = file.type || 'image/jpeg';
+      let uploadExt = 'jpg';
+
+      try {
+        const compressed = await compressImage(file);
+        uploadFile = compressed;
+        uploadExt = (compressed.name.split('.').pop() || 'jpg').toLowerCase();
+        uploadContentType = compressed.type || `image/${uploadExt}`;
+      } catch {
+        // Compression failed — use original file as-is
+        const origExt = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        uploadExt = origExt;
+        uploadContentType = file.type || `image/${origExt}`;
+      }
+
+      // Build a clean Blob for reliable backend ingestion
+      const blob = new Blob([uploadFile], { type: uploadContentType });
 
       // Unique file path: conversationId/timestamp_randomname.ext
       const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_').slice(0, 40);
-      const filePath = `${conversationId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safeName}.${ext}`;
+      const filePath = `${conversationId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safeName}.${uploadExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('chat-images')
-        .upload(filePath, blob, { contentType, upsert: false });
+        .upload(filePath, blob, { contentType: uploadContentType, upsert: false });
 
       if (uploadError) {
         setMessages(prev => prev.filter(m => m.id !== placeholderId));
         setSending(false);
-        return 'Image upload failed. Please ensure the image is under 5MB.';
+        return `Upload failed: ${uploadError.message || 'Please try again.'}`;
       }
 
       const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(filePath);
@@ -204,7 +219,7 @@ export function useChat(conversationId: string | null) {
         await supabase.storage.from('chat-images').remove([filePath]);
         setMessages(prev => prev.filter(m => m.id !== placeholderId));
         setSending(false);
-        return 'Image upload failed. Please ensure the image is under 5MB.';
+        return `Failed to send image: ${insertError.message || 'Please try again.'}`;
       }
 
       // Replace placeholder with the real message
@@ -212,7 +227,7 @@ export function useChat(conversationId: string | null) {
     } catch (e) {
       setMessages(prev => prev.filter(m => m.id !== placeholderId));
       setSending(false);
-      return e instanceof Error ? e.message : 'Image upload failed. Please ensure the image is under 5MB.';
+      return e instanceof Error ? e.message : 'Image upload failed. Please try again.';
     }
     setSending(false);
     return null;

@@ -5,16 +5,22 @@ const TARGET_MAX_BYTES = 200_000;
 
 export async function compressImage(file: File): Promise<File> {
   if (!file.type.startsWith('image/')) {
-    throw new Error('Hindi ito larawan.');
+    throw new Error('Not an image file.');
+  }
+
+  // HEIC/HEIF files from iPhone cannot be decoded by canvas in most browsers.
+  // Skip compression and return the original file — the storage layer handles it.
+  if (file.type === 'image/heic' || file.type === 'image/heif' || file.type === 'image/heic-sequence') {
+    return file;
   }
 
   const canvas = await fileToCanvas(file);
-  if (!canvas) throw new Error('Hindi ma-process ang larawan.');
+  if (!canvas) throw new Error('Could not process image.');
 
   let blob = await tryCompress(canvas, 'image/webp', QUALITY, TARGET_MAX_BYTES)
     || await tryCompress(canvas, 'image/jpeg', QUALITY, TARGET_MAX_BYTES);
 
-  if (!blob) throw new Error('Hindi ma-compress ang larawan.');
+  if (!blob) throw new Error('Could not compress image.');
   const ext = blob.type.split('/')[1] || 'jpg';
   return new File([blob], `chat.${ext}`, { type: blob.type });
 }
