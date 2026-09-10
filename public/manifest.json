@@ -3,7 +3,7 @@
   "short_name": "GoPalengke",
   "description": "Order fresh fish, meat, vegetables, and more from your local palengke. Verified vendors, live tracking delivery.",
   "start_url": "/",
-  "display": "standalone",
+  "display": "browser",
   "background_color": "#ffffff",
   "theme_color": "#ea580c",
   "orientation": "portrait",

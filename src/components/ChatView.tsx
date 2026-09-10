@@ -609,7 +609,7 @@ export function ChatView({
             </div>
             <h3 className="text-lg font-bold text-gray-800 text-center mb-2">Video Call Not Available</h3>
             <p className="text-sm text-gray-500 text-center mb-5 leading-relaxed">
-              Video calls need camera access, which isn't available inside the installed app on some phones. To use video calls, open GoPalengke in your browser (Safari or Chrome).
+              Video calls need camera access. If you're seeing this, your home screen shortcut may be outdated. Try removing the app icon from your home screen and re-adding it from the browser, or just use GoPalengke directly in your browser.
             </p>
             <button
               onClick={() => {
