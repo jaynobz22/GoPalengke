@@ -281,9 +281,11 @@ export function ChatView({
   const [deleting, setDeleting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [showCallUnsupported, setShowCallUnsupported] = useState(false);
+  const [preWarmedStream, setPreWarmedStream] = useState<MediaStream | null>(null);
 
   const videoCallSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices && !!navigator.mediaDevices.getUserMedia;
   const { start: startRing, stop: stopRing } = useRingtone();
+  const preWarmStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     async function loadAvatars() {
@@ -330,6 +332,28 @@ export function ChatView({
     return () => stopRing();
   }, [incomingCall, activeCall, videoCallSupported, startRing, stopRing]);
 
+  // Pre-warm camera/mic the moment the incoming call modal appears
+  // so tracks are ready before the user taps Accept
+  useEffect(() => {
+    if (incomingCall && !activeCall && videoCallSupported && !preWarmStreamRef.current) {
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: { echoCancellation: true, noiseSuppression: true },
+      }).then(stream => {
+        preWarmStreamRef.current = stream;
+        setPreWarmedStream(stream);
+      }).catch(() => {
+        // Pre-warm failed — VideoCall will retry with full fallback logic
+      });
+    }
+    // Clean up pre-warmed stream if call is dismissed without accepting
+    if (!incomingCall && !activeCall && preWarmStreamRef.current) {
+      preWarmStreamRef.current.getTracks().forEach(t => t.stop());
+      preWarmStreamRef.current = null;
+      setPreWarmedStream(null);
+    }
+  }, [incomingCall, activeCall, videoCallSupported]);
+
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || sending) return;
@@ -347,6 +371,19 @@ export function ChatView({
     if (!videoCallSupported) {
       setShowCallUnsupported(true);
       return;
+    }
+    // Pre-warm camera for caller immediately
+    if (!preWarmStreamRef.current) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: { echoCancellation: true, noiseSuppression: true },
+        });
+        preWarmStreamRef.current = stream;
+        setPreWarmedStream(stream);
+      } catch {
+        // Will retry in VideoCall
+      }
     }
     const roomId = generateRoomId();
     await sendCallInvite(roomId);
@@ -382,6 +419,12 @@ export function ChatView({
       }
     }
     setActiveCall(null);
+    // Clean up pre-warmed stream
+    if (preWarmStreamRef.current) {
+      preWarmStreamRef.current.getTracks().forEach(t => t.stop());
+      preWarmStreamRef.current = null;
+      setPreWarmedStream(null);
+    }
   }
 
   async function deleteConversation() {
@@ -463,6 +506,7 @@ export function ChatView({
         isCaller={activeCall.isCaller}
         autoAccept={!activeCall.isCaller}
         otherName={otherName}
+        preWarmedStream={preWarmStream}
         onEnd={endActiveCall}
       />
     );

@@ -1,106 +1,119 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, Loader2, Camera, CameraOff } from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, Loader2, ExternalLink, AlertCircle } from 'lucide-react';
 
 type CallPhase = 'outgoing' | 'connecting' | 'connected' | 'ended';
-type PermissionState = 'granted' | 'denied' | 'prompt' | 'unknown';
 
 interface VideoCallProps {
   roomId: string;
   isCaller: boolean;
   otherName: string;
   autoAccept?: boolean;
+  preWarmedStream?: MediaStream | null;
   onEnd: () => void;
 }
 
-async function checkPermission(name: 'camera' | 'microphone'): Promise<PermissionState> {
+// ─── Standalone PWA detection ───────────────────────────────────────────────
+function isStandalonePWA(): boolean {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    // iOS Safari standalone
+    (window.navigator as any).standalone === true
+  );
+}
+
+function isIOS(): boolean {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+// ─── Permission check ───────────────────────────────────────────────────────
+async function checkPermission(name: 'camera' | 'microphone'): Promise<'granted' | 'denied' | 'prompt' | 'unknown'> {
   try {
-    if (navigator.permissions && navigator.permissions.query) {
+    if (navigator.permissions?.query) {
       const result = await navigator.permissions.query({ name: name as PermissionName });
-      return result.state as PermissionState;
+      return result.state as 'granted' | 'denied' | 'prompt';
     }
-  } catch {
-    // navigator.permissions not supported (e.g., iOS Safari) — fall through
-  }
+  } catch { /* not supported */ }
   return 'unknown';
 }
 
-async function requestCameraAndMic(): Promise<MediaStream> {
+// ─── Early stream acquisition with fallback ─────────────────────────────────
+async function acquireStream(): Promise<MediaStream> {
   const constraints: MediaStreamConstraints = {
-    video: {
-      facingMode: 'user',
-      width: { ideal: 640 },
-      height: { ideal: 480 },
-    },
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
-    },
+    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
   };
 
-  // Check current permission states
-  const [camPerm, micPerm] = await Promise.all([
-    checkPermission('camera'),
-    checkPermission('microphone'),
-  ]);
-
-  // If either is explicitly denied, try requesting anyway — the browser may
-  // re-prompt in some WebView contexts. If it throws, we catch and guide the user.
-  if (camPerm === 'denied' || micPerm === 'denied') {
-    // Try anyway — some WebView contexts report 'denied' but still allow re-prompt
-  }
-
-  // First attempt: request both together
   try {
     return await navigator.mediaDevices.getUserMedia(constraints);
   } catch (err: any) {
-    // If combined request failed, try audio-only then video-only
-    // This helps in cases where one device is unavailable
-    if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
-      // No devices found — try with just what's available
-    }
-
-    // Try audio only first (camera might be blocked but mic works)
-    try {
-      const audioStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        video: false,
-      });
-
-      // Then try to add video
+    // Fallback 1: audio first, then video
+    if (err?.name === 'NotAllowedError' || err?.name === 'NotReadableError' || err?.name === 'OverconstrainedError') {
       try {
-        const videoStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: false,
+        const audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true },
+          video: false,
         });
-        // Combine both streams
-        const combined = new MediaStream();
-        audioStream.getAudioTracks().forEach(t => combined.addTrack(t));
-        videoStream.getVideoTracks().forEach(t => combined.addTrack(t));
-        return combined;
+        try {
+          const videoStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user' },
+            audio: false,
+          });
+          const combined = new MediaStream();
+          audioStream.getAudioTracks().forEach(t => combined.addTrack(t));
+          videoStream.getVideoTracks().forEach(t => combined.addTrack(t));
+          return combined;
+        } catch {
+          return audioStream; // audio-only fallback
+        }
       } catch {
-        // Video failed — return audio-only stream
-        return audioStream;
-      }
-    } catch (audioErr) {
-      // Audio also failed — try video only
-      try {
-        const videoStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: false,
-        });
-        return videoStream;
-      } catch {
-        // Both failed — rethrow the original error
-        throw err;
+        // Fallback 2: video only
+        try {
+          return await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+        } catch {
+          throw err; // re-throw original
+        }
       }
     }
+    throw err;
   }
 }
 
-export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: VideoCallProps) {
+// ─── ICE server config ───────────────────────────────────────────────────────
+const ICE_SERVERS_ALL = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  {
+    urls: 'turn:openrelay.metered.ca:80',
+    username: 'openrelayproject',
+    credential: 'openrelayprojectsecret',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayprojectsecret',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayprojectsecret',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:80?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayprojectsecret',
+  },
+];
+
+const ICE_SERVERS_RELAY_ONLY = ICE_SERVERS_ALL.filter(s => s.urls.startsWith('turn'));
+
+const CONNECTION_TIMEOUT_MS = 4000;
+
+// ════════════════════════════════════════════════════════════════════════════
+export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedStream, onEnd }: VideoCallProps) {
   const { profile } = useAuth();
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -112,19 +125,22 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
   const gotCameraRef = useRef(false);
   const myUserIdRef = useRef<string | null>(null);
   const processedSignalIdsRef = useRef<Set<string>>(new Set());
+  const connectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryCountRef = useRef(0);
+  const usedRelayFallbackRef = useRef(false);
 
   const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'connecting');
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [permStatus, setPermStatus] = useState<{ camera: PermissionState; mic: PermissionState }>({
-    camera: 'unknown',
-    mic: 'unknown',
-  });
-  const [showPermGuide, setShowPermGuide] = useState(false);
+  const [showBrowserFallback, setShowBrowserFallback] = useState(false);
 
+  // ─── Cleanup ──────────────────────────────────────────────────────────────
   const cleanup = useCallback(() => {
+    if (connectionTimerRef.current) {
+      clearTimeout(connectionTimerRef.current);
+      connectionTimerRef.current = null;
+    }
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(t => t.stop());
       localStreamRef.current = null;
@@ -140,8 +156,10 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     iceCandidatesRef.current = [];
     processedSignalIdsRef.current.clear();
     retryCountRef.current = 0;
+    usedRelayFallbackRef.current = false;
   }, [roomId]);
 
+  // ─── Send signal via database ──────────────────────────────────────────────
   const sendSignal = useCallback(async (event: string, payload: Record<string, unknown>) => {
     if (!myUserIdRef.current) return;
     await supabase.from('call_signals').insert({
@@ -152,89 +170,58 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     });
   }, [roomId]);
 
+  // ─── Get camera (use pre-warmed stream if available) ────────────────────────
   const getCamera = useCallback(async (): Promise<MediaStream | null> => {
     if (gotCameraRef.current && localStreamRef.current) return localStreamRef.current;
 
-    // Check permissions first
-    const [camPerm, micPerm] = await Promise.all([
-      checkPermission('camera'),
-      checkPermission('microphone'),
-    ]);
-    setPermStatus({ camera: camPerm, mic: micPerm });
+    // Use pre-warmed stream from ChatView if available
+    if (preWarmedStream) {
+      localStreamRef.current = preWarmedStream;
+      gotCameraRef.current = true;
+      if (localVideoRef.current) localVideoRef.current.srcObject = preWarmedStream;
+      return preWarmedStream;
+    }
 
     try {
-      const stream = await requestCameraAndMic();
+      const stream = await acquireStream();
       localStreamRef.current = stream;
       gotCameraRef.current = true;
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-
-      // Update permission status after successful access
-      setPermStatus({ camera: 'granted', mic: 'granted' });
       return stream;
     } catch (err: any) {
       const errName = err?.name || '';
       const errMsg = err?.message || String(err);
 
       if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
-        setError('Hindi pinapayagan ang camera/microphone. Pumunta sa browser o app settings at i-allow ang camera at microphone para sa GoPalengke, then try again.');
-        setShowPermGuide(true);
-      } else if (errName === 'NotFoundError' || errName === 'DevicesNotFoundError') {
-        setError('Walang nakitang camera o microphone ang device. Siguraduhing may camera/mic ang device at naka-connect properly.');
+        if (isStandalonePWA()) {
+          setShowBrowserFallback(true);
+        }
+        setError('Hindi pinapayagan ang camera/microphone. I-allow ang camera at mic sa settings, o buksan sa browser.');
       } else if (errName === 'NotReadableError' || errName === 'TrackStartError') {
-        // Camera/mic in use by another app — retry after brief delay
         if (retryCountRef.current < 3) {
           retryCountRef.current++;
           await new Promise(r => setTimeout(r, 500));
           return getCamera();
         }
-        setError('Ginagamit ng ibang app ang camera/microphone. Isara ang ibang app na gumagamit ng camera then try again.');
-      } else if (errName === 'OverconstrainedError') {
-        // Try with less strict constraints
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-          localStreamRef.current = stream;
-          gotCameraRef.current = true;
-          if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-          return stream;
-        } catch {
-          setError(`Hindi ma-access ang camera/mic: ${errMsg}`);
-        }
+        if (isStandalonePWA()) setShowBrowserFallback(true);
+        setError('Ginagamit ng ibang app ang camera. Isara ang ibang app o buksan sa browser.');
+      } else if (errName === 'NotFoundError' || errName === 'DevicesNotFoundError') {
+        setError('Walang camera o microphone ang device.');
       } else {
+        if (isStandalonePWA()) setShowBrowserFallback(true);
         setError(`Hindi ma-access ang camera/mic: ${errMsg}`);
       }
       return null;
     }
-  }, []);
+  }, [preWarmedStream]);
 
-  const setupPeerConnection = useCallback((stream: MediaStream) => {
+  // ─── Setup peer connection with ICE fallback ──────────────────────────────
+  const setupPeerConnection = useCallback((stream: MediaStream, forceRelay: boolean = false) => {
     if (pcRef.current) pcRef.current.close();
+
     const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        {
-          urls: 'turn:openrelay.metered.ca:80',
-          username: 'openrelayproject',
-          credential: 'openrelayprojectsecret',
-        },
-        {
-          urls: 'turn:openrelay.metered.ca:443',
-          username: 'openrelayproject',
-          credential: 'openrelayprojectsecret',
-        },
-        {
-          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-          username: 'openrelayproject',
-          credential: 'openrelayprojectsecret',
-        },
-        {
-          urls: 'turn:openrelay.metered.ca:80?transport=tcp',
-          username: 'openrelayproject',
-          credential: 'openrelayprojectsecret',
-        },
-      ],
-      iceTransportPolicy: 'all',
+      iceServers: forceRelay ? ICE_SERVERS_RELAY_ONLY : ICE_SERVERS_ALL,
+      iceTransportPolicy: forceRelay ? 'relay' : 'all',
     });
     pcRef.current = pc;
 
@@ -254,16 +241,73 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
 
     pc.oniceconnectionstatechange = () => {
       if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+        // If not yet connected and haven't tried relay fallback, retry with relay-only
+        if (!usedRelayFallbackRef.current && phase !== 'connected') {
+          usedRelayFallbackRef.current = true;
+          const currentStream = localStreamRef.current;
+          if (currentStream) {
+            // Recreate peer connection with relay-only ICE policy
+            setupPeerConnection(currentStream, true);
+            // Re-create offer/answer depending on role
+            if (isCaller) {
+              createAndSendOffer();
+            } else {
+              acceptCallInternal();
+            }
+            return;
+          }
+        }
         setPhase('ended');
       }
     };
 
     pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'connected') {
+        if (connectionTimerRef.current) {
+          clearTimeout(connectionTimerRef.current);
+          connectionTimerRef.current = null;
+        }
+      }
       if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+        if (!usedRelayFallbackRef.current && phase !== 'connected') {
+          usedRelayFallbackRef.current = true;
+          const currentStream = localStreamRef.current;
+          if (currentStream) {
+            setupPeerConnection(currentStream, true);
+            if (isCaller) {
+              createAndSendOffer();
+            } else {
+              acceptCallInternal();
+            }
+            return;
+          }
+        }
         setPhase('ended');
       }
     };
-  }, [sendSignal]);
+  }, [sendSignal, phase, isCaller]);
+
+  // ─── Start 4-second connection timeout ─────────────────────────────────────
+  const startConnectionTimeout = useCallback(() => {
+    if (connectionTimerRef.current) clearTimeout(connectionTimerRef.current);
+    connectionTimerRef.current = setTimeout(() => {
+      if (phase !== 'connected' && !usedRelayFallbackRef.current) {
+        // Force relay-only fallback
+        usedRelayFallbackRef.current = true;
+        const currentStream = localStreamRef.current;
+        if (currentStream && pcRef.current) {
+          pcRef.current.close();
+          pcRef.current = null;
+          setupPeerConnection(currentStream, true);
+          if (isCaller) {
+            createAndSendOffer();
+          } else {
+            acceptCallInternal();
+          }
+        }
+      }
+    }, CONNECTION_TIMEOUT_MS);
+  }, [phase, setupPeerConnection, isCaller]);
 
   const flushPendingCandidates = useCallback(async () => {
     if (!pcRef.current || !remoteDescriptionSetRef.current) return;
@@ -273,20 +317,23 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     iceCandidatesRef.current = [];
   }, []);
 
+  // ─── Caller: create and send offer ─────────────────────────────────────────
   const createAndSendOffer = useCallback(async () => {
     const stream = await getCamera();
     if (!stream) return;
-    setupPeerConnection(stream);
+    if (!pcRef.current) setupPeerConnection(stream);
     const pc = pcRef.current!;
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     await sendSignal('offer', { sdp: offer.toJSON() });
-  }, [getCamera, setupPeerConnection, sendSignal]);
+    startConnectionTimeout();
+  }, [getCamera, setupPeerConnection, sendSignal, startConnectionTimeout]);
 
+  // ─── Receiver: accept and process pending offer ─────────────────────────────
   const acceptCallInternal = useCallback(async () => {
     const stream = await getCamera();
     if (!stream) return;
-    setupPeerConnection(stream);
+    if (!pcRef.current) setupPeerConnection(stream);
     await sendSignal('receiver_ready', {});
 
     if (pendingOfferRef.current) {
@@ -301,8 +348,10 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
       await flushPendingCandidates();
       setPhase('connected');
     }
-  }, [getCamera, setupPeerConnection, sendSignal, flushPendingCandidates]);
+    startConnectionTimeout();
+  }, [getCamera, setupPeerConnection, sendSignal, flushPendingCandidates, startConnectionTimeout]);
 
+  // ─── Signal handler ────────────────────────────────────────────────────────
   const handleSignal = useCallback(async (signal: { id: string; event: string; payload: any; sender_id: string }) => {
     if (signal.sender_id === myUserIdRef.current) return;
     if (processedSignalIdsRef.current.has(signal.id)) return;
@@ -311,9 +360,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     const { event, payload } = signal;
 
     if (event === 'receiver_ready') {
-      if (isCaller) {
-        await createAndSendOffer();
-      }
+      if (isCaller) await createAndSendOffer();
     } else if (event === 'caller_present') {
       if (!isCaller && autoAccept && pcRef.current) {
         await sendSignal('receiver_ready', {});
@@ -349,6 +396,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     }
   }, [isCaller, autoAccept, createAndSendOffer, sendSignal, flushPendingCandidates]);
 
+  // ─── Main effect: load signals + subscribe + start role ─────────────────────
   useEffect(() => {
     if (!profile?.id) return;
     myUserIdRef.current = profile.id;
@@ -356,31 +404,30 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     let subscription: ReturnType<typeof supabase.channel> | null = null;
 
     (async () => {
+      // Load existing signals
       const { data: existing } = await supabase
         .from('call_signals')
         .select('*')
         .eq('room_id', roomId)
         .order('created_at', { ascending: true });
-
       if (existing) {
-        for (const sig of existing) {
-          await handleSignal(sig);
-        }
+        for (const sig of existing) await handleSignal(sig);
       }
 
+      // Subscribe to new signals
       subscription = supabase
         .channel(`call-${roomId}`)
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'call_signals', filter: `room_id=eq.${roomId}` },
-          (payload: any) => {
-            handleSignal(payload.new);
-          }
+          (payload: any) => handleSignal(payload.new)
         )
         .subscribe();
 
+      // Start role
       if (isCaller) {
         sendSignal('caller_present', {});
+        // Pre-warm camera immediately
         getCamera();
       } else if (autoAccept) {
         acceptCallInternal();
@@ -394,6 +441,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, profile?.id]);
 
+  // ─── Controls ──────────────────────────────────────────────────────────────
   function toggleMic() {
     if (localStreamRef.current) {
       localStreamRef.current.getAudioTracks().forEach(t => { t.enabled = !micOn; });
@@ -415,26 +463,45 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     onEnd();
   }
 
-  async function retryCamera() {
-    setError(null);
-    setShowPermGuide(false);
-    gotCameraRef.current = false;
-    retryCountRef.current = 0;
-    const stream = await getCamera();
-    if (stream && pcRef.current) {
-      // Replace tracks on existing peer connection
-      stream.getTracks().forEach(track => {
-        const sender = pcRef.current!.getSenders().find(s => s.track?.kind === track.kind);
-        if (sender) {
-          sender.replaceTrack(track);
-        } else {
-          pcRef.current!.addTrack(track, stream);
-        }
-      });
-    }
+  function openInBrowser() {
+    const url = window.location.href;
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 
-  // Ended state
+  // ─── Browser fallback overlay (standalone PWA sandbox restriction) ──────────
+  if (showBrowserFallback) {
+    return (
+      <div className="fixed inset-0 z-[90] bg-gradient-to-b from-blue-900 to-gray-900 flex flex-col items-center justify-center max-w-md mx-auto px-5">
+        <div className="text-center">
+          <div className="w-28 h-28 rounded-full bg-amber-600 flex items-center justify-center mx-auto mb-6">
+            <AlertCircle size={48} className="text-white" />
+          </div>
+          <p className="text-white text-xl font-bold mb-2">Hindi ma-access ang camera</p>
+          <p className="text-amber-200 text-sm mb-6 max-w-xs">
+            Ang camera at microphone ay hindi gumagana sa installed app mode.
+            Buksan ang GoPalengke sa browser para gumana ang video call.
+          </p>
+        </div>
+        <button
+          onClick={openInBrowser}
+          className="px-8 py-3 bg-white text-gray-800 rounded-2xl font-semibold active:scale-95 transition flex items-center gap-2"
+        >
+          <ExternalLink size={18} /> Open in System Browser
+        </button>
+        <button
+          onClick={() => {
+            setShowBrowserFallback(false);
+            endCall();
+          }}
+          className="mt-3 text-gray-400 text-sm"
+        >
+          Cancel Call
+        </button>
+      </div>
+    );
+  }
+
+  // ─── Ended state ────────────────────────────────────────────────────────────
   if (phase === 'ended') {
     return (
       <div className="fixed inset-0 z-[80] bg-gray-900 flex flex-col items-center justify-center max-w-md mx-auto">
@@ -452,7 +519,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     );
   }
 
-  // Outgoing call — waiting for answer
+  // ─── Outgoing call ──────────────────────────────────────────────────────────
   if (phase === 'outgoing') {
     return (
       <div className="fixed inset-0 z-[80] bg-gradient-to-b from-blue-900 to-gray-900 flex flex-col items-center justify-center max-w-md mx-auto">
@@ -471,9 +538,9 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
         {error && (
           <div className="mt-4 px-6 max-w-sm">
             <p className="text-red-300 text-sm text-center">{error}</p>
-            {showPermGuide && (
-              <button onClick={retryCamera} className="mt-3 px-6 py-2 bg-white/15 text-white rounded-xl text-sm font-semibold active:scale-95 transition">
-                Subukang Muli
+            {showBrowserFallback && (
+              <button onClick={openInBrowser} className="mt-3 px-6 py-2 bg-white text-gray-800 rounded-xl text-sm font-semibold active:scale-95 transition flex items-center gap-2 mx-auto">
+                <ExternalLink size={16} /> Open in Browser
               </button>
             )}
           </div>
@@ -486,7 +553,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     );
   }
 
-  // Connecting — showing local video while waiting for remote
+  // ─── Connecting ─────────────────────────────────────────────────────────────
   if (phase === 'connecting') {
     return (
       <div className="fixed inset-0 z-[80] bg-gray-900 flex flex-col max-w-md mx-auto">
@@ -497,23 +564,15 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
             <p className="text-gray-400 text-sm mt-1">Naghihintay kay {otherName}</p>
           </div>
           <div className="absolute top-4 right-4 w-28 h-40 rounded-2xl overflow-hidden bg-gray-800 border-2 border-white/20 shadow-lg z-10">
-            <video
-              ref={localVideoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover scale-x-[-1]"
-            />
+            <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
           </div>
         </div>
         {error && (
           <div className="absolute top-4 left-4 right-4 z-10">
-            <div className="bg-red-500/90 text-white text-sm px-4 py-3 rounded-xl">
-              {error}
-            </div>
-            {showPermGuide && (
-              <button onClick={retryCamera} className="mt-2 w-full px-6 py-2 bg-white/15 text-white rounded-xl text-sm font-semibold active:scale-95 transition">
-                Subukang Muli
+            <div className="bg-red-500/90 text-white text-sm px-4 py-3 rounded-xl">{error}</div>
+            {showBrowserFallback && (
+              <button onClick={openInBrowser} className="mt-2 w-full px-6 py-2 bg-white text-gray-800 rounded-xl text-sm font-semibold active:scale-95 transition flex items-center justify-center gap-2">
+                <ExternalLink size={16} /> Open in System Browser
               </button>
             )}
           </div>
@@ -527,30 +586,25 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     );
   }
 
-  // Connected — active video call
+  // ─── Connected (active video call) ──────────────────────────────────────────
   return (
     <div className="fixed inset-0 z-[80] bg-gray-900 flex flex-col max-w-md mx-auto">
       {error && (
         <div className="absolute top-4 left-4 right-4 z-20">
           <div className="bg-red-500/90 text-white text-sm px-4 py-3 rounded-xl flex items-start gap-2">
             <span className="flex-1">{error}</span>
-            {showPermGuide && (
-              <button onClick={retryCamera} className="text-white font-semibold underline text-xs whitespace-nowrap">
-                Retry
+            {showBrowserFallback && (
+              <button onClick={openInBrowser} className="text-white font-semibold underline text-xs whitespace-nowrap">
+                Open in Browser
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* Remote video (full screen) */}
+      {/* Remote video */}
       <div className="flex-1 relative">
-        <video
-          ref={remoteVideoRef}
-          autoPlay
-          playsInline
-          className="w-full h-full object-cover"
-        />
+        <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="text-center">
             <div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center mx-auto mb-3">
@@ -561,15 +615,9 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
         </div>
       </div>
 
-      {/* Local video (picture-in-picture) */}
+      {/* Local video PIP */}
       <div className="absolute top-4 right-4 w-28 h-40 rounded-2xl overflow-hidden bg-gray-800 border-2 border-white/20 shadow-lg z-10">
-        <video
-          ref={localVideoRef}
-          autoPlay
-          playsInline
-          muted
-          className="w-full h-full object-cover scale-x-[-1]"
-        />
+        <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
         {!camOn && (
           <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
             <VideoOff size={20} className="text-gray-500" />
@@ -587,22 +635,16 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
       <div className="pb-8 pt-4 px-6 flex items-center justify-center gap-5 bg-gradient-to-t from-gray-900 to-transparent">
         <button
           onClick={toggleMic}
-          className={`w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition shadow-lg ${
-            micOn ? 'bg-white/15' : 'bg-white'
-          }`}
+          className={`w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition shadow-lg ${micOn ? 'bg-white/15' : 'bg-white'}`}
         >
           {micOn ? <Mic size={24} className="text-white" /> : <MicOff size={24} className="text-gray-800" />}
         </button>
-
         <button
           onClick={toggleCam}
-          className={`w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition shadow-lg ${
-            camOn ? 'bg-white/15' : 'bg-white'
-          }`}
+          className={`w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition shadow-lg ${camOn ? 'bg-white/15' : 'bg-white'}`}
         >
           {camOn ? <Video size={24} className="text-white" /> : <VideoOff size={24} className="text-gray-800" />}
         </button>
-
         <button
           onClick={endCall}
           className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center active:scale-90 transition shadow-lg"
