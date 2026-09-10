@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import type { Review, ReviewType } from '@/lib/types';
-import { Star, Loader2, X, Check } from 'lucide-react';
+import { Star, Loader2, X, Check, Share2, Facebook, MessageCircle, Copy } from 'lucide-react';
 
 export function StarRating({ value, onChange, size = 28 }: { value: number; onChange?: (v: number) => void; size?: number }) {
   const [hover, setHover] = useState(0);
@@ -33,12 +33,14 @@ export function ReviewForm({
   revieweeId,
   reviewType,
   revieweeName,
+  storeSlug,
   onSubmitted,
 }: {
   orderId: string;
   revieweeId: string;
   reviewType: ReviewType;
   revieweeName: string;
+  storeSlug?: string | null;
   onSubmitted: () => void;
 }) {
   const { profile } = useAuth() as any;
@@ -46,6 +48,13 @@ export function ReviewForm({
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl = storeSlug ? `${window.location.origin}/s/${storeSlug}` : '';
+  const shareText = `Napakagandang experience ko sa ${revieweeName} sa Pamalengke Online! ${rating > 0 ? `${'⭐'.repeat(rating)} ` : ''}Subukan nyo din!`;
+  const encodedShareUrl = encodeURIComponent(shareUrl);
+  const encodedShareText = encodeURIComponent(shareText);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -65,8 +74,71 @@ export function ReviewForm({
     if (insError) {
       setError(insError.message);
     } else {
+      setSubmitted(true);
       onSubmitted();
     }
+  }
+
+  function copyLink() {
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  if (submitted && reviewType === 'seller' && storeSlug) {
+    return (
+      <div className="bg-gradient-to-br from-brand-50 to-amber-50 rounded-2xl border border-brand-200 p-4 mb-3">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center">
+            <Check size={18} className="text-white" />
+          </div>
+          <div>
+            <p className="font-bold text-sm text-gray-800">Salamat sa iyong review!</p>
+            <p className="text-xs text-gray-500">I-share ang magandang experience mo</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-3 mb-3 border border-gray-100">
+          <div className="flex items-center gap-2 mb-2">
+            <Star size={14} className="fill-amber-400 text-amber-400" />
+            <span className="text-xs font-medium text-gray-700">{revieweeName}</span>
+          </div>
+          <p className="text-sm text-gray-600 italic">"{comment}"</p>
+        </div>
+
+        <p className="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1.5">
+          <Share2 size={14} /> I-share sa social media:
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          <a
+            href={`https://www.facebook.com/sharer/sharer.php?u=${encodedShareUrl}&quote=${encodedShareText}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex flex-col items-center gap-1 py-3 bg-[#1877F2] text-white rounded-xl font-semibold text-xs active:scale-95 transition"
+          >
+            <Facebook size={20} />
+            Facebook
+          </a>
+          <a
+            href={`https://www.facebook.com/dialog/send?app_id=294910641025624&link=${encodedShareUrl}&redirect_uri=${encodedShareUrl}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex flex-col items-center gap-1 py-3 bg-gradient-to-br from-[#00B2FF] to-[#006AFF] text-white rounded-xl font-semibold text-xs active:scale-95 transition"
+          >
+            <MessageCircle size={20} />
+            Messenger
+          </a>
+          <button
+            onClick={copyLink}
+            className="flex flex-col items-center gap-1 py-3 bg-gray-700 text-white rounded-xl font-semibold text-xs active:scale-95 transition"
+          >
+            {copied ? <Check size={20} /> : <Copy size={20} />}
+            {copied ? 'Nakopya!' : 'Kopyahin'}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

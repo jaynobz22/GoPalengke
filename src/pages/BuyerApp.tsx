@@ -32,7 +32,7 @@ import {
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, Bike, Store as StoreIcon,
   QrCode, Clock, Phone, Navigation, Filter, ShoppingBag, MessageCircle, Send,
   Share2, Copy, ExternalLink, Download, ImageOff, Bell, Timer, CheckCircle, LogOut,
-  Shield, Info, ShieldAlert, Lock, AlertTriangle,
+  Shield, Info, ShieldAlert, Lock, AlertTriangle, Facebook,
 } from 'lucide-react';
 
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
@@ -2341,6 +2341,59 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
   );
 }
 
+// ============= SHARE STORE CARD =============
+function ShareStoreCard({ storeName, storeSlug }: { storeName: string; storeSlug: string }) {
+  const [copied, setCopied] = useState(false);
+  const shareUrl = `${window.location.origin}/s/${storeSlug}`;
+  const shareText = `Napakagandang experience ko sa ${storeName} sa Pamalengke Online! Subukan nyo din!`;
+  const encodedUrl = encodeURIComponent(shareUrl);
+  const encodedText = encodeURIComponent(shareText);
+
+  function copyLink() {
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="bg-gradient-to-br from-brand-50 to-amber-50 rounded-2xl border border-brand-200 p-4 mb-3">
+      <div className="flex items-center gap-2 mb-3">
+        <Share2 size={18} className="text-brand-600" />
+        <p className="font-bold text-sm text-gray-800">I-share ang tindahang ito!</p>
+      </div>
+      <p className="text-xs text-gray-500 mb-3">I-share sa Facebook o Messenger bilang pasalamat sa magandang experience mo.</p>
+      <div className="grid grid-cols-3 gap-2">
+        <a
+          href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex flex-col items-center gap-1 py-3 bg-[#1877F2] text-white rounded-xl font-semibold text-xs active:scale-95 transition"
+        >
+          <Facebook size={20} />
+          Facebook
+        </a>
+        <a
+          href={`https://www.facebook.com/dialog/send?app_id=294910641025624&link=${encodedUrl}&redirect_uri=${encodedUrl}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex flex-col items-center gap-1 py-3 bg-gradient-to-br from-[#00B2FF] to-[#006AFF] text-white rounded-xl font-semibold text-xs active:scale-95 transition"
+        >
+          <MessageCircle size={20} />
+          Messenger
+        </a>
+        <button
+          onClick={copyLink}
+          className="flex flex-col items-center gap-1 py-3 bg-gray-700 text-white rounded-xl font-semibold text-xs active:scale-95 transition"
+        >
+          {copied ? <Check size={20} /> : <Copy size={20} />}
+          {copied ? 'Nakopya!' : 'Kopyahin'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ============= REVIEW SECTION FOR ORDER =============
 function ReviewSectionForOrder({
   orderId,
@@ -2383,6 +2436,7 @@ function ReviewSectionForOrder({
           revieweeId={sellerId}
           reviewType="seller"
           revieweeName={store.name}
+          storeSlug={store.slug}
           onSubmitted={() => setExistingReviews(prev => [...prev, { review_type: 'seller' }])}
         />
       )}
@@ -2410,6 +2464,11 @@ function ReviewSectionForOrder({
           <Check size={18} className="text-green-600" />
           <p className="text-sm text-green-700 font-medium">Salamat sa pag-review ng seller!</p>
         </div>
+      )}
+
+      {/* Share store after reviewing */}
+      {hasSellerReview && store?.slug && (
+        <ShareStoreCard storeName={store.name} storeSlug={store.slug} />
       )}
     </div>
   );
