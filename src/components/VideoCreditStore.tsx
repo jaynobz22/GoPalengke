@@ -198,7 +198,23 @@ function PaymentModal({
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [qrLoading, setQrLoading] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    async function loadQrCode() {
+      setQrLoading(true);
+      const { data } = await supabase
+        .from('platform_qr_codes')
+        .select('image_url')
+        .eq('is_active', true)
+        .maybeSingle();
+      if (data?.image_url) setQrCodeUrl(data.image_url);
+      setQrLoading(false);
+    }
+    loadQrCode();
+  }, []);
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -259,16 +275,23 @@ function PaymentModal({
         </div>
 
         <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
-          {/* QR Code Placeholder */}
+          {/* QR Code */}
           <div className="text-center">
             <p className="text-sm text-gray-600 mb-3">
-              Mag-scan gamit ang inyong e-wallet app upang magbayad sa GoTyme QR Code na ito.
+              Mag-scan gamit ang inyong e-wallet app upang magbayad sa QR Code na ito.
             </p>
-            <div className="w-48 h-48 mx-auto bg-gray-100 border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center">
-              <QrCode size={64} className="text-gray-300" />
-              <p className="text-xs text-gray-400 mt-2">QR Code dito</p>
+            <div className="w-48 h-48 mx-auto bg-gray-50 border-2 border-gray-200 rounded-2xl flex items-center justify-center overflow-hidden">
+              {qrLoading ? (
+                <Loader2 size={32} className="animate-spin text-gray-300" />
+              ) : qrCodeUrl ? (
+                <img src={qrCodeUrl} alt="Payment QR Code" className="w-full h-full object-contain" />
+              ) : (
+                <div className="flex flex-col items-center">
+                  <QrCode size={48} className="text-gray-300" />
+                  <p className="text-xs text-gray-400 mt-2">Wala pang QR code</p>
+                </div>
+              )}
             </div>
-            <p className="text-xs text-gray-400 mt-2">Palitan ang placeholder ng totoong GoTyme QR code</p>
           </div>
 
           {/* Amount to Pay */}
