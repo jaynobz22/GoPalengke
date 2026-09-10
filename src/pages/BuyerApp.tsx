@@ -498,25 +498,30 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
               <button
                 key={store.id}
                 onClick={() => onStoreClick(store)}
-                className="flex-shrink-0 w-40 bg-white rounded-2xl overflow-hidden border border-gray-100 active:scale-[0.98] transition"
+                className="flex-shrink-0 w-40 bg-white rounded-2xl border border-gray-100 active:scale-[0.98] transition overflow-hidden"
               >
-                <div className="h-20 bg-gray-100 relative">
+                <div className="h-16 bg-gray-100 relative">
                   {store.banner_url && <img src={store.banner_url} alt={store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                   {store.city.toLowerCase() === (locationFilter.city || '').toLowerCase() && (
                     <span className="absolute top-1 right-1 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full">Near You</span>
                   )}
-                  <div className="absolute -bottom-4 left-2.5 w-10 h-10 rounded-full bg-white border-2 border-white shadow-md overflow-hidden flex-shrink-0">
-                    {(store as any).seller?.avatar_url ? (
-                      <img src={(store as any).seller.avatar_url} alt={(store as any).seller.full_name || store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-sm font-bold text-brand-400">
-                        {(store as any).seller?.full_name?.[0]?.toUpperCase() || '?'}
-                      </div>
-                    )}
-                  </div>
                 </div>
-                <div className="p-2.5 pt-5">
+                <div className="px-2.5 pb-2.5">
+                  <div className="flex items-center gap-2 -mt-5 mb-1">
+                    <div className="w-10 h-10 rounded-full bg-white border-2 border-white shadow-md overflow-hidden flex-shrink-0">
+                      {(store as any).seller?.avatar_url ? (
+                        <img src={(store as any).seller.avatar_url} alt={(store as any).seller.full_name || store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-sm font-bold text-brand-400">
+                          {(store as any).seller?.full_name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <p className="font-semibold text-sm text-gray-800 line-clamp-1">{store.name}</p>
+                  {(store as any).seller?.full_name && (
+                    <p className="text-xs text-gray-400 line-clamp-1">{(store as any).seller.full_name}</p>
+                  )}
                   {store.palengke_name && (
                     <p className="text-xs text-brand-600 line-clamp-1 flex items-center gap-0.5 mt-0.5">
                       <MapPin size={10} />
@@ -929,7 +934,13 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
             </div>
           <div className="pb-1">
             <h1 className="text-xl font-bold text-gray-800">{store.name}</h1>
-            <div className="flex items-center gap-1">
+            {sellerName && (
+              <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
+                <StoreIcon size={12} className="text-gray-400" />
+                {sellerName}
+              </p>
+            )}
+            <div className="flex items-center gap-1 mt-1">
               <Star size={14} className="fill-amber-400 text-amber-400" />
               <span className="text-sm text-gray-600">{store.rating}</span>
               <span className="text-sm text-gray-300">·</span>
