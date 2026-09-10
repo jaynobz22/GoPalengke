@@ -135,22 +135,35 @@ export function VideoCreditStore() {
           <h3 className="text-sm font-bold text-gray-800 mb-3">Kasaysayan ng Pagbili</h3>
           <div className="space-y-2">
             {purchases.map((p) => (
-              <div key={p.id} className="bg-white rounded-xl border border-gray-100 p-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">{p.credits} credits — ₱{p.amount_paid}</p>
-                  <p className="text-xs text-gray-400">
-                    {new Date(p.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </p>
+              <div key={p.id} className="bg-white rounded-xl border border-gray-100 p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">{p.credits} credits — ₱{Number(p.amount_paid).toFixed(0)}</p>
+                    <p className="text-xs text-gray-400">
+                      {new Date(p.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                    p.status === 'approved' ? 'bg-green-100 text-green-700' :
+                    p.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                    'bg-amber-100 text-amber-700'
+                  }`}>
+                    {p.status === 'approved' ? 'Na-approve' :
+                     p.status === 'rejected' ? 'Na-reject' :
+                     'Naghihintay'}
+                  </span>
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                  p.status === 'approved' ? 'bg-green-100 text-green-700' :
-                  p.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                  'bg-amber-100 text-amber-700'
-                }`}>
-                  {p.status === 'approved' ? 'Na-approve' :
-                   p.status === 'rejected' ? 'Na-reject' :
-                   'Naghihintay'}
-                </span>
+                {p.status === 'approved' && (
+                  <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                    <Check size={12} /> Na-approve na ang iyong top-up! Naidagdag na ang {p.credits} credits sa iyong account.
+                  </p>
+                )}
+                {p.status === 'rejected' && p.rejection_reason && (
+                  <p className="text-xs text-red-500 mt-2 flex items-start gap-1">
+                    <AlertCircle size={12} className="flex-shrink-0 mt-0.5" />
+                    <span>Na-reject: {p.rejection_reason}</span>
+                  </p>
+                )}
               </div>
             ))}
           </div>

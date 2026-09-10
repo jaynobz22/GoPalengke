@@ -313,6 +313,7 @@ export interface VideoCreditPurchase {
   reference_number: string;
   screenshot_url: string | null;
   status: VideoCreditPurchaseStatus;
+  rejection_reason: string | null;
   approved_by: string | null;
   approved_at: string | null;
   created_at: string;

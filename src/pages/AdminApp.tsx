@@ -2037,6 +2037,16 @@ function VideoCreditsTab() {
   const [purchases, setPurchases] = useState<(VideoCreditPurchase & { user: { full_name: string; email: string } | null })[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejecting, setRejecting] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
+  function showToast(msg: string, type: 'success' | 'error') {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  }
 
   async function load() {
     setLoading(true);
@@ -2056,21 +2066,34 @@ function VideoCreditsTab() {
     return () => { supabase.removeChannel(sub); };
   }, []);
 
-  async function approve(id: string, userId: string, credits: number) {
+  async function approve(id: string) {
     const { error } = await supabase.rpc('approve_video_credit_purchase', { purchase_id: id });
     if (error) {
-      alert('Error approving: ' + error.message);
+      showToast('Error approving: ' + error.message, 'error');
       return;
     }
+    showToast('Na-approve na ang top-up request!', 'success');
     load();
   }
 
-  async function reject(id: string) {
-    const { error } = await supabase.rpc('reject_video_credit_purchase', { purchase_id: id });
-    if (error) {
-      alert('Error rejecting: ' + error.message);
+  async function confirmReject(id: string) {
+    if (!rejectReason.trim()) {
+      showToast('Ilagay ang dahilan ng pag-reject.', 'error');
       return;
     }
+    setRejecting(true);
+    const { error } = await supabase.rpc('reject_video_credit_purchase', {
+      purchase_id: id,
+      p_rejection_reason: rejectReason.trim(),
+    });
+    setRejecting(false);
+    if (error) {
+      showToast('Error rejecting: ' + error.message, 'error');
+      return;
+    }
+    showToast('Na-reject ang top-up request.', 'success');
+    setRejectingId(null);
+    setRejectReason('');
     load();
   }
 
@@ -2086,21 +2109,30 @@ function VideoCreditsTab() {
   }
 
   return (
-    <div className="px-5 py-4">
+    <div className="px-5 py-4 relative">
       <div className="flex items-center gap-2 mb-4">
         <Coins size={22} className="text-brand-600" />
-        <h2 className="text-lg font-bold text-gray-800">Video Credit Purchases</h2>
+        <h2 className="text-lg font-bold text-gray-800">Video Credit Top-up Requests</h2>
       </div>
+
+      {toast && (
+        <div className={`fixed top-20 left-1/2 -translate-x-1/2 z-[100] px-5 py-3 rounded-xl shadow-lg text-sm font-medium animate-fade-in ${
+          toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+        }`}>
+          {toast.msg}
+        </div>
+      )}
 
       {pendingCount > 0 && (
         <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4">
           <AlertCircle size={18} className="text-amber-600 flex-shrink-0" />
           <p className="text-sm text-amber-700 font-medium">
-            May {pendingCount} purchase na naghihintay ng approval.
+            {pendingCount} request{pendingCount > 1 ? 's' : ''} na naghihintay ng approval.
           </p>
         </div>
       )}
 
+      {/* Filter buttons */}
       <div className="flex gap-2 mb-4 overflow-x-auto">
         {(['pending', 'approved', 'rejected', 'all'] as const).map(f => (
           <button
@@ -2112,7 +2144,12 @@ function VideoCreditsTab() {
                 : 'bg-white text-gray-500 border border-gray-200'
             }`}
           >
-            {f === 'all' ? 'Lahat' : f.charAt(0).toUpperCase() + f.slice(1)}
+            {f === 'all' ? 'Lahat' : f === 'pending' ? 'Pending' : f === 'approved' ? 'Approved' : 'Rejected'}
+            {f === 'pending' && pendingCount > 0 && (
+              <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] font-bold">
+                {pendingCount}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -2120,76 +2157,174 @@ function VideoCreditsTab() {
       {filtered.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
           <Coins size={40} className="mx-auto mb-2 text-gray-300" />
-          <p className="text-sm">Wala pang {filter === 'all' ? 'purchases' : filter + ' purchases'}.</p>
+          <p className="text-sm">No {filter === 'all' ? 'purchases' : filter + ' requests'} yet.</p>
         </div>
       ) : (
         <div className="space-y-3">
           {filtered.map(p => (
             <div key={p.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+              {/* User info + status badge */}
               <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="min-w-0">
-                  <p className="font-semibold text-sm text-gray-800 truncate">{p.user?.full_name || 'Unknown'}</p>
-                  <p className="text-xs text-gray-400 truncate">{p.user?.email}</p>
+                <div className="min-w-0 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-brand-600 font-bold text-sm">
+                      {(p.user?.full_name || '?').charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-gray-800 truncate">{p.user?.full_name || 'Unknown'}</p>
+                    <p className="text-xs text-gray-400 truncate">{p.user?.email}</p>
+                  </div>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0 ${
                   p.status === 'pending' ? 'bg-amber-100 text-amber-700' :
                   p.status === 'approved' ? 'bg-green-100 text-green-700' :
                   'bg-red-100 text-red-700'
                 }`}>
-                  {p.status}
+                  {p.status === 'pending' ? 'Pending' : p.status === 'approved' ? 'Approved' : 'Rejected'}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+              {/* Details grid */}
+              <div className="grid grid-cols-3 gap-2 text-xs mb-3">
                 <div className="bg-gray-50 rounded-lg p-2 text-center">
-                  <p className="text-gray-400">Package</p>
+                  <p className="text-gray-400 mb-0.5">Package</p>
                   <p className="font-bold text-gray-700">{p.credits} credits</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-2 text-center">
-                  <p className="text-gray-400">Amount</p>
-                  <p className="font-bold text-gray-700">₱{p.amount_paid}</p>
+                  <p className="text-gray-400 mb-0.5">Amount</p>
+                  <p className="font-bold text-gray-700">₱{Number(p.amount_paid).toFixed(0)}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-2 text-center">
+                  <p className="text-gray-400 mb-0.5">Date</p>
+                  <p className="font-bold text-gray-700">
+                    {new Date(p.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+                  </p>
                 </div>
               </div>
 
-              <div className="text-xs text-gray-400 mb-3">
-                {new Date(p.created_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}
+              {/* Reference number */}
+              <div className="flex items-center gap-2 text-xs text-gray-500 mb-3 bg-gray-50 rounded-lg px-3 py-2">
+                <Receipt size={14} className="text-gray-400 flex-shrink-0" />
+                <span className="text-gray-400">Ref:</span>
+                <span className="font-mono font-medium text-gray-700 truncate">{p.reference_number}</span>
               </div>
 
-              {p.reference_number && (
-                <div className="text-xs text-gray-500 mb-3">
-                  Ref: <span className="font-mono font-medium">{p.reference_number}</span>
-                </div>
-              )}
-
+              {/* Screenshot thumbnail */}
               {p.screenshot_url && (
-                <a
-                  href={p.screenshot_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-brand-600 font-medium mb-3"
-                >
-                  <Receipt size={14} /> View proof of payment
-                </a>
+                <div className="mb-3">
+                  <button
+                    onClick={() => setLightboxUrl(p.screenshot_url!)}
+                    className="block w-full rounded-xl overflow-hidden border border-gray-200 active:scale-[0.98] transition relative group"
+                  >
+                    <img
+                      src={p.screenshot_url}
+                      alt="Payment screenshot"
+                      className="w-full h-28 object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition flex items-center justify-center">
+                      <span className="opacity-0 group-hover:opacity-100 transition bg-white/90 text-gray-700 text-xs font-medium px-3 py-1.5 rounded-lg flex items-center gap-1">
+                        <Receipt size={14} /> View full image
+                      </span>
+                    </div>
+                  </button>
+                </div>
               )}
 
-              {p.status === 'pending' && (
+              {/* Rejection reason (if rejected) */}
+              {p.status === 'rejected' && p.rejection_reason && (
+                <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mb-3">
+                  <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium">Dahilan ng pag-reject:</p>
+                    <p className="text-red-500">{p.rejection_reason}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Approve info (if approved) */}
+              {p.status === 'approved' && p.approved_at && (
+                <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 border border-green-100 rounded-lg px-3 py-2 mb-3">
+                  <Check size={14} className="flex-shrink-0" />
+                  <span>Na-approve noong {new Date(p.approved_at).toLocaleDateString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                </div>
+              )}
+
+              {/* Action buttons for pending */}
+              {p.status === 'pending' && rejectingId !== p.id && (
                 <div className="flex gap-2">
                   <button
-                    onClick={() => approve(p.id, p.user_id, p.credits)}
-                    className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold active:scale-95 transition flex items-center justify-center gap-1"
+                    onClick={() => approve(p.id)}
+                    className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold active:scale-95 transition flex items-center justify-center gap-1.5"
                   >
-                    <Check size={16} /> Approve
+                    <Check size={16} /> I-approve
                   </button>
                   <button
-                    onClick={() => reject(p.id)}
-                    className="flex-1 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl text-sm font-semibold active:scale-95 transition flex items-center justify-center gap-1"
+                    onClick={() => { setRejectingId(p.id); setRejectReason(''); }}
+                    className="flex-1 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl text-sm font-semibold active:scale-95 transition flex items-center justify-center gap-1.5"
                   >
-                    <X size={16} /> Reject
+                    <X size={16} /> I-reject
                   </button>
+                </div>
+              )}
+
+              {/* Rejection reason input */}
+              {p.status === 'pending' && rejectingId === p.id && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 mb-1.5 block">
+                      Dahilan ng pag-reject
+                    </label>
+                    <textarea
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                      placeholder="Halimbawa: Maling reference number, Hindi pumasok ang pera..."
+                      rows={2}
+                      autoFocus
+                      className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-red-400 resize-none"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => confirmReject(p.id)}
+                      disabled={rejecting}
+                      className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold active:scale-95 transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    >
+                      {rejecting ? (
+                        <><Loader2 size={16} className="animate-spin" /> Nagse-submit...</>
+                      ) : (
+                        <><Check size={16} /> Kumpirmahin ang Reject</>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => { setRejectingId(null); setRejectReason(''); }}
+                      className="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm font-medium active:scale-95 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Screenshot lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-[95] bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+            <X size={24} className="text-white" />
+          </button>
+          <img
+            src={lightboxUrl}
+            alt="Payment screenshot"
+            className="max-w-full max-h-[90vh] rounded-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>
