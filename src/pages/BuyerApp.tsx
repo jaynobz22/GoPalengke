@@ -292,11 +292,11 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
       const [{ data: cats }, { data: prods }, { data: strs }] = await Promise.all([
         supabase.from('categories').select('id, name, name_fil, slug, icon, image_url, sort_order').order('sort_order'),
         supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url)').eq('is_available', true).order('created_at', { ascending: false }).limit(30),
-        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(20),
+        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id, seller:profiles(full_name, avatar_url)').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(20),
       ]);
       setCategories(cats || []);
       setProducts((prods || []) as any);
-      setStores(strs || []);
+      setStores((strs || []) as any);
       setLoading(false);
     }
     load();
@@ -306,8 +306,8 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
   useEffect(() => {
     const sub = supabase.channel('browse-stores-products')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stores' }, () => {
-        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(20)
-          .then(({ data }) => setStores(data || []));
+        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id, seller:profiles(full_name, avatar_url)').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(20)
+          .then(({ data }) => setStores((data || []) as any));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
         supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url)').eq('is_available', true).order('created_at', { ascending: false }).limit(30)
@@ -505,8 +505,17 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
                   {store.city.toLowerCase() === (locationFilter.city || '').toLowerCase() && (
                     <span className="absolute top-1 right-1 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full">Near You</span>
                   )}
+                  <div className="absolute -bottom-4 left-2.5 w-10 h-10 rounded-full bg-white border-2 border-white shadow-md overflow-hidden flex-shrink-0">
+                    {(store as any).seller?.avatar_url ? (
+                      <img src={(store as any).seller.avatar_url} alt={(store as any).seller.full_name || store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-sm font-bold text-brand-400">
+                        {(store as any).seller?.full_name?.[0]?.toUpperCase() || '?'}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="p-2.5">
+                <div className="p-2.5 pt-5">
                   <p className="font-semibold text-sm text-gray-800 line-clamp-1">{store.name}</p>
                   {store.palengke_name && (
                     <p className="text-xs text-brand-600 line-clamp-1 flex items-center gap-0.5 mt-0.5">
