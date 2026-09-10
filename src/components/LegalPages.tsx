@@ -3,6 +3,7 @@ import {
   ArrowLeft, FileText, Shield, HelpCircle, AlertTriangle, ChevronDown, Ban,
   Clock, Package, CreditCard, AlertCircle, ShieldCheck, Eye, MapPin,
   ShoppingBag, Bot, MessageSquareWarning, UserX, AlertOctagon, BadgeCheck,
+  Bird, PawPrint, Handshake,
 } from 'lucide-react';
 
 export type LegalPageType = 'terms' | 'disclaimer' | 'privacy' | 'faq' | 'cancellation' | 'antiscam';
@@ -101,6 +102,7 @@ function TermsContent() {
           <li>A real store or market stall should be registered. Selling without a physical stall is allowed if it is a legitimate business.</li>
           <li>Sellers must keep product stock and prices updated at all times.</li>
           <li>The seller is responsible for the freshness and quality of the products they sell.</li>
+          <li><strong>Livestock sellers</strong> must upload a valid Bureau of Animal Industry (BAI) Registration and Local LGU Veterinary Health Certificate. Livestock orders are limited to Store Pick-Up or Local Meet-Up only — no rider delivery. Failure to maintain valid permits will result in immediate removal of livestock listings.</li>
         </ul>
       </Section>
 
@@ -167,6 +169,7 @@ function TermsContent() {
           <li>Do not use fake accounts or false identities.</li>
           <li>Do not bypass the platform's payment system.</li>
           <li>Do not spam the chat or send malicious links.</li>
+          <li>Do not list wild exotic fauna or any species protected under Republic Act No. 9147 (Wildlife Resources Conservation and Protection Act). Only farm livestock (chickens, ducks, turkeys, goats, piglets) are permitted.</li>
         </ul>
       </Section>
 
@@ -227,6 +230,18 @@ function DisclaimerContent() {
         <p className="mt-2 font-semibold text-red-600">
           Warning: A single negative review from a buyer regarding spoiled or damaged food products will
           result in immediate removal of the seller from the platform. No second chances.
+        </p>
+      </Section>
+
+      <Section title="Livestock and Live Animals">
+        <p>
+          For livestock and live animal listings, GoPalengke relies on the seller's submitted permits
+          (Bureau of Animal Industry Registration and Local LGU Veterinary Health Certificates) to verify
+          legal compliance. The platform does not independently inspect live animals. Buyers are strongly
+          advised to inspect the animal in person during Store Pick-Up or Local Meet-Up before completing
+          the transaction. GoPalengke is not liable for the health, condition, or welfare of any live animal
+          sold through the platform. Any concerns regarding animal welfare or illegal wildlife trade should
+          be reported to the admin immediately and may be escalated to the appropriate government authorities.
         </p>
       </Section>
 
@@ -305,7 +320,7 @@ function PrivacyContent() {
           <li><strong>Address</strong> — barangay, city, region for delivery and store location</li>
           <li><strong>Profile photo / avatar</strong> — optional, for public profile</li>
           <li><strong>Rider verification details</strong> — age, family status, residence address, plate number, motor model, and valid ID photo (riders only)</li>
-          <li><strong>Store information</strong> — store name, description, logo, banner, QR code, and palengke name (sellers only)</li>
+          <li><strong>Store information</strong> — store name, description, logo, banner, QR code, palengke name, and livestock transport permits (sellers only)</li>
           <li><strong>Location data</strong> — live GPS coordinates of the rider during active delivery, and store coordinates of the seller</li>
           <li><strong>Order and payment details</strong> — order history, payment method, reference numbers</li>
           <li><strong>Chat messages and video call records</strong> — for buyer-seller, buyer-rider, and admin-user conversations</li>
@@ -319,6 +334,7 @@ function PrivacyContent() {
           <li>Processing and delivering your orders</li>
           <li>Communication between buyers, sellers, riders, and admin</li>
           <li>Identity verification, especially for riders and sellers</li>
+          <li>Verification of livestock vendor permits (BAI Registration and LGU Veterinary Health Certificates)</li>
           <li>Computing and collecting commission and subscription fees from sellers</li>
           <li>Displaying public profiles and store pages to other users</li>
           <li>Live tracking of rider location during active delivery</li>
@@ -761,8 +777,75 @@ function AntiscamContent() {
         </div>
       </Section>
 
-      {/* Section 4: Reporting */}
-      <Section title="4. How to Report Scam or Spam">
+      {/* Section 4: Livestock & Live Animals Safety Guidelines */}
+      <Section title="4. Livestock & Live Animals Safety Guidelines">
+        <div className="space-y-4">
+          {/* Highlighted info banner */}
+          <div className="flex items-start gap-3 bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
+            <PawPrint size={22} className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-amber-700 text-sm">Livestock & Live Animals — Special Rules Apply</p>
+              <p className="text-amber-600 text-xs mt-1">
+                The sale of live animals on GoPalengke is subject to strict legal, logistical, and welfare
+                requirements. Sellers and buyers must read and comply with all guidelines below before
+                listing or purchasing any livestock.
+              </p>
+            </div>
+          </div>
+
+          {/* 4.1 Permitted Livestock Categories */}
+          <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl p-3">
+            <Bird size={18} className="text-green-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-green-700 text-sm">4.1 Permitted Livestock Categories</p>
+              <p className="text-green-600 text-xs mt-1">
+                The platform strictly allows the listing and sale of farm livestock only — including live
+                chickens, ducks, turkeys, goats, and piglets — for agricultural, backyard breeding, or
+                farming purposes. The listing, sale, or trade of wild exotic fauna, including any species
+                protected under <strong>Republic Act No. 9147 (Wildlife Resources Conservation and Protection Act)</strong>,
+                is <strong>absolutely banned</strong>. Any attempt to list protected wildlife will result in
+                immediate removal of the listing and permanent account suspension.
+              </p>
+            </div>
+          </div>
+
+          {/* 4.2 Mandatory Legal Compliance (Sellers) */}
+          <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl p-3">
+            <ShieldCheck size={18} className="text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-blue-700 text-sm">4.2 Mandatory Legal Compliance (Sellers)</p>
+              <p className="text-blue-600 text-xs mt-1">
+                All livestock vendors must upload valid documentation before listing any live animal. This
+                includes a <strong>Bureau of Animal Industry (BAI) Registration</strong> and a
+                <strong> Local LGU Veterinary Health Certificate</strong> issued by the city or municipal
+                veterinarian. Sellers must keep these documents updated and valid at all times. Failure to
+                maintain current documentation will result in the immediate removal of all livestock listings
+                from the platform without prior notice.
+              </p>
+            </div>
+          </div>
+
+          {/* 4.3 Logistics Restructure — Meet-Up / Pick-Up Only */}
+          <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-3">
+            <Handshake size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-700 text-sm">4.3 Complete Logistics Restructure — Meet-Up / Pick-Up Only</p>
+              <p className="text-red-600 text-xs mt-1">
+                Due to local quarantine checkpoints, health regulations, and animal welfare considerations,
+                standard motorcycle riders and standard platform couriers are <strong>strictly prohibited</strong>
+                from transporting live animals. When a cart contains any item from the "Livestock" category, the
+                rider delivery option is automatically disabled by the system. The transaction is forced to
+                <strong> "Store Pick-Up" or "Local Meet-Up"</strong> mode, and the delivery fee is overridden to
+                <strong> exactly ₱0.00</strong>. Buyers and sellers must coordinate the pick-up or meet-up
+                location and time directly through the platform's chat feature.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      {/* Section 5: Reporting */}
+      <Section title="5. How to Report Scam or Spam">
         <p>
           If you see any suspicious activity, scam, or spam on the platform, you can
           report it immediately using the admin messaging feature in your dashboard. The admin will review it as soon as
@@ -770,8 +853,8 @@ function AntiscamContent() {
         </p>
       </Section>
 
-      {/* Section 5: Contact */}
-      <Section title="5. Contact">
+      {/* Section 6: Contact */}
+      <Section title="6. Contact">
         <p>
           For questions about this policy, you may contact the admin using the admin
           messaging feature on the platform dashboard.
@@ -879,6 +962,14 @@ function FaqContent() {
     {
       q: 'Can I sell even without a stall in the palengke?',
       a: 'Yes. You can sell on GoPalengke even without a physical stall in the palengke, as long as it is a legitimate business and products are Class A and fresh. However, if you do have a stall in the palengke, you can enter the palengke name in store settings.',
+    },
+    {
+      q: 'Can I sell live animals or livestock on GoPalengke?',
+      a: 'Yes, but only farm livestock — live chickens, ducks, turkeys, goats, and piglets — for agricultural, backyard breeding, or farming purposes. Wild exotic fauna or any species protected under Republic Act No. 9147 is absolutely banned. Sellers must upload a valid Bureau of Animal Industry (BAI) Registration and Local LGU Veterinary Health Certificate. Failure to keep these updated will result in immediate removal of livestock listings.',
+    },
+    {
+      q: 'Why can\'t livestock be delivered by a rider?',
+      a: 'Due to local quarantine checkpoints, health regulations, and animal welfare, standard motorcycle riders and platform couriers are strictly prohibited from transporting live animals. When your cart contains a livestock item, the rider delivery option is automatically disabled. The system forces the transaction to "Store Pick-Up" or "Local Meet-Up" mode, and the delivery fee is set to exactly ₱0.00. You and the seller must coordinate the pick-up or meet-up location and time through the platform\'s chat feature.',
     },
   ];
 
