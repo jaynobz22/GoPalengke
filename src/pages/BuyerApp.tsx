@@ -281,6 +281,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
   const [locationFilter, setLocationFilter] = useState({ city: '', region: '', barangay: '', palengke: '' });
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showBarangayDropdown, setShowBarangayDropdown] = useState(false);
+  const [showPalengkeDropdown, setShowPalengkeDropdown] = useState(false);
 
   // Compute barangay options based on buyer's city/region
   const barangayOptions: string[] = (() => {
@@ -288,6 +289,16 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
     const region = locationFilter.region || profile?.region || '';
     if (!city || !region) return [];
     return getCityBarangays(region, city);
+  })();
+
+  // Compute palengke options from loaded stores in the same city
+  const palengkeOptions: string[] = (() => {
+    const city = (locationFilter.city || profile?.city || '').toLowerCase();
+    const names = stores
+      .filter(s => s.city.toLowerCase() === city && s.palengke_name)
+      .map(s => s.palengke_name!)
+      .filter((v, i, arr) => arr.indexOf(v) === i);
+    return names;
   })();
 
   // Auto-set location filter from buyer's profile on first load
@@ -334,7 +345,12 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
     if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.store.name.toLowerCase().includes(search.toLowerCase()) && !(p.store.palengke_name || '').toLowerCase().includes(search.toLowerCase())) return false;
     if (locationFilter.city && p.store.city.toLowerCase() !== locationFilter.city.toLowerCase()) return false;
     if (locationFilter.region && p.store.region.toLowerCase() !== locationFilter.region.toLowerCase()) return false;
-    if (locationFilter.barangay && p.store.barangay.toLowerCase() !== locationFilter.barangay.toLowerCase()) return false;
+    if (locationFilter.barangay) {
+      const brgy = locationFilter.barangay.toLowerCase();
+      const storeBrgy = p.store.barangay?.toLowerCase() || '';
+      const storePalengke = (p.store.palengke_name || '').toLowerCase();
+      if (storeBrgy !== brgy && !storePalengke.includes(brgy)) return false;
+    }
     if (locationFilter.palengke && !(p.store.palengke_name || '').toLowerCase().includes(locationFilter.palengke.toLowerCase())) return false;
     return true;
   });
@@ -357,7 +373,12 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
     if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !(s.palengke_name || '').toLowerCase().includes(search.toLowerCase())) return false;
     if (locationFilter.city && s.city.toLowerCase() !== locationFilter.city.toLowerCase()) return false;
     if (locationFilter.region && s.region.toLowerCase() !== locationFilter.region.toLowerCase()) return false;
-    if (locationFilter.barangay && s.barangay.toLowerCase() !== locationFilter.barangay.toLowerCase()) return false;
+    if (locationFilter.barangay) {
+      const brgy = locationFilter.barangay.toLowerCase();
+      const storeBrgy = s.barangay?.toLowerCase() || '';
+      const storePalengke = (s.palengke_name || '').toLowerCase();
+      if (storeBrgy !== brgy && !storePalengke.includes(brgy)) return false;
+    }
     if (locationFilter.palengke && !(s.palengke_name || '').toLowerCase().includes(locationFilter.palengke.toLowerCase())) return false;
     return true;
   });
@@ -435,13 +456,13 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
           <Filter size={16} className="text-gray-400 flex-shrink-0" />
           <button
             onClick={() => setLocationFilter({ city: profile?.city || '', region: profile?.region || '', barangay: '', palengke: '' })}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 ${!locationFilter.barangay ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 ${!locationFilter.barangay && !locationFilter.palengke ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
           >
             Near Me
           </button>
           <button
             onClick={() => setLocationFilter({ city: '', region: '', barangay: '', palengke: '' })}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 ${!locationFilter.city && !locationFilter.region && !locationFilter.barangay ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 ${!locationFilter.city && !locationFilter.region && !locationFilter.barangay && !locationFilter.palengke ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
           >
             Lahat
           </button>
@@ -451,6 +472,14 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
             className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 flex-shrink-0 ${locationFilter.barangay ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
           >
             {locationFilter.barangay || 'Barangay'}
+            <ChevronDown size={12} />
+          </button>
+          {/* Palengke dropdown trigger */}
+          <button
+            onClick={() => setShowPalengkeDropdown(true)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 flex-shrink-0 ${locationFilter.palengke ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
+          >
+            {locationFilter.palengke || 'Palengke'}
             <ChevronDown size={12} />
           </button>
           <button
@@ -684,6 +713,48 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
               ))}
               {barangayOptions.length === 0 && (
                 <p className="text-center text-gray-400 text-sm py-8">I-set muna ang location mo para makita ang mga barangay.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Palengke Picker Modal */}
+      {showPalengkeDropdown && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end max-w-md mx-auto animate-fade-in" onClick={() => setShowPalengkeDropdown(false)}>
+          <div className="bg-white w-full rounded-t-3xl max-h-[70vh] overflow-y-auto animate-slide-up" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white px-5 py-4 flex items-center justify-between border-b border-gray-100">
+              <h2 className="text-lg font-bold text-gray-800">Piliin ang Palengke</h2>
+              <button onClick={() => setShowPalengkeDropdown(false)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                <X size={20} className="text-gray-600" />
+              </button>
+            </div>
+            <div className="px-5 py-3 pb-8 space-y-1">
+              <button
+                onClick={() => { setLocationFilter(f => ({ ...f, palengke: '' })); setShowPalengkeDropdown(false); }}
+                className={`w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3 ${!locationFilter.palengke ? 'bg-brand-50 text-brand-700 font-semibold' : 'hover:bg-gray-50 text-gray-700'}`}
+              >
+                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <Filter size={18} className="text-gray-500" />
+                </div>
+                <span className="text-sm">Lahat ng Palengke</span>
+                {!locationFilter.palengke && <Check size={18} className="text-brand-600 ml-auto" />}
+              </button>
+              {palengkeOptions.map(name => (
+                <button
+                  key={name}
+                  onClick={() => { setLocationFilter(f => ({ ...f, palengke: name })); setShowPalengkeDropdown(false); }}
+                  className={`w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3 ${locationFilter.palengke === name ? 'bg-brand-50 text-brand-700 font-semibold' : 'hover:bg-gray-50 text-gray-700'}`}
+                >
+                  <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
+                    <MapPin size={18} className="text-brand-600" />
+                  </div>
+                  <span className="text-sm flex-1">{name}</span>
+                  {locationFilter.palengke === name && <Check size={18} className="text-brand-600 flex-shrink-0" />}
+                </button>
+              ))}
+              {palengkeOptions.length === 0 && (
+                <p className="text-center text-gray-400 text-sm py-8">Walang available na palengke sa location na ito.</p>
               )}
             </div>
           </div>
