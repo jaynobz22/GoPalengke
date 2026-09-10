@@ -729,7 +729,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
       {store.slug && (
         <div className="px-5 pb-4">
           <ShareableLinkSection
-            label="Link ng Tindahan"
+            label="Store Link"
             url={`${window.location.origin}/s/${store.slug}`}
             onOpen={() => navigate(`/s/${store.slug}`)}
           />
@@ -738,7 +738,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
       {profile?.slug && (
         <div className="px-5 pb-4">
           <ShareableLinkSection
-            label="Link ng Profile"
+            label="Profile Link"
             url={`${window.location.origin}/u/${profile.slug}`}
             onOpen={() => navigate(`/u/${profile.slug}`)}
           />
