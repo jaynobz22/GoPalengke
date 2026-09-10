@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, FileText, Shield, HelpCircle, AlertTriangle, ChevronDown } from 'lucide-react';
+import { ArrowLeft, FileText, Shield, HelpCircle, AlertTriangle, ChevronDown, Ban, Clock, Package, CreditCard, AlertCircle } from 'lucide-react';
 
-export type LegalPageType = 'terms' | 'disclaimer' | 'privacy' | 'faq';
+export type LegalPageType = 'terms' | 'disclaimer' | 'privacy' | 'faq' | 'cancellation';
 
 export function LegalPages({ type, onBack }: { type: LegalPageType; onBack: () => void }) {
   const titles: Record<LegalPageType, string> = {
@@ -9,6 +9,7 @@ export function LegalPages({ type, onBack }: { type: LegalPageType; onBack: () =
     disclaimer: 'Disclaimer',
     privacy: 'Privacy Policy',
     faq: 'Frequently Asked Questions',
+    cancellation: 'Cancellation Policy',
   };
 
   return (
@@ -27,6 +28,7 @@ export function LegalPages({ type, onBack }: { type: LegalPageType; onBack: () =
             {type === 'disclaimer' && <AlertTriangle size={28} className="text-white" />}
             {type === 'privacy' && <Shield size={28} className="text-white" />}
             {type === 'faq' && <HelpCircle size={28} className="text-white" />}
+            {type === 'cancellation' && <Ban size={28} className="text-white" />}
             <h1 className="text-2xl font-bold">{titles[type]}</h1>
           </div>
           <p className="text-brand-100 text-sm mt-2">Huling update: Setyembre 8, 2026</p>
@@ -40,6 +42,7 @@ export function LegalPages({ type, onBack }: { type: LegalPageType; onBack: () =
           {type === 'disclaimer' && <DisclaimerContent />}
           {type === 'privacy' && <PrivacyContent />}
           {type === 'faq' && <FaqContent />}
+          {type === 'cancellation' && <CancellationContent />}
         </div>
       </div>
     </div>
@@ -427,6 +430,187 @@ function PrivacyContent() {
           ang admin messaging feature sa platform. Maaari ring mag-file ng reklamo sa National Privacy
           Commission (NPC) sa www.privacy.gov.ph kung naniniwala ka na nalabag ang iyong mga karapatan
           sa ilalim ng Data Privacy Act of 2012.
+        </p>
+      </Section>
+    </div>
+  );
+}
+
+// ============= CANCELLATION POLICY =============
+function CancellationContent() {
+  return (
+    <div className="space-y-6 text-sm md:text-[15px] text-gray-700 leading-relaxed">
+      {/* Warning Banner */}
+      <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4 flex items-start gap-3">
+        <AlertTriangle size={22} className="text-red-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="font-bold text-red-700 text-sm">Strictly No Cancellation for Perishable Goods</p>
+          <p className="text-red-600 text-xs mt-1">
+            Once an order is marked as "Preparing," cancellation is strictly prohibited. Meat, fish, and vegetables are already cut, weighed, and packed — they cannot be returned to inventory or resold.
+          </p>
+        </div>
+      </div>
+
+      <Section title="1. Overview">
+        <p>
+          This Cancellation Policy outlines the rules and conditions under which a buyer may cancel an order on GoPalengke.
+          It is designed to protect vendors from losses due to the perishable nature of wet market goods, in accordance with
+          Department of Trade and Industry (DTI) guidelines on fair trade, while remaining fair and transparent to buyers.
+        </p>
+      </Section>
+
+      <Section title="2. Cancellation Window — Before Preparation">
+      <div className="space-y-3">
+          <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl p-3">
+            <Clock size={18} className="text-green-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-green-700 text-sm">Free Cancellation Within 30 Minutes</p>
+              <p className="text-green-600 text-xs mt-1">
+                Buyers may cancel an order freely through their dashboard within 30 minutes of placing it, provided the
+                order status is still "Pending" or "Confirmed." Cancellation during this window is automatically approved
+                with no penalties.
+              </p>
+            </div>
+          </div>
+          <p>
+            After the 30-minute window has passed, and the order remains in "Pending" or "Confirmed" status, the buyer may
+            still request a cancellation. However, approval is no longer automatic and will be subject to review by the vendor.
+          </p>
+        </div>
+      </Section>
+
+      <Section title="3. No Cancellation — During Preparation or In Transit">
+        <div className="space-y-3">
+          <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-3">
+            <Ban size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-700 text-sm">"Preparing" Status — No Cancellation</p>
+              <p className="text-red-600 text-xs mt-1">
+                Once the vendor marks the order as "Preparing," the items (especially meat, fish, and vegetables) have
+                already been cut, weighed, and packed. These perishable goods cannot be returned to inventory or resold.
+                Cancellation is strictly prohibited at this stage.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-3">
+            <Ban size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-700 text-sm">"In Transit" Status — No Cancellation</p>
+              <p className="text-red-600 text-xs mt-1">
+                Once the order is with the rider ("In Transit"), cancellation is not permitted under any circumstances.
+                The goods are already in transit and cannot be returned.
+              </p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 italic">
+            This policy exists because wet market goods are perishable by nature. Unlike manufactured products, fresh
+            meat, fish, and produce cannot be restocked once they have been prepared for a specific order.
+          </p>
+        </div>
+      </Section>
+
+      <Section title="4. Cancellation Reason Codes">
+        <p>When requesting a cancellation before the cut-off, the buyer must select a reason from the following options:</p>
+        <div className="space-y-2 mt-2">
+          <div className="flex items-start gap-2 bg-gray-50 rounded-lg p-2.5">
+            <span className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0">1</span>
+            <div>
+              <p className="font-medium text-gray-700 text-sm">Change of Mind</p>
+              <p className="text-xs text-gray-500">The buyer no longer wishes to purchase the items. Subject to the 30-minute free cancellation window.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 bg-gray-50 rounded-lg p-2.5">
+            <span className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 flex-shrink-0">2</span>
+            <div>
+              <p className="font-medium text-gray-700 text-sm">Incorrect Delivery Address or Contact</p>
+              <p className="text-xs text-gray-500">The buyer provided a wrong address or contact number. May be cancelled within the 30-minute window without penalty.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+            <span className="w-6 h-6 rounded-full bg-amber-200 flex items-center justify-center text-xs font-bold text-amber-700 flex-shrink-0">3</span>
+            <div>
+              <p className="font-medium text-amber-700 text-sm">Delayed Delivery (Vendor or Rider Fault)</p>
+              <p className="text-xs text-amber-600">If the delay is caused by the vendor or rider (e.g., severe delay beyond the expected delivery time), the buyer is entitled to cancel without penalties — even if the order is already in "Preparing" status. This will be reviewed by the admin.</p>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="5. Inventory & Stock Return Policy">
+        <div className="space-y-2">
+          <div className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
+            <Package size={18} className="text-gray-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-gray-700 text-sm">Perishable Items (Meat, Fish, Vegetables, Fruits)</p>
+              <p className="text-xs text-gray-500 mt-0.5">Cannot be returned to inventory once packed. These items are prepared specifically for the order and cannot be resold.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 bg-green-50 rounded-xl p-3">
+            <Package size={18} className="text-green-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-green-700 text-sm">Dry Goods & Grocery Items</p>
+              <p className="text-xs text-green-600 mt-0.5">Will automatically be returned to the store's available stock if a valid cancellation occurs within the allowed window.</p>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="6. Refund Policy for Online Payments">
+        <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-3">
+          <CreditCard size={18} className="text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="space-y-1.5">
+            <p className="text-sm text-blue-700">
+              For online payments (GCash, Maya, GoTyme, and other e-wallets), refunds will only be processed under the following conditions:
+            </p>
+            <ul className="list-disc pl-5 text-xs text-blue-600 space-y-1">
+              <li>The cancellation was made within the 30-minute free cancellation window, <strong>or</strong></li>
+              <li>The cancellation is due to vendor or rider fault (e.g., severe delay, non-delivery, or item unavailability confirmed by admin)</li>
+            </ul>
+            <p className="text-xs text-blue-500 mt-1">
+              Refunds will be processed within 5–7 business days back to the original payment method. The buyer will be notified via the platform once the refund is initiated.
+            </p>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="7. Cash on Delivery (COD) Management">
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+          <AlertCircle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-amber-700 text-sm">Anti-Fake Order Policy</p>
+            <p className="text-xs text-amber-600 mt-0.5">
+              Frequent cancellations, fake orders, or refusal to pay on COD deliveries will result in the following actions
+              under our suspicious activity monitoring system:
+            </p>
+          </div>
+        </div>
+        <ul className="list-disc pl-5 space-y-2 mt-2">
+          <li><strong>First offense:</strong> Warning notification sent to the buyer.</li>
+          <li><strong>Second offense:</strong> The buyer's Cash on Delivery option will be suspended. Only online payment (QR Code) will be available for future orders.</li>
+          <li><strong>Third offense:</strong> The buyer's account will be flagged and may be disabled by the admin under the platform's fraud detection system.</li>
+        </ul>
+      </Section>
+
+      <Section title="8. Dispute Resolution">
+        <p>
+          If a buyer believes their cancellation request was unfairly denied, they may escalate the matter to the admin
+          using the admin messaging feature in the dashboard. The admin will review the order history, chat records, and
+          delivery timestamps to make a fair determination. Decisions made by the admin are final.
+        </p>
+      </Section>
+
+      <Section title="9. DTI Compliance Statement">
+        <p>
+          This policy is formulated in alignment with the Department of Trade and Industry (DTI) guidelines on fair trade
+          practices and consumer protection. It balances the consumer's right to cancel within a reasonable window with
+          the vendor's right to protect perishable goods that cannot be restocked once prepared.
+        </p>
+      </Section>
+
+      <Section title="10. Contact">
+        <p>
+          For questions about this Cancellation Policy, buyers may reach out to the admin through the admin messaging
+          feature in the platform dashboard.
         </p>
       </Section>
     </div>

@@ -539,6 +539,7 @@ function Footer() {
     { label: 'Terms and Conditions', hash: '/legal/terms' },
     { label: 'Disclaimer', hash: '/legal/disclaimer' },
     { label: 'Privacy Policy', hash: '/legal/privacy' },
+    { label: 'Cancellation Policy', hash: '/legal/cancellation' },
     { label: 'FAQ', hash: '/legal/faq' },
   ];
 

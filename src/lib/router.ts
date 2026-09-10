@@ -39,7 +39,7 @@ export function useLegalRoute(): string | null {
   const parts = path.split('/');
   if (parts.length >= 2 && parts[0] === '' && parts[1] === 'legal') {
     const page = parts[2];
-    if (page === 'terms' || page === 'disclaimer' || page === 'privacy' || page === 'faq') {
+    if (page === 'terms' || page === 'disclaimer' || page === 'privacy' || page === 'faq' || page === 'cancellation') {
       return page;
     }
   }
