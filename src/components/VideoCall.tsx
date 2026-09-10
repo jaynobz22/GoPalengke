@@ -8,10 +8,69 @@ interface VideoCallProps {
   roomId: string;
   isCaller: boolean;
   otherName: string;
+  autoAccept?: boolean;
   onEnd: () => void;
 }
 
-export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps) {
+function useRingtone() {
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const start = useCallback(() => {
+    try {
+      audioCtxRef.current = new AudioContext();
+      const playBeep = () => {
+        const ctx = audioCtxRef.current;
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 800;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.4);
+      };
+      playBeep();
+      intervalRef.current = setInterval(playBeep, 1000);
+      if ('vibrate' in navigator) {
+        navigator.vibrate([400, 200, 400, 200, 400]);
+        const vibrateInterval = setInterval(() => {
+          navigator.vibrate([400, 200, 400, 200, 400]);
+        }, 1500);
+        // Store both intervals so we can clear them
+        (intervalRef as any)._vibrate = vibrateInterval;
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const stop = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if ((intervalRef as any)._vibrate) {
+      clearInterval((intervalRef as any)._vibrate);
+      (intervalRef as any)._vibrate = null;
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close().catch(() => {});
+      audioCtxRef.current = null;
+    }
+    if ('vibrate' in navigator) {
+      navigator.vibrate(0);
+    }
+  }, []);
+
+  useEffect(() => () => stop(), [stop]);
+
+  return { start, stop };
+}
+
+export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: VideoCallProps) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -21,19 +80,20 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
   const remoteDescriptionSetRef = useRef(false);
   const pendingOfferRef = useRef<any>(null);
   const channelReadyRef = useRef(false);
+  const gotCameraRef = useRef(false);
+  const callerReadyRef = useRef(false);
 
-  const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'incoming');
+  const [phase, setPhase] = useState<CallPhase>(
+    autoAccept ? 'connecting' : (isCaller ? 'outgoing' : 'incoming')
+  );
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string>('');
 
-  function log(msg: string) {
-    const ts = new Date().toLocaleTimeString('en-PH', { hour12: false });
-    setDebugInfo(prev => prev + `\n[${ts}] ${msg}`);
-  }
+  const { start: startRing, stop: stopRing } = useRingtone();
 
   const cleanup = useCallback(() => {
+    stopRing();
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(t => t.stop());
       localStreamRef.current = null;
@@ -50,17 +110,35 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
     remoteDescriptionSetRef.current = false;
     pendingOfferRef.current = null;
     iceCandidatesRef.current = [];
-  }, []);
+    gotCameraRef.current = false;
+    callerReadyRef.current = false;
+  }, [stopRing]);
 
   const sendSignal = useCallback((event: string, payload: Record<string, unknown>) => {
     if (channelRef.current && channelReadyRef.current) {
       channelRef.current.send({ type: 'broadcast', event, payload });
-    } else {
-      log(`WARN: cannot send ${event} — channel not ready`);
+    }
+  }, []);
+
+  const getCamera = useCallback(async (): Promise<MediaStream | null> => {
+    if (gotCameraRef.current && localStreamRef.current) return localStreamRef.current;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: { echoCancellation: true, noiseSuppression: true },
+      });
+      localStreamRef.current = stream;
+      gotCameraRef.current = true;
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      return stream;
+    } catch (err: any) {
+      setError(`Hindi ma-access ang camera/mic: ${err?.message || err}. Pumunta sa browser settings at i-allow ang camera at microphone para sa GoPalengke.`);
+      return null;
     }
   }, []);
 
   const setupPeerConnection = useCallback((stream: MediaStream) => {
+    if (pcRef.current) pcRef.current.close();
     const pc = new RTCPeerConnection({
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -73,7 +151,6 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
     pc.ontrack = (e) => {
-      log('Received remote track');
       if (remoteVideoRef.current && e.streams[0]) {
         remoteVideoRef.current.srcObject = e.streams[0];
       }
@@ -85,17 +162,12 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
       }
     };
 
-    pc.oniceconnectionstatechange = () => {
-      log(`ICE state: ${pc.iceConnectionState}`);
-    };
-
     pc.onconnectionstatechange = () => {
-      log(`PC state: ${pc.connectionState}`);
       if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
         setPhase('ended');
       }
     };
-  }, [sendSignal, log]);
+  }, [sendSignal]);
 
   const flushPendingCandidates = useCallback(async () => {
     if (!pcRef.current || !remoteDescriptionSetRef.current) return;
@@ -105,68 +177,42 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
     iceCandidatesRef.current = [];
   }, []);
 
-  const startCall = useCallback(async () => {
-    try {
-      log('Caller: requesting camera/mic...');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
-        audio: { echoCancellation: true, noiseSuppression: true },
-      });
-      localStreamRef.current = stream;
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-      log('Caller: got media stream');
+  // Caller: create and send offer (only called after receiver_ready)
+  const createAndSendOffer = useCallback(async () => {
+    const stream = await getCamera();
+    if (!stream) return;
+    setupPeerConnection(stream);
+    const pc = pcRef.current!;
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    sendSignal('offer', { sdp: offer.toJSON() });
+  }, [getCamera, setupPeerConnection, sendSignal]);
 
-      setupPeerConnection(stream);
-
-      const pc = pcRef.current!;
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      log('Caller: sending offer');
-
-      sendSignal('offer', { sdp: offer.toJSON() });
-    } catch (err: any) {
-      log(`Caller error: ${err?.message || err}`);
-      setError('Hindi ma-access ang camera o microphone. Check ang permissions sa browser settings.');
-    }
-  }, [setupPeerConnection, sendSignal]);
-
+  // Receiver: accept and set up call
   const acceptCall = useCallback(async () => {
-    try {
-      log('Receiver: requesting camera/mic...');
-      setPhase('connecting');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
-        audio: { echoCancellation: true, noiseSuppression: true },
-      });
-      localStreamRef.current = stream;
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-      log('Receiver: got media stream');
+    stopRing();
+    setPhase('connecting');
+    const stream = await getCamera();
+    if (!stream) return;
+    setupPeerConnection(stream);
 
-      setupPeerConnection(stream);
+    // Tell caller we're ready
+    sendSignal('receiver_ready', {});
 
-      // Process pending offer if it arrived before we accepted
-      if (pendingOfferRef.current) {
-        const offer = pendingOfferRef.current;
-        pendingOfferRef.current = null;
-        log('Receiver: processing pending offer');
-        const pc = pcRef.current!;
-        await pc.setRemoteDescription(new RTCSessionDescription(offer.sdp));
-        remoteDescriptionSetRef.current = true;
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        log('Receiver: sending answer');
-        sendSignal('answer', { sdp: answer.toJSON() });
-        await flushPendingCandidates();
-        setPhase('connected');
-      } else {
-        log('Receiver: no pending offer yet, waiting for offer...');
-        setPhase('connecting');
-      }
-    } catch (err: any) {
-      log(`Receiver error: ${err?.message || err}`);
-      setError('Hindi ma-access ang camera o microphone. Check ang permissions sa browser settings.');
+    // If offer already arrived, process it now
+    if (pendingOfferRef.current) {
+      const offer = pendingOfferRef.current;
+      pendingOfferRef.current = null;
+      const pc = pcRef.current!;
+      await pc.setRemoteDescription(new RTCSessionDescription(offer.sdp));
+      remoteDescriptionSetRef.current = true;
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      sendSignal('answer', { sdp: answer.toJSON() });
+      await flushPendingCandidates();
+      setPhase('connected');
     }
-  }, [setupPeerConnection, sendSignal, flushPendingCandidates]);
+  }, [stopRing, getCamera, setupPeerConnection, sendSignal, flushPendingCandidates]);
 
   // Set up signaling channel
   useEffect(() => {
@@ -177,12 +223,16 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
     channelRef.current = channel;
 
     channel
+      .on('broadcast', { event: 'receiver_ready' }, async () => {
+        // Receiver joined — now safe to send offer
+        callerReadyRef.current = true;
+        if (isCaller) {
+          await createAndSendOffer();
+        }
+      })
       .on('broadcast', { event: 'offer' }, async (msg: any) => {
-        log('Received offer signal');
         if (!pcRef.current) {
-          // Store offer for when user accepts
           pendingOfferRef.current = msg.payload;
-          log('Stored pending offer (waiting for accept)');
           return;
         }
         const pc = pcRef.current;
@@ -190,13 +240,11 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
         remoteDescriptionSetRef.current = true;
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        log('Sending answer');
         sendSignal('answer', { sdp: answer.toJSON() });
         await flushPendingCandidates();
         setPhase('connected');
       })
       .on('broadcast', { event: 'answer' }, async (msg: any) => {
-        log('Received answer signal');
         if (!pcRef.current) return;
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(msg.payload.sdp));
         remoteDescriptionSetRef.current = true;
@@ -212,25 +260,28 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
         }
       })
       .on('broadcast', { event: 'end' }, () => {
-        log('Received end signal');
         setPhase('ended');
       })
       .subscribe((status: string) => {
         if (status === 'SUBSCRIBED') {
-          log('Channel subscribed');
           channelReadyRef.current = true;
           if (isCaller) {
-            startCall();
+            // Caller gets camera ready but waits for receiver_ready before sending offer
+            getCamera();
+          } else if (autoAccept) {
+            // Receiver already accepted in ChatView — proceed immediately
+            acceptCall();
+          } else {
+            // Receiver hasn't accepted yet — play ringtone
+            startRing();
           }
-        } else {
-          log(`Channel status: ${status}`);
         }
       });
 
     return () => {
       cleanup();
     };
-  }, [roomId, isCaller, startCall, flushPendingCandidates, cleanup]);
+  }, [roomId, isCaller, autoAccept, getCamera, acceptCall, createAndSendOffer, flushPendingCandidates, cleanup, startRing]);
 
   function toggleMic() {
     if (localStreamRef.current) {
@@ -302,7 +353,7 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
     );
   }
 
-  // Incoming call — waiting for user to accept/decline
+  // Incoming call — waiting for user to accept/decline (only shown when NOT autoAccept)
   if (phase === 'incoming') {
     return (
       <div className="fixed inset-0 z-[80] bg-gradient-to-b from-blue-900 to-gray-900 flex flex-col items-center justify-center max-w-md mx-auto">
@@ -342,7 +393,6 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
             <p className="text-white text-lg font-semibold">Kumokonekta...</p>
             <p className="text-gray-400 text-sm mt-1">Naghihintay kay {otherName}</p>
           </div>
-          {/* Show local video in corner while connecting */}
           <div className="absolute top-4 right-4 w-28 h-40 rounded-2xl overflow-hidden bg-gray-800 border-2 border-white/20 shadow-lg z-10">
             <video
               ref={localVideoRef}
@@ -384,7 +434,6 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
           playsInline
           className="w-full h-full object-cover"
         />
-        {/* Fallback when no remote video yet */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="text-center">
             <div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center mx-auto mb-3">

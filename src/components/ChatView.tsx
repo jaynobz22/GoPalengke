@@ -400,6 +400,7 @@ export function ChatView({
       <VideoCall
         roomId={activeCall.roomId}
         isCaller={activeCall.isCaller}
+        autoAccept={!activeCall.isCaller}
         otherName={otherName}
         onEnd={endActiveCall}
       />
