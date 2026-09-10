@@ -79,6 +79,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
   const gotCameraRef = useRef(false);
   const myUserIdRef = useRef<string | null>(null);
   const processedIdsRef = useRef<Set<string>>(new Set());
+  const mountTimeRef = useRef<string>(new Date().toISOString());
   const retryCountRef = useRef(0);
   const mountedRef = useRef(true);
   const relayAttemptedRef = useRef(false);
@@ -340,21 +341,28 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
     const pollSignals = async () => {
       if (cancelled) return;
       try {
-        const { data } = await supabase.from('call_signals').select('*').eq('room_id', roomId).order('created_at', { ascending: true });
+        const { data } = await supabase.from('call_signals').select('*').eq('room_id', roomId).gte('created_at', mountTimeRef.current).order('created_at', { ascending: true });
         if (data) for (const s of data) await handleSignal(s);
       } catch (e) { log('POLL ERROR', e); }
     };
 
     (async () => {
       try {
-        // Query existing signals
+        // Clean up any stale signals from previous calls in this room
+        await supabase.from('call_signals').delete().eq('room_id', roomId).lt('created_at', mountTimeRef.current);
+        if (cancelled) return;
+
+        // Query existing signals (only those created after mount)
         await pollSignals();
         if (cancelled) return;
 
         // Subscribe to realtime
         await new Promise<void>((resolve) => {
           sub = supabase.channel(`call-${roomId}`)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'call_signals', filter: `room_id=eq.${roomId}` }, (p: any) => handleSignal(p.new))
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'call_signals', filter: `room_id=eq.${roomId}` }, (p: any) => {
+              const sig = p.new;
+              if (sig.created_at && sig.created_at >= mountTimeRef.current) handleSignal(sig);
+            })
             .subscribe((status: string) => { log('SUB STATUS', status); resolve(); });
         });
         if (cancelled) return;

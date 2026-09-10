@@ -77,6 +77,29 @@ export function useChat(conversationId: string | null) {
 
   useEffect(() => {
     if (!conversationId) return;
+
+    let cancelled = false;
+
+    const pollMessages = async () => {
+      if (cancelled) return;
+      try {
+        const { data } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('conversation_id', conversationId)
+          .order('created_at', { ascending: true });
+        if (!cancelled && data) {
+          setMessages(prev => {
+            const existingIds = new Set(prev.map(m => m.id));
+            const newMsgs = data.filter(m => !existingIds.has(m.id));
+            return newMsgs.length > 0 ? [...prev, ...newMsgs] : prev;
+          });
+        }
+      } catch { /* ignore */ }
+    };
+
+    pollMessages();
+
     const sub = supabase
       .channel(`chat-${conversationId}`)
       .on(
@@ -97,7 +120,14 @@ export function useChat(conversationId: string | null) {
         }
       )
       .subscribe();
-    return () => { supabase.removeChannel(sub); };
+
+    const pollTimer = setInterval(pollMessages, 2000);
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(sub);
+      clearInterval(pollTimer);
+    };
   }, [conversationId]);
 
   const markAsRead = useCallback(async () => {
