@@ -569,7 +569,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
             <Edit size={14} /> I-edit ang tindahan
           </button>
           <button onClick={onViewStore} className="text-xs bg-white/20 px-3 py-1.5 rounded-full flex items-center gap-1">
-            <ExternalLink size={14} /> Buksan ang tindahan
+            <ExternalLink size={14} /> Tingnan ang tindahan
           </button>
           <button
             onClick={toggleStoreOpen}
