@@ -879,11 +879,17 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
 function StoreView({ store, highlightProductId, onProductClick, onBack }: { store: Store; highlightProductId?: string | null; onProductClick: (p: Product) => void; onBack: () => void }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sellerAvatar, setSellerAvatar] = useState<string | null>(null);
+  const [sellerName, setSellerName] = useState<string>('');
   const highlightRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at').eq('store_id', store.id).eq('is_available', true).order('created_at', { ascending: false }).limit(50)
       .then(({ data }) => { setProducts(data || []); setLoading(false); });
+    supabase.from('profiles').select('full_name, avatar_url').eq('id', store.seller_id).maybeSingle()
+      .then(({ data }) => {
+        if (data) { setSellerAvatar(data.avatar_url); setSellerName(data.full_name); }
+      });
   }, [store.id]);
 
   useEffect(() => {
@@ -904,8 +910,14 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
       <div className="px-5 -mt-8 relative">
         <div className="flex items-end gap-3">
           <div className="w-16 h-16 rounded-2xl bg-white shadow-md overflow-hidden border-2 border-white flex-shrink-0">
-            {store.logo_url && <img src={store.logo_url} alt={store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
-          </div>
+              {sellerAvatar ? (
+                <img src={sellerAvatar} alt={sellerName || store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-brand-400">
+                  {sellerName?.[0]?.toUpperCase() || '?'}
+                </div>
+              )}
+            </div>
           <div className="pb-1">
             <h1 className="text-xl font-bold text-gray-800">{store.name}</h1>
             <div className="flex items-center gap-1">

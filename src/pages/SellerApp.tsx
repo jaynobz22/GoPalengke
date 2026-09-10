@@ -312,7 +312,6 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
     city: profile?.city || '',
     region: profile?.region || 'NCR',
   });
-  const [logoUrl, setLogoUrl] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('gcash');
   const [palengkeName, setPalengkeName] = useState('');
@@ -338,7 +337,6 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
       seller_id: profile.id,
       name, description,
       barangay: location.barangay, district: location.district, city: location.city, region: location.region,
-      logo_url: logoUrl || null,
       banner_url: bannerUrl || null,
       payment_method: paymentMethod,
       palengke_name: sellerType === 'palengke' ? (finalPalengkeName || null) : null,
@@ -449,15 +447,7 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
           {avatarUploading && <p className="text-xs text-brand-500 mt-1">Nag-a-upload...</p>}
         </div>
         <ImageUploadField
-          label="Logo ng Tindahan"
-          value={logoUrl}
-          onChange={setLogoUrl}
-          folder="logos"
-          aspectClass="h-32"
-          icon={<StoreIcon size={16} />}
-        />
-        <ImageUploadField
-          label="Banner ng Tindahan"
+          label="Store Banner"
           value={bannerUrl}
           onChange={setBannerUrl}
           folder="banners"
@@ -1137,7 +1127,6 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
     city: store.city,
     region: store.region,
   });
-  const [logoUrl, setLogoUrl] = useState(store.logo_url || '');
   const [bannerUrl, setBannerUrl] = useState(store.banner_url || '');
   const [qrCodeUrl, setQrCodeUrl] = useState(store.qr_code_url || '');
   const [palengkeName, setPalengkeName] = useState(store.palengke_name || '');
@@ -1159,7 +1148,7 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
     setSaving(true);
     const { error } = await supabase.from('stores').update({
       name, description, barangay: location.barangay, district: location.district, city: location.city, region: location.region,
-      logo_url: logoUrl || null, banner_url: bannerUrl || null,
+      banner_url: bannerUrl || null,
       qr_code_url: qrCodeUrl || null, is_open: isOpen,
       palengke_name: sellerType === 'palengke' ? (finalPalengkeName || null) : null,
       seller_type: sellerType || null,
@@ -1251,15 +1240,7 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
             </div>
           )}
           <ImageUploadField
-            label="Logo ng Tindahan"
-            value={logoUrl}
-            onChange={setLogoUrl}
-            folder="logos"
-            aspectClass="h-32"
-            icon={<StoreIcon size={16} />}
-          />
-          <ImageUploadField
-            label="Banner ng Tindahan"
+            label="Store Banner"
             value={bannerUrl}
             onChange={setBannerUrl}
             folder="banners"

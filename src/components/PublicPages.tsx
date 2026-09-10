@@ -124,6 +124,7 @@ function PublicStorePage({ slug }: { slug: string }) {
   const { session } = useAuth();
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [seller, setSeller] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -131,6 +132,8 @@ function PublicStorePage({ slug }: { slug: string }) {
       const { data: s } = await supabase.from('stores').select('*').eq('slug', slug).maybeSingle();
       if (!s) { setLoading(false); return; }
       setStore(s as Store);
+      const { data: sellerData } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', (s as Store).seller_id).maybeSingle();
+      setSeller(sellerData as any);
       const { data: prods } = await supabase.from('products').select('*').eq('store_id', s.id).eq('is_available', true).order('created_at', { ascending: false });
       setProducts(prods || []);
       setLoading(false);
@@ -183,10 +186,12 @@ function PublicStorePage({ slug }: { slug: string }) {
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5">
           <div className="flex items-start gap-3">
             <div className="w-16 h-16 rounded-2xl overflow-hidden bg-brand-100 flex-shrink-0">
-              {store.logo_url ? (
-                <img src={store.logo_url} alt={store.name} className="w-full h-full object-cover" />
+              {seller?.avatar_url ? (
+                <img src={seller.avatar_url} alt={seller.full_name || store.name} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-2xl">🏪</div>
+                <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-brand-400">
+                  {seller?.full_name?.[0]?.toUpperCase() || '?'}
+                </div>
               )}
             </div>
             <div className="flex-1 min-w-0">
@@ -463,10 +468,12 @@ function PublicUserPage({ slug }: { slug: string }) {
             className="w-full mt-3 bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-3 active:scale-[0.98] transition text-left"
           >
             <div className="w-12 h-12 rounded-xl overflow-hidden bg-brand-100 flex-shrink-0">
-              {store.logo_url ? (
-                <img src={store.logo_url} alt="" className="w-full h-full object-cover" />
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt={profile.full_name} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-xl">🏪</div>
+                <div className="w-full h-full flex items-center justify-center text-xl font-bold text-brand-400">
+                  {profile.full_name?.[0]?.toUpperCase() || '?'}
+                </div>
               )}
             </div>
             <div className="flex-1">
