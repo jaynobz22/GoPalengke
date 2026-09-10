@@ -28,7 +28,7 @@ const PALENGKE_COORDS: Record<string, Coords> = {
 };
 
 // Approximate city center coordinates for major Philippine cities
-const CITY_COORDS: Record<string, Coords> = {
+export const CITY_COORDS: Record<string, Coords> = {
   'Davao City': { lat: 7.0907, lng: 125.6128 },
   'Quezon City': { lat: 14.6760, lng: 121.0437 },
   'Manila': { lat: 14.5995, lng: 120.9842 },
@@ -268,6 +268,58 @@ export async function fetchRoadDistance(from: Coords, to: Coords): Promise<{ dis
   const route = await fetchRoute(from, to);
   return { distanceKm: route.distanceKm, durationMin: route.durationMin };
 }
+
+/**
+ * Return palengke names sorted by distance from a reference location.
+ * Uses the PALENGKE_COORDS lookup and haversine distance. Returns up to `limit`
+ * results. If no reference coords are available, returns all palengkes for the
+ * given city (or all known palengkes) in their original order.
+ */
+export function getNearbyPalengkes(
+  ref: Coords | null,
+  city: string | null,
+  limit = 5,
+): { name: string; distanceKm: number }[] {
+  const entries = Object.entries(PALENGKE_COORDS);
+
+  // If we have a reference point, sort all known palengkes by distance
+  if (ref) {
+    return entries
+      .map(([name, coords]) => ({
+        name,
+        distanceKm: Math.round(haversineKm(ref, coords) * 10) / 10,
+      }))
+      .sort((a, b) => a.distanceKm - b.distanceKm)
+      .slice(0, limit);
+  }
+
+  // No reference coords — filter by city from MARKET_NAMES if available
+  // (imported lazily to avoid circular dependency with types.ts)
+  let names: string[] | null = null;
+  if (city) {
+    try {
+      const mod = (TYPES_MODULE as any);
+      if (mod && mod.MARKET_NAMES && mod.MARKET_NAMES[city]) {
+        names = mod.MARKET_NAMES[city];
+      }
+    } catch { /* ignore */ }
+  }
+
+  if (names) {
+    return names
+      .filter(n => PALENGKE_COORDS[n])
+      .map(n => ({ name: n, distanceKm: 0 }))
+      .slice(0, limit);
+  }
+
+  // Fall back to all known palengke names
+  return entries
+    .map(([name]) => ({ name, distanceKm: 0 }))
+    .slice(0, limit);
+}
+
+// Lazy reference to types module for MARKET_NAMES lookup
+import * as TYPES_MODULE from './types';
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);

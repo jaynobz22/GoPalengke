@@ -11,6 +11,7 @@ import {
   computeDeliveryFee, estimateDistanceKm,
   haversineKm, getStoreCoords, getDeliveryCoords,
   computeDeliveryFeeFromCoords, fetchRoadDistance,
+  getNearbyPalengkes, CITY_COORDS,
   BASE_DELIVERY_FEE, PER_KM_RATE,
   type Coords, type RouteResult,
 } from '@/lib/deliveryFee';
@@ -29,7 +30,7 @@ import { useIncomingAdminCall } from '@/lib/useAdminCall';
 import { useAdminConversations } from '@/lib/useAdminChat';
 import {
   Search, ShoppingCart, Home, Package, User, UserRound, Plus, Minus, Trash2, X,
-  MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, Bike, Store as StoreIcon,
+  MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, ChevronDown, Bike, Store as StoreIcon,
   QrCode, Clock, Phone, Navigation, Filter, ShoppingBag, MessageCircle, Send,
   Share2, Copy, ExternalLink, Download, ImageOff, Bell, Timer, CheckCircle, LogOut,
   Shield, Info, ShieldAlert, Lock, AlertTriangle, Facebook,
@@ -279,6 +280,16 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [locationFilter, setLocationFilter] = useState({ city: '', region: '', barangay: '', palengke: '' });
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showPalengkeDropdown, setShowPalengkeDropdown] = useState(false);
+  const [palengkeOptions, setPalengkeOptions] = useState<{ name: string; distanceKm: number }[]>([]);
+
+  // Compute nearby palengkes based on buyer's location
+  useEffect(() => {
+    const city = locationFilter.city || profile?.city || null;
+    const refCoords = city ? CITY_COORDS[city] ?? null : null;
+    const options = getNearbyPalengkes(refCoords, city, 5);
+    setPalengkeOptions(options);
+  }, [locationFilter.city, profile?.city]);
 
   // Auto-set location filter from buyer's profile on first load
   useEffect(() => {
@@ -435,13 +446,44 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
           >
             Lahat
           </button>
-          <input
-            type="text"
-            value={locationFilter.palengke}
-            onChange={(e) => setLocationFilter(f => ({ ...f, palengke: e.target.value }))}
-            placeholder="Palengke"
-            className="px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 outline-none w-28 flex-shrink-0"
-          />
+          {/* Palengke dropdown */}
+          <div className="relative flex-shrink-0">
+            <button
+              onClick={() => setShowPalengkeDropdown(!showPalengkeDropdown)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 ${locationFilter.palengke ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
+            >
+              {locationFilter.palengke || 'Palengke'}
+              <ChevronDown size={12} className={showPalengkeDropdown ? 'rotate-180 transition' : 'transition'} />
+            </button>
+            {showPalengkeDropdown && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setShowPalengkeDropdown(false)} />
+                <div className="absolute top-full left-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-100 z-40 min-w-[200px] max-h-[240px] overflow-y-auto">
+                  <button
+                    onClick={() => { setLocationFilter(f => ({ ...f, palengke: '' })); setShowPalengkeDropdown(false); }}
+                    className={`w-full text-left px-3 py-2.5 text-xs hover:bg-gray-50 ${!locationFilter.palengke ? 'text-brand-600 font-semibold' : 'text-gray-600'}`}
+                  >
+                    Lahat ng Palengke
+                  </button>
+                  {palengkeOptions.map(opt => (
+                    <button
+                      key={opt.name}
+                      onClick={() => { setLocationFilter(f => ({ ...f, palengke: opt.name })); setShowPalengkeDropdown(false); }}
+                      className={`w-full text-left px-3 py-2.5 text-xs hover:bg-gray-50 flex items-center justify-between gap-2 ${locationFilter.palengke === opt.name ? 'text-brand-600 font-semibold' : 'text-gray-600'}`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <MapPin size={12} className="text-brand-400 flex-shrink-0" />
+                        {opt.name}
+                      </span>
+                      {opt.distanceKm > 0 && (
+                        <span className="text-gray-400 text-[10px]">{opt.distanceKm}km</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           <input
             type="text"
             value={locationFilter.barangay}
