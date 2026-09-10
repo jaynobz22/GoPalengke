@@ -16,6 +16,7 @@ import {
 } from '@/lib/deliveryFee';
 import { getCityBarangays } from '@/lib/philippineLocations';
 import { BuyerLiveTrackingMap } from '@/components/BuyerLiveTrackingMap';
+import { LiveETATimer } from '@/components/LiveETATimer';
 import { DeliveryMap } from '@/components/DeliveryMap';
 import { COMMISSION_RATE } from '@/lib/types';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
@@ -2369,6 +2370,23 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
           <Package size={16} className="text-amber-500 flex-shrink-0" />
           <p className="text-sm text-amber-700">Cash on Delivery — maghanda ng <strong>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</strong> para sa rider pagdating.</p>
         </div>
+      )}
+
+      {/* Live ETA Timer — hidden for livestock (pickup/meetup) orders */}
+      {currentOrder.status === 'picked_up' && currentOrder.rider_lat != null && currentOrder.rider_lng != null && currentOrder.delivery_method !== 'pickup' && currentOrder.delivery_method !== 'meetup' && store && (
+        <LiveETATimer
+          riderCoords={{ lat: currentOrder.rider_lat, lng: currentOrder.rider_lng }}
+          buyerCoords={getDeliveryCoords({
+            lat: currentOrder.delivery_lat,
+            lng: currentOrder.delivery_lng,
+            barangay: currentOrder.delivery_barangay,
+            city: currentOrder.delivery_city,
+            region: currentOrder.delivery_region,
+          })}
+          riderName={rider?.full_name || 'Rider'}
+          variant="buyer"
+          gpsActive
+        />
       )}
 
       {/* Live Tracking Map — shown when rider is on the way */}

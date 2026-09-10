@@ -6,6 +6,7 @@ import type { Order, OrderItem, Store, Conversation, AdminConversation } from '@
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { estimateDistanceKm, computeDeliveryFee, PER_KM_RATE, BASE_DELIVERY_FEE, getStoreCoords, getDeliveryCoords, type Coords } from '@/lib/deliveryFee';
 import { RiderNavigationMap, type NavPhase } from '@/components/RiderNavigationMap';
+import { LiveETATimer } from '@/components/LiveETATimer';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import { Avatar } from '@/components/Avatar';
 import { ImageUploadField } from '@/components/ImageUploadField';
@@ -19,7 +20,7 @@ import { useAdminConversations } from '@/lib/useAdminChat';
 import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
-  Share2, Copy, ExternalLink, Power, Timer, Star, UserCheck, LogOut, Shield,
+  Share2, Copy, ExternalLink, Power, Star, UserCheck, LogOut, Shield,
   QrCode, Download, DollarSign, X, Info,
 } from 'lucide-react';
 
@@ -532,8 +533,8 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const [buyer, setBuyer] = useState<{ full_name: string; phone: string | null; avatar_url: string | null } | null>(null);
   const [currentOrder, setCurrentOrder] = useState(order);
   const [updating, setUpdating] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [gpsActive, setGpsActive] = useState(false);
+  const [liveRiderCoords, setLiveRiderCoords] = useState<Coords | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const [siblingOrders, setSiblingOrders] = useState<(Order & { store: Store })[]>([]);
   const [pickedUpStores, setPickedUpStores] = useState<Set<string>>(new Set());
@@ -576,6 +577,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
+          setLiveRiderCoords({ lat, lng });
           if (currentOrder.delivery_group_id) {
             supabase.from('orders').update({ rider_lat: lat, rider_lng: lng }).eq('delivery_group_id', currentOrder.delivery_group_id);
           } else {
@@ -595,16 +597,6 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
       setGpsActive(false);
     };
   }, [currentOrder.status, currentOrder.id, currentOrder.delivery_group_id, profile]);
-
-  useEffect(() => {
-    if (currentOrder.status !== 'picked_up' || !currentOrder.picked_up_at) return;
-    const interval = setInterval(() => {
-      const pickedAt = new Date(currentOrder.picked_up_at!).getTime();
-      const now = Date.now();
-      setElapsedSeconds(Math.floor((now - pickedAt) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [currentOrder.status, currentOrder.picked_up_at]);
 
   async function markDelivered() {
     setUpdating(true);
@@ -686,11 +678,6 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
     store ? { barangay: store.barangay, city: store.city, region: store.region } : null,
     { barangay: currentOrder.delivery_barangay, city: currentOrder.delivery_city, region: currentOrder.delivery_region },
   );
-  const estimatedTotalSeconds = sameCity ? 15 * 60 : 30 * 60;
-  const remainingSeconds = Math.max(0, estimatedTotalSeconds - elapsedSeconds);
-  const remainingMin = Math.floor(remainingSeconds / 60);
-  const remainingSec = remainingSeconds % 60;
-  const isOverdue = elapsedSeconds > estimatedTotalSeconds;
 
   return (
     <div className="px-5 py-4">
@@ -724,30 +711,25 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         </div>
       )}
 
-      {/* Timer when picked up */}
-      {currentOrder.status === 'picked_up' && currentOrder.picked_up_at && (
-        <div className={`p-3 rounded-xl flex items-center gap-3 mb-3 ${isOverdue ? 'bg-red-50' : 'bg-blue-50'}`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isOverdue ? 'bg-red-500' : 'bg-blue-500'}`}>
-            <Timer size={20} className="text-white" />
-          </div>
-          <div className="flex-1">
-            <p className={`text-xs ${isOverdue ? 'text-red-500' : 'text-blue-500'}`}>
-              {isOverdue ? 'Lampas sa estimated time' : 'Oras na natitira'}
-            </p>
-            <p className={`font-bold text-lg ${isOverdue ? 'text-red-600' : 'text-blue-700'}`}>
-              {isOverdue
-                ? `+${Math.floor((elapsedSeconds - estimatedTotalSeconds) / 60)}m ${((elapsedSeconds - estimatedTotalSeconds) % 60)}s`
-                : `${remainingMin}m ${remainingSec}s`}
-            </p>
-          </div>
-          {gpsActive && (
-            <div className="flex items-center gap-1 text-xs text-green-600">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              GPS
-            </div>
-          )}
-        </div>
-      )}
+      {/* Live ETA Timer — hidden for livestock (pickup/meetup) orders */}
+      {currentOrder.status === 'picked_up' && currentOrder.picked_up_at && currentOrder.delivery_method !== 'pickup' && currentOrder.delivery_method !== 'meetup' && store && (() => {
+        const bCoords = getDeliveryCoords({
+          lat: currentOrder.delivery_lat,
+          lng: currentOrder.delivery_lng,
+          barangay: currentOrder.delivery_barangay,
+          city: currentOrder.delivery_city,
+          region: currentOrder.delivery_region,
+        });
+        if (!bCoords) return null;
+        return (
+          <LiveETATimer
+            riderCoords={liveRiderCoords || (currentOrder.rider_lat != null && currentOrder.rider_lng != null ? { lat: currentOrder.rider_lat, lng: currentOrder.rider_lng } : null)}
+            buyerCoords={bCoords}
+            variant="rider"
+            gpsActive={gpsActive}
+          />
+        );
+      })()}
 
       {/* COD Payment Section — shown after delivery */}
       {isDelivered && isCod && !codAccepted && (
