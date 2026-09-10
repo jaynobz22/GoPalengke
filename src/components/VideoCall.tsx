@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone } from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, Loader2 } from 'lucide-react';
 
-type CallPhase = 'outgoing' | 'incoming' | 'connected' | 'ended';
+type CallPhase = 'outgoing' | 'incoming' | 'connecting' | 'connected' | 'ended';
 
 interface VideoCallProps {
   roomId: string;
@@ -19,11 +19,19 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const iceCandidatesRef = useRef<RTCIceCandidate[]>([]);
   const remoteDescriptionSetRef = useRef(false);
+  const pendingOfferRef = useRef<any>(null);
+  const channelReadyRef = useRef(false);
 
   const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'incoming');
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>('');
+
+  function log(msg: string) {
+    const ts = new Date().toLocaleTimeString('en-PH', { hour12: false });
+    setDebugInfo(prev => prev + `\n[${ts}] ${msg}`);
+  }
 
   const cleanup = useCallback(() => {
     if (localStreamRef.current) {
@@ -38,6 +46,18 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
+    channelReadyRef.current = false;
+    remoteDescriptionSetRef.current = false;
+    pendingOfferRef.current = null;
+    iceCandidatesRef.current = [];
+  }, []);
+
+  const sendSignal = useCallback((event: string, payload: Record<string, unknown>) => {
+    if (channelRef.current && channelReadyRef.current) {
+      channelRef.current.send({ type: 'broadcast', event, payload });
+    } else {
+      log(`WARN: cannot send ${event} — channel not ready`);
+    }
   }, []);
 
   const setupPeerConnection = useCallback((stream: MediaStream) => {
@@ -45,6 +65,7 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
       ],
     });
     pcRef.current = pc;
@@ -52,27 +73,29 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
     pc.ontrack = (e) => {
+      log('Received remote track');
       if (remoteVideoRef.current && e.streams[0]) {
         remoteVideoRef.current.srcObject = e.streams[0];
       }
     };
 
     pc.onicecandidate = (e) => {
-      if (e.candidate && channelRef.current) {
-        supabase.channel(roomId).send({
-          type: 'broadcast',
-          event: 'ice',
-          payload: { candidate: e.candidate.toJSON() },
-        });
+      if (e.candidate) {
+        sendSignal('ice', { candidate: e.candidate.toJSON() });
       }
     };
 
+    pc.oniceconnectionstatechange = () => {
+      log(`ICE state: ${pc.iceConnectionState}`);
+    };
+
     pc.onconnectionstatechange = () => {
+      log(`PC state: ${pc.connectionState}`);
       if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
         setPhase('ended');
       }
     };
-  }, [roomId]);
+  }, [sendSignal, log]);
 
   const flushPendingCandidates = useCallback(async () => {
     if (!pcRef.current || !remoteDescriptionSetRef.current) return;
@@ -84,38 +107,66 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
 
   const startCall = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      log('Caller: requesting camera/mic...');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: { echoCancellation: true, noiseSuppression: true },
+      });
       localStreamRef.current = stream;
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      log('Caller: got media stream');
 
       setupPeerConnection(stream);
 
       const pc = pcRef.current!;
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
+      log('Caller: sending offer');
 
-      supabase.channel(roomId).send({
-        type: 'broadcast',
-        event: 'offer',
-        payload: { sdp: offer.toJSON() },
-      });
-    } catch {
-      setError('Hindi ma-access ang camera o microphone. Check ang permissions.');
+      sendSignal('offer', { sdp: offer.toJSON() });
+    } catch (err: any) {
+      log(`Caller error: ${err?.message || err}`);
+      setError('Hindi ma-access ang camera o microphone. Check ang permissions sa browser settings.');
     }
-  }, [roomId, setupPeerConnection]);
+  }, [setupPeerConnection, sendSignal]);
 
   const acceptCall = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      log('Receiver: requesting camera/mic...');
+      setPhase('connecting');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: { echoCancellation: true, noiseSuppression: true },
+      });
       localStreamRef.current = stream;
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      log('Receiver: got media stream');
 
       setupPeerConnection(stream);
-      setPhase('connected');
-    } catch {
-      setError('Hindi ma-access ang camera o microphone. Check ang permissions.');
+
+      // Process pending offer if it arrived before we accepted
+      if (pendingOfferRef.current) {
+        const offer = pendingOfferRef.current;
+        pendingOfferRef.current = null;
+        log('Receiver: processing pending offer');
+        const pc = pcRef.current!;
+        await pc.setRemoteDescription(new RTCSessionDescription(offer.sdp));
+        remoteDescriptionSetRef.current = true;
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        log('Receiver: sending answer');
+        sendSignal('answer', { sdp: answer.toJSON() });
+        await flushPendingCandidates();
+        setPhase('connected');
+      } else {
+        log('Receiver: no pending offer yet, waiting for offer...');
+        setPhase('connecting');
+      }
+    } catch (err: any) {
+      log(`Receiver error: ${err?.message || err}`);
+      setError('Hindi ma-access ang camera o microphone. Check ang permissions sa browser settings.');
     }
-  }, [setupPeerConnection]);
+  }, [setupPeerConnection, sendSignal, flushPendingCandidates]);
 
   // Set up signaling channel
   useEffect(() => {
@@ -127,16 +178,25 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
 
     channel
       .on('broadcast', { event: 'offer' }, async (msg: any) => {
-        if (!pcRef.current) return;
+        log('Received offer signal');
+        if (!pcRef.current) {
+          // Store offer for when user accepts
+          pendingOfferRef.current = msg.payload;
+          log('Stored pending offer (waiting for accept)');
+          return;
+        }
         const pc = pcRef.current;
         await pc.setRemoteDescription(new RTCSessionDescription(msg.payload.sdp));
         remoteDescriptionSetRef.current = true;
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        channel.send({ type: 'broadcast', event: 'answer', payload: { sdp: answer.toJSON() } });
+        log('Sending answer');
+        sendSignal('answer', { sdp: answer.toJSON() });
         await flushPendingCandidates();
+        setPhase('connected');
       })
       .on('broadcast', { event: 'answer' }, async (msg: any) => {
+        log('Received answer signal');
         if (!pcRef.current) return;
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(msg.payload.sdp));
         remoteDescriptionSetRef.current = true;
@@ -152,25 +212,25 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
         }
       })
       .on('broadcast', { event: 'end' }, () => {
+        log('Received end signal');
         setPhase('ended');
       })
-      .subscribe();
-
-    if (isCaller) {
-      startCall();
-    }
+      .subscribe((status: string) => {
+        if (status === 'SUBSCRIBED') {
+          log('Channel subscribed');
+          channelReadyRef.current = true;
+          if (isCaller) {
+            startCall();
+          }
+        } else {
+          log(`Channel status: ${status}`);
+        }
+      });
 
     return () => {
       cleanup();
     };
   }, [roomId, isCaller, startCall, flushPendingCandidates, cleanup]);
-
-  // Auto-accept for caller (they initiated)
-  useEffect(() => {
-    if (isCaller && phase === 'outgoing' && pcRef.current) {
-      // Caller waits for answer from remote
-    }
-  }, [isCaller, phase]);
 
   function toggleMic() {
     if (localStreamRef.current) {
@@ -187,18 +247,14 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
   }
 
   function endCall() {
-    if (channelRef.current) {
-      supabase.channel(roomId).send({ type: 'broadcast', event: 'end', payload: {} });
-    }
+    sendSignal('end', {});
     setPhase('ended');
     cleanup();
     onEnd();
   }
 
   function declineCall() {
-    if (channelRef.current) {
-      supabase.channel(roomId).send({ type: 'broadcast', event: 'end', payload: {} });
-    }
+    sendSignal('end', {});
     cleanup();
     onEnd();
   }
@@ -237,6 +293,7 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
           <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
           <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
         </div>
+        {error && <p className="text-red-300 text-sm mt-4 text-center px-6">{error}</p>}
         <button onClick={endCall} className="mt-10 w-16 h-16 rounded-full bg-red-500 flex items-center justify-center active:scale-90 transition shadow-lg">
           <PhoneOff size={28} className="text-white" />
         </button>
@@ -271,6 +328,41 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
           </button>
         </div>
         {error && <p className="text-red-300 text-sm mt-6 text-center px-6">{error}</p>}
+      </div>
+    );
+  }
+
+  // Connecting — showing local video while waiting for remote
+  if (phase === 'connecting') {
+    return (
+      <div className="fixed inset-0 z-[80] bg-gray-900 flex flex-col max-w-md mx-auto">
+        <div className="flex-1 relative flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 size={48} className="text-blue-400 animate-spin mx-auto mb-4" />
+            <p className="text-white text-lg font-semibold">Kumokonekta...</p>
+            <p className="text-gray-400 text-sm mt-1">Naghihintay kay {otherName}</p>
+          </div>
+          {/* Show local video in corner while connecting */}
+          <div className="absolute top-4 right-4 w-28 h-40 rounded-2xl overflow-hidden bg-gray-800 border-2 border-white/20 shadow-lg z-10">
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover scale-x-[-1]"
+            />
+          </div>
+        </div>
+        {error && (
+          <div className="absolute top-4 left-4 right-4 bg-red-500/90 text-white text-sm px-4 py-2 rounded-xl z-10">
+            {error}
+          </div>
+        )}
+        <div className="pb-8 pt-4 px-6 flex items-center justify-center">
+          <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center active:scale-90 transition shadow-lg">
+            <PhoneOff size={28} className="text-white" />
+          </button>
+        </div>
       </div>
     );
   }
