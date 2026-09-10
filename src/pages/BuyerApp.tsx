@@ -28,7 +28,7 @@ import { LoginReminderPopup } from '@/components/LoginReminderPopup';
 import { useIncomingAdminCall } from '@/lib/useAdminCall';
 import { useAdminConversations } from '@/lib/useAdminChat';
 import {
-  Search, ShoppingCart, Home, Package, User, Plus, Minus, Trash2, X,
+  Search, ShoppingCart, Home, Package, User, UserRound, Plus, Minus, Trash2, X,
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, Bike, Store as StoreIcon,
   QrCode, Clock, Phone, Navigation, Filter, ShoppingBag, MessageCircle, Send,
   Share2, Copy, ExternalLink, Download, ImageOff, Bell, Timer, CheckCircle, LogOut,
@@ -291,7 +291,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
     async function load() {
       const [{ data: cats }, { data: prods }, { data: strs }] = await Promise.all([
         supabase.from('categories').select('id, name, name_fil, slug, icon, image_url, sort_order').order('sort_order'),
-        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url)').eq('is_available', true).order('created_at', { ascending: false }).limit(30),
+        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url, seller_id)').eq('is_available', true).order('created_at', { ascending: false }).limit(30),
         supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id, seller:profiles(full_name, avatar_url)').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(20),
       ]);
       setCategories(cats || []);
@@ -310,7 +310,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
           .then(({ data }) => setStores((data || []) as any));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
-        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url)').eq('is_available', true).order('created_at', { ascending: false }).limit(30)
+        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url, seller_id)').eq('is_available', true).order('created_at', { ascending: false }).limit(30)
           .then(({ data }) => setProducts((data || []) as any));
       })
       .subscribe();
@@ -921,22 +921,22 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
           <ArrowLeft size={20} className="text-gray-700" />
         </button>
       </div>
-      <div className="px-5 -mt-8 relative">
-        <div className="flex items-end gap-3">
-          <div className="w-16 h-16 rounded-2xl bg-white shadow-md overflow-hidden border-2 border-white flex-shrink-0">
-              {sellerAvatar ? (
-                <img src={sellerAvatar} alt={sellerName || store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-brand-400">
-                  {sellerName?.[0]?.toUpperCase() || '?'}
-                </div>
-              )}
-            </div>
-          <div className="pb-1">
-            <h1 className="text-xl font-bold text-gray-800">{store.name}</h1>
+      <div className="px-5 pt-4 relative bg-white">
+        <div className="flex items-start gap-3">
+          <div className="w-16 h-16 rounded-2xl bg-brand-50 shadow-md overflow-hidden border-2 border-white flex-shrink-0">
+            {sellerAvatar ? (
+              <img src={sellerAvatar} alt={sellerName || store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-brand-500">
+                {sellerName?.[0]?.toUpperCase() || store.name?.[0]?.toUpperCase() || '?'}
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 pt-1">
+            <h1 className="text-xl font-bold text-gray-800 break-words">{store.name}</h1>
             {sellerName && (
-              <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
-                <StoreIcon size={12} className="text-gray-400" />
+              <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5 truncate">
+                <UserRound size={12} className="text-gray-400 flex-shrink-0" />
                 {sellerName}
               </p>
             )}
