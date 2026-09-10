@@ -11,10 +11,10 @@ import {
   computeDeliveryFee, estimateDistanceKm,
   haversineKm, getStoreCoords, getDeliveryCoords,
   computeDeliveryFeeFromCoords, fetchRoadDistance,
-  getNearbyPalengkes, CITY_COORDS,
   BASE_DELIVERY_FEE, PER_KM_RATE,
   type Coords, type RouteResult,
 } from '@/lib/deliveryFee';
+import { getCityBarangays } from '@/lib/philippineLocations';
 import { BuyerLiveTrackingMap } from '@/components/BuyerLiveTrackingMap';
 import { DeliveryMap } from '@/components/DeliveryMap';
 import { COMMISSION_RATE } from '@/lib/types';
@@ -280,16 +280,15 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [locationFilter, setLocationFilter] = useState({ city: '', region: '', barangay: '', palengke: '' });
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [showPalengkeDropdown, setShowPalengkeDropdown] = useState(false);
-  const [palengkeOptions, setPalengkeOptions] = useState<{ name: string; distanceKm: number }[]>([]);
+  const [showBarangayDropdown, setShowBarangayDropdown] = useState(false);
 
-  // Compute nearby palengkes based on buyer's location
-  useEffect(() => {
-    const city = locationFilter.city || profile?.city || null;
-    const refCoords = city ? CITY_COORDS[city] ?? null : null;
-    const options = getNearbyPalengkes(refCoords, city, 5);
-    setPalengkeOptions(options);
-  }, [locationFilter.city, profile?.city]);
+  // Compute barangay options based on buyer's city/region
+  const barangayOptions: string[] = (() => {
+    const city = locationFilter.city || profile?.city || '';
+    const region = locationFilter.region || profile?.region || '';
+    if (!city || !region) return [];
+    return getCityBarangays(region, city);
+  })();
 
   // Auto-set location filter from buyer's profile on first load
   useEffect(() => {
@@ -436,31 +435,24 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
           <Filter size={16} className="text-gray-400 flex-shrink-0" />
           <button
             onClick={() => setLocationFilter({ city: profile?.city || '', region: profile?.region || '', barangay: '', palengke: '' })}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 ${!locationFilter.palengke && !locationFilter.barangay ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 ${!locationFilter.barangay ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
           >
             Near Me
           </button>
           <button
             onClick={() => setLocationFilter({ city: '', region: '', barangay: '', palengke: '' })}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 ${!locationFilter.city && !locationFilter.region && !locationFilter.palengke && !locationFilter.barangay ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 ${!locationFilter.city && !locationFilter.region && !locationFilter.barangay ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
           >
             Lahat
           </button>
-          {/* Palengke dropdown trigger */}
+          {/* Barangay dropdown trigger */}
           <button
-            onClick={() => setShowPalengkeDropdown(true)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 flex-shrink-0 ${locationFilter.palengke ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
+            onClick={() => setShowBarangayDropdown(true)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 flex-shrink-0 ${locationFilter.barangay ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
           >
-            {locationFilter.palengke || 'Palengke'}
+            {locationFilter.barangay || 'Barangay'}
             <ChevronDown size={12} />
           </button>
-          <input
-            type="text"
-            value={locationFilter.barangay}
-            onChange={(e) => setLocationFilter(f => ({ ...f, barangay: e.target.value }))}
-            placeholder="Barangay"
-            className="px-3 py-1.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 outline-none w-24 flex-shrink-0"
-          />
           <button
             onClick={() => setShowLocationModal(true)}
             className="px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 bg-gray-100 text-gray-600"
@@ -656,47 +648,42 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
         )}
       </div>
 
-      {/* Palengke Picker Modal */}
-      {showPalengkeDropdown && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end max-w-md mx-auto animate-fade-in" onClick={() => setShowPalengkeDropdown(false)}>
+      {/* Barangay Picker Modal */}
+      {showBarangayDropdown && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end max-w-md mx-auto animate-fade-in" onClick={() => setShowBarangayDropdown(false)}>
           <div className="bg-white w-full rounded-t-3xl max-h-[70vh] overflow-y-auto animate-slide-up" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-white px-5 py-4 flex items-center justify-between border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-800">Piliin ang Palengke</h2>
-              <button onClick={() => setShowPalengkeDropdown(false)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+              <h2 className="text-lg font-bold text-gray-800">Piliin ang Barangay</h2>
+              <button onClick={() => setShowBarangayDropdown(false)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
                 <X size={20} className="text-gray-600" />
               </button>
             </div>
             <div className="px-5 py-3 pb-8 space-y-1">
               <button
-                onClick={() => { setLocationFilter(f => ({ ...f, palengke: '' })); setShowPalengkeDropdown(false); }}
-                className={`w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3 ${!locationFilter.palengke ? 'bg-brand-50 text-brand-700 font-semibold' : 'hover:bg-gray-50 text-gray-700'}`}
+                onClick={() => { setLocationFilter(f => ({ ...f, barangay: '' })); setShowBarangayDropdown(false); }}
+                className={`w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3 ${!locationFilter.barangay ? 'bg-brand-50 text-brand-700 font-semibold' : 'hover:bg-gray-50 text-gray-700'}`}
               >
                 <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
                   <Filter size={18} className="text-gray-500" />
                 </div>
-                <span className="text-sm">Lahat ng Palengke</span>
-                {!locationFilter.palengke && <Check size={18} className="text-brand-600 ml-auto" />}
+                <span className="text-sm">Lahat ng Barangay</span>
+                {!locationFilter.barangay && <Check size={18} className="text-brand-600 ml-auto" />}
               </button>
-              {palengkeOptions.map(opt => (
+              {barangayOptions.map(brgy => (
                 <button
-                  key={opt.name}
-                  onClick={() => { setLocationFilter(f => ({ ...f, palengke: opt.name })); setShowPalengkeDropdown(false); }}
-                  className={`w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3 ${locationFilter.palengke === opt.name ? 'bg-brand-50 text-brand-700 font-semibold' : 'hover:bg-gray-50 text-gray-700'}`}
+                  key={brgy}
+                  onClick={() => { setLocationFilter(f => ({ ...f, barangay: brgy })); setShowBarangayDropdown(false); }}
+                  className={`w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3 ${locationFilter.barangay === brgy ? 'bg-brand-50 text-brand-700 font-semibold' : 'hover:bg-gray-50 text-gray-700'}`}
                 >
                   <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
                     <MapPin size={18} className="text-brand-600" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm">{opt.name}</p>
-                    {opt.distanceKm > 0 && (
-                      <p className="text-xs text-gray-400">{opt.distanceKm} km layo</p>
-                    )}
-                  </div>
-                  {locationFilter.palengke === opt.name && <Check size={18} className="text-brand-600 flex-shrink-0" />}
+                  <span className="text-sm flex-1">{brgy}</span>
+                  {locationFilter.barangay === brgy && <Check size={18} className="text-brand-600 flex-shrink-0" />}
                 </button>
               ))}
-              {palengkeOptions.length === 0 && (
-                <p className="text-center text-gray-400 text-sm py-8">Walang available na palengke. I-set muna ang location mo.</p>
+              {barangayOptions.length === 0 && (
+                <p className="text-center text-gray-400 text-sm py-8">I-set muna ang location mo para makita ang mga barangay.</p>
               )}
             </div>
           </div>
