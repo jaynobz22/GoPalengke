@@ -144,13 +144,19 @@ export function useChat(conversationId: string | null) {
     setSending(true);
     try {
       const compressed = await compressImage(file);
-      const fileName = `${profile.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+      const ext = compressed.name.split('.').pop() || 'webp';
+      const contentType = compressed.type || `image/${ext}`;
+      const fileName = `${profile.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from('chat-images')
-        .upload(fileName, compressed, { contentType: 'image/jpeg' });
-      if (uploadError) { setSending(false); return; }
+        .upload(fileName, compressed, { contentType });
+      if (uploadError) {
+        console.error('Image upload error:', uploadError);
+        setSending(false);
+        return;
+      }
       const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(fileName);
-      const { data } = await supabase
+      const { data, error: insertError } = await supabase
         .from('messages')
         .insert({
           conversation_id: conversationId,
@@ -161,10 +167,15 @@ export function useChat(conversationId: string | null) {
         })
         .select('*')
         .single();
-      if (data) {
+      if (insertError) {
+        console.error('Message insert error:', insertError);
+        await supabase.storage.from('chat-images').remove([fileName]);
+      } else if (data) {
         setMessages(prev => [...prev, data]);
       }
-    } catch { /* ignore */ }
+    } catch (e) {
+      console.error('Send image error:', e);
+    }
     setSending(false);
   }, [conversationId, profile]);
 
