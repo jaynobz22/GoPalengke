@@ -169,15 +169,15 @@ export function SecurityDashboardTab() {
         </div>
         <p className="text-xs text-gray-400 mb-3">
           {deviceCheckEnabled
-            ? 'Naka-ON. Ang device fingerprint check ay aktibo para sa mga new user registration. Ang mga admin at test accounts ay awtomatikong exempted.'
-            : 'Naka-OFF. Ang device fingerprint check ay kasalukuyang disabled para sa testing phase. I-ON kapag ready na for public deployment.'}
+            ? 'ON. Device fingerprint check is active for new user registration. Admin and test accounts are automatically exempted.'
+            : 'OFF. Device fingerprint check is currently disabled for the testing phase. Turn ON when ready for public deployment.'}
         </p>
 
         {/* Test Accounts Section */}
         <div className="border-t border-gray-100 pt-3">
           <p className="text-sm font-semibold text-gray-800 mb-2">Test Accounts</p>
           <p className="text-xs text-gray-400 mb-3">
-            Ang mga test accounts ay exempted sa lahat ng security device checks. Magagamit ito ng admin para mag-login at i-test ang app sa ibat-ibang user side.
+            Test accounts are exempted from all security device checks. Admins can use these to log in and test the app from different user perspectives.
           </p>
 
           {/* Search & Add */}
@@ -188,7 +188,7 @@ export function SecurityDashboardTab() {
                 type="text"
                 value={testSearch}
                 onChange={(e) => setTestSearch(e.target.value)}
-                placeholder="Hanapin ang user (email o pangalan)..."
+                placeholder="Search user (email or name)..."
                 className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-brand-500 outline-none"
                 onKeyDown={(e) => { if (e.key === 'Enter') searchAndAddTestAccount(); }}
               />

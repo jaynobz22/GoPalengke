@@ -37,7 +37,7 @@ export function LegalPages({ type, onBack }: { type: LegalPageType; onBack: () =
             {type === 'antiscam' && <ShieldCheck size={28} className="text-white" />}
             <h1 className="text-2xl font-bold">{titles[type]}</h1>
           </div>
-          <p className="text-brand-100 text-sm mt-2">Huling update: Setyembre 8, 2026</p>
+          <p className="text-brand-100 text-sm mt-2">Last updated: September 8, 2026</p>
         </div>
       </div>
 
@@ -174,8 +174,8 @@ function TermsContent() {
       <Section title="13. Account Suspension at Termination">
         <p>
           Maaaring i-suspend, i-freeze, o i-delete ng admin ang anumang account na lumabag sa mga tuntunin
-          na ito. Ang seller freeze ay awtomatiko kapag hindi nabayaran ang fees within the grace period.
-          Ang anumang account na na-suspend dahil sa pagbebenta ng bulok o sira na produkto ay permanenteng
+          na ito. Ang seller freeze ay automatic when fees are not paid within the grace period.
+          Ang anumang account na na-suspend for selling spoiled or damaged products will be permanently
           aalisin — walang second chance.
         </p>
       </Section>
@@ -296,7 +296,7 @@ function PrivacyContent() {
     <div className="space-y-6 text-sm md:text-[15px] text-gray-700 leading-relaxed">
       <Section title="1. Panimula">
         <p>
-          Ang GoPalengke ay nakomporma sa <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong>
+          GoPalengke complies with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong>
           ng Pilipinas. Ang Privacy Policy na ito ay nagpapaliwanag kung paano namin kinokolekta, ginagamit,
           at pinoprotektahan ang iyong personal na impormasyon. Sa pag-sign up at paggamit ng platform,
           ikaw ay nagbibigay ng pahintulot na kolektahin at gamitin ang iyong data ayon sa policy na ito.
@@ -632,27 +632,27 @@ function AntiscamContent() {
       <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4 flex items-start gap-3">
         <AlertOctagon size={22} className="text-red-600 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="font-bold text-red-700 text-sm">Zero-Tolerance Policy Laban sa Scam at Spam</p>
+          <p className="font-bold text-red-700 text-sm">Zero-Tolerance Policy Against Scam and Spam</p>
           <p className="text-red-600 text-xs mt-1">
             Ang GoPalengke ay may zero-tolerance na patakaran laban sa anumang uri ng scam, fraud, at spam.
-            Ang anumang user na mahuhuling gumawa ng mga ito ay parurusahan ayon sa pagkakabigo ng paglabag,
-            kasama ang permanenteng pagbabawal at pagharang sa hardware at IP address.
+            Any user caught engaging in these activities will be penalized according to the severity of the violation,
+            including permanent banning and blocking of hardware and IP addresses.
           </p>
         </div>
       </div>
 
       {/* Section 1: Prohibited Activities */}
-      <Section title="1. Mga Pinagbabawal na Gawain (Zero-Tolerance)">
+      <Section title="1. Prohibited Activities (Zero-Tolerance)">
         <div className="space-y-3">
           {/* Fake orders & trip-cutting */}
           <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-3">
             <ShoppingBag size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-red-700 text-sm">Fake Orders at Trip-Cutting</p>
+              <p className="font-semibold text-red-700 text-sm">Fake Orders and Trip-Cutting</p>
               <p className="text-red-600 text-xs mt-1">
-                Ang pag-order nang maramihan sa iba't ibang tindahan nang walang intensyong magbayad, o ang
-                malaking pagbabago sa delivery address na malayo sa nakarehistrong lokasyon ay mahigpit na
-                ipinagbabawal. Ito ay itinuturing na scam laban sa mga vendor at rider.
+                Placing bulk orders across multiple stores with no intention to pay, or
+                significantly changing the delivery address far from the registered location is strictly
+                prohibited. This is considered a scam against vendors and riders.
               </p>
             </div>
           </div>
@@ -663,9 +663,9 @@ function AntiscamContent() {
             <div>
               <p className="font-semibold text-red-700 text-sm">Inventory Locking (Spam)</p>
               <p className="text-red-600 text-xs mt-1">
-                Ang paggamit ng bots o pagsasadya ng pagpapalit ng carts at paggawa ng fake orders para lang
-                i-lock ang stock ng mga perishable goods ng vendor ay isang malaking paglabag. Hindi ito
-                tinutuluyan at magreresulta sa agarang parusa.
+                Using bots or deliberately switching carts and creating fake orders just to
+                lock a vendor's perishable goods inventory is a serious violation. This is not
+                tolerated and will result in immediate penalties.
               </p>
             </div>
           </div>
@@ -674,11 +674,11 @@ function AntiscamContent() {
           <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-3">
             <MessageSquareWarning size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-red-700 text-sm">Chat at Spam Abuse</p>
+              <p className="font-semibold text-red-700 text-sm">Chat and Spam Abuse</p>
               <p className="text-red-600 text-xs mt-1">
-                Ang pagpapalit ng vendor-buyer chat ng automated spam, phishing links, external payment
-                gateways, o imbitasyon na mag-transact sa labas ng platform ay mahigpit na ipinagbabawal.
-                Ang chat ay para sa lehitimong komunikasyon lamang tungkol sa order.
+                Using the vendor-buyer chat for automated spam, phishing links, external payment
+                gateways, or invitations to transact outside the platform is strictly prohibited.
+                The chat is for legitimate communication about orders only.
               </p>
             </div>
           </div>
@@ -686,17 +686,17 @@ function AntiscamContent() {
       </Section>
 
       {/* Section 2: System Protection & Verification */}
-      <Section title="2. Proteksyon at Features ng Sistema">
+      <Section title="2. System Protection and Features">
         <div className="space-y-3">
           {/* Seller verification */}
           <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl p-3">
             <BadgeCheck size={18} className="text-green-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-green-700 text-sm">Proseso ng Seller Verification</p>
+              <p className="font-semibold text-green-700 text-sm">Seller Verification Process</p>
               <p className="text-green-600 text-xs mt-1">
-                Ang lahat ng nagrerehistrong vendor ay dadaan sa mahigpit na pagsusuri ng admin — kasama ang
-                pagkumpirma ng lokasyon at isang mandatoryong live video call verification para patunayan na
-                may pisikal na pwesto sa palengke o totoong inventory bago aprubado.
+                All registered vendors go through strict admin review — including
+                location confirmation and a mandatory live video call verification to prove that
+                there is a physical market stall or real inventory before approval.
               </p>
             </div>
           </div>
@@ -707,7 +707,7 @@ function AntiscamContent() {
             <div>
               <p className="font-semibold text-blue-700 text-sm">Suspicious Activity Monitoring</p>
               <p className="text-blue-600 text-xs mt-1">
-                Ang sistema ay awtomatikong nakakatuklas ng hindi pangkaraniwang kilos tulad ng magkakasunod na
+                The system automatically detects unusual behavior such as consecutive
                 maramihang order sa maikling panahon, multi-store checkout sa parehong oras, at mabilis na
                 pagbabago ng IP address sa isang session.
               </p>
@@ -720,8 +720,8 @@ function AntiscamContent() {
             <div>
               <p className="font-semibold text-gray-700 text-sm">Coordinator Layer</p>
               <p className="text-gray-600 text-xs mt-1">
-                Ang delivery distances at rates ay awtomatikong kinross-verify ng sistema para harangin ang
-                mga fake address at matiyak na ang presyo ng delivery ay tumutugma sa aktwal na distansya.
+                Delivery distances and rates are automatically cross-verified by the system to block
+                fake addresses and ensure the delivery price matches the actual distance.
               </p>
             </div>
           </div>
@@ -729,16 +729,16 @@ function AntiscamContent() {
       </Section>
 
       {/* Section 3: Enforcement & Sanctions */}
-      <Section title="3. Mga Parusa at Sanksyon">
+      <Section title="3. Penalties and Sanctions">
         <div className="space-y-3">
           {/* Warning & restriction */}
           <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
             <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-amber-700 text-sm">Babala at Restriction</p>
+              <p className="font-semibold text-amber-700 text-sm">Warning and Restriction</p>
               <p className="text-amber-600 text-xs mt-1">
-                Ang mga unang pagkakasala na minor offense (tulad ng aksidenteng chat spam) ay magiging sanhi
-                ng system warning o pansamantalang 24-oras na pagharang sa chat function.
+                First-time minor offenses (such as accidental chat spam) will result
+                in a system warning or temporary 24-hour block on chat function.
               </p>
             </div>
           </div>
@@ -749,9 +749,9 @@ function AntiscamContent() {
             <div>
               <p className="font-semibold text-orange-700 text-sm">Suspension of Account</p>
               <p className="text-orange-600 text-xs mt-1">
-                Ang mga paulit-ulit na pagkansela, fake orders, o bigong COD ay magiging sanhi ng awtomatikong
-                pag-aalis ng Cash on Delivery (COD) payment option mula sa akawnt ng user. Mula noon, online
-                payment (QR Code) na lang ang magagamit.
+                Repetitive cancellations, fake orders, or failed COD will trigger automatic
+                removal of the Cash on Delivery (COD) payment option from the user's account. From then on, online
+                payment (QR Code) will be the only available option.
               </p>
             </div>
           </div>
@@ -760,11 +760,11 @@ function AntiscamContent() {
           <div className="flex items-start gap-3 bg-red-50 border-2 border-red-300 rounded-xl p-3">
             <UserX size={18} className="text-red-700 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-red-800 text-sm">Permanenteng Ban</p>
+              <p className="font-bold text-red-800 text-sm">Permanent Ban</p>
               <p className="text-red-700 text-xs mt-1">
-                Ang mga napatunayang scam, pandarayang listahan ng hindi umiiral na perishable products,
-                paggamit ng spam bots, o payment fraud ay magreresulta sa agarang pag-deactivate ng akawnt,
-                kasama ang pagharang sa hardware at IP address para maiwasan ang pagrere-register.
+                Proven scam, fraudulent listing of non-existent perishable products,
+                use of spam bots, or payment fraud will result in immediate account deactivation,
+                including blocking of hardware and IP addresses to prevent re-registering.
               </p>
             </div>
           </div>
@@ -772,18 +772,18 @@ function AntiscamContent() {
       </Section>
 
       {/* Section 4: Reporting */}
-      <Section title="4. Paano Magreport ng Scam o Spam">
+      <Section title="4. How to Report Scam or Spam">
         <p>
-          Kung ikaw ay nakakita ng anumang suspetsyosong aktibidad, scam, o spam sa platform, maaari mong
-          i-report agad gamit ang admin messaging feature sa iyong dashboard. Ang admin ay susuriin sa lalong
-          madaling panahon at gagawa ng naaangkop na aksyon base sa patakaran na ito.
+          If you see any suspicious activity, scam, or spam on the platform, you can
+          report it immediately using the admin messaging feature in your dashboard. The admin will review it as soon as
+          possible and take appropriate action based on this policy.
         </p>
       </Section>
 
       {/* Section 5: Contact */}
-      <Section title="5. Makipag-ugnayan">
+      <Section title="5. Contact">
         <p>
-          Para sa mga tanong tungkol sa patakarang ito, maaaring makipag-ugnayan sa admin gamit ang admin
+          For questions about this policy, you may contact the admin using the admin
           messaging feature sa platform dashboard.
         </p>
       </Section>
@@ -856,7 +856,7 @@ function FaqContent() {
     },
     {
       q: 'Paano makipag-chat sa seller o rider?',
-      a: 'Pumunta sa Messages tab sa dashboard. Ang mga conversations ay awtomatikong nagkakaron base sa order mo. Maaari kang mag-send ng text message o mag-video call sa seller bago bumili, at sa rider habang may ongoing delivery.',
+      a: 'Pumunta sa Messages tab sa dashboard. Conversations are automatically created based on your order. Maaari kang mag-send ng text message o mag-video call sa seller bago bumili, at sa rider habang may ongoing delivery.',
     },
     {
       q: 'Paano gumagana ang video call?',
@@ -880,7 +880,7 @@ function FaqContent() {
     },
     {
       q: 'Paano ko mapoprotektahan ang aking personal data?',
-      a: 'Ang GoPalengke ay nakomporma sa Data Privacy Act of 2012. Ang lahat ng database tables ay may Row Level Security na nagsisiguro na ikaw lamang ang makaka-access sa iyong data. Hindi namin ibinebenta ang iyong data. Basahin ang Privacy Policy para sa detalye.',
+      a: 'GoPalengke complies with the Data Privacy Act of 2012. Ang lahat ng database tables ay may Row Level Security na nagsisiguro na ikaw lamang ang makaka-access sa iyong data. Hindi namin ibinebenta ang iyong data. Basahin ang Privacy Policy para sa detalye.',
     },
     {
       q: 'Paano ako makikipag-ugnayan sa admin?',
@@ -888,7 +888,7 @@ function FaqContent() {
     },
     {
       q: 'Maaari ba akong magtinda kahit walang pwesto sa palengke?',
-      a: 'Oo. Maaari kang magtenda sa GoPalengke kahit walang pisikal na pwesto sa palengke, basta legitimate na negosyo at Class A at sariwa ang produkto. Subalit, kung may pwesto ka sa palengke, maaari mong ilagay ang palengke name sa store settings.',
+      a: 'Oo. You can sell on GoPalengke even without a physical stall in the palengke, basta legitimate na negosyo at Class A at sariwa ang produkto. Subalit, kung may pwesto ka sa palengke, maaari mong ilagay ang palengke name sa store settings.',
     },
   ];
 

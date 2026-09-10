@@ -5,7 +5,7 @@ export function InactiveBanner() {
     <div className="mx-5 mt-4 bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center gap-2">
       <AlertCircle size={18} className="text-amber-600 flex-shrink-0" />
       <p className="text-xs text-amber-700 font-medium">
-        Ang iyong account ay pansamantalang hindi aktibo. View mode lang — hindi ka makakagawa ng anuman hanggang i-activate ka ng admin.
+        Your account is temporarily inactive. View mode only — you cannot perform any actions until the admin activates you.
       </p>
     </div>
   );
