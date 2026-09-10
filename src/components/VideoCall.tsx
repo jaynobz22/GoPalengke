@@ -84,6 +84,9 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
   const relayAttemptedRef = useRef(false);
   const offerCreatedRef = useRef(false);
   const phaseRef = useRef<CallPhase>(isCaller ? 'outgoing' : 'connecting');
+  const receiverReadyRef = useRef(false);
+  const callerReadyRef = useRef(false);
+  const readySentRef = useRef(false);
 
   const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'connecting');
   const [micOn, setMicOn] = useState(true);
@@ -91,9 +94,6 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
   const [error, setError] = useState<string | null>(null);
   const [showFallback, setShowFallback] = useState(false);
 
-  // StrictMode double-mount guard: in dev, React mounts → unmounts → remounts.
-  // The unmount calls cleanup() which destroys the peer connection and camera.
-  // We defer the actual destruction slightly so the remount can reuse resources.
   const cleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const destroyedRef = useRef(false);
 
@@ -102,12 +102,21 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
     if (mountedRef.current) setPhase(p);
   };
 
-  const sendSignal = async (event: string, payload: Record<string, unknown>) => {
+  const sendSignal = async (event: string, payload: Record<string, unknown>, retry = 3) => {
     if (!myUserIdRef.current) return;
-    log('SEND', event);
-    try {
-      await supabase.from('call_signals').insert({ room_id: roomId, sender_id: myUserIdRef.current, event, payload });
-    } catch (e) { log('SEND ERROR', event, e); }
+    log('SEND', event, '(attempt 1)');
+    for (let attempt = 0; attempt < retry; attempt++) {
+      const { error: insertError } = await supabase
+        .from('call_signals')
+        .insert({ room_id: roomId, sender_id: myUserIdRef.current, event, payload });
+      if (!insertError) {
+        log('SEND OK', event);
+        return;
+      }
+      log('SEND ERROR', event, `attempt ${attempt + 1}`, insertError.message);
+      if (attempt < retry - 1) await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+    }
+    log('SEND FAILED', event, 'after', retry, 'attempts');
   };
 
   const getCamera = async (): Promise<MediaStream | null> => {
@@ -220,7 +229,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
       await pc.setLocalDescription(offer);
       offerCreatedRef.current = true;
       log('OFFER CREATED, sending');
-      await sendSignal('offer', { sdp: offer.toJSON() });
+      await sendSignal('offer', { sdp: offer.toJSON() }, 5);
     } catch (e) { log('CREATE OFFER ERROR', e); }
   };
 
@@ -249,7 +258,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       log('ANSWER CREATED, sending');
-      await sendSignal('answer', { sdp: answer.toJSON() });
+      await sendSignal('answer', { sdp: answer.toJSON() }, 5);
       setPhaseSafe('connected');
     } catch (e) { log('PROCESS OFFER ERROR', e); }
   };
@@ -274,7 +283,15 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
     log('RECV', event);
 
     try {
-      if (event === 'offer') {
+      if (event === 'ready') {
+        if (isCaller) {
+          receiverReadyRef.current = true;
+          log('RECEIVER READY — creating offer');
+          if (!offerCreatedRef.current) await doCreateOffer();
+        } else {
+          callerReadyRef.current = true;
+        }
+      } else if (event === 'offer') {
         if (!isCaller) {
           const pc = pcRef.current;
           if (!pc) { log('OFFER buffered (no PC yet)'); pendingOfferRef.current = payload; }
@@ -306,16 +323,13 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
     log('CLEANUP');
     if (localStreamRef.current) { localStreamRef.current.getTracks().forEach(t => t.stop()); localStreamRef.current = null; }
     if (pcRef.current) { try { pcRef.current.close(); } catch {} pcRef.current = null; }
-    try { supabase.from('call_signals').delete().eq('room_id', roomId).then(() => {}); } catch {}
     gotCameraRef.current = false; remoteDescriptionSetRef.current = false; pendingOfferRef.current = null;
     remoteCandidatesQueueRef.current = []; processedIdsRef.current.clear(); retryCountRef.current = 0;
     relayAttemptedRef.current = false; offerCreatedRef.current = false;
+    receiverReadyRef.current = false; callerReadyRef.current = false; readySentRef.current = false;
   };
 
   const deferredCleanup = () => {
-    // In StrictMode (dev), React unmounts then immediately remounts.
-    // We defer the actual resource destruction by 100ms so the remount
-    // can cancel this timer and reuse the camera + peer connection.
     if (cleanupTimerRef.current) clearTimeout(cleanupTimerRef.current);
     cleanupTimerRef.current = setTimeout(() => {
       if (destroyedRef.current) return;
@@ -327,7 +341,6 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
   useEffect(() => {
     mountedRef.current = true;
     destroyedRef.current = false;
-    // Cancel any pending deferred cleanup from StrictMode's first unmount
     if (cleanupTimerRef.current) { clearTimeout(cleanupTimerRef.current); cleanupTimerRef.current = null; }
     if (!profile?.id) return;
     myUserIdRef.current = profile.id;
@@ -340,19 +353,17 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
     const pollSignals = async () => {
       if (cancelled) return;
       try {
-        const { data } = await supabase.from('call_signals').select('*').eq('room_id', roomId).order('created_at', { ascending: true });
+        const { data, error } = await supabase.from('call_signals').select('*').eq('room_id', roomId).order('created_at', { ascending: true });
+        if (error) { log('POLL DB ERROR', error.message); return; }
         if (data) for (const s of data) await handleSignal(s);
       } catch (e) { log('POLL ERROR', e); }
     };
 
     (async () => {
       try {
-        // Query existing signals. The caller may have sent the offer
-        // before the receiver mounted, so existing signals must be processed.
         await pollSignals();
         if (cancelled) return;
 
-        // Subscribe to realtime
         await new Promise<void>((resolve) => {
           sub = supabase.channel(`call-${roomId}`)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'call_signals', filter: `room_id=eq.${roomId}` }, (p: any) => handleSignal(p.new))
@@ -360,16 +371,22 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
         });
         if (cancelled) return;
 
-        // Re-query after subscription
         await pollSignals();
-
-        // Start polling every 800ms as fallback to realtime
         pollTimer = setInterval(pollSignals, 800);
 
-        // Start call flow
+        if (!readySentRef.current) {
+          readySentRef.current = true;
+          await sendSignal('ready', {}, 3);
+          log('SENT ready signal');
+        }
+
         if (isCaller) {
-          log('CALLER: creating offer immediately');
-          await doCreateOffer();
+          if (receiverReadyRef.current && !offerCreatedRef.current) {
+            log('CALLER: receiver already ready, creating offer');
+            await doCreateOffer();
+          } else {
+            log('CALLER: waiting for receiver_ready');
+          }
         } else if (autoAccept) {
           log('RECEIVER: accepting call');
           await doAcceptCall();
