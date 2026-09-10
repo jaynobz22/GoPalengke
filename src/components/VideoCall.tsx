@@ -91,6 +91,12 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
   const [error, setError] = useState<string | null>(null);
   const [showFallback, setShowFallback] = useState(false);
 
+  // StrictMode double-mount guard: in dev, React mounts → unmounts → remounts.
+  // The unmount calls cleanup() which destroys the peer connection and camera.
+  // We defer the actual destruction slightly so the remount can reuse resources.
+  const cleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const destroyedRef = useRef(false);
+
   const setPhaseSafe = (p: CallPhase) => {
     phaseRef.current = p;
     if (mountedRef.current) setPhase(p);
@@ -306,8 +312,23 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
     relayAttemptedRef.current = false; offerCreatedRef.current = false;
   };
 
+  const deferredCleanup = () => {
+    // In StrictMode (dev), React unmounts then immediately remounts.
+    // We defer the actual resource destruction by 100ms so the remount
+    // can cancel this timer and reuse the camera + peer connection.
+    if (cleanupTimerRef.current) clearTimeout(cleanupTimerRef.current);
+    cleanupTimerRef.current = setTimeout(() => {
+      if (destroyedRef.current) return;
+      log('DEFERRED CLEANUP — executing');
+      cleanup();
+    }, 100);
+  };
+
   useEffect(() => {
     mountedRef.current = true;
+    destroyedRef.current = false;
+    // Cancel any pending deferred cleanup from StrictMode's first unmount
+    if (cleanupTimerRef.current) { clearTimeout(cleanupTimerRef.current); cleanupTimerRef.current = null; }
     if (!profile?.id) return;
     myUserIdRef.current = profile.id;
     log('MOUNT', `roomId=${roomId} isCaller=${isCaller}`);
@@ -360,14 +381,21 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
       mountedRef.current = false;
       if (sub) supabase.removeChannel(sub);
       if (pollTimer) clearInterval(pollTimer);
-      cleanup();
+      deferredCleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, profile?.id]);
 
   function toggleMic() { if (localStreamRef.current) { localStreamRef.current.getAudioTracks().forEach(t => { t.enabled = !micOn; }); setMicOn(!micOn); } }
   function toggleCam() { if (localStreamRef.current) { localStreamRef.current.getVideoTracks().forEach(t => { t.enabled = !camOn; }); setCamOn(!camOn); } }
-  function endCall() { sendSignal('end', {}); setPhaseSafe('ended'); cleanup(); onEnd(); }
+  function endCall() {
+    sendSignal('end', {});
+    setPhaseSafe('ended');
+    destroyedRef.current = true;
+    if (cleanupTimerRef.current) clearTimeout(cleanupTimerRef.current);
+    cleanup();
+    onEnd();
+  }
   function openInBrowser() { window.open(window.location.href, '_blank', 'noopener,noreferrer'); }
 
   if (showFallback) {
