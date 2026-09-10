@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall, AdminConversation, Store } from '@/lib/types';
 import { ImageUploadField } from '@/components/ImageUploadField';
+import { SecurityDashboardTab } from '@/components/SecurityDashboard';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
 import { AdminChat, getOrCreateAdminConversation } from '@/components/AdminChat';
 import {
@@ -12,7 +13,7 @@ import {
   Lock, Unlock, Video, MessageCircle, Shield, QrCode, MapPin, Mail, Send,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'announcements' | 'settings';
+type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'announcements' | 'security' | 'settings';
 
 export function AdminApp() {
   const { profile, signOut } = useAuth();
@@ -63,6 +64,7 @@ export function AdminApp() {
     { id: 'fees', label: 'Fees', icon: Wallet },
     { id: 'announcements', label: 'Announcements', icon: Megaphone },
     { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'security', label: 'Security', icon: Shield },
   ];
 
   return (
@@ -111,6 +113,7 @@ export function AdminApp() {
       {tab === 'messages' && <AdminMessagesTab onOpenChat={(convId, name) => setActiveChat({ conversationId: convId, otherName: name })} />}
       {tab === 'fees' && <FeesTab />}
       {tab === 'announcements' && <AnnouncementsTab />}
+      {tab === 'security' && <SecurityDashboardTab />}
       {tab === 'settings' && <SettingsTab />}
 
       {activeChat && profile && (

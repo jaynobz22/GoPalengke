@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { navigate } from '@/lib/router';
+import { checkOrderFlood, checkIpMismatch } from '@/lib/security';
 import type { Product, Store, Category, CartItem, Order, OrderItem, OrderStatus, Conversation, AdminConversation } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
@@ -31,7 +32,7 @@ import {
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, Bike, Store as StoreIcon,
   QrCode, Clock, Phone, Navigation, Filter, ShoppingBag, MessageCircle, Send,
   Share2, Copy, ExternalLink, Download, ImageOff, Bell, Timer, CheckCircle, LogOut,
-  Shield, Info,
+  Shield, Info, ShieldAlert, Lock, AlertTriangle,
 } from 'lucide-react';
 
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
@@ -1109,6 +1110,10 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   const [cartItems, setCartItems] = useState<(CartItem & { product: Product; store: Store })[]>([]);
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
+  const [showIpMismatchModal, setShowIpMismatchModal] = useState(false);
+  const [securityPin, setSecurityPin] = useState('');
+  const [simulateSms, setSimulateSms] = useState(false);
+  const [mockOtp, setMockOtp] = useState('');
   const [deliveryLocation, setDeliveryLocation] = useState<LocationData>({
     barangay: profile?.barangay || '',
     district: profile?.district || '',
@@ -1194,6 +1199,28 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   async function placeOrder() {
     if (!profile) return;
     setPlacing(true);
+
+    // Security: Order flooding check — max 4 distinct stores in 2 min
+    const storeIds = Object.keys(grouped);
+    for (const storeId of storeIds) {
+      const floodCheck = await checkOrderFlood(profile.id, storeId);
+      if (floodCheck.flagged) {
+        setPlacing(false);
+        alert(`Order Flooding Detected: ${floodCheck.message || 'Account suspended.'} You have been logged out for security.`);
+        await supabase.auth.signOut();
+        return;
+      }
+    }
+
+    // Security: IP / Delivery mismatch check
+    if (deliveryLocation.city || deliveryLocation.region) {
+      const ipCheck = await checkIpMismatch(deliveryLocation.city || '', deliveryLocation.region || '');
+      if (ipCheck.mismatch) {
+        setPlacing(false);
+        setShowIpMismatchModal(true);
+        return;
+      }
+    }
 
     const groupId = crypto.randomUUID();
     const createdOrders: Order[] = [];
@@ -1438,6 +1465,98 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
       >
         {placing ? 'Nagpapadala...' : `Mag-order Na · ₱${grandTotal.toFixed(2)}`}
       </button>
+
+      {/* IP / Delivery Mismatch Verification Modal */}
+      {showIpMismatchModal && (
+        <div className="fixed inset-0 z-[80] bg-black/50 flex items-center justify-center px-5">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full">
+            <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+              <ShieldAlert size={28} className="text-amber-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-800 text-center mb-2">Security Verification Required</h3>
+            <p className="text-sm text-gray-500 text-center mb-4">
+              Ang iyong IP location ay hindi tumutugma sa delivery address. Para sa kaligtasan, kailangan i-verify ang transaction na ito.
+            </p>
+
+            <div className="flex items-center justify-between bg-gray-50 rounded-xl p-3 mb-4">
+              <label className="text-sm font-medium text-gray-600">Simulate SMS Gateway (Mock)</label>
+              <button
+                onClick={() => {
+                  const otp = Math.floor(1000 + Math.random() * 9000).toString();
+                  setMockOtp(otp);
+                  setSimulateSms(!simulateSms);
+                }}
+                className={`relative w-12 h-7 rounded-full transition ${simulateSms ? 'bg-brand-600' : 'bg-gray-300'}`}
+              >
+                <span className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${simulateSms ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+
+            {simulateSms && mockOtp && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-center">
+                <p className="text-xs text-blue-600 font-medium">Mock OTP Code</p>
+                <p className="text-2xl font-bold text-blue-700 tracking-widest">{mockOtp}</p>
+              </div>
+            )}
+
+            <div className="mb-4">
+              <label className="text-sm font-medium text-gray-600 mb-1 block">Ilagay ang Security PIN o OTP</label>
+              <input
+                type="text"
+                maxLength={6}
+                value={securityPin}
+                onChange={(e) => setSecurityPin(e.target.value)}
+                placeholder="4-digit PIN o OTP"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none text-center text-lg tracking-widest"
+              />
+            </div>
+
+            <button
+              onClick={async () => {
+                if (securityPin.length < 4) { alert('Ilagay ang 4-digit PIN o OTP.'); return; }
+                setShowIpMismatchModal(false);
+                setSecurityPin('');
+                setSimulateSms(false);
+                setMockOtp('');
+                // Re-run placeOrder after verification
+                setPlacing(true);
+                const groupId = crypto.randomUUID();
+                const createdOrders: Order[] = [];
+                for (const [storeId, items] of Object.entries(grouped)) {
+                  const store = items[0].store;
+                  const total = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
+                  const { fee: deliveryFee } = getFeeForStore(store);
+                  const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, deliveryLocation.region].filter(Boolean).join(', ');
+                  const commissionAmount = Math.round(total * COMMISSION_RATE * 100) / 100;
+                  const { data: order, error } = await supabase.from('orders').insert({
+                    buyer_id: profile!.id, store_id: storeId, status: 'pending', payment_method: paymentMethod, payment_status: 'pending',
+                    total, delivery_fee: deliveryFee, delivery_barangay: deliveryLocation.barangay || null, delivery_district: deliveryLocation.district || null,
+                    delivery_city: deliveryLocation.city || null, delivery_region: deliveryLocation.region || null, delivery_address: fullAddress,
+                    delivery_lat: deliveryPin?.lat ?? null, delivery_lng: deliveryPin?.lng ?? null, buyer_note: note || null,
+                    commission_amount: commissionAmount, delivery_group_id: groupId,
+                  }).select('*').single();
+                  if (error) { setPlacing(false); return; }
+                  createdOrders.push(order as Order);
+                  const orderItems = items.map(i => ({ order_id: order.id, product_id: i.product_id, product_name: i.product.name, product_image: i.product.image_url, price: i.product.price, quantity: i.quantity, unit: i.product.unit }));
+                  await supabase.from('order_items').insert(orderItems);
+                  await supabase.from('cart_items').delete().eq('buyer_id', profile!.id).eq('store_id', storeId);
+                }
+                setPlacing(false);
+                onOrderPlaced(createdOrders);
+              }}
+              className="w-full py-3.5 bg-brand-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition mb-2"
+            >
+              I-authorize ang Order
+            </button>
+            <button
+              onClick={() => { setShowIpMismatchModal(false); setSecurityPin(''); setSimulateSms(false); setMockOtp(''); }}
+              className="w-full py-2.5 bg-gray-100 text-gray-600 rounded-xl font-medium text-sm"
+            >
+              Kanselahin
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useRef, ReactNode } fro
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type { Profile, UserRole } from './types';
+import { isAccountBanned, isAccountSuspended, getAccountStatusLabel, checkDeviceFingerprint } from './security';
 
 interface AuthContextValue {
   session: Session | null;
@@ -36,7 +37,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select('*')
       .eq('id', userId)
       .maybeSingle();
-    setProfile(data as Profile | null);
+    const prof = data as Profile | null;
+    if (prof) {
+      if (isAccountBanned(prof.account_status) || isAccountSuspended(prof.account_status)) {
+        alert(`Your account has been ${getAccountStatusLabel(prof.account_status)}. Please contact support.`);
+        await supabase.auth.signOut();
+        setProfile(null);
+        setSession(null);
+        return;
+      }
+    }
+    setProfile(prof);
   }
 
   useEffect(() => {
@@ -121,6 +132,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     pendingVerificationRef.current = false;
     setSession(data.session);
     await fetchProfile(data.user.id);
+
+    // Security: check device fingerprint for botnet detection
+    try {
+      const deviceCheck = await checkDeviceFingerprint(data.user.id);
+      if (deviceCheck.banned) {
+        alert('This device has been blacklisted for suspicious activity. Please contact support.');
+        await supabase.auth.signOut();
+        setProfile(null);
+        setSession(null);
+        return { error: 'Device blacklisted.' };
+      }
+      if (deviceCheck.flagged) {
+        alert('Multiple accounts detected on this device. Account banned for security.');
+        await supabase.auth.signOut();
+        setProfile(null);
+        setSession(null);
+        return { error: 'Account banned due to botnet detection.' };
+      }
+    } catch { /* best-effort */ }
+
     return { error: null };
   }
 
@@ -133,6 +164,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function refreshProfile() {
     if (session?.user) await fetchProfile(session.user.id);
   }
+
+  // Watch for account_status changes in real-time (force logout on suspension/ban)
+  useEffect(() => {
+    if (!profile?.id) return;
+    const sub = supabase
+      .channel(`account-status-${profile.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${profile.id}` },
+        (payload: any) => {
+          const newStatus = payload.new?.account_status;
+          if (isAccountBanned(newStatus) || isAccountSuspended(newStatus)) {
+            alert(`Your account has been ${getAccountStatusLabel(newStatus)}. You will be logged out.`);
+            (async () => {
+              await supabase.auth.signOut();
+              setProfile(null);
+              setSession(null);
+            })();
+          }
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [profile?.id]);
 
   async function sendEmailOtp(email: string): Promise<{ error: string | null }> {
     const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });

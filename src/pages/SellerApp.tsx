@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { navigate } from '@/lib/router';
+import { checkPriceAnomaly } from '@/lib/security';
 import type { Store, Product, Order, OrderItem, OrderStatus, Conversation, SellerFee, AdminConversation } from '@/lib/types';
 import { PAYMENT_THRESHOLD } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
@@ -950,6 +951,20 @@ function ProductFormModal({ store, product, onClose, onSaved }: { store: Store; 
     } else {
       const { error } = await supabase.from('products').insert(payload);
       if (error) { setError(error.message); setSaving(false); return; }
+    }
+
+    // Price anomaly check: if price is suspiciously low, flag for moderation
+    if (categoryId && parseFloat(price) > 0) {
+      const anomaly = await checkPriceAnomaly(categoryId, parseFloat(price), store.seller_id, name, product?.id);
+      if (anomaly.flagged) {
+        await supabase.from('products')
+          .update({ moderation_status: 'PENDING_MODERATION', is_available: false })
+          .eq('store_id', store.id)
+          .eq('name', name);
+        setError(`Babala sa Presyo: Ang presyo mo ay ${anomaly.priceDropPercent}% mas mababa kaysa sa average presyo sa kategoryang ito (₱${anomaly.avgPrice?.toFixed(2)}). Ang iyong listing ay ipinasa sa admin para sa pag-review, at ang iyong account ay limitado sa 48 oras hanggang sa ma-verify.`);
+        setSaving(false);
+        return;
+      }
     }
 
     setSaving(false);

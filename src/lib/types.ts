@@ -1,3 +1,5 @@
+import type { AccountStatus } from './security';
+
 export type UserRole = 'buyer' | 'seller' | 'rider' | 'admin';
 
 export interface Profile {
@@ -17,6 +19,10 @@ export interface Profile {
   is_active: boolean;
   email_verified: boolean;
   phone_verified: boolean;
+  account_status: AccountStatus;
+  is_payout_locked: boolean;
+  security_pin: string | null;
+  payout_locked_until: string | null;
   rider_age: number | null;
   rider_family_status: string | null;
   rider_residence_address: string | null;
@@ -77,6 +83,7 @@ export interface Product {
   is_available: boolean;
   catalog_id: string | null;
   selected_image_index: number | null;
+  moderation_status: string;
   created_at: string;
   updated_at: string;
 }

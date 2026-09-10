@@ -6,3 +6,6 @@ verify_jwt = false
 
 [functions.send-campaign-emails]
 verify_jwt = true
+
+[functions.fraud-detection]
+verify_jwt = true

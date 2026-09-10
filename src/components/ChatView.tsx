@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import type { Message, Conversation } from '@/lib/types';
-import { ArrowLeft, Send, Video, PhoneOff, Phone, ImagePlus, Trash2, X } from 'lucide-react';
+import { scanMessageLocally, scanChatMessage } from '@/lib/security';
+import { ArrowLeft, Send, Video, PhoneOff, Phone, ImagePlus, Trash2, X, ShieldAlert } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
 import { VideoCall } from '@/components/VideoCall';
 import { compressImage } from '@/lib/imageCompress';
@@ -77,6 +78,17 @@ export function useChat(conversationId: string | null) {
       .single();
     if (data) {
       setMessages(prev => [...prev, data]);
+      // Security scan: check for off-platform poaching patterns
+      if (scanMessageLocally(body.trim())) {
+        const result = await scanChatMessage(profile.id, body.trim(), conversationId, data.id);
+        if (result.flagged) {
+          // Update the message locally to show redacted version
+          setMessages(prev => prev.map(m => m.id === data.id ? { ...m, body: '[REDACTED FOR SECURITY: Account Suspended]' } : m));
+          alert('Your message was flagged for attempting to move transactions off GoPalengke. Your account has been suspended pending review.');
+          await supabase.auth.signOut();
+          return;
+        }
+      }
     }
     setSending(false);
   }, [conversationId, profile]);
