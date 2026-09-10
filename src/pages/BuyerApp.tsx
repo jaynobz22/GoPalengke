@@ -446,44 +446,14 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
           >
             Lahat
           </button>
-          {/* Palengke dropdown */}
-          <div className="relative flex-shrink-0">
-            <button
-              onClick={() => setShowPalengkeDropdown(!showPalengkeDropdown)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 ${locationFilter.palengke ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
-            >
-              {locationFilter.palengke || 'Palengke'}
-              <ChevronDown size={12} className={showPalengkeDropdown ? 'rotate-180 transition' : 'transition'} />
-            </button>
-            {showPalengkeDropdown && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setShowPalengkeDropdown(false)} />
-                <div className="absolute top-full left-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-100 z-40 min-w-[200px] max-h-[240px] overflow-y-auto">
-                  <button
-                    onClick={() => { setLocationFilter(f => ({ ...f, palengke: '' })); setShowPalengkeDropdown(false); }}
-                    className={`w-full text-left px-3 py-2.5 text-xs hover:bg-gray-50 ${!locationFilter.palengke ? 'text-brand-600 font-semibold' : 'text-gray-600'}`}
-                  >
-                    Lahat ng Palengke
-                  </button>
-                  {palengkeOptions.map(opt => (
-                    <button
-                      key={opt.name}
-                      onClick={() => { setLocationFilter(f => ({ ...f, palengke: opt.name })); setShowPalengkeDropdown(false); }}
-                      className={`w-full text-left px-3 py-2.5 text-xs hover:bg-gray-50 flex items-center justify-between gap-2 ${locationFilter.palengke === opt.name ? 'text-brand-600 font-semibold' : 'text-gray-600'}`}
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <MapPin size={12} className="text-brand-400 flex-shrink-0" />
-                        {opt.name}
-                      </span>
-                      {opt.distanceKm > 0 && (
-                        <span className="text-gray-400 text-[10px]">{opt.distanceKm}km</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+          {/* Palengke dropdown trigger */}
+          <button
+            onClick={() => setShowPalengkeDropdown(true)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1 flex-shrink-0 ${locationFilter.palengke ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
+          >
+            {locationFilter.palengke || 'Palengke'}
+            <ChevronDown size={12} />
+          </button>
           <input
             type="text"
             value={locationFilter.barangay}
@@ -685,6 +655,53 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
           </>
         )}
       </div>
+
+      {/* Palengke Picker Modal */}
+      {showPalengkeDropdown && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end max-w-md mx-auto animate-fade-in" onClick={() => setShowPalengkeDropdown(false)}>
+          <div className="bg-white w-full rounded-t-3xl max-h-[70vh] overflow-y-auto animate-slide-up" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white px-5 py-4 flex items-center justify-between border-b border-gray-100">
+              <h2 className="text-lg font-bold text-gray-800">Piliin ang Palengke</h2>
+              <button onClick={() => setShowPalengkeDropdown(false)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+                <X size={20} className="text-gray-600" />
+              </button>
+            </div>
+            <div className="px-5 py-3 pb-8 space-y-1">
+              <button
+                onClick={() => { setLocationFilter(f => ({ ...f, palengke: '' })); setShowPalengkeDropdown(false); }}
+                className={`w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3 ${!locationFilter.palengke ? 'bg-brand-50 text-brand-700 font-semibold' : 'hover:bg-gray-50 text-gray-700'}`}
+              >
+                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <Filter size={18} className="text-gray-500" />
+                </div>
+                <span className="text-sm">Lahat ng Palengke</span>
+                {!locationFilter.palengke && <Check size={18} className="text-brand-600 ml-auto" />}
+              </button>
+              {palengkeOptions.map(opt => (
+                <button
+                  key={opt.name}
+                  onClick={() => { setLocationFilter(f => ({ ...f, palengke: opt.name })); setShowPalengkeDropdown(false); }}
+                  className={`w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3 ${locationFilter.palengke === opt.name ? 'bg-brand-50 text-brand-700 font-semibold' : 'hover:bg-gray-50 text-gray-700'}`}
+                >
+                  <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
+                    <MapPin size={18} className="text-brand-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">{opt.name}</p>
+                    {opt.distanceKm > 0 && (
+                      <p className="text-xs text-gray-400">{opt.distanceKm} km layo</p>
+                    )}
+                  </div>
+                  {locationFilter.palengke === opt.name && <Check size={18} className="text-brand-600 flex-shrink-0" />}
+                </button>
+              ))}
+              {palengkeOptions.length === 0 && (
+                <p className="text-center text-gray-400 text-sm py-8">Walang available na palengke. I-set muna ang location mo.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Location Modal */}
       {showLocationModal && (
