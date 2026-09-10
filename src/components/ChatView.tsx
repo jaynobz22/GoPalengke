@@ -142,9 +142,10 @@ export function useChat(conversationId: string | null) {
   const sendImage = useCallback(async (file: File): Promise<string | null> => {
     if (!conversationId || !profile) return 'Chat is not ready yet.';
 
-    const MAX_FILE_SIZE = 5 * 1024 * 1024;
-    if (file.size > MAX_FILE_SIZE) {
-      return 'Image upload failed. Please ensure the image is under 5MB.';
+    const MAX_SOURCE_FILE_SIZE = 20 * 1024 * 1024;
+    const MAX_UPLOAD_FILE_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SOURCE_FILE_SIZE) {
+      return 'Image is too large. Please choose a photo under 20MB.';
     }
 
     setSending(true);
@@ -182,6 +183,12 @@ export function useChat(conversationId: string | null) {
         const origExt = (file.name.split('.').pop() || 'jpg').toLowerCase();
         uploadExt = origExt;
         uploadContentType = file.type || `image/${origExt}`;
+      }
+
+      if (uploadFile.size > MAX_UPLOAD_FILE_SIZE) {
+        setMessages(prev => prev.filter(m => m.id !== placeholderId));
+        setSending(false);
+        return 'Image is still too large after compression. Please choose a smaller photo.';
       }
 
       // Build a clean Blob for reliable backend ingestion
