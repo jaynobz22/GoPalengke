@@ -79,7 +79,30 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
         { urls: 'stun:stun2.l.google.com:19302' },
+        // Free TURN servers from Open Relay Project — needed for NAT traversal
+        // on Philippine mobile networks (Globe/Smart) where STUN alone fails
+        {
+          urls: 'turn:openrelay.metered.ca:80',
+          username: 'openrelayproject',
+          credential: 'openrelayprojectsecret',
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443',
+          username: 'openrelayproject',
+          credential: 'openrelayprojectsecret',
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+          username: 'openrelayproject',
+          credential: 'openrelayprojectsecret',
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:80?transport=tcp',
+          username: 'openrelayproject',
+          credential: 'openrelayprojectsecret',
+        },
       ],
+      iceTransportPolicy: 'all',
     });
     pcRef.current = pc;
 
@@ -128,6 +151,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     const stream = await getCamera();
     if (!stream) return;
     setupPeerConnection(stream);
+    // Announce we're ready — caller will send offer upon receiving this
     sendSignal('receiver_ready', {});
 
     if (pendingOfferRef.current) {
@@ -156,6 +180,12 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
       .on('broadcast', { event: 'receiver_ready' }, async () => {
         if (isCaller) {
           await createAndSendOffer();
+        }
+      })
+      .on('broadcast', { event: 'caller_present' }, async () => {
+        // Caller just joined — if we're the receiver and already accepted, re-send ready
+        if (!isCaller && autoAccept && pcRef.current) {
+          sendSignal('receiver_ready', {});
         }
       })
       .on('broadcast', { event: 'offer' }, async (msg: any) => {
@@ -194,6 +224,8 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
         if (status === 'SUBSCRIBED') {
           channelReadyRef.current = true;
           if (isCaller) {
+            // Announce presence so receiver can re-send ready if needed
+            sendSignal('caller_present', {});
             // Caller gets camera ready while waiting for receiver
             getCamera();
           } else if (autoAccept) {
