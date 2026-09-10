@@ -139,21 +139,20 @@ export function useChat(conversationId: string | null) {
     setSending(false);
   }, [conversationId, profile]);
 
-  const sendImage = useCallback(async (file: File) => {
-    if (!conversationId || !profile) return;
+  const sendImage = useCallback(async (file: File): Promise<string | null> => {
+    if (!conversationId || !profile) return 'Hindi pa handa ang chat.';
     setSending(true);
     try {
       const compressed = await compressImage(file);
-      const ext = compressed.name.split('.').pop() || 'webp';
+      const ext = compressed.name.split('.').pop() || 'jpg';
       const contentType = compressed.type || `image/${ext}`;
       const fileName = `${profile.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from('chat-images')
         .upload(fileName, compressed, { contentType });
       if (uploadError) {
-        console.error('Image upload error:', uploadError);
         setSending(false);
-        return;
+        return 'Hindi ma-upload ang larawan. Subukang muli.';
       }
       const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(fileName);
       const { data, error: insertError } = await supabase
@@ -168,15 +167,18 @@ export function useChat(conversationId: string | null) {
         .select('*')
         .single();
       if (insertError) {
-        console.error('Message insert error:', insertError);
         await supabase.storage.from('chat-images').remove([fileName]);
+        setSending(false);
+        return 'Hindi ma-send ang larawan. Subukang muli.';
       } else if (data) {
         setMessages(prev => [...prev, data]);
       }
     } catch (e) {
-      console.error('Send image error:', e);
+      setSending(false);
+      return e instanceof Error ? e.message : 'May error sa pag-upload ng larawan.';
     }
     setSending(false);
+    return null;
   }, [conversationId, profile]);
 
   const sendCallInvite = useCallback(async (roomId: string): Promise<Message | null> => {
@@ -294,6 +296,8 @@ export function ChatView({
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [showCallUnsupported, setShowCallUnsupported] = useState(false);
   const [preWarmedStream, setPreWarmedStream] = useState<MediaStream | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const videoCallSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices && !!navigator.mediaDevices.getUserMedia;
   const { start: startRing, stop: stopRing } = useRingtone();
@@ -375,8 +379,16 @@ export function ChatView({
 
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) await sendImage(file);
+    if (!file) return;
+    setImageError(null);
+    setUploadingImage(true);
+    const err = await sendImage(file);
+    setUploadingImage(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
+    if (err) {
+      setImageError(err);
+      setTimeout(() => setImageError(null), 4000);
+    }
   }
 
   async function startVideoCall() {
@@ -786,10 +798,14 @@ export function ChatView({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={sending}
+          disabled={sending || uploadingImage}
           className="w-11 h-11 rounded-full bg-white flex items-center justify-center active:scale-90 transition disabled:opacity-40 flex-shrink-0 shadow-sm"
         >
-          <ImagePlus size={20} className="text-brand-600" />
+          {uploadingImage ? (
+            <div className="w-5 h-5 border-2 border-gray-200 border-t-brand-500 rounded-full animate-spin" />
+          ) : (
+            <ImagePlus size={20} className="text-brand-600" />
+          )}
         </button>
         <input
           type="text"
@@ -806,6 +822,14 @@ export function ChatView({
           <Send size={18} />
         </button>
       </form>
+
+      {/* Image upload error toast */}
+      {imageError && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 max-w-[90%] px-4 py-3 bg-red-500 text-white text-sm rounded-xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+          <AlertCircle size={16} className="flex-shrink-0" />
+          <span>{imageError}</span>
+        </div>
+      )}
     </div>
   );
 }
