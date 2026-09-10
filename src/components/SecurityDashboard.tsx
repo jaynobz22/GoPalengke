@@ -15,6 +15,7 @@ import type { Profile } from '@/lib/types';
 import {
   ShieldAlert, ShieldCheck, ShieldX, AlertTriangle, Check, X, Ban,
   Unlock, Eye, Loader2, ChevronDown, ChevronUp, UserX, Smartphone,
+  FlaskConical, ToggleLeft, ToggleRight, Search,
 } from 'lucide-react';
 
 export function SecurityDashboardTab() {
@@ -26,6 +27,10 @@ export function SecurityDashboardTab() {
   const [userMap, setUserMap] = useState<Record<string, Profile>>({});
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [deviceMap, setDeviceMap] = useState<Record<string, string>>({});
+  const [deviceCheckEnabled, setDeviceCheckEnabled] = useState(false);
+  const [testAccounts, setTestAccounts] = useState<Profile[]>([]);
+  const [testSearch, setTestSearch] = useState('');
+  const [testLoading, setTestLoading] = useState(false);
 
   const load = useCallback(async () => {
     let query = supabase.from('security_flags').select('*').order('created_at', { ascending: false }).limit(100);
@@ -48,6 +53,59 @@ export function SecurityDashboardTab() {
     }
     setLoading(false);
   }, [filter]);
+
+  // Load device check toggle setting
+  useEffect(() => {
+    supabase.from('platform_settings').select('value').eq('key', 'security_device_check_enabled').maybeSingle()
+      .then(({ data }) => {
+        setDeviceCheckEnabled(data?.value === 'true');
+      });
+  }, []);
+
+  // Load test accounts
+  const loadTestAccounts = useCallback(async () => {
+    const { data } = await supabase.from('profiles').select('*').eq('is_test_account', true).order('created_at', { ascending: false });
+    setTestAccounts((data || []) as Profile[]);
+  }, []);
+  useEffect(() => { loadTestAccounts(); }, [loadTestAccounts]);
+
+  async function toggleDeviceCheck() {
+    const newValue = !deviceCheckEnabled;
+    setDeviceCheckEnabled(newValue);
+    await supabase.from('platform_settings').upsert({
+      key: 'security_device_check_enabled',
+      value: newValue ? 'true' : 'false',
+      updated_by: profile?.id || null,
+    });
+  }
+
+  async function searchAndAddTestAccount() {
+    if (!testSearch.trim()) return;
+    setTestLoading(true);
+    const { data } = await supabase.from('profiles').select('*').or(`email.ilike.%${testSearch}%,full_name.ilike.%${testSearch}%`).limit(5);
+    const results = (data || []) as Profile[];
+    if (results.length === 0) {
+      alert('No user found with that email or name.');
+    } else if (results.length === 1) {
+      await supabase.from('profiles').update({ is_test_account: true }).eq('id', results[0].id);
+      await loadTestAccounts();
+      setTestSearch('');
+    } else {
+      const choice = prompt(`Found ${results.length} users:\n${results.map((r, i) => `${i + 1}. ${r.full_name} (${r.email})`).join('\n')}\n\nEnter the number:`);
+      const idx = parseInt(choice || '0', 10) - 1;
+      if (idx >= 0 && idx < results.length) {
+        await supabase.from('profiles').update({ is_test_account: true }).eq('id', results[idx].id);
+        await loadTestAccounts();
+        setTestSearch('');
+      }
+    }
+    setTestLoading(false);
+  }
+
+  async function removeTestAccount(userId: string) {
+    await supabase.from('profiles').update({ is_test_account: false }).eq('id', userId);
+    await loadTestAccounts();
+  }
 
   useEffect(() => { load(); }, [load]);
 
@@ -92,6 +150,78 @@ export function SecurityDashboardTab() {
       <div className="flex items-center gap-2 mb-4">
         <ShieldAlert size={24} className="text-red-600" />
         <h2 className="text-lg font-bold text-gray-800">Security Dashboard</h2>
+      </div>
+
+      {/* Testing & Device Check Toggle */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <FlaskConical size={18} className="text-brand-600" />
+            <span className="text-sm font-semibold text-gray-800">Device Fingerprint Check</span>
+          </div>
+          <button onClick={toggleDeviceCheck} className="flex items-center gap-2">
+            {deviceCheckEnabled ? (
+              <ToggleRight size={36} className="text-brand-600" />
+            ) : (
+              <ToggleLeft size={36} className="text-gray-300" />
+            )}
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mb-3">
+          {deviceCheckEnabled
+            ? 'Naka-ON. Ang device fingerprint check ay aktibo para sa mga new user registration. Ang mga admin at test accounts ay awtomatikong exempted.'
+            : 'Naka-OFF. Ang device fingerprint check ay kasalukuyang disabled para sa testing phase. I-ON kapag ready na for public deployment.'}
+        </p>
+
+        {/* Test Accounts Section */}
+        <div className="border-t border-gray-100 pt-3">
+          <p className="text-sm font-semibold text-gray-800 mb-2">Test Accounts</p>
+          <p className="text-xs text-gray-400 mb-3">
+            Ang mga test accounts ay exempted sa lahat ng security device checks. Magagamit ito ng admin para mag-login at i-test ang app sa ibat-ibang user side.
+          </p>
+
+          {/* Search & Add */}
+          <div className="flex gap-2 mb-3">
+            <div className="flex-1 relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={testSearch}
+                onChange={(e) => setTestSearch(e.target.value)}
+                placeholder="Hanapin ang user (email o pangalan)..."
+                className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-brand-500 outline-none"
+                onKeyDown={(e) => { if (e.key === 'Enter') searchAndAddTestAccount(); }}
+              />
+            </div>
+            <button
+              onClick={searchAndAddTestAccount}
+              disabled={testLoading || !testSearch.trim()}
+              className="px-4 py-2 bg-brand-600 text-white rounded-xl text-sm font-semibold active:scale-95 transition disabled:opacity-50"
+            >
+              {testLoading ? <Loader2 size={16} className="animate-spin" /> : 'Add'}
+            </button>
+          </div>
+
+          {/* Test Accounts List */}
+          {testAccounts.length > 0 && (
+            <div className="space-y-2">
+              {testAccounts.map((u) => (
+                <div key={u.id} className="flex items-center justify-between bg-gray-50 rounded-xl p-2.5">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{u.full_name}</p>
+                    <p className="text-xs text-gray-400 truncate">{u.email} · <span className="capitalize">{u.role}</span></p>
+                  </div>
+                  <button
+                    onClick={() => removeTestAccount(u.id)}
+                    className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-semibold active:scale-95 transition"
+                  >
+                    <X size={14} /> Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Stats */}

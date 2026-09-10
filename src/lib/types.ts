@@ -21,6 +21,7 @@ export interface Profile {
   phone_verified: boolean;
   account_status: AccountStatus;
   is_payout_locked: boolean;
+  is_test_account: boolean;
   security_pin: string | null;
   payout_locked_until: string | null;
   rider_age: number | null;

@@ -195,6 +195,35 @@ async function handleScanChat(req: ScanChatRequest) {
 async function handleCheckDevice(req: CheckDeviceRequest) {
   const { deviceId, userId, ipAddress, userAgent } = req;
 
+  // Check if user is admin or test account — skip all device checks
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, is_test_account")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (profile && (profile.role === "admin" || profile.is_test_account)) {
+    return new Response(
+      JSON.stringify({ flagged: false, skipped: true, reason: "admin_or_test_account" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  // Check global toggle — if device checks are disabled (testing phase), skip
+  const { data: setting } = await supabase
+    .from("platform_settings")
+    .select("value")
+    .eq("key", "security_device_check_enabled")
+    .maybeSingle();
+
+  const deviceCheckEnabled = setting?.value === "true";
+  if (!deviceCheckEnabled) {
+    return new Response(
+      JSON.stringify({ flagged: false, skipped: true, reason: "device_check_disabled" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   // Check if device is already banned
   const { data: banned } = await supabase
     .from("banned_devices")

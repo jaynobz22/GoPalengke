@@ -118,11 +118,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: prof } = await supabase
       .from('profiles')
-      .select('email_verified, phone_verified')
+      .select('email_verified, phone_verified, role, is_test_account')
       .eq('id', data.user.id)
       .maybeSingle();
 
-    const p = prof as { email_verified: boolean; phone_verified: boolean } | null;
+    const p = prof as { email_verified: boolean; phone_verified: boolean; role: string; is_test_account: boolean } | null;
     if (p && !p.email_verified) {
       await supabase.auth.signOut();
       setPendingVerif(true);
@@ -134,23 +134,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchProfile(data.user.id);
 
     // Security: check device fingerprint for botnet detection
-    try {
-      const deviceCheck = await checkDeviceFingerprint(data.user.id);
-      if (deviceCheck.banned) {
-        alert('This device has been blacklisted for suspicious activity. Please contact support.');
-        await supabase.auth.signOut();
-        setProfile(null);
-        setSession(null);
-        return { error: 'Device blacklisted.' };
-      }
-      if (deviceCheck.flagged) {
-        alert('Multiple accounts detected on this device. Account banned for security.');
-        await supabase.auth.signOut();
-        setProfile(null);
-        setSession(null);
-        return { error: 'Account banned due to botnet detection.' };
-      }
-    } catch { /* best-effort */ }
+    // Skip for admin accounts and test accounts (used for testing the app)
+    const skipDeviceCheck = p && (p.role === 'admin' || p.is_test_account);
+    if (!skipDeviceCheck) {
+      try {
+        const deviceCheck = await checkDeviceFingerprint(data.user.id);
+        if (deviceCheck.banned) {
+          alert('This device has been blacklisted for suspicious activity. Please contact support.');
+          await supabase.auth.signOut();
+          setProfile(null);
+          setSession(null);
+          return { error: 'Device blacklisted.' };
+        }
+        if (deviceCheck.flagged) {
+          alert('Multiple accounts detected on this device. Account banned for security.');
+          await supabase.auth.signOut();
+          setProfile(null);
+          setSession(null);
+          return { error: 'Account banned due to botnet detection.' };
+        }
+      } catch { /* best-effort */ }
+    }
 
     return { error: null };
   }
