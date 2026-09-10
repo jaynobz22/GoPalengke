@@ -140,21 +140,54 @@ export function useChat(conversationId: string | null) {
   }, [conversationId, profile]);
 
   const sendImage = useCallback(async (file: File): Promise<string | null> => {
-    if (!conversationId || !profile) return 'Hindi pa handa ang chat.';
+    if (!conversationId || !profile) return 'Chat is not ready yet.';
+
+    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      return 'Image upload failed. Please ensure the image is under 5MB.';
+    }
+
     setSending(true);
+
+    // Insert a temporary "sending" placeholder so the user sees immediate feedback
+    const placeholderId = `sending-${Date.now()}`;
+    const placeholder: Message = {
+      id: placeholderId,
+      conversation_id: conversationId,
+      sender_id: profile.id,
+      body: null,
+      image_url: null,
+      read_at: null,
+      created_at: new Date().toISOString(),
+      message_type: 'image',
+      call_room_id: null,
+      call_status: null,
+    };
+    setMessages(prev => [...prev, placeholder]);
+
     try {
+      // Compress the image to a clean Blob for reliable backend ingestion
       const compressed = await compressImage(file);
-      const ext = compressed.name.split('.').pop() || 'jpg';
+      const blob = new Blob([compressed], { type: compressed.type || 'image/jpeg' });
+      const ext = (compressed.name.split('.').pop() || 'jpg').toLowerCase();
       const contentType = compressed.type || `image/${ext}`;
-      const fileName = `${profile.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+      // Unique file path: conversationId/timestamp_randomname.ext
+      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_').slice(0, 40);
+      const filePath = `${conversationId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safeName}.${ext}`;
+
       const { error: uploadError } = await supabase.storage
         .from('chat-images')
-        .upload(fileName, compressed, { contentType });
+        .upload(filePath, blob, { contentType, upsert: false });
+
       if (uploadError) {
+        setMessages(prev => prev.filter(m => m.id !== placeholderId));
         setSending(false);
-        return 'Hindi ma-upload ang larawan. Subukang muli.';
+        return 'Image upload failed. Please ensure the image is under 5MB.';
       }
-      const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(fileName);
+
+      const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(filePath);
+
       const { data, error: insertError } = await supabase
         .from('messages')
         .insert({
@@ -166,16 +199,20 @@ export function useChat(conversationId: string | null) {
         })
         .select('*')
         .single();
+
       if (insertError) {
-        await supabase.storage.from('chat-images').remove([fileName]);
+        await supabase.storage.from('chat-images').remove([filePath]);
+        setMessages(prev => prev.filter(m => m.id !== placeholderId));
         setSending(false);
-        return 'Hindi ma-send ang larawan. Subukang muli.';
-      } else if (data) {
-        setMessages(prev => [...prev, data]);
+        return 'Image upload failed. Please ensure the image is under 5MB.';
       }
+
+      // Replace placeholder with the real message
+      setMessages(prev => prev.map(m => m.id === placeholderId ? (data as Message) : m));
     } catch (e) {
+      setMessages(prev => prev.filter(m => m.id !== placeholderId));
       setSending(false);
-      return e instanceof Error ? e.message : 'May error sa pag-upload ng larawan.';
+      return e instanceof Error ? e.message : 'Image upload failed. Please ensure the image is under 5MB.';
     }
     setSending(false);
     return null;
@@ -378,8 +415,21 @@ export function ChatView({
   }
 
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    // Safely extract the first file — mobile browsers may wrap metadata differently
+    const file = files[0];
     if (!file) return;
+
+    // Validate it is an image type
+    if (!file.type || !file.type.startsWith('image/')) {
+      setImageError('Please select a valid image file.');
+      setTimeout(() => setImageError(null), 4000);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setImageError(null);
     setUploadingImage(true);
     const err = await sendImage(file);
@@ -682,6 +732,22 @@ export function ChatView({
                         <Trash2 size={12} />
                       </button>
                     )}
+                  </div>
+                </div>
+                {isMine && <Avatar src={myAvatar} name={profile?.full_name} size={28} />}
+              </div>
+            );
+          }
+
+          // Sending photo placeholder (temporary, no image_url yet)
+          if (msg.message_type === 'image' && !msg.image_url) {
+            return (
+              <div key={msg.id} className={`flex items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                {!isMine && <Avatar src={otherAvatar} name={otherName} size={28} />}
+                <div className={`max-w-[75%] rounded-2xl overflow-hidden ${isMine ? 'rounded-br-md bg-brand-600' : 'rounded-bl-md bg-white border border-gray-100'}`}>
+                  <div className="w-48 h-40 flex flex-col items-center justify-center gap-2 bg-gray-100">
+                    <div className="w-6 h-6 border-2 border-gray-300 border-t-brand-500 rounded-full animate-spin" />
+                    <span className="text-xs text-gray-500 font-medium">Sending photo...</span>
                   </div>
                 </div>
                 {isMine && <Avatar src={myAvatar} name={profile?.full_name} size={28} />}
