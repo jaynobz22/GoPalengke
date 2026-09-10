@@ -6,6 +6,7 @@ import { scanMessageLocally, scanChatMessage } from '@/lib/security';
 import { ArrowLeft, Send, Video, PhoneOff, Phone, ImagePlus, Trash2, X, ShieldAlert, AlertCircle, ExternalLink } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
 import { VideoCall } from '@/components/VideoCall';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { compressImage } from '@/lib/imageCompress';
 
 function useRingtone() {
@@ -397,11 +398,22 @@ export function ChatView({
       return;
     }
     stopRing();
-    // Mount VideoCall immediately — don't await DB update first.
-    // Camera access must happen within the user gesture (click) context.
+    // Acquire camera WITHIN the user tap — mobile browsers require this.
+    // If pre-warm already got a stream, use it; otherwise acquire now.
+    if (!preWarmStreamRef.current) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: { echoCancellation: true, noiseSuppression: true },
+        });
+        preWarmStreamRef.current = stream;
+        setPreWarmedStream(stream);
+      } catch {
+        // Will retry in VideoCall — but mount anyway so user sees UI
+      }
+    }
     setIncomingCall(null);
     setActiveCall({ roomId: msg.call_room_id, isCaller: false });
-    // Update DB status in background (non-blocking)
     updateCallStatus(msg.id, 'accepted');
   }
 
@@ -501,14 +513,29 @@ export function ChatView({
 
   if (activeCall) {
     return (
-      <VideoCall
-        roomId={activeCall.roomId}
-        isCaller={activeCall.isCaller}
-        autoAccept={!activeCall.isCaller}
-        otherName={otherName}
-        preWarmedStream={preWarmStream}
-        onEnd={endActiveCall}
-      />
+      <ErrorBoundary fallback={
+        <div className="fixed inset-0 z-[80] bg-gray-900 flex flex-col items-center justify-center max-w-md mx-auto px-5">
+          <div className="text-center">
+            <div className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle size={36} className="text-white" />
+            </div>
+            <p className="text-white text-lg font-semibold mb-2">May problema sa video call</p>
+            <p className="text-gray-400 text-sm mb-6">Subukang buksan sa browser o i-refresh ang page.</p>
+          </div>
+          <button onClick={endActiveCall} className="px-8 py-3 bg-white text-gray-800 rounded-2xl font-semibold active:scale-95 transition">
+            Bumalik sa Chat
+          </button>
+        </div>
+      }>
+        <VideoCall
+          roomId={activeCall.roomId}
+          isCaller={activeCall.isCaller}
+          autoAccept={!activeCall.isCaller}
+          otherName={otherName}
+          preWarmedStream={preWarmedStream}
+          onEnd={endActiveCall}
+        />
+      </ErrorBoundary>
     );
   }
 

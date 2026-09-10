@@ -23,7 +23,14 @@ function isStandalonePWA(): boolean {
   } catch { return false; }
 }
 
+function hasMediaDevices(): boolean {
+  return typeof navigator !== 'undefined' &&
+    !!navigator.mediaDevices &&
+    typeof navigator.mediaDevices.getUserMedia === 'function';
+}
+
 async function acquireStream(): Promise<MediaStream> {
+  if (!hasMediaDevices()) throw new Error('Camera not available');
   const constraints: MediaStreamConstraints = {
     video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -78,6 +85,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
   const retryCountRef = useRef(0);
   const usedRelayRef = useRef(false);
   const phaseRef = useRef<CallPhase>(isCaller ? 'outgoing' : 'connecting');
+  const mountedRef = useRef(true);
 
   const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'connecting');
   const [micOn, setMicOn] = useState(true);
@@ -87,13 +95,21 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
 
   const setPhaseSafe = (p: CallPhase) => {
     phaseRef.current = p;
-    setPhase(p);
+    if (mountedRef.current) setPhase(p);
   };
 
   const sendSignal = async (event: string, payload: Record<string, unknown>) => {
     if (!myUserIdRef.current) return;
-    await supabase.from('call_signals').insert({ room_id: roomId, sender_id: myUserIdRef.current, event, payload });
+    try {
+      await supabase.from('call_signals').insert({ room_id: roomId, sender_id: myUserIdRef.current, event, payload });
+    } catch {}
   };
+
+  // Use refs for functions that reference each other to avoid hoisting issues
+  const doCreateOfferRef = useRef<() => Promise<void>>(async () => {});
+  const doAcceptCallRef = useRef<() => Promise<void>>(async () => {});
+  const setupPeerConnectionRef = useRef<(stream: MediaStream, forceRelay?: boolean) => void>(() => {});
+  const tryRelayFallbackRef = useRef<() => void>(() => {});
 
   const getCamera = async (): Promise<MediaStream | null> => {
     if (gotCameraRef.current && localStreamRef.current) return localStreamRef.current;
@@ -102,6 +118,11 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
       gotCameraRef.current = true;
       if (localVideoRef.current) localVideoRef.current.srcObject = preWarmedStream;
       return preWarmedStream;
+    }
+    if (!hasMediaDevices()) {
+      if (isStandalonePWA()) setShowFallback(true);
+      setError('Hindi available ang camera sa device na ito.');
+      return null;
     }
     try {
       const stream = await acquireStream();
@@ -134,74 +155,81 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
     iceCandidatesRef.current = [];
   };
 
-  const setupPeerConnection = (stream: MediaStream, forceRelay: boolean = false) => {
-    if (pcRef.current) { pcRef.current.close(); pcRef.current = null; }
-    const pc = new RTCPeerConnection({
-      iceServers: forceRelay ? ICE_SERVERS_RELAY : ICE_SERVERS_ALL,
-      iceTransportPolicy: forceRelay ? 'relay' : 'all',
-    });
-    pcRef.current = pc;
-    stream.getTracks().forEach(t => pc.addTrack(t, stream));
-    pc.ontrack = (e) => { if (remoteVideoRef.current && e.streams[0]) remoteVideoRef.current.srcObject = e.streams[0]; };
-    pc.onicecandidate = (e) => { if (e.candidate) sendSignal('ice', { candidate: e.candidate.toJSON() }); };
-    pc.oniceconnectionstatechange = () => {
-      if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-        tryRelayFallback();
-      }
-    };
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'connected') {
-        if (connTimerRef.current) { clearTimeout(connTimerRef.current); connTimerRef.current = null; }
-      }
-      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-        tryRelayFallback();
-      }
-    };
+  // Define setupPeerConnection
+  setupPeerConnectionRef.current = (stream: MediaStream, forceRelay: boolean = false) => {
+    if (pcRef.current) { try { pcRef.current.close(); } catch {} pcRef.current = null; }
+    try {
+      const pc = new RTCPeerConnection({
+        iceServers: forceRelay ? ICE_SERVERS_RELAY : ICE_SERVERS_ALL,
+        iceTransportPolicy: forceRelay ? 'relay' : 'all',
+      });
+      pcRef.current = pc;
+      stream.getTracks().forEach(t => pc.addTrack(t, stream));
+      pc.ontrack = (e) => { if (remoteVideoRef.current && e.streams[0]) remoteVideoRef.current.srcObject = e.streams[0]; };
+      pc.onicecandidate = (e) => { if (e.candidate) sendSignal('ice', { candidate: e.candidate.toJSON() }); };
+      pc.oniceconnectionstatechange = () => {
+        if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+          tryRelayFallbackRef.current();
+        }
+      };
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === 'connected') {
+          if (connTimerRef.current) { clearTimeout(connTimerRef.current); connTimerRef.current = null; }
+        }
+        if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+          tryRelayFallbackRef.current();
+        }
+      };
+    } catch {}
   };
 
-  const tryRelayFallback = () => {
+  tryRelayFallbackRef.current = () => {
     if (usedRelayRef.current || phaseRef.current === 'connected') { setPhaseSafe('ended'); return; }
     usedRelayRef.current = true;
     const stream = localStreamRef.current;
     if (!stream) { setPhaseSafe('ended'); return; }
-    if (pcRef.current) { pcRef.current.close(); pcRef.current = null; }
-    setupPeerConnection(stream, true);
-    if (isCaller) doCreateOffer();
-    else doAcceptCall();
+    if (pcRef.current) { try { pcRef.current.close(); } catch {} pcRef.current = null; }
+    setupPeerConnectionRef.current(stream, true);
+    if (isCaller) doCreateOfferRef.current();
+    else doAcceptCallRef.current();
   };
 
   const startConnTimeout = () => {
     if (connTimerRef.current) clearTimeout(connTimerRef.current);
     connTimerRef.current = setTimeout(() => {
-      if (phaseRef.current !== 'connected' && !usedRelayRef.current) tryRelayFallback();
+      if (phaseRef.current !== 'connected' && !usedRelayRef.current) tryRelayFallbackRef.current();
     }, TIMEOUT_MS);
   };
 
-  const doCreateOffer = async () => {
+  // Define doCreateOffer
+  doCreateOfferRef.current = async () => {
     const stream = await getCamera();
     if (!stream) return;
-    if (!pcRef.current) setupPeerConnection(stream);
+    if (!pcRef.current) setupPeerConnectionRef.current(stream);
+    if (!pcRef.current) return;
     try {
-      const offer = await pcRef.current!.createOffer();
-      await pcRef.current!.setLocalDescription(offer);
+      const offer = await pcRef.current.createOffer();
+      await pcRef.current.setLocalDescription(offer);
       await sendSignal('offer', { sdp: offer.toJSON() });
       startConnTimeout();
     } catch {}
   };
 
-  const doAcceptCall = async () => {
+  // Define doAcceptCall
+  doAcceptCallRef.current = async () => {
     const stream = await getCamera();
     if (!stream) return;
-    if (!pcRef.current) setupPeerConnection(stream);
+    if (!pcRef.current) setupPeerConnectionRef.current(stream);
     await sendSignal('receiver_ready', {});
     if (pendingOfferRef.current) {
       const offer = pendingOfferRef.current;
       pendingOfferRef.current = null;
+      if (!pcRef.current) return;
       try {
-        await pcRef.current!.setRemoteDescription(new RTCSessionDescription(offer.sdp));
+        await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer.sdp));
         remoteDescSetRef.current = true;
-        const answer = await pcRef.current!.createAnswer();
-        await pcRef.current!.setLocalDescription(answer);
+        const answer = await pcRef.current.createAnswer();
+        await pcRef.current.setLocalDescription(answer);
         await sendSignal('answer', { sdp: answer.toJSON() });
         await flushPendingCandidates();
         setPhaseSafe('connected');
@@ -215,64 +243,71 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
     if (processedIdsRef.current.has(sig.id)) return;
     processedIdsRef.current.add(sig.id);
     const { event, payload } = sig;
-    if (event === 'receiver_ready') { if (isCaller) doCreateOffer(); }
-    else if (event === 'caller_present') { if (!isCaller && autoAccept && pcRef.current) sendSignal('receiver_ready', {}); }
-    else if (event === 'offer') {
-      if (!pcRef.current) { pendingOfferRef.current = payload; return; }
-      try {
-        await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-        remoteDescSetRef.current = true;
-        const ans = await pcRef.current.createAnswer();
-        await pcRef.current.setLocalDescription(ans);
-        await sendSignal('answer', { sdp: ans.toJSON() });
-        await flushPendingCandidates();
-        setPhaseSafe('connected');
-      } catch {}
-    } else if (event === 'answer') {
-      if (!pcRef.current) return;
-      try {
-        await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-        remoteDescSetRef.current = true;
-        setPhaseSafe('connected');
-        await flushPendingCandidates();
-      } catch {}
-    } else if (event === 'ice') {
-      const c = new RTCIceCandidate(payload.candidate);
-      if (pcRef.current && remoteDescSetRef.current) { try { await pcRef.current.addIceCandidate(c); } catch {} }
-      else iceCandidatesRef.current.push(c);
-    } else if (event === 'end') { setPhaseSafe('ended'); }
+    try {
+      if (event === 'receiver_ready') { if (isCaller) doCreateOfferRef.current(); }
+      else if (event === 'caller_present') { if (!isCaller && autoAccept && pcRef.current) sendSignal('receiver_ready', {}); }
+      else if (event === 'offer') {
+        if (!pcRef.current) { pendingOfferRef.current = payload; return; }
+        try {
+          await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+          remoteDescSetRef.current = true;
+          const ans = await pcRef.current.createAnswer();
+          await pcRef.current.setLocalDescription(ans);
+          await sendSignal('answer', { sdp: ans.toJSON() });
+          await flushPendingCandidates();
+          setPhaseSafe('connected');
+        } catch {}
+      } else if (event === 'answer') {
+        if (!pcRef.current) return;
+        try {
+          await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+          remoteDescSetRef.current = true;
+          setPhaseSafe('connected');
+          await flushPendingCandidates();
+        } catch {}
+      } else if (event === 'ice') {
+        try {
+          const c = new RTCIceCandidate(payload.candidate);
+          if (pcRef.current && remoteDescSetRef.current) { try { await pcRef.current.addIceCandidate(c); } catch {} }
+          else iceCandidatesRef.current.push(c);
+        } catch {}
+      } else if (event === 'end') { setPhaseSafe('ended'); }
+    } catch {}
   };
 
   const cleanup = () => {
     if (connTimerRef.current) { clearTimeout(connTimerRef.current); connTimerRef.current = null; }
     if (localStreamRef.current) { localStreamRef.current.getTracks().forEach(t => t.stop()); localStreamRef.current = null; }
-    if (pcRef.current) { pcRef.current.close(); pcRef.current = null; }
-    supabase.from('call_signals').delete().eq('room_id', roomId).then(() => {});
+    if (pcRef.current) { try { pcRef.current.close(); } catch {} pcRef.current = null; }
+    try { supabase.from('call_signals').delete().eq('room_id', roomId).then(() => {}); } catch {}
     gotCameraRef.current = false; remoteDescSetRef.current = false; pendingOfferRef.current = null;
     iceCandidatesRef.current = []; processedIdsRef.current.clear(); retryCountRef.current = 0; usedRelayRef.current = false;
   };
 
   useEffect(() => {
+    mountedRef.current = true;
     if (!profile?.id) return;
     myUserIdRef.current = profile.id;
     let sub: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
 
     (async () => {
-      const { data: existing } = await supabase.from('call_signals').select('*').eq('room_id', roomId).order('created_at', { ascending: true });
-      if (cancelled) return;
-      if (existing) for (const s of existing) await handleSignal(s);
+      try {
+        const { data: existing } = await supabase.from('call_signals').select('*').eq('room_id', roomId).order('created_at', { ascending: true });
+        if (cancelled) return;
+        if (existing) for (const s of existing) await handleSignal(s);
 
-      sub = supabase.channel(`call-${roomId}`).on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'call_signals', filter: `room_id=eq.${roomId}` },
-        (p: any) => handleSignal(p.new)
-      ).subscribe();
+        sub = supabase.channel(`call-${roomId}`).on('postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'call_signals', filter: `room_id=eq.${roomId}` },
+          (p: any) => handleSignal(p.new)
+        ).subscribe();
 
-      if (isCaller) { sendSignal('caller_present', {}); getCamera(); }
-      else if (autoAccept) doAcceptCall();
+        if (isCaller) { sendSignal('caller_present', {}); getCamera(); }
+        else if (autoAccept) doAcceptCallRef.current();
+      } catch {}
     })();
 
-    return () => { cancelled = true; if (sub) supabase.removeChannel(sub); cleanup(); };
+    return () => { cancelled = true; mountedRef.current = false; if (sub) supabase.removeChannel(sub); cleanup(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, profile?.id]);
 
