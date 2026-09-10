@@ -878,6 +878,7 @@ function CampaignsTab() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [sending, setSending] = useState<string | null>(null);
+  const [emailEnabled, setEmailEnabled] = useState(true);
 
   // Form state
   const [name, setName] = useState('');
@@ -903,6 +904,12 @@ function CampaignsTab() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    supabase.from('platform_settings').select('value').eq('key', 'EMAIL_SENDING_ENABLED').maybeSingle().then(({ data }) => {
+      setEmailEnabled((data as { value: string } | null)?.value !== 'false');
+    });
+  }, []);
 
   // Count recipients for current filter
   useEffect(() => {
@@ -1028,6 +1035,15 @@ function CampaignsTab() {
         </button>
       </div>
 
+      {!emailEnabled && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-2xl p-3 mb-3">
+          <AlertCircle size={18} className="text-red-600 flex-shrink-0" />
+          <p className="text-sm text-red-700 font-medium">
+            Nakaka-disable ang email sending. Pumunta sa Settings para i-on.
+          </p>
+        </div>
+      )}
+
       {/* Campaign List */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
@@ -1083,7 +1099,7 @@ function CampaignsTab() {
                 {c.status === 'draft' && (
                   <button
                     onClick={() => sendCampaign(c)}
-                    disabled={sending === c.id}
+                    disabled={sending === c.id || !emailEnabled}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold bg-brand-600 text-white active:scale-95 transition disabled:opacity-50"
                   >
                     {sending === c.id ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
@@ -1610,6 +1626,10 @@ function SettingsTab() {
   const [resendSaving, setResendSaving] = useState(false);
   const [resendStatus, setResendStatus] = useState<'none' | 'configured' | 'missing'>('none');
 
+  // Email sending toggle state
+  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [emailToggling, setEmailToggling] = useState(false);
+
   const loadResendKey = useCallback(async () => {
     const { data } = await supabase.from('platform_settings').select('value').eq('key', 'RESEND_API_KEY').maybeSingle();
     if (data) {
@@ -1620,13 +1640,19 @@ function SettingsTab() {
     }
   }, []);
 
+  const loadEmailEnabled = useCallback(async () => {
+    const { data } = await supabase.from('platform_settings').select('value').eq('key', 'EMAIL_SENDING_ENABLED').maybeSingle();
+    const val = (data as { value: string } | null)?.value;
+    setEmailEnabled(val !== 'false');
+  }, []);
+
   const load = useCallback(async () => {
     const { data } = await supabase.from('platform_qr_codes').select('*').order('created_at', { ascending: false });
     setQrCodes((data || []) as PlatformQrCode[]);
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); loadResendKey(); }, [load, loadResendKey]);
+  useEffect(() => { load(); loadResendKey(); loadEmailEnabled(); }, [load, loadResendKey, loadEmailEnabled]);
 
   async function addQrCode() {
     if (!newImageUrl.trim() || !newLabel.trim()) return;
@@ -1678,6 +1704,44 @@ function SettingsTab() {
   return (
     <div className="px-5 py-4">
       <h2 className="text-lg font-bold text-gray-800 mb-4">Platform Settings</h2>
+
+      {/* Email Sending Toggle */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Mail size={20} className="text-brand-600" />
+            <div>
+              <h3 className="font-semibold text-gray-800 text-sm">Email Sending</h3>
+              <p className="text-xs text-gray-400 mt-0.5">I-on o i-off ang pagpapadala ng email campaigns.</p>
+            </div>
+          </div>
+          <button
+            onClick={async () => {
+              setEmailToggling(true);
+              const newVal = !emailEnabled;
+              const { error } = await supabase.from('platform_settings').upsert({
+                key: 'EMAIL_SENDING_ENABLED',
+                value: String(newVal),
+                updated_by: profile?.id,
+              });
+              setEmailToggling(false);
+              if (error) { alert('Error: ' + error.message); return; }
+              setEmailEnabled(newVal);
+              setSuccess(newVal ? 'Pinagana ang email sending!' : 'Na-disable ang email sending.');
+              setTimeout(() => setSuccess(null), 3000);
+            }}
+            disabled={emailToggling}
+            className={`relative w-12 h-7 rounded-full transition flex-shrink-0 ${emailEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
+          >
+            <span className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${emailEnabled ? 'translate-x-5' : ''}`} />
+          </button>
+        </div>
+        <div className="mt-2">
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${emailEnabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+            {emailEnabled ? 'Enabled' : 'Disabled'}
+          </span>
+        </div>
+      </div>
 
       {/* Resend API Key Section */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">

@@ -55,6 +55,20 @@ Deno.serve(async (req: Request) => {
 
     const c = campaign as CampaignRow;
 
+    // Check if email sending is enabled
+    const { data: sendingEnabledRow } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "EMAIL_SENDING_ENABLED")
+      .maybeSingle();
+    const sendingEnabled = (sendingEnabledRow as { value: string } | null)?.value;
+    if (sendingEnabled === "false") {
+      return new Response(JSON.stringify({ error: "Email sending is currently disabled by the admin. Enable it in Settings first." }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Load Resend API key from platform_settings
     const { data: setting } = await supabase
       .from("platform_settings")
@@ -214,8 +228,11 @@ function buildEmailHtml(body: string, fullName: string): string {
       <td align="center">
         <table width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
           <tr>
-            <td style="background:linear-gradient(135deg,#16a34a,#15803d);padding:24px 32px;">
-              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">GoPalengke</h1>
+            <td style="background:linear-gradient(135deg,#16a34a,#15803d);padding:20px 32px;">
+              <table cellpadding="0" cellspacing="0"><tr>
+                <td style="padding-right:12px;"><img src="https://gopalengke.net/images/Copilot_20260907_183703.png" alt="GoPalengke" width="40" height="40" style="border-radius:10px;display:block;" /></td>
+                <td><h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">GoPalengke</h1></td>
+              </tr></table>
             </td>
           </tr>
           <tr>
