@@ -69,17 +69,17 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Load Resend API key from platform_settings
+    // Load the email provider API key from the admin-managed platform setting
     const { data: setting } = await supabase
       .from("platform_settings")
       .select("value")
-      .eq("key", "RESEND_API_KEY")
+      .eq("key", "EMAIL_PROVIDER_KEY")
       .maybeSingle();
 
-    const resendKey = (setting as { value: string } | null)?.value || Deno.env.get("RESEND_API_KEY");
+    const resendKey = (setting as { value: string } | null)?.value;
 
     if (!resendKey) {
-      return new Response(JSON.stringify({ error: "No Resend API key configured. Set RESEND_API_KEY in admin Settings." }), {
+      return new Response(JSON.stringify({ error: "Walang email provider API key na naka-configure. Ilagay ito sa admin Settings." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

@@ -1624,22 +1624,22 @@ function SettingsTab() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Resend API key state
-  const [resendKey, setResendKey] = useState('');
-  const [resendSaving, setResendSaving] = useState(false);
-  const [resendStatus, setResendStatus] = useState<'none' | 'configured' | 'missing'>('none');
+  // Email provider API key state
+  const [emailKey, setEmailKey] = useState('');
+  const [emailKeySaving, setEmailKeySaving] = useState(false);
+  const [emailKeyStatus, setEmailKeyStatus] = useState<'none' | 'configured' | 'missing'>('none');
 
   // Email sending toggle state
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [emailToggling, setEmailToggling] = useState(false);
 
-  const loadResendKey = useCallback(async () => {
-    const { data } = await supabase.from('platform_settings').select('value').eq('key', 'RESEND_API_KEY').maybeSingle();
+  const loadEmailKey = useCallback(async () => {
+    const { data } = await supabase.from('platform_settings').select('value').eq('key', 'EMAIL_PROVIDER_KEY').maybeSingle();
     if (data) {
-      setResendStatus('configured');
-      setResendKey('');
+      setEmailKeyStatus('configured');
+      setEmailKey('');
     } else {
-      setResendStatus('missing');
+      setEmailKeyStatus('missing');
     }
   }, []);
 
@@ -1655,7 +1655,7 @@ function SettingsTab() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); loadResendKey(); loadEmailEnabled(); }, [load, loadResendKey, loadEmailEnabled]);
+  useEffect(() => { load(); loadEmailKey(); loadEmailEnabled(); }, [load, loadEmailKey, loadEmailEnabled]);
 
   async function addQrCode() {
     if (!newImageUrl.trim() || !newLabel.trim()) return;
@@ -1746,52 +1746,52 @@ function SettingsTab() {
         </div>
       </div>
 
-      {/* Resend API Key Section */}
+      {/* Email Provider API Key Section */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
         <div className="flex items-center gap-2 mb-2">
           <Mail size={20} className="text-brand-600" />
-          <h3 className="font-semibold text-gray-800 text-sm">Resend Email API Key</h3>
+          <h3 className="font-semibold text-gray-800 text-sm">Email Provider API Key</h3>
         </div>
         <p className="text-xs text-gray-400 mb-3">
           Ginagamit ito para sa pagpapadala ng email campaigns. Kung wala ito, hindi magagana ang Campaigns tab.
         </p>
         <div className="flex items-center gap-2 mb-3">
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-            resendStatus === 'configured' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+            emailKeyStatus === 'configured' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
           }`}>
-            {resendStatus === 'configured' ? 'Configured' : 'Not Set'}
+            {emailKeyStatus === 'configured' ? 'Configured' : 'Not Set'}
           </span>
         </div>
         <div className="flex gap-2">
           <input
             type="password"
-            value={resendKey}
-            onChange={e => setResendKey(e.target.value)}
-            placeholder={resendStatus === 'configured' ? 'Enter new key to replace' : 'Enter Resend API key'}
+            value={emailKey}
+            onChange={e => setEmailKey(e.target.value)}
+            placeholder={emailKeyStatus === 'configured' ? 'Enter new key to replace' : 'Enter email provider API key'}
             className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500"
           />
           <button
             onClick={async () => {
-              if (!resendKey.trim()) return;
-              setResendSaving(true);
+              if (!emailKey.trim()) return;
+              setEmailKeySaving(true);
               const { error } = await supabase.from('platform_settings').upsert({
-                key: 'RESEND_API_KEY',
-                value: resendKey.trim(),
+                key: 'EMAIL_PROVIDER_KEY',
+                value: emailKey.trim(),
                 updated_by: profile?.id,
               });
-              setResendSaving(false);
+              setEmailKeySaving(false);
               if (error) { alert('Error: ' + error.message); return; }
-              setResendKey('');
-              setResendStatus('configured');
-              setSuccess('Nai-save ang Resend API key!');
+              setEmailKey('');
+              setEmailKeyStatus('configured');
+              setSuccess('Nai-save ang email provider API key!');
               setTimeout(() => setSuccess(null), 3000);
-              loadResendKey();
+              loadEmailKey();
             }}
-            disabled={resendSaving || !resendKey.trim()}
+            disabled={emailKeySaving || !emailKey.trim()}
             className="px-4 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-semibold active:scale-95 transition disabled:opacity-50 flex items-center gap-1.5"
           >
-            {resendSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-            {resendSaving ? 'Saving...' : 'Save'}
+            {emailKeySaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {emailKeySaving ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>
