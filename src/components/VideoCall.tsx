@@ -57,14 +57,15 @@ async function acquireStream(): Promise<MediaStream> {
   }
 }
 
-const ICE_SERVERS_ALL = [
+const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun4.l.google.com:19302' },
   { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayprojectsecret' },
   { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayprojectsecret' },
   { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayprojectsecret' },
-  { urls: 'turn:openrelay.metered.ca:80?transport=tcp', username: 'openrelayproject', credential: 'openrelayprojectsecret' },
 ];
 
 export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedStream, onEnd }: VideoCallProps) {
@@ -81,7 +82,8 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
   const processedIdsRef = useRef<Set<string>>(new Set());
   const retryCountRef = useRef(0);
   const mountedRef = useRef(true);
-  const iceFailedCountRef = useRef(0);
+  const relayAttemptedRef = useRef(false);
+  const makingOfferRef = useRef(false);
 
   const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'connecting');
   const [micOn, setMicOn] = useState(true);
@@ -146,35 +148,54 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
 
   const flushPendingCandidates = async () => {
     if (!pcRef.current || !remoteDescSetRef.current) return;
-    for (const c of iceCandidatesRef.current) { try { await pcRef.current.addIceCandidate(c); } catch {} }
+    const pending = [...iceCandidatesRef.current];
     iceCandidatesRef.current = [];
+    for (const c of pending) {
+      try { await pcRef.current.addIceCandidate(c); } catch {}
+    }
   };
 
   setupPeerConnectionRef.current = (stream: MediaStream, forceRelay: boolean = false) => {
     if (pcRef.current) { try { pcRef.current.close(); } catch {} pcRef.current = null; }
+    remoteDescSetRef.current = false;
+    makingOfferRef.current = false;
     try {
       const pc = new RTCPeerConnection({
-        iceServers: ICE_SERVERS_ALL,
+        iceServers: ICE_SERVERS,
         iceTransportPolicy: forceRelay ? 'relay' : 'all',
       });
       pcRef.current = pc;
+
       stream.getTracks().forEach(t => pc.addTrack(t, stream));
-      pc.ontrack = (e) => { if (remoteVideoRef.current && e.streams[0]) remoteVideoRef.current.srcObject = e.streams[0]; };
-      pc.onicecandidate = (e) => { if (e.candidate) sendSignal('ice', { candidate: e.candidate.toJSON() }); };
+
+      pc.ontrack = (e) => {
+        if (remoteVideoRef.current && e.streams[0]) {
+          remoteVideoRef.current.srcObject = e.streams[0];
+        }
+      };
+
+      pc.onicecandidate = (e) => {
+        if (e.candidate) {
+          sendSignal('ice', { candidate: e.candidate.toJSON() });
+        }
+      };
 
       pc.oniceconnectionstatechange = () => {
-        if (pc.iceConnectionState === 'failed') {
-          iceFailedCountRef.current++;
-          if (iceFailedCountRef.current <= 1 && phaseRef.current !== 'connected') {
-            if (!forceRelay) {
-              const s = localStreamRef.current;
-              if (s) { setupPeerConnectionRef.current(s, true); if (isCaller) doCreateOfferRef.current(); else doAcceptCallRef.current(); }
-            }
+        if (pc.iceConnectionState === 'failed' && !relayAttemptedRef.current && phaseRef.current !== 'connected') {
+          relayAttemptedRef.current = true;
+          const s = localStreamRef.current;
+          if (s) {
+            setupPeerConnectionRef.current(s, true);
+            if (isCaller) doCreateOfferRef.current();
+            else doAcceptCallRef.current();
           }
         }
       };
+
       pc.onconnectionstatechange = () => {
-        if (pc.connectionState === 'connected') { iceFailedCountRef.current = 0; }
+        if (pc.connectionState === 'connected') {
+          relayAttemptedRef.current = false;
+        }
       };
     } catch {}
   };
@@ -185,10 +206,14 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
     if (!pcRef.current) setupPeerConnectionRef.current(stream);
     if (!pcRef.current) return;
     try {
+      makingOfferRef.current = true;
       const offer = await pcRef.current.createOffer();
       await pcRef.current.setLocalDescription(offer);
+      makingOfferRef.current = false;
       await sendSignal('offer', { sdp: offer.toJSON() });
-    } catch {}
+    } catch {
+      makingOfferRef.current = false;
+    }
   };
 
   doAcceptCallRef.current = async () => {
@@ -217,14 +242,20 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
     if (processedIdsRef.current.has(sig.id)) return;
     processedIdsRef.current.add(sig.id);
     const { event, payload } = sig;
+
     try {
       if (event === 'receiver_ready') {
         if (isCaller) doCreateOfferRef.current();
       } else if (event === 'caller_present') {
         if (!isCaller && autoAccept && pcRef.current) sendSignal('receiver_ready', {});
       } else if (event === 'offer') {
-        if (!pcRef.current) { pendingOfferRef.current = payload; return; }
-        if (remoteDescSetRef.current) return;
+        if (!pcRef.current) {
+          pendingOfferRef.current = payload;
+          return;
+        }
+        if (remoteDescSetRef.current && !makingOfferRef.current) {
+          return;
+        }
         try {
           await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp));
           remoteDescSetRef.current = true;
@@ -245,19 +276,33 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
       } else if (event === 'ice') {
         try {
           const c = new RTCIceCandidate(payload.candidate);
-          if (pcRef.current && remoteDescSetRef.current) { try { await pcRef.current.addIceCandidate(c); } catch {} }
-          else iceCandidatesRef.current.push(c);
+          if (pcRef.current && remoteDescSetRef.current) {
+            try { await pcRef.current.addIceCandidate(c); } catch {}
+          } else {
+            iceCandidatesRef.current.push(c);
+          }
         } catch {}
-      } else if (event === 'end') { setPhaseSafe('ended'); }
+      } else if (event === 'end') {
+        setPhaseSafe('ended');
+      }
     } catch {}
   };
 
   const cleanup = () => {
-    if (localStreamRef.current) { localStreamRef.current.getTracks().forEach(t => t.stop()); localStreamRef.current = null; }
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(t => t.stop());
+      localStreamRef.current = null;
+    }
     if (pcRef.current) { try { pcRef.current.close(); } catch {} pcRef.current = null; }
     try { supabase.from('call_signals').delete().eq('room_id', roomId).then(() => {}); } catch {}
-    gotCameraRef.current = false; remoteDescSetRef.current = false; pendingOfferRef.current = null;
-    iceCandidatesRef.current = []; processedIdsRef.current.clear(); retryCountRef.current = 0;
+    gotCameraRef.current = false;
+    remoteDescSetRef.current = false;
+    pendingOfferRef.current = null;
+    iceCandidatesRef.current = [];
+    processedIdsRef.current.clear();
+    retryCountRef.current = 0;
+    relayAttemptedRef.current = false;
+    makingOfferRef.current = false;
   };
 
   useEffect(() => {
@@ -269,26 +314,73 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
 
     (async () => {
       try {
-        const { data: existing } = await supabase.from('call_signals').select('*').eq('room_id', roomId).order('created_at', { ascending: true });
+        // Query existing signals first
+        const { data: existing } = await supabase
+          .from('call_signals')
+          .select('*')
+          .eq('room_id', roomId)
+          .order('created_at', { ascending: true });
+
         if (cancelled) return;
         if (existing) for (const s of existing) await handleSignal(s);
 
-        sub = supabase.channel(`call-${roomId}`).on('postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'call_signals', filter: `room_id=eq.${roomId}` },
-          (p: any) => handleSignal(p.new)
-        ).subscribe();
+        // Subscribe to realtime channel and wait for it to be active
+        await new Promise<void>((resolve) => {
+          sub = supabase.channel(`call-${roomId}`)
+            .on('postgres_changes',
+              { event: 'INSERT', schema: 'public', table: 'call_signals', filter: `room_id=eq.${roomId}` },
+              (p: any) => handleSignal(p.new)
+            )
+            .subscribe((status: string) => {
+              if (status === 'SUBSCRIBED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                resolve();
+              }
+            });
+        });
 
-        if (isCaller) { sendSignal('caller_present', {}); getCamera(); }
-        else if (autoAccept) doAcceptCallRef.current();
+        if (cancelled) return;
+
+        // Re-query after subscription is active to catch any signals missed during the gap
+        const { data: recent } = await supabase
+          .from('call_signals')
+          .select('*')
+          .eq('room_id', roomId)
+          .order('created_at', { ascending: true });
+
+        if (cancelled) return;
+        if (recent) for (const s of recent) await handleSignal(s);
+
+        // Now start the call flow
+        if (isCaller) {
+          sendSignal('caller_present', {});
+          await getCamera();
+        } else if (autoAccept) {
+          doAcceptCallRef.current();
+        }
       } catch {}
     })();
 
-    return () => { cancelled = true; mountedRef.current = false; if (sub) supabase.removeChannel(sub); cleanup(); };
+    return () => {
+      cancelled = true;
+      mountedRef.current = false;
+      if (sub) supabase.removeChannel(sub);
+      cleanup();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, profile?.id]);
 
-  function toggleMic() { if (localStreamRef.current) { localStreamRef.current.getAudioTracks().forEach(t => { t.enabled = !micOn; }); setMicOn(!micOn); } }
-  function toggleCam() { if (localStreamRef.current) { localStreamRef.current.getVideoTracks().forEach(t => { t.enabled = !camOn; }); setCamOn(!camOn); } }
+  function toggleMic() {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach(t => { t.enabled = !micOn; });
+      setMicOn(!micOn);
+    }
+  }
+  function toggleCam() {
+    if (localStreamRef.current) {
+      localStreamRef.current.getVideoTracks().forEach(t => { t.enabled = !camOn; });
+      setCamOn(!camOn);
+    }
+  }
   function endCall() { sendSignal('end', {}); setPhaseSafe('ended'); cleanup(); onEnd(); }
   function openInBrowser() { window.open(window.location.href, '_blank', 'noopener,noreferrer'); }
 
