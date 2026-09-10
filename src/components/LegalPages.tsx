@@ -747,7 +747,7 @@ function AntiscamContent() {
           <div className="flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl p-3">
             <Ban size={18} className="text-orange-600 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-orange-700 text-sm">Suspensyon ng Akawnt</p>
+              <p className="font-semibold text-orange-700 text-sm">Suspension of Account</p>
               <p className="text-orange-600 text-xs mt-1">
                 Ang mga paulit-ulit na pagkansela, fake orders, o bigong COD ay magiging sanhi ng awtomatikong
                 pag-aalis ng Cash on Delivery (COD) payment option mula sa akawnt ng user. Mula noon, online
