@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import type { Message, Conversation } from '@/lib/types';
 import { scanMessageLocally, scanChatMessage } from '@/lib/security';
-import { ArrowLeft, Send, Video, PhoneOff, Phone, ImagePlus, Trash2, X, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, Send, Video, PhoneOff, Phone, ImagePlus, Trash2, X, ShieldAlert, AlertCircle, ExternalLink } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
 import { VideoCall } from '@/components/VideoCall';
 import { compressImage } from '@/lib/imageCompress';
@@ -235,6 +235,9 @@ export function ChatView({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [showCallUnsupported, setShowCallUnsupported] = useState(false);
+
+  const videoCallSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices && !!navigator.mediaDevices.getUserMedia;
 
   useEffect(() => {
     async function loadAvatars() {
@@ -285,6 +288,10 @@ export function ChatView({
   }
 
   async function startVideoCall() {
+    if (!videoCallSupported) {
+      setShowCallUnsupported(true);
+      return;
+    }
     const roomId = generateRoomId();
     await sendCallInvite(roomId);
     setActiveCall({ roomId, isCaller: true });
@@ -292,6 +299,10 @@ export function ChatView({
 
   async function acceptIncomingCall(msg: Message) {
     if (!msg.call_room_id) return;
+    if (!videoCallSupported) {
+      setShowCallUnsupported(true);
+      return;
+    }
     await updateCallStatus(msg.id, 'accepted');
     setActiveCall({ roomId: msg.call_room_id, isCaller: false });
     setIncomingCall(null);
@@ -329,6 +340,34 @@ export function ChatView({
   }
 
   if (incomingCall && !activeCall) {
+    if (!videoCallSupported) {
+      return (
+        <div className="fixed inset-0 z-[80] bg-gradient-to-b from-blue-900 to-gray-900 flex flex-col items-center justify-center max-w-md mx-auto px-5">
+          <div className="text-center">
+            <div className="w-28 h-28 rounded-full bg-amber-600 flex items-center justify-center mx-auto mb-6">
+              <AlertCircle size={48} className="text-white" />
+            </div>
+            <p className="text-white text-xl font-bold mb-1">Si {otherName} ay tumatawag</p>
+            <p className="text-amber-200 text-sm mb-6">Video call isn't available in the installed app. Open in browser to join.</p>
+          </div>
+          <button
+            onClick={() => {
+              const url = window.location.href;
+              window.open(url, '_blank', 'noopener,noreferrer');
+            }}
+            className="px-8 py-3 bg-white text-gray-800 rounded-2xl font-semibold active:scale-95 transition flex items-center gap-2"
+          >
+            <ExternalLink size={18} /> Open in Browser
+          </button>
+          <button
+            onClick={() => { declineIncomingCall(incomingCall); setIncomingCall(null); }}
+            className="mt-3 text-gray-400 text-sm"
+          >
+            Dismiss
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="fixed inset-0 z-[80] bg-gradient-to-b from-blue-900 to-gray-900 flex flex-col items-center justify-center max-w-md mx-auto">
         <div className="text-center">
@@ -381,10 +420,10 @@ export function ChatView({
         </div>
         <button
           onClick={startVideoCall}
-          className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center active:scale-90 transition flex-shrink-0"
-          title="Video Call"
+          className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition flex-shrink-0 ${videoCallSupported ? 'bg-blue-50' : 'bg-gray-100'}`}
+          title={videoCallSupported ? 'Video Call' : 'Video Call (requires browser)'}
         >
-          <Video size={20} className="text-blue-600" />
+          <Video size={20} className={videoCallSupported ? 'text-blue-600' : 'text-gray-400'} />
         </button>
         <button
           onClick={() => setShowDeleteConfirm(true)}
@@ -556,6 +595,36 @@ export function ChatView({
               className="w-full py-2.5 bg-gray-100 text-gray-600 rounded-xl font-medium text-sm"
             >
               Huwag na
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Video Call Unsupported Modal */}
+      {showCallUnsupported && (
+        <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center px-5" onClick={() => setShowCallUnsupported(false)}>
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle size={28} className="text-amber-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-800 text-center mb-2">Video Call Not Available</h3>
+            <p className="text-sm text-gray-500 text-center mb-5 leading-relaxed">
+              Video calls need camera access, which isn't available inside the installed app on some phones. To use video calls, open GoPalengke in your browser (Safari or Chrome).
+            </p>
+            <button
+              onClick={() => {
+                const url = window.location.href;
+                window.open(url, '_blank', 'noopener,noreferrer');
+              }}
+              className="w-full py-3 bg-brand-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition flex items-center justify-center gap-2 mb-2"
+            >
+              <ExternalLink size={18} /> Open in Browser
+            </button>
+            <button
+              onClick={() => setShowCallUnsupported(false)}
+              className="w-full py-2.5 bg-gray-100 text-gray-600 rounded-xl font-medium text-sm"
+            >
+              Close
             </button>
           </div>
         </div>
