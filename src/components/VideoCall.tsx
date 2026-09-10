@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth';
 import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, Loader2 } from 'lucide-react';
 
 type CallPhase = 'outgoing' | 'connecting' | 'connected' | 'ended';
@@ -13,16 +14,17 @@ interface VideoCallProps {
 }
 
 export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: VideoCallProps) {
+  const { profile } = useAuth();
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const iceCandidatesRef = useRef<RTCIceCandidate[]>([]);
   const remoteDescriptionSetRef = useRef(false);
   const pendingOfferRef = useRef<any>(null);
-  const channelReadyRef = useRef(false);
   const gotCameraRef = useRef(false);
+  const myUserIdRef = useRef<string | null>(null);
+  const processedSignalIdsRef = useRef<Set<string>>(new Set());
 
   const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'connecting');
   const [micOn, setMicOn] = useState(true);
@@ -38,22 +40,24 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
       pcRef.current.close();
       pcRef.current = null;
     }
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-    channelReadyRef.current = false;
+    // Delete all signals for this room
+    supabase.from('call_signals').delete().eq('room_id', roomId).then(() => {});
+    gotCameraRef.current = false;
     remoteDescriptionSetRef.current = false;
     pendingOfferRef.current = null;
     iceCandidatesRef.current = [];
-    gotCameraRef.current = false;
-  }, []);
+    processedSignalIdsRef.current.clear();
+  }, [roomId]);
 
-  const sendSignal = useCallback((event: string, payload: Record<string, unknown>) => {
-    if (channelRef.current && channelReadyRef.current) {
-      channelRef.current.send({ type: 'broadcast', event, payload });
-    }
-  }, []);
+  const sendSignal = useCallback(async (event: string, payload: Record<string, unknown>) => {
+    if (!myUserIdRef.current) return;
+    await supabase.from('call_signals').insert({
+      room_id: roomId,
+      sender_id: myUserIdRef.current,
+      event,
+      payload,
+    });
+  }, [roomId]);
 
   const getCamera = useCallback(async (): Promise<MediaStream | null> => {
     if (gotCameraRef.current && localStreamRef.current) return localStreamRef.current;
@@ -79,8 +83,6 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
         { urls: 'stun:stun2.l.google.com:19302' },
-        // Free TURN servers from Open Relay Project — needed for NAT traversal
-        // on Philippine mobile networks (Globe/Smart) where STUN alone fails
         {
           urls: 'turn:openrelay.metered.ca:80',
           username: 'openrelayproject',
@@ -120,6 +122,12 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
       }
     };
 
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+        setPhase('ended');
+      }
+    };
+
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
         setPhase('ended');
@@ -135,7 +143,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     iceCandidatesRef.current = [];
   }, []);
 
-  // Caller: create and send offer (called after receiver_ready signal)
+  // Caller: create and send offer
   const createAndSendOffer = useCallback(async () => {
     const stream = await getCamera();
     if (!stream) return;
@@ -143,7 +151,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     const pc = pcRef.current!;
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    sendSignal('offer', { sdp: offer.toJSON() });
+    await sendSignal('offer', { sdp: offer.toJSON() });
   }, [getCamera, setupPeerConnection, sendSignal]);
 
   // Receiver: set up peer connection and process pending offer
@@ -151,8 +159,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     const stream = await getCamera();
     if (!stream) return;
     setupPeerConnection(stream);
-    // Announce we're ready — caller will send offer upon receiving this
-    sendSignal('receiver_ready', {});
+    await sendSignal('receiver_ready', {});
 
     if (pendingOfferRef.current) {
       const offer = pendingOfferRef.current;
@@ -162,84 +169,109 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
       remoteDescriptionSetRef.current = true;
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      sendSignal('answer', { sdp: answer.toJSON() });
+      await sendSignal('answer', { sdp: answer.toJSON() });
       await flushPendingCandidates();
       setPhase('connected');
     }
   }, [getCamera, setupPeerConnection, sendSignal, flushPendingCandidates]);
 
-  // Set up signaling channel — runs ONCE on mount
+  // Process incoming signal from database
+  const handleSignal = useCallback(async (signal: { id: string; event: string; payload: any; sender_id: string }) => {
+    // Skip our own signals
+    if (signal.sender_id === myUserIdRef.current) return;
+    // Skip already-processed signals
+    if (processedSignalIdsRef.current.has(signal.id)) return;
+    processedSignalIdsRef.current.add(signal.id);
+
+    const { event, payload } = signal;
+
+    if (event === 'receiver_ready') {
+      if (isCaller) {
+        await createAndSendOffer();
+      }
+    } else if (event === 'caller_present') {
+      if (!isCaller && autoAccept && pcRef.current) {
+        await sendSignal('receiver_ready', {});
+      }
+    } else if (event === 'offer') {
+      if (!pcRef.current) {
+        pendingOfferRef.current = payload;
+        return;
+      }
+      const pc = pcRef.current;
+      await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+      remoteDescriptionSetRef.current = true;
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await sendSignal('answer', { sdp: answer.toJSON() });
+      await flushPendingCandidates();
+      setPhase('connected');
+    } else if (event === 'answer') {
+      if (!pcRef.current) return;
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+      remoteDescriptionSetRef.current = true;
+      setPhase('connected');
+      await flushPendingCandidates();
+    } else if (event === 'ice') {
+      const candidate = new RTCIceCandidate(payload.candidate);
+      if (pcRef.current && remoteDescriptionSetRef.current) {
+        try { await pcRef.current.addIceCandidate(candidate); } catch { /* ignore */ }
+      } else {
+        iceCandidatesRef.current.push(candidate);
+      }
+    } else if (event === 'end') {
+      setPhase('ended');
+    }
+  }, [isCaller, autoAccept, createAndSendOffer, sendSignal, flushPendingCandidates]);
+
+  // Set up: load existing signals + subscribe to new ones
   useEffect(() => {
-    const channel = supabase.channel(roomId, {
-      config: { broadcast: { self: false }, ack: false },
-    });
+    if (!profile?.id) return;
+    myUserIdRef.current = profile.id;
 
-    channelRef.current = channel;
+    let subscription: ReturnType<typeof supabase.channel> | null = null;
 
-    channel
-      .on('broadcast', { event: 'receiver_ready' }, async () => {
-        if (isCaller) {
-          await createAndSendOffer();
+    (async () => {
+      // 1. Load any existing signals for this room (in case we joined late)
+      const { data: existing } = await supabase
+        .from('call_signals')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('created_at', { ascending: true });
+
+      if (existing) {
+        for (const sig of existing) {
+          await handleSignal(sig);
         }
-      })
-      .on('broadcast', { event: 'caller_present' }, async () => {
-        // Caller just joined — if we're the receiver and already accepted, re-send ready
-        if (!isCaller && autoAccept && pcRef.current) {
-          sendSignal('receiver_ready', {});
-        }
-      })
-      .on('broadcast', { event: 'offer' }, async (msg: any) => {
-        if (!pcRef.current) {
-          pendingOfferRef.current = msg.payload;
-          return;
-        }
-        const pc = pcRef.current;
-        await pc.setRemoteDescription(new RTCSessionDescription(msg.payload.sdp));
-        remoteDescriptionSetRef.current = true;
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        sendSignal('answer', { sdp: answer.toJSON() });
-        await flushPendingCandidates();
-        setPhase('connected');
-      })
-      .on('broadcast', { event: 'answer' }, async (msg: any) => {
-        if (!pcRef.current) return;
-        await pcRef.current.setRemoteDescription(new RTCSessionDescription(msg.payload.sdp));
-        remoteDescriptionSetRef.current = true;
-        setPhase('connected');
-        await flushPendingCandidates();
-      })
-      .on('broadcast', { event: 'ice' }, async (msg: any) => {
-        const candidate = new RTCIceCandidate(msg.payload.candidate);
-        if (pcRef.current && remoteDescriptionSetRef.current) {
-          try { await pcRef.current.addIceCandidate(candidate); } catch { /* ignore */ }
-        } else {
-          iceCandidatesRef.current.push(candidate);
-        }
-      })
-      .on('broadcast', { event: 'end' }, () => {
-        setPhase('ended');
-      })
-      .subscribe((status: string) => {
-        if (status === 'SUBSCRIBED') {
-          channelReadyRef.current = true;
-          if (isCaller) {
-            // Announce presence so receiver can re-send ready if needed
-            sendSignal('caller_present', {});
-            // Caller gets camera ready while waiting for receiver
-            getCamera();
-          } else if (autoAccept) {
-            // Receiver already accepted in ChatView — proceed immediately
-            acceptCallInternal();
+      }
+
+      // 2. Subscribe to new signals via realtime
+      subscription = supabase
+        .channel(`call-${roomId}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'call_signals', filter: `room_id=eq.${roomId}` },
+          (payload: any) => {
+            handleSignal(payload.new);
           }
-        }
-      });
+        )
+        .subscribe();
+
+      // 3. Start our role
+      if (isCaller) {
+        sendSignal('caller_present', {});
+        getCamera();
+      } else if (autoAccept) {
+        acceptCallInternal();
+      }
+    })();
 
     return () => {
+      if (subscription) supabase.removeChannel(subscription);
       cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId]);
+  }, [roomId, profile?.id]);
 
   function toggleMic() {
     if (localStreamRef.current) {
