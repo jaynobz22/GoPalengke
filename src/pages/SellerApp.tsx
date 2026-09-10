@@ -19,6 +19,7 @@ import { OrderStepTracker, type StepInfo } from '@/components/OrderStepTracker';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
 import { AdminChat } from '@/components/AdminChat';
 import { LoginReminderPopup } from '@/components/LoginReminderPopup';
+import { VideoCreditStore } from '@/components/VideoCreditStore';
 import { useIncomingAdminCall } from '@/lib/useAdminCall';
 import { useAdminConversations } from '@/lib/useAdminChat';
 import {
@@ -205,7 +206,16 @@ export function SellerApp() {
             setActiveAdminChat({ conversationId: convId, otherName: name });
           }} />
         )}
-        {tab === 'billing' && <SellerBilling />}
+        {tab === 'billing' && (
+          <div className="space-y-4">
+            <SellerBilling />
+            <div className="px-5">
+              <div className="bg-white rounded-2xl border border-gray-100 p-4">
+                <VideoCreditStore />
+              </div>
+            </div>
+          </div>
+        )}
 
         {showChat && activeConversationId && (
           <div className="fixed inset-0 z-[60] bg-gray-50 max-w-md mx-auto">

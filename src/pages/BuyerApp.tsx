@@ -24,6 +24,7 @@ import { Avatar } from '@/components/Avatar';
 import { ImageUploadField } from '@/components/ImageUploadField';
 import { ReviewForm, ReviewSection } from '@/components/Reviews';
 import { OrderStepTracker, type StepInfo } from '@/components/OrderStepTracker';
+import { VideoCreditStore } from '@/components/VideoCreditStore';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
 import { AdminChat } from '@/components/AdminChat';
 import { LoginReminderPopup } from '@/components/LoginReminderPopup';
@@ -2971,6 +2972,11 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
         </div>
         <ChevronRight size={18} className="text-gray-300" />
       </button>
+
+      {/* Video Call Credits */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4 mt-2">
+        <VideoCreditStore />
+      </div>
 
       {/* Shareable Profile URL */}
       {profile?.slug && (

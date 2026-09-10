@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall, AdminConversation, Store } from '@/lib/types';
+import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall, AdminConversation, Store, VideoCreditPurchase } from '@/lib/types';
 import { ImageUploadField } from '@/components/ImageUploadField';
 import { SecurityDashboardTab } from '@/components/SecurityDashboard';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
@@ -10,10 +10,10 @@ import {
   Megaphone, Plus, Trash2, Power, Check, Loader2, LogOut,
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
   AlertCircle, X, UserCheck, UserX, DollarSign, TrendingUp, Receipt,
-  Lock, Unlock, Video, MessageCircle, Shield, QrCode, MapPin, Mail, Send,
+  Lock, Unlock, Video, MessageCircle, Shield, QrCode, MapPin, Mail, Send, Coins,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'announcements' | 'security' | 'settings';
+type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'announcements' | 'security' | 'video_credits' | 'settings';
 
 export function AdminApp() {
   const { profile, signOut } = useAuth();
@@ -65,6 +65,7 @@ export function AdminApp() {
     { id: 'announcements', label: 'Announcements', icon: Megaphone },
     { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'security', label: 'Security', icon: Shield },
+    { id: 'video_credits', label: 'Credits', icon: Coins },
   ];
 
   return (
@@ -114,6 +115,7 @@ export function AdminApp() {
       {tab === 'fees' && <FeesTab />}
       {tab === 'announcements' && <AnnouncementsTab />}
       {tab === 'security' && <SecurityDashboardTab />}
+      {tab === 'video_credits' && <VideoCreditsTab />}
       {tab === 'settings' && <SettingsTab />}
 
       {activeChat && profile && (
@@ -2024,6 +2026,170 @@ function AdminMessagesTab({ onOpenChat }: { onOpenChat: (conversationId: string,
               </button>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============= VIDEO CREDITS APPROVAL =============
+function VideoCreditsTab() {
+  const [purchases, setPurchases] = useState<(VideoCreditPurchase & { user: { full_name: string; email: string } | null })[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+
+  async function load() {
+    setLoading(true);
+    const { data } = await supabase
+      .from('video_credit_purchases')
+      .select('*, user:profiles!video_credit_purchases_user_id_fkey(full_name, email)')
+      .order('created_at', { ascending: false });
+    setPurchases((data || []) as any[]);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+    const sub = supabase.channel('admin-video-credits')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'video_credit_purchases' }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, []);
+
+  async function approve(id: string, userId: string, credits: number) {
+    const { error } = await supabase.rpc('approve_video_credit_purchase', { purchase_id: id });
+    if (error) {
+      alert('Error approving: ' + error.message);
+      return;
+    }
+    load();
+  }
+
+  async function reject(id: string) {
+    const { error } = await supabase.rpc('reject_video_credit_purchase', { purchase_id: id });
+    if (error) {
+      alert('Error rejecting: ' + error.message);
+      return;
+    }
+    load();
+  }
+
+  const filtered = purchases.filter(p => filter === 'all' ? true : p.status === filter);
+  const pendingCount = purchases.filter(p => p.status === 'pending').length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={32} className="animate-spin text-brand-500" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-5 py-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Coins size={22} className="text-brand-600" />
+        <h2 className="text-lg font-bold text-gray-800">Video Credit Purchases</h2>
+      </div>
+
+      {pendingCount > 0 && (
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4">
+          <AlertCircle size={18} className="text-amber-600 flex-shrink-0" />
+          <p className="text-sm text-amber-700 font-medium">
+            May {pendingCount} purchase na naghihintay ng approval.
+          </p>
+        </div>
+      )}
+
+      <div className="flex gap-2 mb-4 overflow-x-auto">
+        {(['pending', 'approved', 'rejected', 'all'] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${
+              filter === f
+                ? 'bg-brand-600 text-white'
+                : 'bg-white text-gray-500 border border-gray-200'
+            }`}
+          >
+            {f === 'all' ? 'Lahat' : f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 text-gray-400">
+          <Coins size={40} className="mx-auto mb-2 text-gray-300" />
+          <p className="text-sm">Wala pang {filter === 'all' ? 'purchases' : filter + ' purchases'}.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map(p => (
+            <div key={p.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-gray-800 truncate">{p.user?.full_name || 'Unknown'}</p>
+                  <p className="text-xs text-gray-400 truncate">{p.user?.email}</p>
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                  p.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                  p.status === 'approved' ? 'bg-green-100 text-green-700' :
+                  'bg-red-100 text-red-700'
+                }`}>
+                  {p.status}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                <div className="bg-gray-50 rounded-lg p-2 text-center">
+                  <p className="text-gray-400">Package</p>
+                  <p className="font-bold text-gray-700">{p.credits} credits</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-2 text-center">
+                  <p className="text-gray-400">Amount</p>
+                  <p className="font-bold text-gray-700">₱{p.amount_paid}</p>
+                </div>
+              </div>
+
+              <div className="text-xs text-gray-400 mb-3">
+                {new Date(p.created_at).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}
+              </div>
+
+              {p.reference_number && (
+                <div className="text-xs text-gray-500 mb-3">
+                  Ref: <span className="font-mono font-medium">{p.reference_number}</span>
+                </div>
+              )}
+
+              {p.screenshot_url && (
+                <a
+                  href={p.screenshot_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-brand-600 font-medium mb-3"
+                >
+                  <Receipt size={14} /> View proof of payment
+                </a>
+              )}
+
+              {p.status === 'pending' && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => approve(p.id, p.user_id, p.credits)}
+                    className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-semibold active:scale-95 transition flex items-center justify-center gap-1"
+                  >
+                    <Check size={16} /> Approve
+                  </button>
+                  <button
+                    onClick={() => reject(p.id)}
+                    className="flex-1 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl text-sm font-semibold active:scale-95 transition flex items-center justify-center gap-1"
+                  >
+                    <X size={16} /> Reject
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, Loader2, ExternalLink, AlertCircle } from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, Loader2, ExternalLink, AlertCircle, Coins, Clock } from 'lucide-react';
+import { VIDEO_CREDIT_RATE_SECONDS } from '@/lib/types';
 
 type CallPhase = 'outgoing' | 'connecting' | 'connected' | 'ended';
 
@@ -93,7 +94,12 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
   const [camOn, setCamOn] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFallback, setShowFallback] = useState(false);
+  const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
+  const [callSeconds, setCallSeconds] = useState(0);
+  const [showNoCreditsAlert, setShowNoCreditsAlert] = useState(false);
 
+  const creditTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const destroyedRef = useRef(false);
 
@@ -319,8 +325,47 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
     } catch (e) { log('HANDLE SIGNAL ERROR', event, e); }
   };
 
+  const startCreditDeduction = () => {
+    if (!isCaller) return;
+    if (creditTimerRef.current) clearInterval(creditTimerRef.current);
+    if (callTimerRef.current) clearInterval(callTimerRef.current);
+
+    callTimerRef.current = setInterval(() => {
+      setCallSeconds(s => s + 1);
+    }, 1000);
+
+    creditTimerRef.current = setInterval(async () => {
+      log('DEDUCTING 1 credit');
+      const { data, error } = await supabase.rpc('deduct_video_credit');
+      if (error) {
+        log('CREDIT DEDUCT ERROR', error.message);
+        return;
+      }
+      const newBalance = data as number;
+      log('NEW CREDIT BALANCE', newBalance);
+      setCreditsLeft(newBalance);
+      if (newBalance <= 0) {
+        log('CREDITS EXHAUSTED — auto-disconnecting');
+        stopCreditDeduction();
+        setShowNoCreditsAlert(true);
+        sendSignal('end', {});
+        setTimeout(() => {
+          setPhaseSafe('ended');
+          destroyedRef.current = true;
+          cleanup();
+        }, 100);
+      }
+    }, VIDEO_CREDIT_RATE_SECONDS * 1000);
+  };
+
+  const stopCreditDeduction = () => {
+    if (creditTimerRef.current) { clearInterval(creditTimerRef.current); creditTimerRef.current = null; }
+    if (callTimerRef.current) { clearInterval(callTimerRef.current); callTimerRef.current = null; }
+  };
+
   const cleanup = () => {
     log('CLEANUP');
+    stopCreditDeduction();
     if (localStreamRef.current) { localStreamRef.current.getTracks().forEach(t => t.stop()); localStreamRef.current = null; }
     if (pcRef.current) { try { pcRef.current.close(); } catch {} pcRef.current = null; }
     gotCameraRef.current = false; remoteDescriptionSetRef.current = false; pendingOfferRef.current = null;
@@ -399,6 +444,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
       mountedRef.current = false;
       if (sub) supabase.removeChannel(sub);
       if (pollTimer) clearInterval(pollTimer);
+      stopCreditDeduction();
       deferredCleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -414,6 +460,16 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
     cleanup();
     onEnd();
   }
+
+  // Start credit deduction when call connects (caller only)
+  useEffect(() => {
+    if (phase === 'connected' && isCaller) {
+      setCreditsLeft(profile?.video_credits ?? 0);
+      startCreditDeduction();
+    }
+    return () => { if (phase !== 'connected') stopCreditDeduction(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, isCaller]);
   function openInBrowser() { window.open(window.location.href, '_blank', 'noopener,noreferrer'); }
 
   if (showFallback) {
@@ -426,6 +482,19 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
         </div>
         <button onClick={openInBrowser} className="px-8 py-3 bg-white text-gray-800 rounded-2xl font-semibold active:scale-95 transition flex items-center gap-2"><ExternalLink size={18} /> Open in System Browser</button>
         <button onClick={() => { setShowFallback(false); endCall(); }} className="mt-3 text-gray-400 text-sm">Cancel Call</button>
+      </div>
+    );
+  }
+
+  if (showNoCreditsAlert) {
+    return (
+      <div className="fixed inset-0 z-[85] bg-gray-900 flex flex-col items-center justify-center max-w-md mx-auto px-5">
+        <div className="text-center">
+          <div className="w-24 h-24 rounded-full bg-red-600 flex items-center justify-center mx-auto mb-4"><Coins size={40} className="text-white" /></div>
+          <p className="text-white text-lg font-bold mb-2">Ubos na ang iyong video credits.</p>
+          <p className="text-gray-400 text-sm mb-6">Mag-top up upang makatawag muli.</p>
+        </div>
+        <button onClick={onEnd} className="px-8 py-3 bg-white text-gray-800 rounded-2xl font-semibold active:scale-95 transition">Bumalik sa Chat</button>
       </div>
     );
   }
@@ -490,7 +559,20 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
         <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
         {!camOn && <div className="absolute inset-0 bg-gray-800 flex items-center justify-center"><VideoOff size={20} className="text-gray-500" /></div>}
       </div>
-      <div className="absolute top-4 left-4 z-10"><p className="text-white font-semibold text-sm drop-shadow-lg">{otherName}</p><p className="text-white/60 text-xs">Live na video call</p></div>
+      <div className="absolute top-4 left-4 z-10">
+        <p className="text-white font-semibold text-sm drop-shadow-lg">{otherName}</p>
+        <p className="text-white/60 text-xs">Live na video call</p>
+        {isCaller && creditsLeft !== null && (
+          <div className="mt-1 flex items-center gap-2">
+            <span className="flex items-center gap-1 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+              <Coins size={12} /> {creditsLeft} credits
+            </span>
+            <span className="flex items-center gap-1 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+              <Clock size={12} /> {Math.floor(callSeconds / 60)}:{String(callSeconds % 60).padStart(2, '0')}
+            </span>
+          </div>
+        )}
+      </div>
       <div className="pb-8 pt-4 px-6 flex items-center justify-center gap-5 bg-gradient-to-t from-gray-900 to-transparent">
         <button onClick={toggleMic} className={`w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition shadow-lg ${micOn ? 'bg-white/15' : 'bg-white'}`}>{micOn ? <Mic size={24} className="text-white" /> : <MicOff size={24} className="text-gray-800" />}</button>
         <button onClick={toggleCam} className={`w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition shadow-lg ${camOn ? 'bg-white/15' : 'bg-white'}`}>{camOn ? <Video size={24} className="text-white" /> : <VideoOff size={24} className="text-gray-800" />}</button>

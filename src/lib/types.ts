@@ -24,6 +24,7 @@ export interface Profile {
   is_test_account: boolean;
   security_pin: string | null;
   payout_locked_until: string | null;
+  video_credits: number;
   rider_age: number | null;
   rider_family_status: string | null;
   rider_residence_address: string | null;
@@ -301,6 +302,38 @@ export interface Review {
   updated_at: string;
   reviewer?: { full_name: string; avatar_url: string | null };
 }
+
+export type VideoCreditPurchaseStatus = 'pending' | 'approved' | 'rejected';
+
+export interface VideoCreditPurchase {
+  id: string;
+  user_id: string;
+  credits: number;
+  amount_paid: number;
+  reference_number: string;
+  screenshot_url: string | null;
+  status: VideoCreditPurchaseStatus;
+  approved_by: string | null;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreditPackage {
+  id: string;
+  credits: number;
+  price: number;
+  label: string;
+  bonus?: number;
+}
+
+export const VIDEO_CREDIT_PACKAGES: CreditPackage[] = [
+  { id: 'starter', credits: 10, price: 10, label: 'Starter' },
+  { id: 'sulit', credits: 30, price: 25, label: 'Sulit', bonus: 5 },
+  { id: 'panalo', credits: 70, price: 50, label: 'Panalo', bonus: 15 },
+];
+
+export const VIDEO_CREDIT_RATE_SECONDS = 60;
 
 export const COMMISSION_RATE = 0.03;
 export const SUBSCRIPTION_FEE = 499;

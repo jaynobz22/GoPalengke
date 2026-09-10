@@ -498,6 +498,11 @@ export function ChatView({
       setShowCallUnsupported(true);
       return;
     }
+    // Credit check: caller must have at least 1 credit
+    if (profile && (profile.video_credits ?? 0) <= 0) {
+      alert('Ubos na ang iyong video credits. Mag-top up upang makatawag muli.');
+      return;
+    }
     // Pre-warm camera for caller immediately
     if (!preWarmStreamRef.current) {
       try {
