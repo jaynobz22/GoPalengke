@@ -344,6 +344,10 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
     if (!pc) pc = createPeerConnection(stream);
     if (!pc) return;
 
+    // Always announce readiness so the caller knows to send the offer
+    log('doAcceptCall', 'sending receiver_ready');
+    await sendSignal('receiver_ready', {});
+
     // If we already received the offer, process it now
     if (pendingOfferRef.current) {
       const offerPayload = pendingOfferRef.current;
@@ -427,8 +431,10 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
 
     try {
       if (event === 'caller_present') {
-        // Caller announced presence. If we're the receiver with
-        // autoAccept and our peer connection is ready, respond.
+        // Caller announced presence. If we're the receiver and our
+        // peer connection is ready, respond with receiver_ready.
+        // (doAcceptCall also sends receiver_ready, so this is a safety net
+        // for the case where caller_present arrives after PC creation.)
         if (!isCaller && autoAccept && pcRef.current) {
           log('handleSignal', 'caller_present → responding receiver_ready');
           await sendSignal('receiver_ready', {});
