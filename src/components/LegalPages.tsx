@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, FileText, Shield, HelpCircle, AlertTriangle, ChevronDown, Ban, Clock, Package, CreditCard, AlertCircle } from 'lucide-react';
+import {
+  ArrowLeft, FileText, Shield, HelpCircle, AlertTriangle, ChevronDown, Ban,
+  Clock, Package, CreditCard, AlertCircle, ShieldCheck, Eye, MapPin,
+  ShoppingBag, Bot, MessageSquareWarning, UserX, AlertOctagon, BadgeCheck,
+} from 'lucide-react';
 
-export type LegalPageType = 'terms' | 'disclaimer' | 'privacy' | 'faq' | 'cancellation';
+export type LegalPageType = 'terms' | 'disclaimer' | 'privacy' | 'faq' | 'cancellation' | 'antiscam';
 
 export function LegalPages({ type, onBack }: { type: LegalPageType; onBack: () => void }) {
   const titles: Record<LegalPageType, string> = {
@@ -10,6 +14,7 @@ export function LegalPages({ type, onBack }: { type: LegalPageType; onBack: () =
     privacy: 'Privacy Policy',
     faq: 'Frequently Asked Questions',
     cancellation: 'Cancellation Policy',
+    antiscam: 'Patakaran Laban sa Scam at Spam',
   };
 
   return (
@@ -29,6 +34,7 @@ export function LegalPages({ type, onBack }: { type: LegalPageType; onBack: () =
             {type === 'privacy' && <Shield size={28} className="text-white" />}
             {type === 'faq' && <HelpCircle size={28} className="text-white" />}
             {type === 'cancellation' && <Ban size={28} className="text-white" />}
+            {type === 'antiscam' && <ShieldCheck size={28} className="text-white" />}
             <h1 className="text-2xl font-bold">{titles[type]}</h1>
           </div>
           <p className="text-brand-100 text-sm mt-2">Huling update: Setyembre 8, 2026</p>
@@ -43,6 +49,7 @@ export function LegalPages({ type, onBack }: { type: LegalPageType; onBack: () =
           {type === 'privacy' && <PrivacyContent />}
           {type === 'faq' && <FaqContent />}
           {type === 'cancellation' && <CancellationContent />}
+          {type === 'antiscam' && <AntiscamContent />}
         </div>
       </div>
     </div>
@@ -611,6 +618,173 @@ function CancellationContent() {
         <p>
           For questions about this Cancellation Policy, buyers may reach out to the admin through the admin messaging
           feature in the platform dashboard.
+        </p>
+      </Section>
+    </div>
+  );
+}
+
+// ============= ANTI-SCAM & SPAM POLICY =============
+function AntiscamContent() {
+  return (
+    <div className="space-y-6 text-sm md:text-[15px] text-gray-700 leading-relaxed">
+      {/* Zero-tolerance banner */}
+      <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4 flex items-start gap-3">
+        <AlertOctagon size={22} className="text-red-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="font-bold text-red-700 text-sm">Zero-Tolerance Policy Laban sa Scam at Spam</p>
+          <p className="text-red-600 text-xs mt-1">
+            Ang GoPalengke ay may zero-tolerance na patakaran laban sa anumang uri ng scam, fraud, at spam.
+            Ang anumang user na mahuhuling gumawa ng mga ito ay parurusahan ayon sa pagkakabigo ng paglabag,
+            kasama ang permanenteng pagbabawal at pagharang sa hardware at IP address.
+          </p>
+        </div>
+      </div>
+
+      {/* Section 1: Prohibited Activities */}
+      <Section title="1. Mga Pinagbabawal na Gawain (Zero-Tolerance)">
+        <div className="space-y-3">
+          {/* Fake orders & trip-cutting */}
+          <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-3">
+            <ShoppingBag size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-700 text-sm">Fake Orders at Trip-Cutting</p>
+              <p className="text-red-600 text-xs mt-1">
+                Ang pag-order nang maramihan sa iba't ibang tindahan nang walang intensyong magbayad, o ang
+                malaking pagbabago sa delivery address na malayo sa nakarehistrong lokasyon ay mahigpit na
+                ipinagbabawal. Ito ay itinuturing na scam laban sa mga vendor at rider.
+              </p>
+            </div>
+          </div>
+
+          {/* Inventory locking / spam */}
+          <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-3">
+            <Bot size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-700 text-sm">Inventory Locking (Spam)</p>
+              <p className="text-red-600 text-xs mt-1">
+                Ang paggamit ng bots o pagsasadya ng pagpapalit ng carts at paggawa ng fake orders para lang
+                i-lock ang stock ng mga perishable goods ng vendor ay isang malaking paglabag. Hindi ito
+                tinutuluyan at magreresulta sa agarang parusa.
+              </p>
+            </div>
+          </div>
+
+          {/* Chat & spam abuse */}
+          <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-3">
+            <MessageSquareWarning size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-700 text-sm">Chat at Spam Abuse</p>
+              <p className="text-red-600 text-xs mt-1">
+                Ang pagpapalit ng vendor-buyer chat ng automated spam, phishing links, external payment
+                gateways, o imbitasyon na mag-transact sa labas ng platform ay mahigpit na ipinagbabawal.
+                Ang chat ay para sa lehitimong komunikasyon lamang tungkol sa order.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      {/* Section 2: System Protection & Verification */}
+      <Section title="2. Proteksyon at Features ng Sistema">
+        <div className="space-y-3">
+          {/* Seller verification */}
+          <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl p-3">
+            <BadgeCheck size={18} className="text-green-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-green-700 text-sm">Proseso ng Seller Verification</p>
+              <p className="text-green-600 text-xs mt-1">
+                Ang lahat ng nagrerehistrong vendor ay dadaan sa mahigpit na pagsusuri ng admin — kasama ang
+                pagkumpirma ng lokasyon at isang mandatoryong live video call verification para patunayan na
+                may pisikal na pwesto sa palengke o totoong inventory bago aprubado.
+              </p>
+            </div>
+          </div>
+
+          {/* Suspicious activity monitoring */}
+          <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl p-3">
+            <Eye size={18} className="text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-blue-700 text-sm">Suspicious Activity Monitoring</p>
+              <p className="text-blue-600 text-xs mt-1">
+                Ang sistema ay awtomatikong nakakatuklas ng hindi pangkaraniwang kilos tulad ng magkakasunod na
+                maramihang order sa maikling panahon, multi-store checkout sa parehong oras, at mabilis na
+                pagbabago ng IP address sa isang session.
+              </p>
+            </div>
+          </div>
+
+          {/* Coordinator layer */}
+          <div className="flex items-start gap-3 bg-gray-50 border border-gray-200 rounded-xl p-3">
+            <MapPin size={18} className="text-gray-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-gray-700 text-sm">Coordinator Layer</p>
+              <p className="text-gray-600 text-xs mt-1">
+                Ang delivery distances at rates ay awtomatikong kinross-verify ng sistema para harangin ang
+                mga fake address at matiyak na ang presyo ng delivery ay tumutugma sa aktwal na distansya.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      {/* Section 3: Enforcement & Sanctions */}
+      <Section title="3. Mga Parusa at Sanksyon">
+        <div className="space-y-3">
+          {/* Warning & restriction */}
+          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+            <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-amber-700 text-sm">Babala at Restriction</p>
+              <p className="text-amber-600 text-xs mt-1">
+                Ang mga unang pagkakasala na menor de edad (tulad ng aksidenteng chat spam) ay magiging sanhi
+                ng system warning o pansamantalang 24-oras na pagharang sa chat function.
+              </p>
+            </div>
+          </div>
+
+          {/* Account suspension */}
+          <div className="flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl p-3">
+            <Ban size={18} className="text-orange-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-orange-700 text-sm">Suspensyon ng Akawnt</p>
+              <p className="text-orange-600 text-xs mt-1">
+                Ang mga paulit-ulit na pagkansela, fake orders, o bigong COD ay magiging sanhi ng awtomatikong
+                pag-aalis ng Cash on Delivery (COD) payment option mula sa akawnt ng user. Mula noon, online
+                payment (QR Code) na lang ang magagamit.
+              </p>
+            </div>
+          </div>
+
+          {/* Permanent ban */}
+          <div className="flex items-start gap-3 bg-red-50 border-2 border-red-300 rounded-xl p-3">
+            <UserX size={18} className="text-red-700 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-red-800 text-sm">Permanenteng Ban</p>
+              <p className="text-red-700 text-xs mt-1">
+                Ang mga napatunayang scam, pandarayang listahan ng hindi umiiral na perishable products,
+                paggamit ng spam bots, o payment fraud ay magreresulta sa agarang pag-deactivate ng akawnt,
+                kasama ang pagharang sa hardware at IP address para maiwasan ang pagrere-register.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      {/* Section 4: Reporting */}
+      <Section title="4. Paano Magreport ng Scam o Spam">
+        <p>
+          Kung ikaw ay nakakita ng anumang suspetsyosong aktibidad, scam, o spam sa platform, maaari mong
+          i-report agad gamit ang admin messaging feature sa iyong dashboard. Ang admin ay susuriin sa lalong
+          madaling panahon at gagawa ng naaangkop na aksyon base sa patakaran na ito.
+        </p>
+      </Section>
+
+      {/* Section 5: Contact */}
+      <Section title="5. Makipag-ugnayan">
+        <p>
+          Para sa mga tanong tungkol sa patakarang ito, maaaring makipag-ugnayan sa admin gamit ang admin
+          messaging feature sa platform dashboard.
         </p>
       </Section>
     </div>
