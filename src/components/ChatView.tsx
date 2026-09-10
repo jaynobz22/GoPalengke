@@ -8,6 +8,51 @@ import { Avatar } from '@/components/Avatar';
 import { VideoCall } from '@/components/VideoCall';
 import { compressImage } from '@/lib/imageCompress';
 
+function useRingtone() {
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const vibrateRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const start = useCallback(() => {
+    try {
+      audioCtxRef.current = new AudioContext();
+      const playBeep = () => {
+        const ctx = audioCtxRef.current;
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 800;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.4);
+      };
+      playBeep();
+      intervalRef.current = setInterval(playBeep, 1500);
+      if ('vibrate' in navigator) {
+        navigator.vibrate([400, 200, 400, 200, 400]);
+        vibrateRef.current = setInterval(() => {
+          navigator.vibrate([400, 200, 400, 200, 400]);
+        }, 1500);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const stop = useCallback(() => {
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    if (vibrateRef.current) { clearInterval(vibrateRef.current); vibrateRef.current = null; }
+    if (audioCtxRef.current) { audioCtxRef.current.close().catch(() => {}); audioCtxRef.current = null; }
+    if ('vibrate' in navigator) navigator.vibrate(0);
+  }, []);
+
+  useEffect(() => () => stop(), [stop]);
+  return { start, stop };
+}
+
 export function useChat(conversationId: string | null) {
   const { profile } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -238,6 +283,7 @@ export function ChatView({
   const [showCallUnsupported, setShowCallUnsupported] = useState(false);
 
   const videoCallSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices && !!navigator.mediaDevices.getUserMedia;
+  const { start: startRing, stop: stopRing } = useRingtone();
 
   useEffect(() => {
     async function loadAvatars() {
@@ -274,6 +320,16 @@ export function ChatView({
     }
   }, [messages, profile, activeCall]);
 
+  // Ringtone: start when incoming call appears, stop when dismissed/accepted
+  useEffect(() => {
+    if (incomingCall && !activeCall && videoCallSupported) {
+      startRing();
+    } else {
+      stopRing();
+    }
+    return () => stopRing();
+  }, [incomingCall, activeCall, videoCallSupported, startRing, stopRing]);
+
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || sending) return;
@@ -303,12 +359,17 @@ export function ChatView({
       setShowCallUnsupported(true);
       return;
     }
-    await updateCallStatus(msg.id, 'accepted');
-    setActiveCall({ roomId: msg.call_room_id, isCaller: false });
+    stopRing();
+    // Mount VideoCall immediately — don't await DB update first.
+    // Camera access must happen within the user gesture (click) context.
     setIncomingCall(null);
+    setActiveCall({ roomId: msg.call_room_id, isCaller: false });
+    // Update DB status in background (non-blocking)
+    updateCallStatus(msg.id, 'accepted');
   }
 
   async function declineIncomingCall(msg: Message) {
+    stopRing();
     await updateCallStatus(msg.id, 'declined');
     setIncomingCall(null);
   }

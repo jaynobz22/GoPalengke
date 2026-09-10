@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, Loader2 } from 'lucide-react';
 
-type CallPhase = 'outgoing' | 'incoming' | 'connecting' | 'connected' | 'ended';
+type CallPhase = 'outgoing' | 'connecting' | 'connected' | 'ended';
 
 interface VideoCallProps {
   roomId: string;
@@ -10,64 +10,6 @@ interface VideoCallProps {
   otherName: string;
   autoAccept?: boolean;
   onEnd: () => void;
-}
-
-function useRingtone() {
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const start = useCallback(() => {
-    try {
-      audioCtxRef.current = new AudioContext();
-      const playBeep = () => {
-        const ctx = audioCtxRef.current;
-        if (!ctx) return;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.frequency.value = 800;
-        osc.type = 'sine';
-        gain.gain.setValueAtTime(0, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.05);
-        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.4);
-      };
-      playBeep();
-      intervalRef.current = setInterval(playBeep, 1000);
-      if ('vibrate' in navigator) {
-        navigator.vibrate([400, 200, 400, 200, 400]);
-        const vibrateInterval = setInterval(() => {
-          navigator.vibrate([400, 200, 400, 200, 400]);
-        }, 1500);
-        // Store both intervals so we can clear them
-        (intervalRef as any)._vibrate = vibrateInterval;
-      }
-    } catch { /* ignore */ }
-  }, []);
-
-  const stop = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    if ((intervalRef as any)._vibrate) {
-      clearInterval((intervalRef as any)._vibrate);
-      (intervalRef as any)._vibrate = null;
-    }
-    if (audioCtxRef.current) {
-      audioCtxRef.current.close().catch(() => {});
-      audioCtxRef.current = null;
-    }
-    if ('vibrate' in navigator) {
-      navigator.vibrate(0);
-    }
-  }, []);
-
-  useEffect(() => () => stop(), [stop]);
-
-  return { start, stop };
 }
 
 export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: VideoCallProps) {
@@ -81,19 +23,13 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
   const pendingOfferRef = useRef<any>(null);
   const channelReadyRef = useRef(false);
   const gotCameraRef = useRef(false);
-  const callerReadyRef = useRef(false);
 
-  const [phase, setPhase] = useState<CallPhase>(
-    autoAccept ? 'connecting' : (isCaller ? 'outgoing' : 'incoming')
-  );
+  const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'connecting');
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { start: startRing, stop: stopRing } = useRingtone();
-
   const cleanup = useCallback(() => {
-    stopRing();
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(t => t.stop());
       localStreamRef.current = null;
@@ -111,8 +47,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     pendingOfferRef.current = null;
     iceCandidatesRef.current = [];
     gotCameraRef.current = false;
-    callerReadyRef.current = false;
-  }, [stopRing]);
+  }, []);
 
   const sendSignal = useCallback((event: string, payload: Record<string, unknown>) => {
     if (channelRef.current && channelReadyRef.current) {
@@ -132,7 +67,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
       return stream;
     } catch (err: any) {
-      setError(`Hindi ma-access ang camera/mic: ${err?.message || err}. Pumunta sa browser settings at i-allow ang camera at microphone para sa GoPalengke.`);
+      setError(`Hindi ma-access ang camera/mic: ${err?.message || err}. I-allow ang camera at microphone sa browser settings.`);
       return null;
     }
   }, []);
@@ -177,7 +112,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     iceCandidatesRef.current = [];
   }, []);
 
-  // Caller: create and send offer (only called after receiver_ready)
+  // Caller: create and send offer (called after receiver_ready signal)
   const createAndSendOffer = useCallback(async () => {
     const stream = await getCamera();
     if (!stream) return;
@@ -188,18 +123,13 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     sendSignal('offer', { sdp: offer.toJSON() });
   }, [getCamera, setupPeerConnection, sendSignal]);
 
-  // Receiver: accept and set up call
-  const acceptCall = useCallback(async () => {
-    stopRing();
-    setPhase('connecting');
+  // Receiver: set up peer connection and process pending offer
+  const acceptCallInternal = useCallback(async () => {
     const stream = await getCamera();
     if (!stream) return;
     setupPeerConnection(stream);
-
-    // Tell caller we're ready
     sendSignal('receiver_ready', {});
 
-    // If offer already arrived, process it now
     if (pendingOfferRef.current) {
       const offer = pendingOfferRef.current;
       pendingOfferRef.current = null;
@@ -212,9 +142,9 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
       await flushPendingCandidates();
       setPhase('connected');
     }
-  }, [stopRing, getCamera, setupPeerConnection, sendSignal, flushPendingCandidates]);
+  }, [getCamera, setupPeerConnection, sendSignal, flushPendingCandidates]);
 
-  // Set up signaling channel
+  // Set up signaling channel — runs ONCE on mount
   useEffect(() => {
     const channel = supabase.channel(roomId, {
       config: { broadcast: { self: false }, ack: false },
@@ -224,8 +154,6 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
 
     channel
       .on('broadcast', { event: 'receiver_ready' }, async () => {
-        // Receiver joined — now safe to send offer
-        callerReadyRef.current = true;
         if (isCaller) {
           await createAndSendOffer();
         }
@@ -266,14 +194,11 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
         if (status === 'SUBSCRIBED') {
           channelReadyRef.current = true;
           if (isCaller) {
-            // Caller gets camera ready but waits for receiver_ready before sending offer
+            // Caller gets camera ready while waiting for receiver
             getCamera();
           } else if (autoAccept) {
             // Receiver already accepted in ChatView — proceed immediately
-            acceptCall();
-          } else {
-            // Receiver hasn't accepted yet — play ringtone
-            startRing();
+            acceptCallInternal();
           }
         }
       });
@@ -281,7 +206,8 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     return () => {
       cleanup();
     };
-  }, [roomId, isCaller, autoAccept, getCamera, acceptCall, createAndSendOffer, flushPendingCandidates, cleanup, startRing]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId]);
 
   function toggleMic() {
     if (localStreamRef.current) {
@@ -300,12 +226,6 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
   function endCall() {
     sendSignal('end', {});
     setPhase('ended');
-    cleanup();
-    onEnd();
-  }
-
-  function declineCall() {
-    sendSignal('end', {});
     cleanup();
     onEnd();
   }
@@ -349,36 +269,6 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
           <PhoneOff size={28} className="text-white" />
         </button>
         <p className="text-gray-400 text-xs mt-3">I-cancel ang tawag</p>
-      </div>
-    );
-  }
-
-  // Incoming call — waiting for user to accept/decline (only shown when NOT autoAccept)
-  if (phase === 'incoming') {
-    return (
-      <div className="fixed inset-0 z-[80] bg-gradient-to-b from-blue-900 to-gray-900 flex flex-col items-center justify-center max-w-md mx-auto">
-        <div className="text-center">
-          <div className="w-28 h-28 rounded-full bg-blue-700 flex items-center justify-center mx-auto mb-6 ring-4 ring-blue-400/50 animate-pulse">
-            <Video size={48} className="text-white" />
-          </div>
-          <p className="text-white text-xl font-bold mb-1">Si {otherName} ay tumatawag</p>
-          <p className="text-blue-200 text-sm">Gusto ka nilang tawagan via video</p>
-        </div>
-        <div className="mt-10 flex gap-8">
-          <button onClick={declineCall} className="flex flex-col items-center gap-2 active:scale-95 transition">
-            <div className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center shadow-lg">
-              <PhoneOff size={28} className="text-white" />
-            </div>
-            <span className="text-red-300 text-xs font-medium">Tanggihan</span>
-          </button>
-          <button onClick={acceptCall} className="flex flex-col items-center gap-2 active:scale-95 transition">
-            <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center shadow-lg">
-              <Phone size={28} className="text-white" />
-            </div>
-            <span className="text-green-300 text-xs font-medium">Tanggapin</span>
-          </button>
-        </div>
-        {error && <p className="text-red-300 text-sm mt-6 text-center px-6">{error}</p>}
       </div>
     );
   }
