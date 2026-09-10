@@ -291,7 +291,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
     async function load() {
       const [{ data: cats }, { data: prods }, { data: strs }] = await Promise.all([
         supabase.from('categories').select('id, name, name_fil, slug, icon, image_url, sort_order').order('sort_order'),
-        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url, seller_id)').eq('is_available', true).order('created_at', { ascending: false }).limit(30),
+        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, delivery_method, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url, seller_id)').eq('is_available', true).order('created_at', { ascending: false }).limit(30),
         supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id, seller:profiles(full_name, avatar_url)').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(20),
       ]);
       setCategories(cats || []);
@@ -310,7 +310,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
           .then(({ data }) => setStores((data || []) as any));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
-        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url, seller_id)').eq('is_available', true).order('created_at', { ascending: false }).limit(30)
+        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, delivery_method, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url, seller_id)').eq('is_available', true).order('created_at', { ascending: false }).limit(30)
           .then(({ data }) => setProducts((data || []) as any));
       })
       .subscribe();
@@ -693,6 +693,7 @@ function CategoryIcon({ slug, active }: { slug: string; active: boolean }) {
     case 'snacks-sweets': return <span className={color} style={{ fontSize: 28 }}>🍪</span>;
     case 'household-items': return <span className={color} style={{ fontSize: 28 }}>🧴</span>;
     case 'general-merchandise': return <Package size={28} className={color} />;
+    case 'livestock': return <span className={color} style={{ fontSize: 28 }}>🐔</span>;
     default: return <Package size={28} className={color} />;
   }
 }
@@ -818,6 +819,28 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
           </div>
         )}
 
+        {(product.delivery_method === 'pickup' || product.delivery_method === 'meetup') && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+            <div className="flex items-start gap-2 mb-2">
+              <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-700">
+                <p className="font-semibold">Buhay na Hayop — {product.delivery_method === 'pickup' ? 'Pick Up Lang' : 'Meet Up Lang'}</p>
+                <p className="text-xs mt-1">
+                  {product.delivery_method === 'pickup'
+                    ? 'Sunduin ang order sa tindahan ng seller. Hindi pwede ang rider delivery para sa buhay na hayop.'
+                    : 'Magkasundong lugar ang buyer at seller para sa pagpapalit. Hindi pwede ang rider delivery para sa buhay na hayop.'}
+                </p>
+              </div>
+            </div>
+            {store.livestock_permit_url && (
+              <div className="flex items-center gap-1.5 text-xs text-green-600 mt-2">
+                <Shield size={14} />
+                <span>May permit ang seller para sa transport ng buhay na hayop</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {product.stock > 0 ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -898,7 +921,7 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
   const highlightRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, created_at').eq('store_id', store.id).eq('is_available', true).order('created_at', { ascending: false }).limit(50)
+    supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, delivery_method, created_at').eq('store_id', store.id).eq('is_available', true).order('created_at', { ascending: false }).limit(50)
       .then(({ data }) => { setProducts(data || []); setLoading(false); });
     supabase.from('profiles').select('full_name, avatar_url').eq('id', store.seller_id).maybeSingle()
       .then(({ data }) => {
@@ -1208,6 +1231,11 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deliveryCoords]);
 
+  // Check if any item in a store group is a livestock product (pickup/meetup only)
+  function isLivestockOrder(items: (CartItem & { product: Product; store: Store })[]): boolean {
+    return items.some(i => i.product.delivery_method === 'pickup' || i.product.delivery_method === 'meetup');
+  }
+
   // Calculate fee per store using road distance when available
   function getFeeForStore(store: Store): { fee: number; distanceKm: number; isEstimated: boolean } {
     const sCoords = getStoreCoords(store);
@@ -1259,8 +1287,10 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
 
     for (const [storeId, items] of Object.entries(grouped)) {
       const store = items[0].store;
+      const livestock = isLivestockOrder(items);
       const total = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
-      const { fee: deliveryFee } = getFeeForStore(store);
+      const deliveryFee = livestock ? 0 : getFeeForStore(store).fee;
+      const deliveryMethod = livestock ? (items[0].product.delivery_method || 'pickup') : null;
       const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, deliveryLocation.region]
         .filter(Boolean).join(', ');
 
@@ -1274,6 +1304,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
         payment_status: 'pending',
         total,
         delivery_fee: deliveryFee,
+        delivery_method: deliveryMethod,
         delivery_barangay: deliveryLocation.barangay || null,
         delivery_district: deliveryLocation.district || null,
         delivery_city: deliveryLocation.city || null,
@@ -1311,7 +1342,8 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   if (cartItems.length === 0) return <div className="p-5 text-center text-gray-400">Walang laman ang cart.</div>;
 
   const grandTotal = Object.entries(grouped).reduce((sum, [_, items]) => {
-    const { fee } = getFeeForStore(items[0].store);
+    const livestock = isLivestockOrder(items);
+    const fee = livestock ? 0 : getFeeForStore(items[0].store).fee;
     return sum + items.reduce((s, i) => s + i.product.price * i.quantity, 0) + fee;
   }, 0);
 
@@ -1386,6 +1418,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
       {/* Order Items by Store with Delivery Fee Breakdown */}
       {Object.entries(grouped).map(([storeId, items]) => {
         const store = items[0].store;
+        const livestock = isLivestockOrder(items);
         const { fee, distanceKm, isEstimated } = getFeeForStore(store);
         const distanceFee = fee - BASE_DELIVERY_FEE;
 
@@ -1414,30 +1447,47 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
               </div>
             ))}
 
-            {/* Delivery Fee Breakdown */}
-            <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5">
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Base Delivery Fee</span>
-                <span>₱{BASE_DELIVERY_FEE.toFixed(2)}</span>
+            {livestock ? (
+              <div className="mt-3 pt-3 border-t border-gray-50">
+                <div className="bg-amber-50 rounded-xl p-3 flex items-start gap-2">
+                  <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-amber-700">
+                    <p className="font-semibold">Buhay na Hayop — Pick Up / Meet Up Lang</p>
+                    <p className="mt-0.5">Hindi pwede ang rider para sa buhay na hayop. Kailangan pick up sa tindahan o meet up sa napagkasunduang lugar. Wala ring delivery fee.</p>
+                  </div>
+                </div>
+                {store.livestock_permit_url && (
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-green-600">
+                    <Shield size={14} />
+                    <span>May permit ang seller para sa transport ng buhay na hayop</span>
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Calculated Distance {isEstimated && <span className="text-amber-500">(estimated)</span>}</span>
-                <span>{distanceKm.toFixed(2)} km</span>
+            ) : (
+              <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5">
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Base Delivery Fee</span>
+                  <span>₱{BASE_DELIVERY_FEE.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Calculated Distance {isEstimated && <span className="text-amber-500">(estimated)</span>}</span>
+                  <span>{distanceKm.toFixed(2)} km</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Distance Fee ({distanceKm.toFixed(2)} km × ₱{PER_KM_RATE})</span>
+                  <span>₱{distanceFee.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-semibold text-gray-700 pt-1.5 border-t border-gray-50">
+                  <span>Total Delivery Fee (Rider Payout)</span>
+                  <span>₱{fee.toFixed(2)}</span>
+                </div>
+                {distanceKm > 20 && (
+                  <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2 mt-1">
+                    Mahaba ang distansya — ang rider ay sasahurin ng ₱{fee.toFixed(0)} para sa paghatid.
+                  </p>
+                )}
               </div>
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Distance Fee ({distanceKm.toFixed(2)} km × ₱{PER_KM_RATE})</span>
-                <span>₱{distanceFee.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm font-semibold text-gray-700 pt-1.5 border-t border-gray-50">
-                <span>Total Delivery Fee (Rider Payout)</span>
-                <span>₱{fee.toFixed(2)}</span>
-              </div>
-              {distanceKm > 20 && (
-                <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2 mt-1">
-                  Mahaba ang distansya — ang rider ay sasahurin ng ₱{fee.toFixed(0)} para sa paghatid.
-                </p>
-              )}
-            </div>
+            )}
           </div>
         );
       })}
@@ -1556,13 +1606,15 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                 const createdOrders: Order[] = [];
                 for (const [storeId, items] of Object.entries(grouped)) {
                   const store = items[0].store;
+                  const livestock = isLivestockOrder(items);
                   const total = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
-                  const { fee: deliveryFee } = getFeeForStore(store);
+                  const deliveryFee = livestock ? 0 : getFeeForStore(store).fee;
+                  const deliveryMethod = livestock ? (items[0].product.delivery_method || 'pickup') : null;
                   const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, deliveryLocation.region].filter(Boolean).join(', ');
                   const commissionAmount = Math.round(total * COMMISSION_RATE * 100) / 100;
                   const { data: order, error } = await supabase.from('orders').insert({
                     buyer_id: profile!.id, store_id: storeId, status: 'pending', payment_method: paymentMethod, payment_status: 'pending',
-                    total, delivery_fee: deliveryFee, delivery_barangay: deliveryLocation.barangay || null, delivery_district: deliveryLocation.district || null,
+                    total, delivery_fee: deliveryFee, delivery_method: deliveryMethod, delivery_barangay: deliveryLocation.barangay || null, delivery_district: deliveryLocation.district || null,
                     delivery_city: deliveryLocation.city || null, delivery_region: deliveryLocation.region || null, delivery_address: fullAddress,
                     delivery_lat: deliveryPin?.lat ?? null, delivery_lng: deliveryPin?.lng ?? null, buyer_note: note || null,
                     commission_amount: commissionAmount, delivery_group_id: groupId,
@@ -2073,6 +2125,25 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         </div>
         <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString('en-PH')}</p>
       </div>
+
+      {/* Livestock delivery info */}
+      {(currentOrder.delivery_method === 'pickup' || currentOrder.delivery_method === 'meetup') && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-700">
+              <p className="font-semibold">
+                {currentOrder.delivery_method === 'pickup' ? 'Pick Up sa Tindahan' : 'Meet Up sa Napagkasunduang Lugar'}
+              </p>
+              <p className="text-xs mt-1">
+                {currentOrder.delivery_method === 'pickup'
+                  ? 'Sunduin ang order sa tindahan ng seller. Walang rider delivery para sa buhay na hayop.'
+                  : 'Magkasundong lugar kayo ng seller para sa pagpapalit. Walang rider delivery para sa buhay na hayop.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Collapsible Step Tracker */}
       {!isCancelled && (

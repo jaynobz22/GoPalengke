@@ -836,6 +836,7 @@ function ProductFormModal({ store, product, onClose, onSaved }: { store: Store; 
   const [imageUrl, setImageUrl] = useState(product?.image_url || '');
   const [categories, setCategories] = useState<{ id: string; name_fil: string }[]>([]);
   const [categoryId, setCategoryId] = useState(product?.category_id || '');
+  const [deliveryMethod, setDeliveryMethod] = useState<string | null>(product?.delivery_method || null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageSearch, setImageSearch] = useState('');
@@ -933,6 +934,7 @@ function ProductFormModal({ store, product, onClose, onSaved }: { store: Store; 
       stock: parseInt(stock) || 0,
       image_url: imageUrl || null,
       is_available: product ? product.is_available : true,
+      delivery_method: deliveryMethod || null,
     };
 
     if (product) {
@@ -978,12 +980,62 @@ function ProductFormModal({ store, product, onClose, onSaved }: { store: Store; 
           </div>
           <div>
             <label className="text-sm font-medium text-gray-600 mb-1 block">Kategorya</label>
-            <select value={categoryId} onChange={e => setCategoryId(e.target.value)}
+            <select value={categoryId} onChange={e => {
+              setCategoryId(e.target.value);
+              const selected = categories.find(c => c.id === e.target.value);
+              if (selected?.slug === 'livestock') {
+                setDeliveryMethod('pickup');
+              } else {
+                setDeliveryMethod(null);
+              }
+            }}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-500 outline-none transition">
               <option value="">Pumili...</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name_fil}</option>)}
             </select>
           </div>
+
+          {categories.find(c => c.id === categoryId)?.slug === 'livestock' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-700">
+                  <p className="font-semibold">Buhay na Hayop — Pick Up / Meet Up Lang</p>
+                  <p className="mt-0.5">Hindi pwede ang rider para sa buhay na hayop. Pipiliin ng buyer kung pick up sa tindahan o meet up sa napagkasunduang lugar.</p>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">Delivery Method</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMethod('pickup')}
+                    className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition ${deliveryMethod === 'pickup' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 text-gray-500'}`}
+                  >
+                    Pick Up
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMethod('meetup')}
+                    className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-medium transition ${deliveryMethod === 'meetup' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 text-gray-500'}`}
+                  >
+                    Meet Up
+                  </button>
+                </div>
+              </div>
+              {store.livestock_permit_url ? (
+                <div className="flex items-center gap-1.5 text-xs text-green-600">
+                  <Shield size={14} />
+                  <span>Naka-upload na ang permit para sa transport ng buhay na hayop</span>
+                </div>
+              ) : (
+                <div className="flex items-start gap-1.5 text-xs text-amber-600">
+                  <Info size={14} className="flex-shrink-0 mt-0.5" />
+                  <span>Walang permit na nai-upload. Kung malayo ang biyahe ng buhay na hayop, kailangan ng permit mula sa awtoridad. I-upload sa Store Settings.</span>
+                </div>
+              )}
+            </div>
+          )}
           <div>
             <label className="text-sm font-medium text-gray-600 mb-1 block">Description</label>
             <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Sariwang galunggong..." rows={2}
@@ -1129,6 +1181,7 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
   });
   const [bannerUrl, setBannerUrl] = useState(store.banner_url || '');
   const [qrCodeUrl, setQrCodeUrl] = useState(store.qr_code_url || '');
+  const [livestockPermitUrl, setLivestockPermitUrl] = useState(store.livestock_permit_url || '');
   const [palengkeName, setPalengkeName] = useState(store.palengke_name || '');
   const [palengkeCustom, setPalengkeCustom] = useState('');
   const [sellerType, setSellerType] = useState<'palengke' | 'farm' | ''>(
@@ -1153,6 +1206,7 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
       palengke_name: sellerType === 'palengke' ? (finalPalengkeName || null) : null,
       seller_type: sellerType || null,
       farm_type: sellerType === 'farm' ? (farmType || null) : null,
+      livestock_permit_url: livestockPermitUrl || null,
     }).eq('id', store.id);
     setSaving(false);
     if (error) { setError(error.message); return; }
@@ -1255,6 +1309,15 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
             aspectClass="h-48"
             icon={<QrCode size={16} />}
             hint="I-screenshot ang QR code mo sa GCash app, tapos i-upload dito."
+          />
+          <ImageUploadField
+            label="Livestock Transport Permit (opsyonal)"
+            value={livestockPermitUrl}
+            onChange={setLivestockPermitUrl}
+            folder="permits"
+            aspectClass="h-40"
+            icon={<Shield size={16} />}
+            hint="Kung nagbebenta ka ng buhay na hayop at malayo ang biyahe, kailangan ng permit mula sa awtoridad (DA/BAI). I-upload dito."
           />
           <div>
             <label className="flex items-center gap-2 cursor-pointer">
@@ -1491,6 +1554,25 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString('en-PH')}</p>
       </div>
 
+      {/* Livestock delivery info */}
+      {(currentOrder.delivery_method === 'pickup' || currentOrder.delivery_method === 'meetup') && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-700">
+              <p className="font-semibold">
+                {currentOrder.delivery_method === 'pickup' ? 'Pick Up sa Tindahan' : 'Meet Up sa Napagkasunduang Lugar'}
+              </p>
+              <p className="text-xs mt-1">
+                {currentOrder.delivery_method === 'pickup'
+                  ? 'Sasunduin ng buyer ang order sa tindahan mo. Walang rider para sa buhay na hayop.'
+                  : 'Magkakasundo kayo ng buyer sa lugar ng pagpapalit. Walang rider para sa buhay na hayop.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Collapsible Step Tracker */}
       {!isCancelled && (
         <div className="mb-3">
@@ -1571,8 +1653,8 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         </button>
       )}
 
-      {/* Active step: Ready for pickup — rider selection */}
-      {!isCancelled && !currentOrder.rider_id && currentOrder.status === 'ready_for_pickup' && (
+      {/* Active step: Ready for pickup — rider selection (skip for livestock) */}
+      {!isCancelled && !currentOrder.rider_id && currentOrder.status === 'ready_for_pickup' && !currentOrder.delivery_method && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
           <div className="flex items-center gap-2 mb-3">
             <Clock size={18} className="text-amber-500" />
@@ -1594,6 +1676,27 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             <Radio size={12} className="inline mr-1" />
             I-broadcast na sa lahat ng riders — makikita na nila ang order na ito sa app nila.
           </p>
+        </div>
+      )}
+
+      {/* Active step: Ready for pickup — livestock (no rider, direct to delivered) */}
+      {!isCancelled && currentOrder.status === 'ready_for_pickup' && (currentOrder.delivery_method === 'pickup' || currentOrder.delivery_method === 'meetup') && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
+          <div className="flex items-start gap-2 mb-3">
+            <Check size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-700">
+              <p className="font-semibold">Handa na para {currentOrder.delivery_method === 'pickup' ? 'Pick Up' : 'Meet Up'}!</p>
+              <p className="text-xs mt-1">
+                {currentOrder.delivery_method === 'pickup'
+                  ? 'Hinihintay na ang buyer na sunduin ang order sa tindahan mo.'
+                  : 'Makipag-ugnayan sa buyer para sa lugar at oras ng meet up.'}
+              </p>
+            </div>
+          </div>
+          <button onClick={() => updateStatus('delivered')} disabled={updating}
+            className="w-full py-3 bg-green-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
+            {updating ? 'Nag-uupdate...' : 'Na-deliver na / Nai-sundo na'}
+          </button>
         </div>
       )}
 

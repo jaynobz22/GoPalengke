@@ -66,6 +66,7 @@ export interface Store {
   palengke_name: string | null;
   seller_type: string | null;
   farm_type: string | null;
+  livestock_permit_url: string | null;
   slug: string | null;
   created_at: string;
   updated_at: string;
@@ -85,6 +86,7 @@ export interface Product {
   catalog_id: string | null;
   selected_image_index: number | null;
   moderation_status: string;
+  delivery_method: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -138,6 +140,7 @@ export interface Order {
   delivery_group_id: string | null;
   cod_payment_reference: string | null;
   cod_payment_accepted_at: string | null;
+  delivery_method: string | null;
   created_at: string;
   updated_at: string;
   store?: Store;
