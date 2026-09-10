@@ -540,7 +540,7 @@ function Footer() {
     { label: 'Disclaimer', hash: '/legal/disclaimer' },
     { label: 'Privacy Policy', hash: '/legal/privacy' },
     { label: 'Cancellation Policy', hash: '/legal/cancellation' },
-    { label: 'Patakaran Laban sa Scam at Spam', hash: '/legal/antiscam' },
+    { label: 'Anti Scam & Spam Policy', hash: '/legal/antiscam' },
     { label: 'FAQ', hash: '/legal/faq' },
   ];
 

@@ -14,7 +14,7 @@ export function LegalPages({ type, onBack }: { type: LegalPageType; onBack: () =
     privacy: 'Privacy Policy',
     faq: 'Frequently Asked Questions',
     cancellation: 'Cancellation Policy',
-    antiscam: 'Patakaran Laban sa Scam at Spam',
+    antiscam: 'Anti Scam & Spam Policy',
   };
 
   return (
