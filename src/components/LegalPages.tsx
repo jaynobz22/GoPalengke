@@ -737,7 +737,7 @@ function AntiscamContent() {
             <div>
               <p className="font-semibold text-amber-700 text-sm">Babala at Restriction</p>
               <p className="text-amber-600 text-xs mt-1">
-                Ang mga unang pagkakasala na menor de edad (tulad ng aksidenteng chat spam) ay magiging sanhi
+                Ang mga unang pagkakasala na minor offense (tulad ng aksidenteng chat spam) ay magiging sanhi
                 ng system warning o pansamantalang 24-oras na pagharang sa chat function.
               </p>
             </div>
