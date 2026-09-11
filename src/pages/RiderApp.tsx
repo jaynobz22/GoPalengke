@@ -955,7 +955,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
               <p className="text-sm font-medium text-gray-800">{item.product_name}</p>
               <p className="text-xs text-gray-400">{item.quantity} × ₱{item.price}</p>
             </div>
-            <p className="font-semibold text-sm text-gray-700">₱{(item.price * item.quantity).toFixed(0)}</p>
+            <p className="font-semibold text-sm text-gray-700">₱{(Number(item.price) * item.quantity).toFixed(0)}</p>
           </div>
         ))}
         {siblingOrders.length > 0 && (
@@ -1091,7 +1091,7 @@ function RiderHistory({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">{order.store.name}</span>
-                  <span className="text-sm font-bold text-blue-600">+₱{order.delivery_fee.toFixed(0)}</span>
+                  <span className="text-sm font-bold text-blue-600">+₱{Number(order.delivery_fee).toFixed(0)}</span>
                 </div>
               </button>
               <button

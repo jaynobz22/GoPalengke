@@ -192,8 +192,8 @@ function OverviewTab() {
       ]);
 
       const fees = (sellerFees.data || []) as any[];
-      const totalCommission = fees.reduce((s, f) => s + (f.commission_balance || 0), 0);
-      const totalSubscription = fees.reduce((s, f) => s + (f.subscription_balance || 0), 0);
+      const totalCommission = fees.reduce((s, f) => s + Number(f.commission_balance || 0), 0);
+      const totalSubscription = fees.reduce((s, f) => s + Number(f.subscription_balance || 0), 0);
 
       setStats({
         stores: stores.count || 0,
@@ -1434,7 +1434,7 @@ function FeesTab() {
                   <p className="font-semibold text-sm text-gray-800">{p.seller?.full_name || 'Seller'}</p>
                   <p className="text-xs text-gray-400">{p.seller?.email}</p>
                 </div>
-                <p className="font-bold text-lg text-gray-800">₱{p.amount.toFixed(2)}</p>
+                <p className="font-bold text-lg text-gray-800">₱{Number(p.amount || 0).toFixed(2)}</p>
               </div>
               <div className="bg-gray-50 rounded-xl p-2 mb-3">
                 <p className="text-xs text-gray-400">Reference Number</p>
@@ -1477,7 +1477,7 @@ function FeesTab() {
                     <p className="font-semibold text-sm text-gray-800">{f.seller?.full_name || 'Seller'}</p>
                     <p className="text-xs text-gray-400">{f.seller?.email}</p>
                   </div>
-                  <p className="font-bold text-lg text-red-600">₱{(f.total_payable || 0).toFixed(2)}</p>
+                  <p className="font-bold text-lg text-red-600">₱{Number(f.total_payable || 0).toFixed(2)}</p>
                 </div>
                 <p className="text-xs text-gray-400 mb-3">
                   Na-freeze no: {f.frozen_at ? new Date(f.frozen_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
@@ -1516,7 +1516,7 @@ function FeesTab() {
               </div>
               <div className="flex items-center justify-between">
                 <p className="text-xs text-gray-400">Ref: {p.reference_number}</p>
-                <p className="font-semibold text-sm text-gray-700">₱{p.amount.toFixed(2)}</p>
+                <p className="font-semibold text-sm text-gray-700">₱{Number(p.amount || 0).toFixed(2)}</p>
               </div>
               <p className="text-xs text-gray-400 mt-1">
                 {new Date(p.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -1535,10 +1535,10 @@ function FeesTab() {
       ) : (
         <div className="space-y-2">
           {allFees.map((f) => {
-            const totalSales = f.total_sales || 0;
-            const commissionBalance = f.commission_balance || 0;
-            const subscriptionBalance = f.subscription_balance || 0;
-            const totalPayable = f.total_payable || 0;
+            const totalSales = Number(f.total_sales || 0);
+            const commissionBalance = Number(f.commission_balance || 0);
+            const subscriptionBalance = Number(f.subscription_balance || 0);
+            const totalPayable = Number(f.total_payable || 0);
             const subscriptionActive = f.subscription_active;
             const salesProgress = Math.min(100, (totalSales / SUBSCRIPTION_THRESHOLD) * 100);
             const isExpanded = expandedSeller === f.seller_id;
@@ -2471,7 +2471,7 @@ function VideoCreditsTab() {
               {p.status === 'approved' && p.approved_at && (
                 <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 border border-green-100 rounded-lg px-3 py-2 mb-3">
                   <Check size={14} className="flex-shrink-0" />
-                  <span>Na-approve noong {p.approved_at ? new Date(p.approved_at).toLocaleDateString('en-PH', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}</span>
+                  <span>Na-approve noong {p.approved_at ? new Date(p.approved_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'N/A'}</span>
                 </div>
               )}
 

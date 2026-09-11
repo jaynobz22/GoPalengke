@@ -985,7 +985,7 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
               disabled={adding}
               className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50"
             >
-              {adding ? 'Nadadagdag...' : `Idagdag sa Cart · ₱${(product.price * quantity).toFixed(2)}`}
+              {adding ? 'Nadadagdag...' : `Idagdag sa Cart · ₱${(Number(product.price) * quantity).toFixed(2)}`}
             </button>
           </div>
         ) : (
@@ -1585,7 +1585,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                   <p className="text-sm font-medium text-gray-800">{item.product.name}</p>
                   <p className="text-xs text-gray-400">{item.quantity} × ₱{item.product.price}</p>
                 </div>
-                <p className="font-semibold text-sm text-gray-700">₱{(item.product.price * item.quantity).toFixed(0)}</p>
+                <p className="font-semibold text-sm text-gray-700">₱{(Number(item.product.price) * item.quantity).toFixed(0)}</p>
               </div>
             ))}
 
@@ -1861,7 +1861,7 @@ function PaymentSummaryView({ orders, onDone, onBack }: { orders: Order[]; onDon
       {orders.map((order) => {
         const store = stores[order.store_id];
         const isPaid = paidStatus[order.id] || order.payment_status === 'paid';
-        const amount = order.total + order.delivery_fee;
+        const amount = Number(order.total) + Number(order.delivery_fee);
 
         return (
           <div key={order.id} className={`bg-white rounded-2xl border-2 p-4 mb-3 transition ${isPaid ? 'border-green-300 bg-green-50/30' : 'border-gray-100'}`}>
@@ -2088,7 +2088,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
             const isMulti = group.orders.length > 1;
             const firstOrder = group.orders[0];
             const isActive = activeStatuses.includes(firstOrder.status);
-            const totalAmount = group.orders.reduce((sum, o) => sum + o.total + o.delivery_fee, 0);
+            const totalAmount = group.orders.reduce((sum, o) => sum + Number(o.total) + Number(o.delivery_fee), 0);
             const allSameStatus = group.orders.every(o => o.status === firstOrder.status);
             const displayStatus = allSameStatus ? firstOrder.status : 'pending';
             const anyRiderPickedUp = group.orders.some(o => o.rider_id && o.status === 'picked_up');
@@ -2123,7 +2123,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
                     </div>
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-500">₱{(order.total + order.delivery_fee).toFixed(0)}</span>
+                        <span className="text-sm text-gray-500">₱{(Number(order.total) + Number(order.delivery_fee)).toFixed(0)}</span>
                         {order.rider_id && order.status === 'picked_up' && (
                           <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex items-center gap-1">
                             <Bike size={10} /> Paparating na
@@ -2360,7 +2360,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
             <div className="w-7 h-7 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm flex-shrink-0">3</div>
             <div>
               <p className="text-sm font-medium text-green-900">Ilagay ang tamang halaga</p>
-              <p className="text-xs text-green-700 mt-0.5 leading-relaxed">Bayaran ang <strong>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</strong> na kabuuang halaga (kasama ang delivery fee).</p>
+              <p className="text-xs text-green-700 mt-0.5 leading-relaxed">Bayaran ang <strong>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</strong> na kabuuang halaga (kasama ang delivery fee).</p>
             </div>
           </div>
           <div className="bg-gray-50 rounded-xl p-4 flex justify-center">
@@ -2428,7 +2428,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
       {!isCancelled && currentOrder.payment_method === 'cod' && currentOrder.status === 'accepted' && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3 flex items-center gap-2">
           <Package size={16} className="text-amber-500 flex-shrink-0" />
-          <p className="text-sm text-amber-700">Cash on Delivery — maghanda ng <strong>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</strong> para sa rider pagdating.</p>
+          <p className="text-sm text-amber-700">Cash on Delivery — maghanda ng <strong>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</strong> para sa rider pagdating.</p>
         </div>
       )}
 
@@ -2522,13 +2522,13 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
               <p className="text-sm font-medium text-gray-800">{item.product_name}</p>
               <p className="text-xs text-gray-400">{item.quantity} × ₱{item.price}</p>
             </div>
-            <p className="font-semibold text-sm text-gray-700">₱{(item.price * item.quantity).toFixed(0)}</p>
+            <p className="font-semibold text-sm text-gray-700">₱{(Number(item.price) * item.quantity).toFixed(0)}</p>
           </div>
         ))}
         <div className="pt-2 border-t border-gray-100 mt-2 space-y-1">
-          <div className="flex justify-between text-sm text-gray-500"><span>Subtotal</span><span>₱{currentOrder.total.toFixed(2)}</span></div>
-          <div className="flex justify-between text-sm text-gray-500"><span>Delivery fee</span><span>₱{currentOrder.delivery_fee.toFixed(2)}</span></div>
-          <div className="flex justify-between font-bold text-gray-800"><span>Total</span><span>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</span></div>
+          <div className="flex justify-between text-sm text-gray-500"><span>Subtotal</span><span>₱{Number(currentOrder.total).toFixed(2)}</span></div>
+          <div className="flex justify-between text-sm text-gray-500"><span>Delivery fee</span><span>₱{Number(currentOrder.delivery_fee).toFixed(2)}</span></div>
+          <div className="flex justify-between font-bold text-gray-800"><span>Total</span><span>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</span></div>
         </div>
       </div>
 

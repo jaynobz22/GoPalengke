@@ -152,14 +152,14 @@ export function SellerApp() {
         </div>
         <h2 className="text-xl font-bold text-gray-800 mb-2 text-center">Naka-freeze ang Account</h2>
         <p className="text-sm text-gray-500 text-center mb-1">
-          Na-freeze ang iyong account dahil hindi nabayaran ang payable na ₱{(sellerFee?.total_payable || 0).toFixed(2)}.
+          Na-freeze ang iyong account dahil hindi nabayaran ang payable na ₱{(Number(sellerFee?.total_payable) || 0).toFixed(2)}.
         </p>
         <p className="text-sm text-gray-500 text-center mb-6">
           Magbayad muna sa admin para ma-reactivate ang iyong account at makapag-negosyo ulit.
         </p>
         <div className="bg-white rounded-2xl border border-gray-100 p-4 w-full mb-4">
           <p className="text-xs text-gray-400 mb-1">Total Payable</p>
-          <p className="text-2xl font-bold text-red-600">₱{(sellerFee?.total_payable || 0).toFixed(2)}</p>
+          <p className="text-2xl font-bold text-red-600">₱{(Number(sellerFee?.total_payable) || 0).toFixed(2)}</p>
         </div>
         <a
           href="mailto:jdabblogger@gmail.com"
@@ -282,7 +282,7 @@ export function SellerApp() {
             </div>
             <h2 className="text-lg font-bold text-gray-800 text-center mb-2">Babayaran na!</h2>
             <p className="text-sm text-gray-500 text-center mb-4">
-              Ang total payable mo ay ₱{(sellerFee.total_payable || 0).toFixed(2)}. Kailangan mong magbayad sa loob ng 3 araw kung hindi, ma-freeze ang iyong account.
+              Ang total payable mo ay ₱{(Number(sellerFee.total_payable) || 0).toFixed(2)}. Kailangan mong magbayad sa loob ng 3 araw kung hindi, ma-freeze ang iyong account.
             </p>
             <div className="bg-red-50 rounded-xl p-3 mb-4 text-center">
               <p className="text-xs text-red-500 font-medium">Deadline</p>
@@ -510,7 +510,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
 
       const allOrders = (orders || []) as any;
       const pending = allOrders.filter((o: any) => o.status === 'pending').length;
-      const revenue = allOrders.filter((o: any) => o.status !== 'cancelled').reduce((s: number, o: any) => s + o.total, 0);
+      const revenue = allOrders.filter((o: any) => o.status !== 'cancelled').reduce((s: number, o: any) => s + Number(o.total), 0);
 
       // Count orders with payment_status = 'paid' that are not yet delivered/cancelled
       const { count: paidCount } = await supabase.from('orders')
@@ -682,7 +682,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
               <div key={order.id} className="bg-white rounded-2xl border border-gray-100 p-3 flex items-center justify-between">
                 <div>
                   <p className="font-medium text-sm text-gray-800">{order.buyer?.full_name || 'Buyer'}</p>
-                  <p className="text-xs text-gray-400">₱{order.total.toFixed(0)} · {new Date(order.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</p>
+                  <p className="text-xs text-gray-400">₱{Number(order.total).toFixed(0)} · {new Date(order.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</p>
                 </div>
                 <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
                   {ORDER_STATUS_LABELS[order.status]}
@@ -1438,7 +1438,7 @@ function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o:
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">₱{(order.total + order.delivery_fee).toFixed(0)}</span>
+                  <span className="text-sm text-gray-500">₱{(Number(order.total) + Number(order.delivery_fee)).toFixed(0)}</span>
                   <div className="flex items-center gap-2">
                     {order.rider_id && (
                       <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -1661,7 +1661,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
               <li>Buksan ang GCash o Maya app mo.</li>
               <li>Pumunta sa "Activity" o "Transaction History".</li>
               <li>Hanapin ang transaction na may reference number na <strong>{currentOrder.payment_reference || 'na ibinigay ng buyer'}</strong>.</li>
-              <li>Tiyakin na ang halaga ay <strong>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</strong>.</li>
+              <li>Tiyakin na ang halaga ay <strong>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</strong>.</li>
               <li>Kung tumugma, pwede mo nang ipagpatuloy ang order.</li>
             </ol>
           </div>
@@ -1675,7 +1675,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       {/* COD — accepted, no payment needed yet, proceed to preparing */}
       {!isCancelled && currentOrder.payment_method === 'cod' && currentOrder.status === 'accepted' && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
-          <p className="text-sm text-amber-700 mb-3">Cash on Delivery — maghahanda ang buyer ng <strong>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</strong> para sa rider. Ihandang muna ang order.</p>
+          <p className="text-sm text-amber-700 mb-3">Cash on Delivery — maghahanda ang buyer ng <strong>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</strong> para sa rider. Ihandang muna ang order.</p>
           <button onClick={() => updateStatus('preparing')} disabled={updating}
             className="w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
             {updating ? 'Nag-uupdate...' : 'Simulang Ihanda ang Order'}
@@ -1768,7 +1768,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-2">
               <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-blue-700 leading-relaxed">
-                Pwede na magbayad ang buyer sa rider via QR code para sa delivery fee (₱{currentOrder.delivery_fee.toFixed(2)}). Sabihin sa buyer na pwede na nilang i-scan ang QR code ng rider bago umalis.
+                Pwede na magbayad ang buyer sa rider via QR code para sa delivery fee (₱{Number(currentOrder.delivery_fee).toFixed(2)}). Sabihin sa buyer na pwede na nilang i-scan ang QR code ng rider bago umalis.
               </p>
             </div>
           )}
@@ -1780,7 +1780,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
               <div className="bg-gray-50 rounded-xl p-3 flex justify-center">
                 <img src={rider.rider_qr_code_url} alt="QR Code ng Rider" loading="lazy" decoding="async" className="w-36 h-36 rounded-xl object-contain" />
               </div>
-              <p className="text-xs text-gray-400 mt-2 text-center">I-scan para mabayaran ang delivery fee (₱{currentOrder.delivery_fee.toFixed(2)}) ng rider bago umalis.</p>
+              <p className="text-xs text-gray-400 mt-2 text-center">I-scan para mabayaran ang delivery fee (₱{Number(currentOrder.delivery_fee).toFixed(2)}) ng rider bago umalis.</p>
             </div>
           )}
         </div>
@@ -1811,7 +1811,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-2">
               <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-blue-700 leading-relaxed">
-                Pwede na magbayad ang buyer sa rider via QR code para sa delivery fee (₱{currentOrder.delivery_fee.toFixed(2)}). Sabihin sa buyer na pwede na nilang i-scan ang QR code ng rider.
+                Pwede na magbayad ang buyer sa rider via QR code para sa delivery fee (₱{Number(currentOrder.delivery_fee).toFixed(2)}). Sabihin sa buyer na pwede na nilang i-scan ang QR code ng rider.
               </p>
             </div>
           )}
@@ -1823,7 +1823,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
               <div className="bg-gray-50 rounded-xl p-3 flex justify-center">
                 <img src={rider.rider_qr_code_url} alt="QR Code ng Rider" loading="lazy" decoding="async" className="w-36 h-36 rounded-xl object-contain" />
               </div>
-              <p className="text-xs text-gray-400 mt-2 text-center">I-scan para mabayaran ang delivery fee (₱{currentOrder.delivery_fee.toFixed(2)}) ng rider.</p>
+              <p className="text-xs text-gray-400 mt-2 text-center">I-scan para mabayaran ang delivery fee (₱{Number(currentOrder.delivery_fee).toFixed(2)}) ng rider.</p>
             </div>
           )}
         </div>
@@ -1950,13 +1950,13 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
               <p className="text-sm font-medium text-gray-800">{item.product_name}</p>
               <p className="text-xs text-gray-400">{item.quantity} × ₱{item.price}</p>
             </div>
-            <p className="font-semibold text-sm text-gray-700">₱{(item.price * item.quantity).toFixed(0)}</p>
+            <p className="font-semibold text-sm text-gray-700">₱{(Number(item.price) * item.quantity).toFixed(0)}</p>
           </div>
         ))}
         <div className="pt-2 border-t border-gray-100 mt-2 space-y-1">
-          <div className="flex justify-between text-sm text-gray-500"><span>Subtotal</span><span>₱{currentOrder.total.toFixed(2)}</span></div>
-          <div className="flex justify-between text-sm text-gray-500"><span>Delivery fee</span><span>₱{currentOrder.delivery_fee.toFixed(2)}</span></div>
-          <div className="flex justify-between font-bold text-gray-800"><span>Total</span><span>₱{(currentOrder.total + currentOrder.delivery_fee).toFixed(2)}</span></div>
+          <div className="flex justify-between text-sm text-gray-500"><span>Subtotal</span><span>₱{Number(currentOrder.total).toFixed(2)}</span></div>
+          <div className="flex justify-between text-sm text-gray-500"><span>Delivery fee</span><span>₱{Number(currentOrder.delivery_fee).toFixed(2)}</span></div>
+          <div className="flex justify-between font-bold text-gray-800"><span>Total</span><span>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</span></div>
         </div>
       </div>
 

@@ -55,8 +55,8 @@ export function SellerBilling() {
       if (orders) {
         setTransactions(orders.map(o => ({
           order: o as any,
-          commissionAmount: o.commission_amount,
-          orderTotal: o.total,
+          commissionAmount: Number(o.commission_amount || 0),
+          orderTotal: Number(o.total || 0),
           date: o.created_at,
         })));
       }
@@ -102,10 +102,10 @@ export function SellerBilling() {
     );
   }
 
-  const commissionBalance = fee?.commission_balance || 0;
-  const subscriptionBalance = fee?.subscription_balance || 0;
-  const totalPayable = fee?.total_payable || 0;
-  const totalSales = fee?.total_sales || 0;
+  const commissionBalance = Number(fee?.commission_balance || 0);
+  const subscriptionBalance = Number(fee?.subscription_balance || 0);
+  const totalPayable = Number(fee?.total_payable || 0);
+  const totalSales = Number(fee?.total_sales || 0);
   const subscriptionActive = fee?.subscription_active || false;
   const salesProgress = Math.min(100, (totalSales / SUBSCRIPTION_THRESHOLD) * 100);
   const canPay = totalPayable >= PAYMENT_THRESHOLD;
@@ -326,7 +326,7 @@ export function SellerBilling() {
               {payments.map(p => (
                 <div key={p.id} className="bg-white rounded-2xl border border-gray-100 p-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold text-sm text-gray-800">₱{p.amount.toFixed(2)}</span>
+                    <span className="font-semibold text-sm text-gray-800">₱{Number(p.amount || 0).toFixed(2)}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       p.status === 'approved' ? 'bg-green-100 text-green-700' :
                       p.status === 'pending' ? 'bg-amber-100 text-amber-700' :
