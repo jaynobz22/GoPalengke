@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, deleteStorageObject } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { navigate } from '@/lib/router';
 import { checkPriceAnomaly } from '@/lib/security';
@@ -775,6 +775,9 @@ function SellerProducts({ store, onAdd, onEdit }: { store: Store; onAdd: () => v
   }
 
   async function deleteProduct(p: Product) {
+    if (p.image_url) {
+      await deleteStorageObject('product-images', p.image_url);
+    }
     await supabase.from('products').delete().eq('id', p.id);
     load();
   }
@@ -948,6 +951,12 @@ function ProductFormModal({ store, product, onClose, onSaved }: { store: Store; 
     };
 
     if (product) {
+      if (product.image_url && imageUrl && product.image_url !== imageUrl) {
+        await deleteStorageObject('product-images', product.image_url);
+      }
+      if (product.image_url && !imageUrl) {
+        await deleteStorageObject('product-images', product.image_url);
+      }
       const { error } = await supabase.from('products').update(payload).eq('id', product.id);
       if (error) { setError(error.message); setSaving(false); return; }
     } else {
