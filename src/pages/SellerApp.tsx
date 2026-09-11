@@ -1353,7 +1353,7 @@ function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o:
   const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'completed'>('all');
 
   const load = useCallback(async () => {
-    let q = supabase.from('orders').select('*, buyer:profiles!orders_buyer_id_fkey(full_name, phone)').eq('store_id', store.id).order('created_at', { ascending: false });
+    let q = supabase.from('orders').select('*, buyer:profiles!orders_buyer_id_fkey(full_name, phone)').eq('store_id', store.id).is('hidden_by_seller_at', null).order('created_at', { ascending: false });
     if (filter === 'pending') q = q.eq('status', 'pending');
     if (filter === 'active') q = q.in('status', ['accepted', 'preparing', 'ready_for_pickup', 'picked_up']);
     if (filter === 'completed') q = q.in('status', ['delivered', 'cancelled']);
@@ -1400,48 +1400,67 @@ function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o:
         </div>
       ) : (
         <div className="space-y-2">
-          {orders.map(order => (
-            <button key={order.id} onClick={() => onOrderClick(order)}
-              className={`w-full rounded-2xl border p-4 text-left active:scale-[0.98] transition ${
+          {orders.map(order => {
+            const canDelete = order.status === 'delivered' || order.status === 'cancelled';
+            return (
+            <div key={order.id}
+              className={`w-full rounded-2xl border p-4 ${
                 order.status === 'pending'
                   ? 'bg-red-50 border-red-300 shadow-sm'
                   : 'bg-white border-gray-100'
               }`}>
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="font-semibold text-sm text-gray-800">{order.buyer?.full_name || 'Buyer'}</p>
-                  <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {order.status === 'pending' && (
-                    <span className="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">BAGO</span>
-                  )}
-                  {order.payment_status === 'paid' && (
-                    <span className="text-[10px] font-bold text-white bg-green-500 px-2 py-0.5 rounded-full">PAID</span>
-                  )}
-                  <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
-                    {ORDER_STATUS_LABELS[order.status]}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">₱{(order.total + order.delivery_fee).toFixed(0)}</span>
-                <div className="flex items-center gap-2">
-                  {order.rider_id && (
-                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Bike size={10} /> May Rider
+              <button onClick={() => onOrderClick(order)}
+                className="w-full text-left active:scale-[0.98] transition">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="font-semibold text-sm text-gray-800">{order.buyer?.full_name || 'Buyer'}</p>
+                    <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {order.status === 'pending' && (
+                      <span className="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">BAGO</span>
+                    )}
+                    {order.payment_status === 'paid' && (
+                      <span className="text-[10px] font-bold text-white bg-green-500 px-2 py-0.5 rounded-full">PAID</span>
+                    )}
+                    <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
+                      {ORDER_STATUS_LABELS[order.status]}
                     </span>
-                  )}
-                  {!order.rider_id && order.status === 'ready_for_pickup' && (
-                    <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                      Naghihintay Rider
-                    </span>
-                  )}
-                  <span className="text-xs text-gray-400">{order.payment_method === 'qr_code' ? 'QR' : 'COD'}</span>
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">₱{(order.total + order.delivery_fee).toFixed(0)}</span>
+                  <div className="flex items-center gap-2">
+                    {order.rider_id && (
+                      <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Bike size={10} /> May Rider
+                      </span>
+                    )}
+                    {!order.rider_id && order.status === 'ready_for_pickup' && (
+                      <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                        Naghihintay Rider
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-400">{order.payment_method === 'qr_code' ? 'QR' : 'COD'}</span>
+                  </div>
+                </div>
+              </button>
+              {canDelete && (
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (!confirm('Itago ang order na ito sa listahan mo? Hindi ito mabubura sa ibang tao.')) return;
+                    await supabase.from('orders').update({ hidden_by_seller_at: new Date().toISOString() }).eq('id', order.id);
+                    load();
+                  }}
+                  className="mt-2 w-full py-2 text-xs font-medium text-red-500 bg-red-50 rounded-lg active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 size={13} /> Itago
+                </button>
+              )}
+            </div>
+            );
+          })}
         </div>
       )}
     </div>

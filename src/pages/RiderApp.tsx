@@ -21,7 +21,7 @@ import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
   Share2, Copy, ExternalLink, Power, Star, UserCheck, LogOut, Shield,
-  QrCode, Download, DollarSign, X, Info,
+  QrCode, Download, DollarSign, X, Info, Trash2,
 } from 'lucide-react';
 
 type Tab = 'deliveries' | 'messages' | 'history' | 'profile';
@@ -1048,7 +1048,7 @@ function RiderHistory({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
   useEffect(() => {
     if (!profile) return;
     supabase.from('orders').select('*, store:stores(*), buyer:profiles!orders_buyer_id_fkey(full_name)')
-      .eq('rider_id', profile.id).in('status', ['delivered', 'cancelled']).order('created_at', { ascending: false })
+      .eq('rider_id', profile.id).in('status', ['delivered', 'cancelled']).is('hidden_by_rider_at', null).order('created_at', { ascending: false })
       .then(({ data }) => { setOrders((data || []) as any); setLoading(false); });
   }, [profile]);
 
@@ -1076,22 +1076,35 @@ function RiderHistory({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
       ) : (
         <div className="space-y-2">
           {orders.map(order => (
-            <button key={order.id} onClick={() => onOrderClick(order)}
-              className="w-full bg-white rounded-2xl border border-gray-100 p-4 text-left active:scale-[0.98] transition">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="font-semibold text-sm text-gray-800">{order.buyer?.full_name || 'Buyer'}</p>
-                  <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</p>
+            <div key={order.id} className="w-full bg-white rounded-2xl border border-gray-100 p-4">
+              <button onClick={() => onOrderClick(order)}
+                className="w-full text-left active:scale-[0.98] transition">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="font-semibold text-sm text-gray-800">{order.buyer?.full_name || 'Buyer'}</p>
+                    <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</p>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
+                    {ORDER_STATUS_LABELS[order.status]}
+                  </span>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
-                  {ORDER_STATUS_LABELS[order.status]}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">{order.store.name}</span>
-                <span className="text-sm font-bold text-blue-600">+₱{order.delivery_fee.toFixed(0)}</span>
-              </div>
-            </button>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">{order.store.name}</span>
+                  <span className="text-sm font-bold text-blue-600">+₱{order.delivery_fee.toFixed(0)}</span>
+                </div>
+              </button>
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!confirm('Itago ang delivery na ito sa listahan mo? Hindi ito mabubura sa ibang tao.')) return;
+                  await supabase.from('orders').update({ hidden_by_rider_at: new Date().toISOString() }).eq('id', order.id);
+                  setOrders(prev => prev.filter(o => o.id !== order.id));
+                }}
+                className="mt-2 w-full py-2 text-xs font-medium text-red-500 bg-red-50 rounded-lg active:scale-[0.98] transition flex items-center justify-center gap-1.5"
+              >
+                <Trash2 size={13} /> Itago
+              </button>
+            </div>
           ))}
         </div>
       )}

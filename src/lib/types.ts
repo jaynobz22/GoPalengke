@@ -140,6 +140,9 @@ export interface Order {
   rider_lng: number | null;
   picked_up_at: string | null;
   delivery_group_id: string | null;
+  hidden_by_buyer_at: string | null;
+  hidden_by_seller_at: string | null;
+  hidden_by_rider_at: string | null;
   cod_payment_reference: string | null;
   cod_payment_accepted_at: string | null;
   delivery_method: string | null;
