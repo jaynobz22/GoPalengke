@@ -22,10 +22,10 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
   const containerRef = useRef<HTMLDivElement>(null);
   const zpRef = useRef<any>(null);
   const mountedRef = useRef(true);
+  const initStartedRef = useRef(false);
 
   const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'incoming');
   const [error, setError] = useState<string | null>(null);
-  const [retryKey, setRetryKey] = useState(0);
 
   const updateCallStatus = async (status: string) => {
     if (!callId) return;
@@ -39,12 +39,16 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
 
   useEffect(() => {
     mountedRef.current = true;
+    initStartedRef.current = false;
 
     if (!profile?.id) return;
 
     let cancelled = false;
 
     const initZego = async () => {
+      if (initStartedRef.current) return;
+      initStartedRef.current = true;
+
       try {
         const ZegoUIKitPrebuilt = await loadZegoSDK();
 
@@ -60,9 +64,18 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
           throw new Error(`Invalid ZEGO ServerSecret`);
         }
 
-        const container = containerRef.current;
+        let container = containerRef.current;
+        let retryCount = 0;
+        while (!container && retryCount < 20 && !cancelled && mountedRef.current) {
+          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+          container = containerRef.current;
+          retryCount++;
+        }
+
+        if (cancelled || !mountedRef.current) return;
         if (!container) {
-          if (mountedRef.current) setRetryKey(k => k + 1);
+          console.error('ZEGO_INIT_FAILED: Container ref is null after retries');
+          if (mountedRef.current) setError('Hindi ma-mount ang video call container.');
           return;
         }
 
@@ -121,7 +134,7 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
       cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, profile?.id, retryKey]);
+  }, [roomId, profile?.id]);
 
   async function acceptCall() {
     if (!zpRef.current || !containerRef.current) return;

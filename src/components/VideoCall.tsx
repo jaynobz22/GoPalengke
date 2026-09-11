@@ -35,10 +35,13 @@ function validateZegoConfig(appId: number, serverSecret: string): void {
   }
 }
 
+const MAX_CONTAINER_RETRIES = 20;
+
 export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps) {
   const { profile } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
   const zpRef = useRef<any>(null);
+  const initStartedRef = useRef(false);
 
   const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'connecting');
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +49,6 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
   const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
   const [callSeconds, setCallSeconds] = useState(0);
   const [showNoCreditsAlert, setShowNoCreditsAlert] = useState(false);
-  const [retryKey, setRetryKey] = useState(0);
 
   const creditTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -105,10 +107,11 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
 
   useEffect(() => {
     mountedRef.current = true;
+    initStartedRef.current = false;
 
     if (!profile?.id) return;
 
-    log('MOUNT', `roomId=${roomId} isCaller=${isCaller} retryKey=${retryKey}`);
+    log('MOUNT', `roomId=${roomId} isCaller=${isCaller}`);
 
     if (!hasMediaDevices()) {
       if (isStandalonePWA()) setShowFallback(true);
@@ -119,6 +122,9 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
     let cancelled = false;
 
     const initZego = async () => {
+      if (initStartedRef.current) return;
+      initStartedRef.current = true;
+
       try {
         log('Loading ZEGOCLOUD SDK...');
         const ZegoUIKitPrebuilt = await loadZegoSDK();
@@ -129,10 +135,19 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
         const serverSecretStr = String(ZEGO_SERVER_SECRET);
         validateZegoConfig(appIdNum, serverSecretStr);
 
-        const container = containerRef.current;
+        let container = containerRef.current;
+        let retryCount = 0;
+        while (!container && retryCount < MAX_CONTAINER_RETRIES && !cancelled && mountedRef.current) {
+          log('Container not ready, waiting via rAF', retryCount);
+          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+          container = containerRef.current;
+          retryCount++;
+        }
+
+        if (cancelled || !mountedRef.current) return;
         if (!container) {
-          log('Container not ready after SDK load — will retry on next render');
-          if (mountedRef.current) setRetryKey(k => k + 1);
+          console.error('ZEGO_INIT_FAILED: Container ref is null after retries');
+          if (mountedRef.current) setError('Hindi ma-mount ang video call container.');
           return;
         }
 
@@ -199,7 +214,7 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
       cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, profile?.id, retryKey]);
+  }, [roomId, profile?.id]);
 
   function openInBrowser() {
     window.open(window.location.href, '_blank', 'noopener,noreferrer');
