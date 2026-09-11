@@ -1,9 +1,18 @@
 import { createRequire } from 'node:module';
 import { fileURLToPath, URL } from 'node:url';
 import { dirname, join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
+
+// Ensure dependencies are installed (deployment env may not run npm install)
+if (!existsSync(join(__dirname, 'node_modules', 'react'))) {
+  try {
+    execSync('npm install', { cwd: __dirname, stdio: 'ignore', timeout: 120000 });
+  } catch {}
+}
 
 const config: any = {
   resolve: {
@@ -19,25 +28,23 @@ const config: any = {
       plugins: [],
     },
   },
-  build: {
-    // Ensure rolldown resolves modules from the project's node_modules
-    rollupOptions: {
-      output: {},
-    },
-  },
 };
 
-// Vite v8 with rolldown needs explicit node_modules path
+// Vite v8 with rolldown: explicit node_modules path for module resolution
 try {
-  config.build.rolldownOptions = {
-    resolve: {
-      modules: [join(__dirname, 'node_modules')],
+  config.build = {
+    rolldownOptions: {
+      resolve: {
+        modules: [join(__dirname, 'node_modules')],
+      },
     },
   };
-  config.resolve.modules = [join(__dirname, 'node_modules')];
 } catch {}
 
-// Load PostCSS plugins with absolute paths so they work even when npx runs from a different directory
+// Also set resolve.modules for vite's own resolver
+config.resolve.modules = [join(__dirname, 'node_modules')];
+
+// Load PostCSS plugins with absolute paths
 try {
   const tailwindcss = require(join(__dirname, 'node_modules', 'tailwindcss'));
   config.css.postcss.plugins.push(tailwindcss({ config: join(__dirname, 'tailwind.config.js') }));
