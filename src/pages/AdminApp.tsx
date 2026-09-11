@@ -8,6 +8,7 @@ import { SecurityDashboardTab } from '@/components/SecurityDashboard';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
 import { AdminChat, getOrCreateAdminConversation } from '@/components/AdminChat';
 import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import {
   Megaphone, Plus, Trash2, Power, Check, Loader2, LogOut,
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
@@ -111,17 +112,17 @@ export function AdminApp() {
         })}
       </div>
 
-      {tab === 'overview' && <OverviewTab />}
-      {tab === 'users' && <UsersTab onStartCall={startAdminCall} onStartChat={startAdminChat} />}
-      {tab === 'geographic' && <GeographicTab />}
-      {tab === 'campaigns' && <CampaignsTab />}
-      {tab === 'messages' && <AdminMessagesTab onOpenChat={(convId, name, userId) => setActiveChat({ conversationId: convId, otherName: name, userId })} />}
-      {tab === 'fees' && <FeesTab />}
-      {tab === 'announcements' && <AnnouncementsTab />}
-      {tab === 'security' && <SecurityDashboardTab />}
-      {tab === 'video_credits' && <VideoCreditsTab />}
-      {tab === 'analytics' && <AnalyticsDashboard />}
-      {tab === 'settings' && <SettingsTab />}
+      {tab === 'overview' && <ErrorBoundary><OverviewTab /></ErrorBoundary>}
+      {tab === 'users' && <ErrorBoundary><UsersTab onStartCall={startAdminCall} onStartChat={startAdminChat} /></ErrorBoundary>}
+      {tab === 'geographic' && <ErrorBoundary><GeographicTab /></ErrorBoundary>}
+      {tab === 'campaigns' && <ErrorBoundary><CampaignsTab /></ErrorBoundary>}
+      {tab === 'messages' && <ErrorBoundary><AdminMessagesTab onOpenChat={(convId, name, userId) => setActiveChat({ conversationId: convId, otherName: name, userId })} /></ErrorBoundary>}
+      {tab === 'fees' && <ErrorBoundary><FeesTab /></ErrorBoundary>}
+      {tab === 'announcements' && <ErrorBoundary><AnnouncementsTab /></ErrorBoundary>}
+      {tab === 'security' && <ErrorBoundary><SecurityDashboardTab /></ErrorBoundary>}
+      {tab === 'video_credits' && <ErrorBoundary><VideoCreditsTab /></ErrorBoundary>}
+      {tab === 'analytics' && <ErrorBoundary><AnalyticsDashboard /></ErrorBoundary>}
+      {tab === 'settings' && <ErrorBoundary><SettingsTab /></ErrorBoundary>}
 
       {activeChat && profile && (
         <AdminChat
@@ -2416,7 +2417,7 @@ function VideoCreditsTab() {
                 </div>
                 <div className="bg-gray-50 rounded-lg p-2 text-center">
                   <p className="text-gray-400 mb-0.5">Amount</p>
-                  <p className="font-bold text-gray-700">₱{Number(p.amount_paid).toFixed(0)}</p>
+                  <p className="font-bold text-gray-700">₱{Number(p.amount_paid || 0).toFixed(0)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-2 text-center">
                   <p className="text-gray-400 mb-0.5">Date</p>
@@ -2470,7 +2471,7 @@ function VideoCreditsTab() {
               {p.status === 'approved' && p.approved_at && (
                 <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 border border-green-100 rounded-lg px-3 py-2 mb-3">
                   <Check size={14} className="flex-shrink-0" />
-                  <span>Na-approve noong {new Date(p.approved_at).toLocaleDateString('en-PH', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                  <span>Na-approve noong {p.approved_at ? new Date(p.approved_at).toLocaleDateString('en-PH', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}</span>
                 </div>
               )}
 
