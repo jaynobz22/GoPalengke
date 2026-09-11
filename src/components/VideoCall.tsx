@@ -8,6 +8,11 @@ import { loadZegoSDK } from '@/lib/zego';
 const ZEGO_APP_ID = 859723970;
 const ZEGO_SERVER_SECRET = 'b09d6611fd4974338195c5e40cb94eb8';
 
+// Normalize roomId: lowercase + trim to guarantee both sides use identical string
+function normalizeRoomId(id: string): string {
+  return id.trim().toLowerCase();
+}
+
 type CallPhase = 'outgoing' | 'connecting' | 'connected' | 'ended';
 
 interface VideoCallProps {
@@ -23,25 +28,22 @@ function log(...args: unknown[]) {
   console.log('%c[VideoCall]', 'color:#3b82f6;font-weight:bold', ...args);
 }
 
-function validateZegoConfig(appId: number, serverSecret: string): void {
-  if (!appId || isNaN(appId) || appId <= 0) {
-    throw new Error(`Invalid ZEGO AppID: ${appId}`);
-  }
-  if (!serverSecret || typeof serverSecret !== 'string' || serverSecret.length < 10) {
-    throw new Error(`Invalid ZEGO ServerSecret: "${serverSecret}"`);
-  }
-  if (serverSecret.includes('[I-PASTE') || serverSecret.includes('PASTE')) {
-    throw new Error('ZEGO ServerSecret is a placeholder, not a real key');
-  }
-}
-
-const MAX_CONTAINER_RETRIES = 20;
+const MAX_CONTAINER_RETRIES = 30;
 
 export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps) {
   const { profile } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // ZEGO instance lives in a ref — never in state — so it survives re-renders
   const zpRef = useRef<any>(null);
-  const initStartedRef = useRef(false);
+
+  // Guards against double-init (React StrictMode runs effects twice in dev)
+  const isInitialized = useRef(false);
+  // Tracks whether component is truly mounted (not just a StrictMode cleanup/remount cycle)
+  const mountedRef = useRef(false);
+
+  const creditTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'connecting');
   const [error, setError] = useState<string | null>(null);
@@ -50,18 +52,17 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
   const [callSeconds, setCallSeconds] = useState(0);
   const [showNoCreditsAlert, setShowNoCreditsAlert] = useState(false);
 
-  const creditTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const mountedRef = useRef(true);
+  function hasMediaDevices(): boolean {
+    return typeof navigator !== 'undefined'
+      && !!navigator.mediaDevices
+      && typeof navigator.mediaDevices.getUserMedia === 'function';
+  }
 
   function isStandalonePWA(): boolean {
     try {
-      return window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+      return window.matchMedia('(display-mode: standalone)').matches
+        || (window.navigator as any).standalone === true;
     } catch { return false; }
-  }
-
-  function hasMediaDevices(): boolean {
-    return typeof navigator !== 'undefined' && !!navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
   }
 
   const stopCreditDeduction = () => {
@@ -72,7 +73,6 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
   const startCreditDeduction = () => {
     if (!isCaller) return;
     stopCreditDeduction();
-
     setCreditsLeft(profile?.video_credits ?? 0);
 
     callTimerRef.current = setInterval(() => {
@@ -82,36 +82,30 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
     creditTimerRef.current = setInterval(async () => {
       log('DEDUCTING 1 credit');
       const { data, error: rpcError } = await supabase.rpc('deduct_video_credit');
-      if (rpcError) {
-        log('CREDIT DEDUCT ERROR', rpcError.message);
-        return;
-      }
+      if (rpcError) { log('CREDIT DEDUCT ERROR', rpcError.message); return; }
       const newBalance = data as number;
       log('NEW CREDIT BALANCE', newBalance);
       if (mountedRef.current) setCreditsLeft(newBalance);
       if (newBalance <= 0) {
-        log('CREDITS EXHAUSTED — auto-disconnecting via ZEGOCLOUD');
+        log('CREDITS EXHAUSTED — ending call');
         stopCreditDeduction();
         if (mountedRef.current) setShowNoCreditsAlert(true);
-        try { zpRef.current?.destroy(); } catch (e) { log('ZEGO destroy error', e); }
+        try { zpRef.current?.destroy(); } catch { /* ignore */ }
+        zpRef.current = null;
       }
     }, VIDEO_CREDIT_RATE_SECONDS * 1000);
   };
 
-  const cleanup = () => {
-    log('CLEANUP');
-    stopCreditDeduction();
-    try { zpRef.current?.destroy(); } catch { /* already destroyed */ }
-    zpRef.current = null;
-  };
-
   useEffect(() => {
     mountedRef.current = true;
-    initStartedRef.current = false;
 
     if (!profile?.id) return;
 
-    log('MOUNT', `roomId=${roomId} isCaller=${isCaller}`);
+    // If ZEGO is already initialized for this session, do not re-initialize
+    if (isInitialized.current) {
+      log('ZEGO already initialized — skipping duplicate init (StrictMode guard)');
+      return;
+    }
 
     if (!hasMediaDevices()) {
       if (isStandalonePWA()) setShowFallback(true);
@@ -119,50 +113,70 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
       return;
     }
 
-    let cancelled = false;
+    const normalizedRoomId = normalizeRoomId(roomId);
+    log('INIT', `roomId="${normalizedRoomId}" isCaller=${isCaller}`);
+
+    let asyncCancelled = false;
 
     const initZego = async () => {
-      if (initStartedRef.current) return;
-      initStartedRef.current = true;
+      // Mark initialized immediately so any StrictMode second-run skips this
+      isInitialized.current = true;
 
       try {
-        log('Loading ZEGOCLOUD SDK...');
         const ZegoUIKitPrebuilt = await loadZegoSDK();
 
-        if (cancelled || !mountedRef.current) return;
+        if (asyncCancelled || !mountedRef.current) {
+          log('Init cancelled after SDK load');
+          isInitialized.current = false;
+          return;
+        }
 
         const appIdNum = Number(ZEGO_APP_ID);
         const serverSecretStr = String(ZEGO_SERVER_SECRET);
-        validateZegoConfig(appIdNum, serverSecretStr);
 
-        let container = containerRef.current;
-        let retryCount = 0;
-        while (!container && retryCount < MAX_CONTAINER_RETRIES && !cancelled && mountedRef.current) {
-          log('Container not ready, waiting via rAF', retryCount);
-          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
-          container = containerRef.current;
-          retryCount++;
+        if (!appIdNum || isNaN(appIdNum) || appIdNum <= 0) {
+          throw new Error(`Invalid ZEGO AppID: ${ZEGO_APP_ID}`);
+        }
+        if (!serverSecretStr || serverSecretStr.length < 10) {
+          throw new Error('Invalid ZEGO ServerSecret');
         }
 
-        if (cancelled || !mountedRef.current) return;
+        // Poll for container using requestAnimationFrame — never triggers a re-mount
+        let container = containerRef.current;
+        let retries = 0;
+        while (!container && retries < MAX_CONTAINER_RETRIES && !asyncCancelled && mountedRef.current) {
+          log('Container not ready, waiting rAF', retries);
+          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+          container = containerRef.current;
+          retries++;
+        }
+
+        if (asyncCancelled || !mountedRef.current) {
+          isInitialized.current = false;
+          return;
+        }
         if (!container) {
-          console.error('ZEGO_INIT_FAILED: Container ref is null after retries');
+          console.error('ZEGO_INIT_FAILED: Container ref never became available');
           if (mountedRef.current) setError('Hindi ma-mount ang video call container.');
+          isInitialized.current = false;
           return;
         }
 
         const userID = profile.id;
         const userName = profile.full_name || `user_${userID.slice(0, 6)}`;
 
-        await new Promise<void>(resolve => setTimeout(resolve, 100));
+        // Brief settle delay so the DOM is fully painted
+        await new Promise<void>(resolve => setTimeout(resolve, 150));
+        if (asyncCancelled || !mountedRef.current) {
+          isInitialized.current = false;
+          return;
+        }
 
-        if (cancelled || !mountedRef.current) return;
-
-        log('Generating ZEGOCLOUD Kit Token');
+        log('Generating kit token, roomId=', normalizedRoomId);
         const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
           appIdNum,
           serverSecretStr,
-          roomId,
+          normalizedRoomId,
           userID,
           userName,
         );
@@ -170,13 +184,10 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
         const zp = ZegoUIKitPrebuilt.create(kitToken);
         zpRef.current = zp;
 
-        log('Joining ZEGOCLOUD room', roomId);
-
+        log('Calling zp.joinRoom...');
         zp.joinRoom({
           container,
-          scenario: {
-            mode: ZegoUIKitPrebuilt.OneONoneCall,
-          },
+          scenario: { mode: ZegoUIKitPrebuilt.OneONoneCall },
           showScreenSharingButton: false,
           showMyCameraToggleButton: false,
           showMyMicrophoneToggleButton: false,
@@ -185,33 +196,44 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
           turnOnCameraWhenJoining: true,
           turnOnMicrophoneWhenJoining: true,
           onJoinRoom: () => {
-            log('ZEGO onJoinRoom — call connected');
-            if (mountedRef.current) {
-              setPhase('connected');
-              setError(null);
-            }
+            log('onJoinRoom — connected');
+            if (mountedRef.current) { setPhase('connected'); setError(null); }
             startCreditDeduction();
           },
           onLeaveRoom: () => {
-            log('ZEGO onLeaveRoom — call ended');
+            log('onLeaveRoom — ended');
             stopCreditDeduction();
             if (mountedRef.current) setPhase('ended');
           },
         });
       } catch (err: any) {
         console.error('ZEGO_INIT_FAILED:', err);
-        if (mountedRef.current) {
-          setError(`Hindi ma-start ang video call: ${err?.message || String(err)}`);
-        }
+        isInitialized.current = false;
+        if (mountedRef.current) setError(`Hindi ma-start ang video call: ${err?.message || String(err)}`);
       }
     };
 
     initZego();
 
     return () => {
-      cancelled = true;
+      asyncCancelled = true;
       mountedRef.current = false;
-      cleanup();
+
+      // Delay destruction so React StrictMode's immediate remount can reclaim
+      // the ZEGO session instead of destroying it. On a real unmount, mountedRef
+      // stays false after the timeout fires and we clean up properly.
+      const zpSnapshot = zpRef.current;
+      setTimeout(() => {
+        if (!mountedRef.current) {
+          log('Real unmount — destroying ZEGO session');
+          stopCreditDeduction();
+          try { zpSnapshot?.destroy(); } catch { /* ignore */ }
+          if (zpRef.current === zpSnapshot) zpRef.current = null;
+          isInitialized.current = false;
+        } else {
+          log('StrictMode remount detected — keeping ZEGO session alive');
+        }
+      }, 0);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, profile?.id]);
@@ -221,61 +243,82 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
   }
 
   function endCall() {
-    log('endCall — destroying ZEGO session');
+    log('endCall explicit');
     stopCreditDeduction();
     try { zpRef.current?.destroy(); } catch { /* ignore */ }
     zpRef.current = null;
+    isInitialized.current = false;
     if (mountedRef.current) setPhase('ended');
   }
 
-  if (showFallback) {
-    return (
-      <div className="fixed inset-0 z-[90] bg-gradient-to-b from-blue-900 to-gray-900 flex flex-col items-center justify-center max-w-md mx-auto px-5">
-        <div className="text-center">
-          <div className="w-28 h-28 rounded-full bg-amber-600 flex items-center justify-center mx-auto mb-4"><AlertCircle size={48} className="text-white" /></div>
-          <p className="text-white text-xl font-bold mb-2">Hindi ma-access ang camera</p>
-          <p className="text-amber-200 text-sm mb-6 max-w-xs">Buksan ang GoPalengke sa browser para gumana ang video call.</p>
-        </div>
-        <button onClick={openInBrowser} className="px-8 py-3 bg-white text-gray-800 rounded-2xl font-semibold active:scale-95 transition flex items-center gap-2"><ExternalLink size={18} /> Open in System Browser</button>
-        <button onClick={() => { setShowFallback(false); endCall(); }} className="mt-3 text-gray-400 text-sm">Cancel Call</button>
-      </div>
-    );
-  }
-
-  if (showNoCreditsAlert) {
-    return (
-      <div className="fixed inset-0 z-[85] bg-gray-900 flex flex-col items-center justify-center max-w-md mx-auto px-5">
-        <div className="text-center">
-          <div className="w-24 h-24 rounded-full bg-red-600 flex items-center justify-center mx-auto mb-4"><Coins size={40} className="text-white" /></div>
-          <p className="text-white text-lg font-bold mb-2">Ubos na ang iyong video credits.</p>
-          <p className="text-gray-400 text-sm mb-6">Mag-top up upang makatawag muli.</p>
-        </div>
-        <button onClick={onEnd} className="px-8 py-3 bg-white text-gray-800 rounded-2xl font-semibold active:scale-95 transition">Bumalik sa Chat</button>
-      </div>
-    );
-  }
-
-  if (phase === 'ended') {
-    return (
-      <div className="fixed inset-0 z-[80] bg-gray-900 flex flex-col items-center justify-center max-w-md mx-auto">
-        <div className="text-center">
-          <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center mx-auto mb-4"><PhoneOff size={36} className="text-gray-400" /></div>
-          <p className="text-white text-lg font-semibold mb-1">Natapos ang video call</p><p className="text-gray-400 text-sm">Kay {otherName}</p>
-        </div>
-        <button onClick={onEnd} className="mt-8 px-8 py-3 bg-white text-gray-800 rounded-2xl font-semibold active:scale-95 transition">Bumalik sa Chat</button>
-      </div>
-    );
-  }
-
+  // ─────────────────────────────────────────────────────────────────────────────
+  // SINGLE RETURN — the container div is ALWAYS in the DOM so the ref is never
+  // null when ZEGO tries to inject into it. Overlays are layered on top via CSS.
+  // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 z-[80] bg-gray-900 flex flex-col max-w-md mx-auto">
-      {/* ZEGOCLOUD SDK renders the video call UI inside this container.
-          Always rendered so the ref is available when the effect runs. */}
-      <div ref={containerRef} className="flex-1 w-full h-full" />
 
-      {/* Connecting / outgoing overlay shown until ZEGOCLOUD calls onJoinRoom */}
-      {phase !== 'connected' && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-blue-900 to-gray-900">
+      {/* ZEGO injects its UI here. Always rendered, never conditionally removed. */}
+      <div
+        ref={containerRef}
+        className="flex-1 w-full h-full"
+        style={{ display: phase === 'ended' || showFallback || showNoCreditsAlert ? 'none' : 'block' }}
+      />
+
+      {/* ── NO CREDITS ── */}
+      {showNoCreditsAlert && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 px-5 z-10">
+          <div className="text-center">
+            <div className="w-24 h-24 rounded-full bg-red-600 flex items-center justify-center mx-auto mb-4">
+              <Coins size={40} className="text-white" />
+            </div>
+            <p className="text-white text-lg font-bold mb-2">Ubos na ang iyong video credits.</p>
+            <p className="text-gray-400 text-sm mb-6">Mag-top up upang makatawag muli.</p>
+          </div>
+          <button onClick={onEnd} className="px-8 py-3 bg-white text-gray-800 rounded-2xl font-semibold active:scale-95 transition">
+            Bumalik sa Chat
+          </button>
+        </div>
+      )}
+
+      {/* ── PWA FALLBACK ── */}
+      {showFallback && !showNoCreditsAlert && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-blue-900 to-gray-900 px-5 z-10">
+          <div className="text-center">
+            <div className="w-28 h-28 rounded-full bg-amber-600 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle size={48} className="text-white" />
+            </div>
+            <p className="text-white text-xl font-bold mb-2">Hindi ma-access ang camera</p>
+            <p className="text-amber-200 text-sm mb-6 max-w-xs">Buksan ang GoPalengke sa browser para gumana ang video call.</p>
+          </div>
+          <button onClick={openInBrowser} className="px-8 py-3 bg-white text-gray-800 rounded-2xl font-semibold active:scale-95 transition flex items-center gap-2">
+            <ExternalLink size={18} /> Open in System Browser
+          </button>
+          <button onClick={() => { setShowFallback(false); endCall(); }} className="mt-3 text-gray-400 text-sm">
+            Cancel Call
+          </button>
+        </div>
+      )}
+
+      {/* ── CALL ENDED ── */}
+      {phase === 'ended' && !showNoCreditsAlert && !showFallback && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 z-10">
+          <div className="text-center">
+            <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center mx-auto mb-4">
+              <PhoneOff size={36} className="text-gray-400" />
+            </div>
+            <p className="text-white text-lg font-semibold mb-1">Natapos ang video call</p>
+            <p className="text-gray-400 text-sm">Kay {otherName}</p>
+          </div>
+          <button onClick={onEnd} className="mt-8 px-8 py-3 bg-white text-gray-800 rounded-2xl font-semibold active:scale-95 transition">
+            Bumalik sa Chat
+          </button>
+        </div>
+      )}
+
+      {/* ── CONNECTING / OUTGOING OVERLAY ── */}
+      {phase !== 'connected' && phase !== 'ended' && !showFallback && !showNoCreditsAlert && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-blue-900 to-gray-900 z-10">
           <div className="text-center">
             <div className="w-28 h-28 rounded-full bg-blue-700 flex items-center justify-center mx-auto mb-6 animate-pulse">
               <Video size={48} className="text-white" />
@@ -295,11 +338,6 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
           {error && (
             <div className="mt-4 px-6 max-w-sm">
               <p className="text-red-300 text-sm text-center">{error}</p>
-              {showFallback && (
-                <button onClick={openInBrowser} className="mt-3 px-6 py-2 bg-white text-gray-800 rounded-xl text-sm font-semibold active:scale-95 transition flex items-center gap-2 mx-auto">
-                  <ExternalLink size={16} /> Open in Browser
-                </button>
-              )}
             </div>
           )}
           <button onClick={endCall} className="mt-10 w-16 h-16 rounded-full bg-red-500 flex items-center justify-center active:scale-90 transition shadow-lg">
@@ -309,23 +347,21 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
         </div>
       )}
 
-      {/* Credit + timer overlay (caller only) */}
+      {/* ── CREDIT + TIMER OVERLAY (caller only, when connected) ── */}
       {phase === 'connected' && isCaller && creditsLeft !== null && (
-        <div className="absolute top-4 left-4 z-10">
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-              <Coins size={12} /> {creditsLeft} credits
-            </span>
-            <span className="flex items-center gap-1 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-              <Clock size={12} /> {Math.floor(callSeconds / 60)}:{String(callSeconds % 60).padStart(2, '0')}
-            </span>
-          </div>
+        <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
+          <span className="flex items-center gap-1 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+            <Coins size={12} /> {creditsLeft} credits
+          </span>
+          <span className="flex items-center gap-1 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+            <Clock size={12} /> {Math.floor(callSeconds / 60)}:{String(callSeconds % 60).padStart(2, '0')}
+          </span>
         </div>
       )}
 
-      {/* Custom end call button overlay */}
+      {/* ── END CALL BUTTON (when connected) ── */}
       {phase === 'connected' && (
-        <div className="absolute bottom-8 left-0 right-0 z-10 flex items-center justify-center">
+        <div className="absolute bottom-8 left-0 right-0 z-20 flex items-center justify-center">
           <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center active:scale-90 transition shadow-lg">
             <PhoneOff size={28} className="text-white" />
           </button>
