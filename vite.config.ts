@@ -11,6 +11,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['lucide-react', 'leaflet', 'react-leaflet', '@zegocloud/zego-uikit-prebuilt'],
+    exclude: ['lucide-react', 'leaflet', 'react-leaflet'],
   },
 });
