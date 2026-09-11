@@ -384,16 +384,20 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
     if (!adminProfile) return;
     if (!confirm(`Sigurado ka bang gusto mong PERMANENTENG burahin ang account ni ${user.full_name}? Hindi na ito maaaring bawiin. Mabubura rin ang lahat ng kaugnay na data (tindahan, orders, messages, atbp.)`)) return;
     setDeleting(user.id);
-    const { error } = await supabase.rpc('admin_delete_user', {
-      p_user_id: user.id,
-      p_admin_id: adminProfile.id,
-    });
-    setDeleting(null);
-    if (error) {
-      alert('Error: ' + error.message);
-    } else {
-      load();
+    try {
+      const { error } = await supabase.rpc('admin_delete_user', {
+        p_user_id: user.id,
+        p_admin_id: adminProfile.id,
+      });
+      if (error) {
+        alert('Error: ' + error.message);
+      } else {
+        load();
+      }
+    } catch (err: any) {
+      alert('Error: ' + (err?.message || 'Hindi matapos ang pag-delete.'));
     }
+    setDeleting(null);
   }
 
   const filtered = users.filter(u => {
@@ -1354,12 +1358,16 @@ function FeesTab() {
   async function approvePayment(payment: FeePayment) {
     if (!adminProfile) return;
     setProcessing(payment.id);
-    const { error } = await supabase.rpc('approve_fee_payment', {
-      p_payment_id: payment.id,
-      p_admin_id: adminProfile.id,
-    });
-    if (error) {
-      alert('Error: ' + error.message);
+    try {
+      const { error } = await supabase.rpc('approve_fee_payment', {
+        p_payment_id: payment.id,
+        p_admin_id: adminProfile.id,
+      });
+      if (error) {
+        alert('Error: ' + error.message);
+      }
+    } catch (err: any) {
+      alert('Error: ' + (err?.message || 'Hindi matapos ang approval.'));
     }
     setProcessing(null);
     load();
@@ -1368,7 +1376,11 @@ function FeesTab() {
   async function rejectPayment(payment: FeePayment) {
     if (!confirm('Sigurado ka bang gusto mong i-reject ang payment na ito?')) return;
     setProcessing(payment.id);
-    await supabase.from('fee_payments').update({ status: 'rejected' }).eq('id', payment.id);
+    try {
+      await supabase.from('fee_payments').update({ status: 'rejected' }).eq('id', payment.id);
+    } catch (err: any) {
+      alert('Error: ' + (err?.message || 'Hindi matapos ang reject.'));
+    }
     setProcessing(null);
     load();
   }
@@ -1376,9 +1388,13 @@ function FeesTab() {
   async function reactivateSeller(sellerId: string) {
     if (!confirm('Sigurado ka bang gusto mong i-reactivate ang seller na ito? Titiyakin na nakapagbayad na siya.')) return;
     setReactivating(sellerId);
-    const { error } = await supabase.rpc('reactivate_seller', { p_seller_id: sellerId });
-    if (error) {
-      alert('Error: ' + error.message);
+    try {
+      const { error } = await supabase.rpc('reactivate_seller', { p_seller_id: sellerId });
+      if (error) {
+        alert('Error: ' + error.message);
+      }
+    } catch (err: any) {
+      alert('Error: ' + (err?.message || 'Hindi matapos ang reactivation.'));
     }
     setReactivating(null);
     load();
@@ -1530,7 +1546,7 @@ function FeesTab() {
             return (
               <div key={f.id} className="bg-white rounded-2xl border border-gray-100 p-4">
                 <button
-n                  onClick={() => toggleSellerOrders(f.seller_id)}
+                  onClick={() => toggleSellerOrders(f.seller_id)}
                   className="w-full flex items-center justify-between gap-2 text-left"
                 >
                   <div className="min-w-0 flex items-center gap-2">
@@ -2241,11 +2257,18 @@ function VideoCreditsTab() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase
-      .from('video_credit_purchases')
-      .select('*, user:profiles!video_credit_purchases_user_id_fkey(full_name, email)')
-      .order('created_at', { ascending: false });
-    setPurchases((data || []) as any[]);
+    try {
+      const { data, error } = await supabase
+        .from('video_credit_purchases')
+        .select('*, user:profiles!video_credit_purchases_user_id_fkey(full_name, email)')
+        .order('created_at', { ascending: false });
+      if (error) {
+        showToast('Error loading purchases: ' + error.message, 'error');
+      }
+      setPurchases((data || []) as any[]);
+    } catch (err: any) {
+      showToast('Error loading purchases: ' + (err?.message || 'Hindi ma-load.'), 'error');
+    }
     setLoading(false);
   }
 
