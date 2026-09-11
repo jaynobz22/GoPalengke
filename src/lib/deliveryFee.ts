@@ -123,6 +123,11 @@ export function getStoreCoords(store: {
 /**
  * Look up approximate coordinates for a delivery location.
  * Returns null if no coordinates can be determined.
+ *
+ * IMPORTANT: Only returns city-center coords when we have no other choice.
+ * Callers that need a delivery fee should check hasExactCoords() first —
+ * using city-center coords for haversine can produce absurd distances
+ * (e.g. a store at Mintal Public Market is 23.5km from Davao City center).
  */
 export function getDeliveryCoords(delivery: {
   lat?: number | null;
@@ -136,12 +141,25 @@ export function getDeliveryCoords(delivery: {
     return { lat: delivery.lat, lng: delivery.lng };
   }
 
-  // Fall back to city center
+  // Fall back to city center — callers should prefer text-based estimation
+  // when no exact pin is available, to avoid misleading haversine distances
   if (delivery.city && CITY_COORDS[delivery.city]) {
     return CITY_COORDS[delivery.city];
   }
 
   return null;
+}
+
+/**
+ * Returns true only when we have an exact pin for the delivery location.
+ * Use this to decide whether to use coordinate-based fee calculation
+ * or fall back to text-based estimation.
+ */
+export function hasExactDeliveryCoords(delivery: {
+  lat?: number | null;
+  lng?: number | null;
+}): boolean {
+  return delivery.lat != null && delivery.lng != null;
 }
 
 /**
