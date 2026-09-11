@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall, AdminConversation, Store, VideoCreditPurchase } from '@/lib/types';
+import { SUBSCRIPTION_THRESHOLD } from '@/lib/types';
 import { ImageUploadField } from '@/components/ImageUploadField';
 import { SecurityDashboardTab } from '@/components/SecurityDashboard';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
@@ -11,6 +12,7 @@ import {
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
   AlertCircle, X, UserCheck, UserX, DollarSign, TrendingUp, Receipt,
   Lock, Unlock, Video, MessageCircle, Shield, QrCode, MapPin, Mail, Send, Coins,
+  ChevronUp, ChevronDown,
 } from 'lucide-react';
 
 type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'announcements' | 'security' | 'video_credits' | 'settings';
@@ -1262,16 +1264,22 @@ function CampaignsTab() {
 }
 
 // ============= FEES TAB =============
+type SellerFeeWithSeller = SellerFee & { seller: { full_name: string; email: string } | null };
+
 function FeesTab() {
   const { profile: adminProfile } = useAuth();
   const [payments, setPayments] = useState<(FeePayment & { seller: { full_name: string; email: string } })[]>([]);
   const [frozenSellers, setFrozenSellers] = useState<(SellerFee & { seller: { full_name: string; email: string } })[]>([]);
+  const [allFees, setAllFees] = useState<SellerFeeWithSeller[]>([]);
+  const [expandedSeller, setExpandedSeller] = useState<string | null>(null);
+  const [sellerOrders, setSellerOrders] = useState<Record<string, any[]>>({});
+  const [loadingOrders, setLoadingOrders] = useState(false);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
   const [reactivating, setReactivating] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [payData, frozenData] = await Promise.all([
+    const [payData, frozenData, allFeesData] = await Promise.all([
       supabase
         .from('fee_payments')
         .select('*, seller:profiles!fee_payments_seller_id_fkey(full_name, email)')
@@ -1281,13 +1289,46 @@ function FeesTab() {
         .select('*, seller:profiles!seller_fees_seller_id_fkey(full_name, email)')
         .not('frozen_at', 'is', null)
         .order('frozen_at', { ascending: false }),
+      supabase
+        .from('seller_fees')
+        .select('*, seller:profiles!seller_fees_seller_id_fkey(full_name, email)')
+        .order('updated_at', { ascending: false }),
     ]);
     setPayments((payData.data || []) as any);
     setFrozenSellers((frozenData.data || []) as any);
+    setAllFees((allFeesData.data || []) as SellerFeeWithSeller[]);
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  async function toggleSellerOrders(sellerId: string) {
+    if (expandedSeller === sellerId) {
+      setExpandedSeller(null);
+      return;
+    }
+    setExpandedSeller(sellerId);
+    if (sellerOrders[sellerId]) return;
+    setLoadingOrders(true);
+    const { data: stores } = await supabase
+      .from('stores')
+      .select('id')
+      .eq('seller_id', sellerId);
+    const storeIds = (stores || []).map((s: any) => s.id);
+    if (storeIds.length === 0) {
+      setSellerOrders(prev => ({ ...prev, [sellerId]: [] }));
+      setLoadingOrders(false);
+      return;
+    }
+    const { data: orders } = await supabase
+      .from('orders')
+      .select('id, total, commission_amount, status, payment_status, payment_method, commission_applied, created_at, store:stores!orders_store_id_fkey(name)')
+      .in('store_id', storeIds)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    setSellerOrders(prev => ({ ...prev, [sellerId]: orders || [] }));
+    setLoadingOrders(false);
+  }
 
   async function approvePayment(payment: FeePayment) {
     if (!adminProfile) return;
@@ -1424,7 +1465,7 @@ function FeesTab() {
       {history.length === 0 ? (
         <p className="text-center text-gray-400 text-sm py-6">Wala pang payment history.</p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 mb-6">
           {history.map(p => (
             <div key={p.id} className="bg-white rounded-2xl border border-gray-100 p-3">
               <div className="flex items-center justify-between mb-1">
@@ -1444,6 +1485,135 @@ function FeesTab() {
               </p>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Seller Sales Breakdown */}
+      <h3 className="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2 mt-4">
+        <TrendingUp size={16} /> Sales Breakdown ng Seller
+      </h3>
+      {allFees.length === 0 ? (
+        <p className="text-center text-gray-400 text-sm py-6">Wala pang seller sales data.</p>
+      ) : (
+        <div className="space-y-2">
+          {allFees.map((f) => {
+            const totalSales = f.total_sales || 0;
+            const commissionBalance = f.commission_balance || 0;
+            const subscriptionBalance = f.subscription_balance || 0;
+            const totalPayable = f.total_payable || 0;
+            const subscriptionActive = f.subscription_active;
+            const salesProgress = Math.min(100, (totalSales / SUBSCRIPTION_THRESHOLD) * 100);
+            const isExpanded = expandedSeller === f.seller_id;
+            const orders = sellerOrders[f.seller_id];
+
+            return (
+              <div key={f.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+                <button
+n                  onClick={() => toggleSellerOrders(f.seller_id)}
+                  className="w-full flex items-center justify-between gap-2 text-left"
+                >
+                  <div className="min-w-0 flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-brand-600 font-bold text-xs">
+                        {(f.seller?.full_name || '?').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm text-gray-800 truncate">{f.seller?.full_name || 'Unknown'}</p>
+                      <p className="text-xs text-gray-400 truncate">{f.seller?.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                      f.frozen_at ? 'bg-red-100 text-red-700' :
+                      subscriptionActive ? 'bg-green-100 text-green-700' :
+                      'bg-gray-100 text-gray-600'
+                    }`}>
+                      {f.frozen_at ? 'Frozen' : subscriptionActive ? 'Subscribed' : 'Free Tier'}
+                    </span>
+                    {isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                  </div>
+                </button>
+
+                {/* Summary grid */}
+                <div className="grid grid-cols-2 gap-2 mt-3">
+                  <div className="bg-gray-50 rounded-lg p-2.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">Total Sales</p>
+                    <p className="font-bold text-sm text-gray-800">₱{totalSales.toFixed(2)}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-2.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">Total Payable</p>
+                    <p className="font-bold text-sm text-gray-800">₱{totalPayable.toFixed(2)}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-2.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">Commission (3%)</p>
+                    <p className="font-bold text-sm text-gray-800">₱{commissionBalance.toFixed(2)}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-2.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">Subscription</p>
+                    <p className="font-bold text-sm text-gray-800">₱{subscriptionBalance.toFixed(2)}</p>
+                  </div>
+                </div>
+
+                {/* Subscription progress bar */}
+                <div className="mt-3">
+                  <div className="flex items-center justify-between text-[10px] text-gray-400 mb-1">
+                    <span>Subscription Threshold (₱{SUBSCRIPTION_THRESHOLD.toFixed(0)})</span>
+                    <span>{salesProgress.toFixed(0)}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${subscriptionActive ? 'bg-green-500' : 'bg-brand-500'}`}
+                      style={{ width: `${salesProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    {subscriptionActive
+                      ? `Na-activate noong ${f.subscription_activated_at ? new Date(f.subscription_activated_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}`
+                      : `₱${(SUBSCRIPTION_THRESHOLD - totalSales).toFixed(2)} pa bago ma-activate ang monthly subscription`
+                    }
+                  </p>
+                </div>
+
+                {/* Expanded order breakdown */}
+                {isExpanded && (
+                  <div className="mt-3 border-t border-gray-100 pt-3">
+                    <p className="text-xs font-semibold text-gray-600 mb-2">Mga Orders (pinakabago, hanggang 50)</p>
+                    {loadingOrders ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 size={20} className="animate-spin text-brand-500" />
+                      </div>
+                    ) : !orders || orders.length === 0 ? (
+                      <p className="text-center text-gray-400 text-xs py-4">Wala pang orders ang seller na ito.</p>
+                    ) : (
+                      <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                        {orders.map((o: any) => (
+                          <div key={o.id} className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-medium text-gray-700 truncate">
+                                {o.store?.name || 'Store'} · ₱{Number(o.total).toFixed(2)}
+                              </p>
+                              <p className="text-[10px] text-gray-400">
+                                {new Date(o.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })} · {o.payment_method === 'cod' ? 'COD' : 'QR'} · {o.status}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                                o.commission_applied ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                              }`}>
+                                {o.commission_applied ? 'Applied' : 'Pending'}
+                              </span>
+                              <span className="text-xs font-semibold text-gray-700">₱{Number(o.commission_amount).toFixed(2)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
