@@ -2210,8 +2210,10 @@ function VideoCreditsTab() {
                 <span className="font-mono font-medium text-gray-700 truncate">{p.reference_number}</span>
               </div>
 
-              {/* Screenshot thumbnail */}
-              {p.screenshot_url && (
+              {/* Screenshot thumbnail — only shown for pending requests.
+                  After approve/reject the image is auto-deleted from storage
+                  and screenshot_url becomes NULL, so we hide this section. */}
+              {p.screenshot_url && p.status === 'pending' && (
                 <div className="mb-3">
                   <button
                     onClick={() => setLightboxUrl(p.screenshot_url!)}
