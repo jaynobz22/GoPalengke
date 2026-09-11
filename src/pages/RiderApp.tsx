@@ -15,6 +15,7 @@ import { ReviewSection } from '@/components/Reviews';
 import { OrderStepTracker, type StepInfo } from '@/components/OrderStepTracker';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
 import { AdminChat } from '@/components/AdminChat';
+import { VideoCreditStore } from '@/components/VideoCreditStore';
 import { useIncomingAdminCall } from '@/lib/useAdminCall';
 import { useAdminConversations } from '@/lib/useAdminChat';
 import {
@@ -1434,6 +1435,11 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           </div>
         </div>
       )}
+
+      {/* Video Call Credits */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+        <VideoCreditStore />
+      </div>
 
       <button onClick={onSignOut} className="w-full py-3 bg-white text-red-500 border border-red-200 rounded-2xl font-semibold active:scale-[0.98] transition">
         Mag-sign Out
