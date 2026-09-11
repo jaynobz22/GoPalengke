@@ -3,6 +3,10 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, Loader2, ExternalLink, AlertCircle, Coins, Clock } from 'lucide-react';
 import { VIDEO_CREDIT_RATE_SECONDS } from '@/lib/types';
+import { ZegoUIKitPrebuilt } from '@zegocloud/zego-uikit-prebuilt';
+
+const ZEGO_APP_ID = 859723970;
+const ZEGO_SERVER_SECRET = 'b09d6611fd4974338195c5e40cb94eb8';
 
 type CallPhase = 'outgoing' | 'connecting' | 'connected' | 'ended';
 
@@ -15,83 +19,16 @@ interface VideoCallProps {
   onEnd: () => void;
 }
 
-const ICE_SERVERS: RTCIceServer[] = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' },
-  { urls: 'stun:stun3.l.google.com:19302' },
-  { urls: 'stun:stun4.l.google.com:19302' },
-  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayprojectsecret' },
-  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayprojectsecret' },
-  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayprojectsecret' },
-];
-
 function log(...args: unknown[]) {
   console.log('%c[VideoCall]', 'color:#3b82f6;font-weight:bold', ...args);
 }
 
-function isStandalonePWA(): boolean {
-  try {
-    return window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
-  } catch { return false; }
-}
-
-function hasMediaDevices(): boolean {
-  return typeof navigator !== 'undefined' && !!navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
-}
-
-async function acquireStream(): Promise<MediaStream> {
-  if (!hasMediaDevices()) throw new Error('Camera not available');
-  const constraints: MediaStreamConstraints = {
-    video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-  };
-  try {
-    return await navigator.mediaDevices.getUserMedia(constraints);
-  } catch (err: any) {
-    if (err?.name === 'NotAllowedError' || err?.name === 'NotReadableError' || err?.name === 'OverconstrainedError') {
-      try {
-        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
-        try {
-          const videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-          const combined = new MediaStream();
-          audioStream.getAudioTracks().forEach(t => combined.addTrack(t));
-          videoStream.getVideoTracks().forEach(t => combined.addTrack(t));
-          return combined;
-        } catch { return audioStream; }
-      } catch {
-        try { return await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false }); }
-        catch { throw err; }
-      }
-    }
-    throw err;
-  }
-}
-
-export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedStream, onEnd }: VideoCallProps) {
+export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: VideoCallProps) {
   const { profile } = useAuth();
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const remoteCandidatesQueueRef = useRef<RTCIceCandidateInit[]>([]);
-  const remoteDescriptionSetRef = useRef(false);
-  const pendingOfferRef = useRef<any>(null);
-  const gotCameraRef = useRef(false);
-  const myUserIdRef = useRef<string | null>(null);
-  const processedIdsRef = useRef<Set<string>>(new Set());
-  const retryCountRef = useRef(0);
-  const mountedRef = useRef(true);
-  const relayAttemptedRef = useRef(false);
-  const offerCreatedRef = useRef(false);
-  const phaseRef = useRef<CallPhase>(isCaller ? 'outgoing' : 'connecting');
-  const receiverReadyRef = useRef(false);
-  const callerReadyRef = useRef(false);
-  const readySentRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const zpRef = useRef<any>(null);
 
   const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'connecting');
-  const [micOn, setMicOn] = useState(true);
-  const [camOn, setCamOn] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFallback, setShowFallback] = useState(false);
   const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
@@ -100,235 +37,28 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
 
   const creditTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const cleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const destroyedRef = useRef(false);
+  const mountedRef = useRef(true);
 
-  const setPhaseSafe = (p: CallPhase) => {
-    phaseRef.current = p;
-    if (mountedRef.current) setPhase(p);
-  };
-
-  const sendSignal = async (event: string, payload: Record<string, unknown>, retry = 3) => {
-    if (!myUserIdRef.current) return;
-    log('SEND', event, '(attempt 1)');
-    for (let attempt = 0; attempt < retry; attempt++) {
-      const { error: insertError } = await supabase
-        .from('call_signals')
-        .insert({ room_id: roomId, sender_id: myUserIdRef.current, event, payload });
-      if (!insertError) {
-        log('SEND OK', event);
-        return;
-      }
-      log('SEND ERROR', event, `attempt ${attempt + 1}`, insertError.message);
-      if (attempt < retry - 1) await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
-    }
-    log('SEND FAILED', event, 'after', retry, 'attempts');
-  };
-
-  const getCamera = async (): Promise<MediaStream | null> => {
-    if (gotCameraRef.current && localStreamRef.current) return localStreamRef.current;
-    if (preWarmedStream) {
-      localStreamRef.current = preWarmedStream;
-      gotCameraRef.current = true;
-      if (localVideoRef.current) localVideoRef.current.srcObject = preWarmedStream;
-      return preWarmedStream;
-    }
-    if (!hasMediaDevices()) {
-      if (isStandalonePWA()) setShowFallback(true);
-      setError('Hindi available ang camera sa device na ito.');
-      return null;
-    }
+  function isStandalonePWA(): boolean {
     try {
-      const stream = await acquireStream();
-      localStreamRef.current = stream;
-      gotCameraRef.current = true;
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-      return stream;
-    } catch (err: any) {
-      const n = err?.name || '', m = err?.message || String(err);
-      log('CAMERA ERROR', n, m);
-      if (n === 'NotAllowedError' || n === 'PermissionDeniedError') {
-        if (isStandalonePWA()) setShowFallback(true);
-        setError('Hindi pinapayagan ang camera/microphone. I-allow sa settings o buksan sa browser.');
-      } else if (n === 'NotReadableError' || n === 'TrackStartError') {
-        if (retryCountRef.current < 3) { retryCountRef.current++; await new Promise(r => setTimeout(r, 500)); return getCamera(); }
-        if (isStandalonePWA()) setShowFallback(true);
-        setError('Ginagamit ng ibang app ang camera. Isara o buksan sa browser.');
-      } else if (n === 'NotFoundError' || n === 'DevicesNotFoundError') {
-        setError('Walang camera o microphone ang device.');
-      } else {
-        if (isStandalonePWA()) setShowFallback(true);
-        setError(`Hindi ma-access ang camera/mic: ${m}`);
-      }
-      return null;
-    }
-  };
+      return window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    } catch { return false; }
+  }
 
-  const flushPendingCandidates = async () => {
-    if (!pcRef.current || !remoteDescriptionSetRef.current) return;
-    const queue = [...remoteCandidatesQueueRef.current];
-    remoteCandidatesQueueRef.current = [];
-    log('FLUSH', `${queue.length} queued ICE candidates`);
-    for (const c of queue) {
-      try { await pcRef.current.addIceCandidate(new RTCIceCandidate(c)); } catch (e) { log('FLUSH ERROR', e); }
-    }
-  };
+  function hasMediaDevices(): boolean {
+    return typeof navigator !== 'undefined' && !!navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
+  }
 
-  const createPeerConnection = (stream: MediaStream, forceRelay = false): RTCPeerConnection | null => {
-    if (pcRef.current) { try { pcRef.current.close(); } catch {} pcRef.current = null; }
-    remoteDescriptionSetRef.current = false;
-    remoteCandidatesQueueRef.current = [];
-    try {
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS, iceTransportPolicy: forceRelay ? 'relay' : 'all' });
-      pcRef.current = pc;
-      log('PC CREATED', `forceRelay=${forceRelay}`);
-      stream.getTracks().forEach(t => pc.addTrack(t, stream));
-      pc.ontrack = (e) => {
-        log('ONTRACK', e.track.kind);
-        if (remoteVideoRef.current && e.streams[0]) {
-          remoteVideoRef.current.srcObject = e.streams[0];
-          remoteVideoRef.current.play().catch(() => setTimeout(() => remoteVideoRef.current?.play().catch(() => {}), 200));
-        }
-      };
-      pc.onicecandidate = (e) => {
-        if (e.candidate) {
-          log('ICE CANDIDATE', e.candidate.candidate?.substring(0, 50));
-          sendSignal('ice', { candidate: e.candidate.toJSON() });
-        } else {
-          log('ICE GATHERING COMPLETE');
-        }
-      };
-      pc.oniceconnectionstatechange = () => {
-        log('ICE STATE', pc.iceConnectionState);
-        if (pc.iceConnectionState === 'failed' && !relayAttemptedRef.current && phaseRef.current !== 'connected') {
-          relayAttemptedRef.current = true;
-          log('ICE FAILED → relay fallback');
-          const s = localStreamRef.current;
-          if (s) {
-            const newPc = createPeerConnection(s, true);
-            if (newPc) {
-              if (isCaller) doCreateOffer();
-              else doAcceptCall();
-            }
-          }
-        }
-      };
-      pc.onconnectionstatechange = () => {
-        log('CONN STATE', pc.connectionState);
-        if (pc.connectionState === 'connected') relayAttemptedRef.current = false;
-      };
-      pc.onsignalingstatechange = () => log('SIGNALING STATE', pc.signalingState);
-      return pc;
-    } catch (e) { log('PC CREATE ERROR', e); return null; }
-  };
-
-  const doCreateOffer = async () => {
-    if (offerCreatedRef.current) { log('OFFER ALREADY CREATED, skip'); return; }
-    log('CREATE OFFER START');
-    const stream = await getCamera();
-    if (!stream) return;
-    let pc = pcRef.current;
-    if (!pc) pc = createPeerConnection(stream);
-    if (!pc) return;
-    try {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      offerCreatedRef.current = true;
-      log('OFFER CREATED, sending');
-      await sendSignal('offer', { sdp: offer.toJSON() }, 5);
-    } catch (e) { log('CREATE OFFER ERROR', e); }
-  };
-
-  const doAcceptCall = async () => {
-    log('ACCEPT CALL START');
-    const stream = await getCamera();
-    if (!stream) return;
-    let pc = pcRef.current;
-    if (!pc) pc = createPeerConnection(stream);
-    if (!pc) return;
-    if (pendingOfferRef.current) {
-      const offer = pendingOfferRef.current;
-      pendingOfferRef.current = null;
-      await processOffer(pc, offer);
-    }
-  };
-
-  const processOffer = async (pc: RTCPeerConnection, payload: any) => {
-    if (remoteDescriptionSetRef.current) return;
-    try {
-      log('SET REMOTE DESCRIPTION (offer)');
-      await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-      remoteDescriptionSetRef.current = true;
-      log('REMOTE DESCRIPTION SET (offer)');
-      await flushPendingCandidates();
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      log('ANSWER CREATED, sending');
-      await sendSignal('answer', { sdp: answer.toJSON() }, 5);
-      setPhaseSafe('connected');
-    } catch (e) { log('PROCESS OFFER ERROR', e); }
-  };
-
-  const processAnswer = async (pc: RTCPeerConnection, payload: any) => {
-    if (remoteDescriptionSetRef.current) return;
-    try {
-      log('SET REMOTE DESCRIPTION (answer)');
-      await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-      remoteDescriptionSetRef.current = true;
-      log('REMOTE DESCRIPTION SET (answer)');
-      await flushPendingCandidates();
-      setPhaseSafe('connected');
-    } catch (e) { log('PROCESS ANSWER ERROR', e); }
-  };
-
-  const handleSignal = async (sig: { id: string; event: string; payload: any; sender_id: string }) => {
-    if (sig.sender_id === myUserIdRef.current) return;
-    if (processedIdsRef.current.has(sig.id)) return;
-    processedIdsRef.current.add(sig.id);
-    const { event, payload } = sig;
-    log('RECV', event);
-
-    try {
-      if (event === 'ready') {
-        if (isCaller) {
-          receiverReadyRef.current = true;
-          log('RECEIVER READY — creating offer');
-          if (!offerCreatedRef.current) await doCreateOffer();
-        } else {
-          callerReadyRef.current = true;
-        }
-      } else if (event === 'offer') {
-        if (!isCaller) {
-          const pc = pcRef.current;
-          if (!pc) { log('OFFER buffered (no PC yet)'); pendingOfferRef.current = payload; }
-          else await processOffer(pc, payload);
-        }
-      } else if (event === 'answer') {
-        if (isCaller) {
-          const pc = pcRef.current;
-          if (pc) await processAnswer(pc, payload);
-        }
-      } else if (event === 'ice') {
-        try {
-          if (pcRef.current && remoteDescriptionSetRef.current) {
-            await pcRef.current.addIceCandidate(new RTCIceCandidate(payload.candidate));
-            log('ICE ADDED immediately');
-          } else {
-            remoteCandidatesQueueRef.current.push(payload.candidate);
-            log('ICE QUEUED', `queue size=${remoteCandidatesQueueRef.current.length}`);
-          }
-        } catch (e) { log('ICE ERROR', e); }
-      } else if (event === 'end') {
-        log('REMOTE ENDED');
-        setPhaseSafe('ended');
-      }
-    } catch (e) { log('HANDLE SIGNAL ERROR', event, e); }
+  const stopCreditDeduction = () => {
+    if (creditTimerRef.current) { clearInterval(creditTimerRef.current); creditTimerRef.current = null; }
+    if (callTimerRef.current) { clearInterval(callTimerRef.current); callTimerRef.current = null; }
   };
 
   const startCreditDeduction = () => {
     if (!isCaller) return;
-    if (creditTimerRef.current) clearInterval(creditTimerRef.current);
-    if (callTimerRef.current) clearInterval(callTimerRef.current);
+    stopCreditDeduction();
+
+    setCreditsLeft(profile?.video_credits ?? 0);
 
     callTimerRef.current = setInterval(() => {
       setCallSeconds(s => s + 1);
@@ -336,141 +66,108 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
 
     creditTimerRef.current = setInterval(async () => {
       log('DEDUCTING 1 credit');
-      const { data, error } = await supabase.rpc('deduct_video_credit');
-      if (error) {
-        log('CREDIT DEDUCT ERROR', error.message);
+      const { data, error: rpcError } = await supabase.rpc('deduct_video_credit');
+      if (rpcError) {
+        log('CREDIT DEDUCT ERROR', rpcError.message);
         return;
       }
       const newBalance = data as number;
       log('NEW CREDIT BALANCE', newBalance);
-      setCreditsLeft(newBalance);
+      if (mountedRef.current) setCreditsLeft(newBalance);
       if (newBalance <= 0) {
-        log('CREDITS EXHAUSTED — auto-disconnecting');
+        log('CREDITS EXHAUSTED — auto-disconnecting via ZEGOCLOUD');
         stopCreditDeduction();
-        setShowNoCreditsAlert(true);
-        sendSignal('end', {});
-        setTimeout(() => {
-          setPhaseSafe('ended');
-          destroyedRef.current = true;
-          cleanup();
-        }, 100);
+        if (mountedRef.current) setShowNoCreditsAlert(true);
+        try { zpRef.current?.destroy(); } catch (e) { log('ZEGO destroy error', e); }
       }
     }, VIDEO_CREDIT_RATE_SECONDS * 1000);
-  };
-
-  const stopCreditDeduction = () => {
-    if (creditTimerRef.current) { clearInterval(creditTimerRef.current); creditTimerRef.current = null; }
-    if (callTimerRef.current) { clearInterval(callTimerRef.current); callTimerRef.current = null; }
   };
 
   const cleanup = () => {
     log('CLEANUP');
     stopCreditDeduction();
-    if (localStreamRef.current) { localStreamRef.current.getTracks().forEach(t => t.stop()); localStreamRef.current = null; }
-    if (pcRef.current) { try { pcRef.current.close(); } catch {} pcRef.current = null; }
-    gotCameraRef.current = false; remoteDescriptionSetRef.current = false; pendingOfferRef.current = null;
-    remoteCandidatesQueueRef.current = []; processedIdsRef.current.clear(); retryCountRef.current = 0;
-    relayAttemptedRef.current = false; offerCreatedRef.current = false;
-    receiverReadyRef.current = false; callerReadyRef.current = false; readySentRef.current = false;
-  };
-
-  const deferredCleanup = () => {
-    if (cleanupTimerRef.current) clearTimeout(cleanupTimerRef.current);
-    cleanupTimerRef.current = setTimeout(() => {
-      if (destroyedRef.current) return;
-      log('DEFERRED CLEANUP — executing');
-      cleanup();
-    }, 100);
+    try { zpRef.current?.destroy(); } catch { /* already destroyed */ }
+    zpRef.current = null;
   };
 
   useEffect(() => {
     mountedRef.current = true;
-    destroyedRef.current = false;
-    if (cleanupTimerRef.current) { clearTimeout(cleanupTimerRef.current); cleanupTimerRef.current = null; }
+
     if (!profile?.id) return;
-    myUserIdRef.current = profile.id;
+    if (!containerRef.current) return;
+
     log('MOUNT', `roomId=${roomId} isCaller=${isCaller}`);
 
-    let sub: ReturnType<typeof supabase.channel> | null = null;
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
-    let cancelled = false;
+    if (!hasMediaDevices()) {
+      if (isStandalonePWA()) setShowFallback(true);
+      setError('Hindi available ang camera sa device na ito.');
+      return;
+    }
 
-    const pollSignals = async () => {
-      if (cancelled) return;
-      try {
-        const { data, error } = await supabase.from('call_signals').select('*').eq('room_id', roomId).order('created_at', { ascending: true });
-        if (error) { log('POLL DB ERROR', error.message); return; }
-        if (data) for (const s of data) await handleSignal(s);
-      } catch (e) { log('POLL ERROR', e); }
-    };
+    const userID = profile.id;
+    const userName = profile.full_name || `user_${userID.slice(0, 6)}`;
 
-    (async () => {
-      try {
-        await pollSignals();
-        if (cancelled) return;
+    try {
+      log('Generating ZEGOCLOUD Kit Token');
+      const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
+        ZEGO_APP_ID,
+        ZEGO_SERVER_SECRET,
+        roomId,
+        userID,
+        userName,
+      );
 
-        await new Promise<void>((resolve) => {
-          sub = supabase.channel(`call-${roomId}`)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'call_signals', filter: `room_id=eq.${roomId}` }, (p: any) => handleSignal(p.new))
-            .subscribe((status: string) => { log('SUB STATUS', status); resolve(); });
-        });
-        if (cancelled) return;
+      const zp = ZegoUIKitPrebuilt.create(kitToken);
+      zpRef.current = zp;
 
-        await pollSignals();
-        pollTimer = setInterval(pollSignals, 800);
+      log('Joining ZEGOCLOUD room', roomId);
 
-        if (!readySentRef.current) {
-          readySentRef.current = true;
-          await sendSignal('ready', {}, 3);
-          log('SENT ready signal');
-        }
-
-        if (isCaller) {
-          if (receiverReadyRef.current && !offerCreatedRef.current) {
-            log('CALLER: receiver already ready, creating offer');
-            await doCreateOffer();
-          } else {
-            log('CALLER: waiting for receiver_ready');
-          }
-        } else if (autoAccept) {
-          log('RECEIVER: accepting call');
-          await doAcceptCall();
-        }
-      } catch (e) { log('LIFECYCLE ERROR', e); }
-    })();
+      zp.joinRoom({
+        container: containerRef.current,
+        scenario: {
+          mode: ZegoUIKitPrebuilt.OneONoneCall,
+        },
+        showScreenSharingButton: false,
+        showMyCameraToggleButton: false,
+        showMyMicrophoneToggleButton: false,
+        showTextChat: false,
+        showUserList: false,
+        turnOnCameraWhenJoining: true,
+        turnOnMicrophoneWhenJoining: true,
+        onJoinRoom: () => {
+          log('ZEGO onJoinRoom — call connected');
+          if (mountedRef.current) setPhase('connected');
+          startCreditDeduction();
+        },
+        onLeaveRoom: () => {
+          log('ZEGO onLeaveRoom — call ended');
+          stopCreditDeduction();
+          if (mountedRef.current) setPhase('ended');
+        },
+      });
+    } catch (err: any) {
+      log('ZEGO INIT ERROR', err);
+      setError(`Hindi ma-start ang video call: ${err?.message || String(err)}`);
+    }
 
     return () => {
-      cancelled = true;
       mountedRef.current = false;
-      if (sub) supabase.removeChannel(sub);
-      if (pollTimer) clearInterval(pollTimer);
-      stopCreditDeduction();
-      deferredCleanup();
+      cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, profile?.id]);
 
-  function toggleMic() { if (localStreamRef.current) { localStreamRef.current.getAudioTracks().forEach(t => { t.enabled = !micOn; }); setMicOn(!micOn); } }
-  function toggleCam() { if (localStreamRef.current) { localStreamRef.current.getVideoTracks().forEach(t => { t.enabled = !camOn; }); setCamOn(!camOn); } }
-  function endCall() {
-    sendSignal('end', {});
-    setPhaseSafe('ended');
-    destroyedRef.current = true;
-    if (cleanupTimerRef.current) clearTimeout(cleanupTimerRef.current);
-    cleanup();
-    onEnd();
+  function openInBrowser() {
+    window.open(window.location.href, '_blank', 'noopener,noreferrer');
   }
 
-  // Start credit deduction when call connects (caller only)
-  useEffect(() => {
-    if (phase === 'connected' && isCaller) {
-      setCreditsLeft(profile?.video_credits ?? 0);
-      startCreditDeduction();
-    }
-    return () => { if (phase !== 'connected') stopCreditDeduction(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, isCaller]);
-  function openInBrowser() { window.open(window.location.href, '_blank', 'noopener,noreferrer'); }
+  function endCall() {
+    log('endCall — destroying ZEGO session');
+    stopCreditDeduction();
+    try { zpRef.current?.destroy(); } catch { /* ignore */ }
+    zpRef.current = null;
+    if (mountedRef.current) setPhase('ended');
+  }
 
   if (showFallback) {
     return (
@@ -532,38 +229,24 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
     );
   }
 
-  if (phase === 'connecting') {
-    return (
-      <div className="fixed inset-0 z-[80] bg-gray-900 flex flex-col max-w-md mx-auto">
-        <div className="flex-1 relative flex items-center justify-center">
-          <div className="text-center"><Loader2 size={48} className="text-blue-400 animate-spin mx-auto mb-4" /><p className="text-white text-lg font-semibold">Kumokonekta...</p><p className="text-gray-400 text-sm mt-1">Naghihintay kay {otherName}</p></div>
-          <div className="absolute top-4 right-4 w-28 h-40 rounded-2xl overflow-hidden bg-gray-800 border-2 border-white/20 shadow-lg z-10"><video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" /></div>
-        </div>
-        {error && <div className="absolute top-4 left-4 right-4 z-10"><div className="bg-red-500/90 text-white text-sm px-4 py-3 rounded-xl">{error}</div>
-          {showFallback && <button onClick={openInBrowser} className="mt-2 w-full px-6 py-2 bg-white text-gray-800 rounded-xl text-sm font-semibold active:scale-95 transition flex items-center justify-center gap-2"><ExternalLink size={16} /> Open in System Browser</button>}
-        </div>}
-        <div className="pb-8 pt-4 px-6 flex items-center justify-center"><button onClick={endCall} className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center active:scale-90 transition shadow-lg"><PhoneOff size={28} className="text-white" /></button></div>
-      </div>
-    );
-  }
-
   return (
     <div className="fixed inset-0 z-[80] bg-gray-900 flex flex-col max-w-md mx-auto">
-      {error && <div className="absolute top-4 left-4 right-4 z-20"><div className="bg-red-500/90 text-white text-sm px-4 py-3 rounded-xl flex items-start gap-2"><span className="flex-1">{error}</span>
-        {showFallback && <button onClick={openInBrowser} className="text-white font-semibold underline text-xs whitespace-nowrap">Open in Browser</button>}</div></div>}
-      <div className="flex-1 relative">
-        <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="text-center"><div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center mx-auto mb-3"><Video size={36} className="text-gray-500" /></div><p className="text-gray-400 text-sm">Naghihintay ng video ni {otherName}...</p></div></div>
-      </div>
-      <div className="absolute top-4 right-4 w-28 h-40 rounded-2xl overflow-hidden bg-gray-800 border-2 border-white/20 shadow-lg z-10">
-        <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
-        {!camOn && <div className="absolute inset-0 bg-gray-800 flex items-center justify-center"><VideoOff size={20} className="text-gray-500" /></div>}
-      </div>
-      <div className="absolute top-4 left-4 z-10">
-        <p className="text-white font-semibold text-sm drop-shadow-lg">{otherName}</p>
-        <p className="text-white/60 text-xs">Live na video call</p>
-        {isCaller && creditsLeft !== null && (
-          <div className="mt-1 flex items-center gap-2">
+      {error && (
+        <div className="absolute top-4 left-4 right-4 z-20">
+          <div className="bg-red-500/90 text-white text-sm px-4 py-3 rounded-xl flex items-start gap-2">
+            <span className="flex-1">{error}</span>
+            {showFallback && <button onClick={openInBrowser} className="text-white font-semibold underline text-xs whitespace-nowrap">Open in Browser</button>}
+          </div>
+        </div>
+      )}
+
+      {/* ZEGOCLOUD SDK renders the video call UI inside this container */}
+      <div ref={containerRef} className="flex-1 w-full h-full" />
+
+      {/* Credit + timer overlay (caller only) */}
+      {phase === 'connected' && isCaller && creditsLeft !== null && (
+        <div className="absolute top-4 left-4 z-10">
+          <div className="flex items-center gap-2">
             <span className="flex items-center gap-1 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
               <Coins size={12} /> {creditsLeft} credits
             </span>
@@ -571,12 +254,14 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, preWarmedSt
               <Clock size={12} /> {Math.floor(callSeconds / 60)}:{String(callSeconds % 60).padStart(2, '0')}
             </span>
           </div>
-        )}
-      </div>
-      <div className="pb-8 pt-4 px-6 flex items-center justify-center gap-5 bg-gradient-to-t from-gray-900 to-transparent">
-        <button onClick={toggleMic} className={`w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition shadow-lg ${micOn ? 'bg-white/15' : 'bg-white'}`}>{micOn ? <Mic size={24} className="text-white" /> : <MicOff size={24} className="text-gray-800" />}</button>
-        <button onClick={toggleCam} className={`w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition shadow-lg ${camOn ? 'bg-white/15' : 'bg-white'}`}>{camOn ? <Video size={24} className="text-white" /> : <VideoOff size={24} className="text-gray-800" />}</button>
-        <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center active:scale-90 transition shadow-lg"><PhoneOff size={28} className="text-white" /></button>
+        </div>
+      )}
+
+      {/* Custom end call button overlay */}
+      <div className="absolute bottom-8 left-0 right-0 z-10 flex items-center justify-center">
+        <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center active:scale-90 transition shadow-lg">
+          <PhoneOff size={28} className="text-white" />
+        </button>
       </div>
     </div>
   );

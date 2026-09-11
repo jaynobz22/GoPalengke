@@ -13,6 +13,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
     "@vitejs/plugin-react": "4.3.4",
+    "@zegocloud/zego-uikit-prebuilt": "^2.18.4",
     "autoprefixer": "^10.4.18",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.446.0",
