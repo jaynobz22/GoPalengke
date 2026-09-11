@@ -108,16 +108,17 @@ export function VideoCall({ isCaller, otherName, onEnd }: VideoCallProps) {
         const ZegoUIKitPrebuilt = await loadZegoSDK();
         if (cancelled) return;
 
-        // Wait for container to be in the DOM (should be immediate — it's always rendered)
-        let container = containerRef.current;
+        // Use getElementById to guarantee we target the exact DOM element,
+        // independent of React ref timing.
+        let targetEl = document.getElementById('zego-video-frame');
         let retries = 0;
-        while (!container && retries < 30 && !cancelled) {
+        while (!targetEl && retries < 30 && !cancelled) {
           await new Promise<void>(r => requestAnimationFrame(() => r()));
-          container = containerRef.current;
+          targetEl = document.getElementById('zego-video-frame');
           retries++;
         }
-        if (cancelled || !container) {
-          console.error('[VideoCall] Container never appeared');
+        if (cancelled || !targetEl) {
+          console.error('[VideoCall] Container element never appeared');
           hasJoined.current = false;
           setError('Video container not available.');
           return;
@@ -145,8 +146,9 @@ export function VideoCall({ isCaller, otherName, onEnd }: VideoCallProps) {
         console.log('!!! GO_PALENGKE_JOINING_ROOM:', FINAL_ROOM_ID);
 
         zp.joinRoom({
-          container,
+          container: targetEl,
           scenario: { mode: ZegoUIKitPrebuilt.OneONoneCall },
+          showPreJoinView: false,
           showScreenSharingButton: false,
           showMyCameraToggleButton: false,
           showMyMicrophoneToggleButton: false,
@@ -203,18 +205,22 @@ export function VideoCall({ isCaller, otherName, onEnd }: VideoCallProps) {
   // The ZEGO container div is NEVER conditionally removed.
   // Overlays are positioned absolutely on top of it.
   return (
-    <div className="fixed inset-0 max-w-md mx-auto overflow-hidden bg-gray-900">
+    <>
 
-      {/* ZEGO injects its video UI here. Always rendered. Always in DOM. */}
+      {/* ZEGO injects its video UI here. Always rendered. Always in DOM.
+          Fixed positioning + forced styles so no parent container can clip it. */}
       <div
         ref={containerRef}
         id="zego-video-frame"
         style={{
           width: '100%',
           height: '100vh',
-          position: 'relative',
-          zIndex: 9999,
-          background: '#111827',
+          display: 'block',
+          zIndex: 999,
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          background: '#000',
         }}
       />
 
@@ -222,7 +228,7 @@ export function VideoCall({ isCaller, otherName, onEnd }: VideoCallProps) {
 
       {/* No credits */}
       {showNoCreditsAlert && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 px-5" style={{ zIndex: 10001 }}>
+        <div className="fixed inset-0 flex flex-col items-center justify-center bg-gray-900 px-5" style={{ zIndex: 1001 }}>
           <div className="text-center">
             <div className="w-24 h-24 rounded-full bg-red-600 flex items-center justify-center mx-auto mb-4">
               <Coins size={40} className="text-white" />
@@ -238,7 +244,7 @@ export function VideoCall({ isCaller, otherName, onEnd }: VideoCallProps) {
 
       {/* PWA fallback */}
       {showFallback && !showNoCreditsAlert && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-blue-900 to-gray-900 px-5" style={{ zIndex: 10001 }}>
+        <div className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-blue-900 to-gray-900 px-5" style={{ zIndex: 1001 }}>
           <div className="text-center">
             <div className="w-28 h-28 rounded-full bg-amber-600 flex items-center justify-center mx-auto mb-4">
               <AlertCircle size={48} className="text-white" />
@@ -257,7 +263,7 @@ export function VideoCall({ isCaller, otherName, onEnd }: VideoCallProps) {
 
       {/* Call ended */}
       {phase === 'ended' && !showNoCreditsAlert && !showFallback && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900" style={{ zIndex: 10001 }}>
+        <div className="fixed inset-0 flex flex-col items-center justify-center bg-gray-900" style={{ zIndex: 1001 }}>
           <div className="text-center">
             <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center mx-auto mb-4">
               <PhoneOff size={36} className="text-gray-400" />
@@ -271,9 +277,9 @@ export function VideoCall({ isCaller, otherName, onEnd }: VideoCallProps) {
         </div>
       )}
 
-      {/* Connecting / outgoing overlay — sits on top of (hidden) ZEGO container */}
+      {/* Connecting / outgoing overlay — completely unmounts when phase === 'connected' */}
       {phase !== 'connected' && phase !== 'ended' && !showFallback && !showNoCreditsAlert && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-blue-900 to-gray-900" style={{ zIndex: 10000 }}>
+        <div className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-blue-900 to-gray-900" style={{ zIndex: 1000 }}>
           <div className="text-center">
             <div className="w-28 h-28 rounded-full bg-blue-700 flex items-center justify-center mx-auto mb-6 animate-pulse">
               <Video size={48} className="text-white" />
@@ -304,7 +310,7 @@ export function VideoCall({ isCaller, otherName, onEnd }: VideoCallProps) {
 
       {/* Credit + timer (caller, connected) */}
       {phase === 'connected' && isCaller && creditsLeft !== null && (
-        <div className="absolute top-4 left-4 flex items-center gap-2" style={{ zIndex: 10001 }}>
+        <div className="fixed top-4 left-4 flex items-center gap-2" style={{ zIndex: 1001 }}>
           <span className="flex items-center gap-1 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
             <Coins size={12} /> {creditsLeft} credits
           </span>
@@ -316,12 +322,12 @@ export function VideoCall({ isCaller, otherName, onEnd }: VideoCallProps) {
 
       {/* End call button (connected) */}
       {phase === 'connected' && (
-        <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center" style={{ zIndex: 10001 }}>
+        <div className="fixed bottom-8 left-0 right-0 flex items-center justify-center" style={{ zIndex: 1001 }}>
           <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center active:scale-90 transition shadow-lg">
             <PhoneOff size={28} className="text-white" />
           </button>
         </div>
       )}
-    </div>
+    </>
   );
 }
