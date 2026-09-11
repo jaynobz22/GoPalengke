@@ -9,7 +9,7 @@ export function getZegoUIKitPrebuilt(): any {
     throw new Error('ZEGOCLOUD SDK can only be used in the browser');
   }
   if (!window.ZegoUIKitPrebuilt) {
-    throw new Error('ZEGOCLOUD SDK failed to load. Check your internet connection.');
+    throw new Error('ZEGOCLOUD SDK is still loading. Please try again in a moment.');
   }
   return window.ZegoUIKitPrebuilt;
 }
