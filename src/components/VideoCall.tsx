@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { Video, PhoneOff, ExternalLink, AlertCircle, Coins, Clock } from 'lucide-react';
 import { VIDEO_CREDIT_RATE_SECONDS } from '@/lib/types';
-import { isZegoLoaded, getZegoUIKitPrebuilt } from '@/lib/zego';
+import { loadZegoSDK } from '@/lib/zego';
 
 const ZEGO_APP_ID = 859723970;
 const ZEGO_SERVER_SECRET = 'b09d6611fd4974338195c5e40cb94eb8';
@@ -23,8 +23,17 @@ function log(...args: unknown[]) {
   console.log('%c[VideoCall]', 'color:#3b82f6;font-weight:bold', ...args);
 }
 
-const MAX_INIT_RETRIES = 50;
-const RETRY_DELAY_MS = 100;
+function validateZegoConfig(appId: number, serverSecret: string): void {
+  if (!appId || isNaN(appId) || appId <= 0) {
+    throw new Error(`Invalid ZEGO AppID: ${appId}`);
+  }
+  if (!serverSecret || typeof serverSecret !== 'string' || serverSecret.length < 10) {
+    throw new Error(`Invalid ZEGO ServerSecret: "${serverSecret}"`);
+  }
+  if (serverSecret.includes('[I-PASTE') || serverSecret.includes('PASTE')) {
+    throw new Error('ZEGO ServerSecret is a placeholder, not a real key');
+  }
+}
 
 export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps) {
   const { profile } = useAuth();
@@ -37,6 +46,7 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
   const [creditsLeft, setCreditsLeft] = useState<number | null>(null);
   const [callSeconds, setCallSeconds] = useState(0);
   const [showNoCreditsAlert, setShowNoCreditsAlert] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   const creditTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -98,7 +108,7 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
 
     if (!profile?.id) return;
 
-    log('MOUNT', `roomId=${roomId} isCaller=${isCaller}`);
+    log('MOUNT', `roomId=${roomId} isCaller=${isCaller} retryKey=${retryKey}`);
 
     if (!hasMediaDevices()) {
       if (isStandalonePWA()) setShowFallback(true);
@@ -106,97 +116,90 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
       return;
     }
 
-    let retryCount = 0;
-    let timeoutId: ReturnType<typeof setTimeout>;
     let cancelled = false;
 
-    const tryInit = () => {
-      if (cancelled || !mountedRef.current) return;
+    const initZego = async () => {
+      try {
+        log('Loading ZEGOCLOUD SDK...');
+        const ZegoUIKitPrebuilt = await loadZegoSDK();
 
-      if (!isZegoLoaded()) {
-        log('SDK not loaded yet, retry', retryCount);
-        retryCount++;
-        if (retryCount >= MAX_INIT_RETRIES) {
-          log('SDK failed to load after max retries');
-          if (mountedRef.current) setError('Hindi ma-load ang video call SDK. Paki-refresh ang page at subukang muli.');
-          return;
-        }
-        timeoutId = setTimeout(tryInit, RETRY_DELAY_MS);
-        return;
-      }
-
-      const container = containerRef.current;
-      if (!container) {
-        log('Container not ready, retrying');
-        timeoutId = setTimeout(tryInit, RETRY_DELAY_MS);
-        return;
-      }
-
-      const userID = profile.id;
-      const userName = profile.full_name || `user_${userID.slice(0, 6)}`;
-
-      setTimeout(() => {
         if (cancelled || !mountedRef.current) return;
 
-        try {
-          const ZegoUIKitPrebuilt = getZegoUIKitPrebuilt();
-          log('Generating ZEGOCLOUD Kit Token');
-          const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
-            ZEGO_APP_ID,
-            ZEGO_SERVER_SECRET,
-            roomId,
-            userID,
-            userName,
-          );
+        const appIdNum = Number(ZEGO_APP_ID);
+        const serverSecretStr = String(ZEGO_SERVER_SECRET);
+        validateZegoConfig(appIdNum, serverSecretStr);
 
-          const zp = ZegoUIKitPrebuilt.create(kitToken);
-          zpRef.current = zp;
-
-          log('Joining ZEGOCLOUD room', roomId);
-
-          zp.joinRoom({
-            container,
-            scenario: {
-              mode: ZegoUIKitPrebuilt.OneONoneCall,
-            },
-            showScreenSharingButton: false,
-            showMyCameraToggleButton: false,
-            showMyMicrophoneToggleButton: false,
-            showTextChat: false,
-            showUserList: false,
-            turnOnCameraWhenJoining: true,
-            turnOnMicrophoneWhenJoining: true,
-            onJoinRoom: () => {
-              log('ZEGO onJoinRoom — call connected');
-              if (mountedRef.current) {
-                setPhase('connected');
-                setError(null);
-              }
-              startCreditDeduction();
-            },
-            onLeaveRoom: () => {
-              log('ZEGO onLeaveRoom — call ended');
-              stopCreditDeduction();
-              if (mountedRef.current) setPhase('ended');
-            },
-          });
-        } catch (err: any) {
-          log('ZEGO INIT ERROR', err);
-          if (mountedRef.current) setError(`Hindi ma-start ang video call: ${err?.message || String(err)}`);
+        const container = containerRef.current;
+        if (!container) {
+          log('Container not ready after SDK load — will retry on next render');
+          if (mountedRef.current) setRetryKey(k => k + 1);
+          return;
         }
-      }, 100);
+
+        const userID = profile.id;
+        const userName = profile.full_name || `user_${userID.slice(0, 6)}`;
+
+        await new Promise<void>(resolve => setTimeout(resolve, 100));
+
+        if (cancelled || !mountedRef.current) return;
+
+        log('Generating ZEGOCLOUD Kit Token');
+        const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
+          appIdNum,
+          serverSecretStr,
+          roomId,
+          userID,
+          userName,
+        );
+
+        const zp = ZegoUIKitPrebuilt.create(kitToken);
+        zpRef.current = zp;
+
+        log('Joining ZEGOCLOUD room', roomId);
+
+        zp.joinRoom({
+          container,
+          scenario: {
+            mode: ZegoUIKitPrebuilt.OneONoneCall,
+          },
+          showScreenSharingButton: false,
+          showMyCameraToggleButton: false,
+          showMyMicrophoneToggleButton: false,
+          showTextChat: false,
+          showUserList: false,
+          turnOnCameraWhenJoining: true,
+          turnOnMicrophoneWhenJoining: true,
+          onJoinRoom: () => {
+            log('ZEGO onJoinRoom — call connected');
+            if (mountedRef.current) {
+              setPhase('connected');
+              setError(null);
+            }
+            startCreditDeduction();
+          },
+          onLeaveRoom: () => {
+            log('ZEGO onLeaveRoom — call ended');
+            stopCreditDeduction();
+            if (mountedRef.current) setPhase('ended');
+          },
+        });
+      } catch (err: any) {
+        console.error('ZEGO_INIT_FAILED:', err);
+        if (mountedRef.current) {
+          setError(`Hindi ma-start ang video call: ${err?.message || String(err)}`);
+        }
+      }
     };
 
-    timeoutId = setTimeout(tryInit, 100);
+    initZego();
 
     return () => {
       cancelled = true;
       mountedRef.current = false;
-      clearTimeout(timeoutId);
       cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, profile?.id]);
+  }, [roomId, profile?.id, retryKey]);
 
   function openInBrowser() {
     window.open(window.location.href, '_blank', 'noopener,noreferrer');
