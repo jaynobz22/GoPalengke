@@ -12,6 +12,7 @@ export interface Profile {
   district: string | null;
   city: string | null;
   region: string | null;
+  complete_address: string | null;
   avatar_url: string | null;
   house_photo_url: string | null;
   slug: string | null;

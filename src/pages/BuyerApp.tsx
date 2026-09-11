@@ -1294,7 +1294,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
     city: profile?.city || '',
     region: profile?.region || 'NCR',
   });
-  const [addressDetails, setAddressDetails] = useState('');
+  const [addressDetails, setAddressDetails] = useState(profile?.complete_address || '');
   const [paymentMethod, setPaymentMethod] = useState<'qr_code' | 'cod'>('qr_code');
   const [note, setNote] = useState('');
   const [deliveryPin, setDeliveryPin] = useState<Coords | null>(null);
@@ -2962,6 +2962,8 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
     region: profile?.region || 'NCR',
   });
   const [saving, setSaving] = useState(false);
+  const [completeAddress, setCompleteAddress] = useState(profile?.complete_address || '');
+  const [savingAddress, setSavingAddress] = useState(false);
 
   async function saveLocation() {
     if (!profile) return;
@@ -2974,6 +2976,16 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
     }).eq('id', profile.id);
     setSaving(false);
     setShowLocationModal(false);
+  }
+
+  async function saveCompleteAddress() {
+    if (!profile) return;
+    setSavingAddress(true);
+    await supabase.from('profiles').update({
+      complete_address: completeAddress || null,
+    }).eq('id', profile.id);
+    await refreshProfile();
+    setSavingAddress(false);
   }
 
   return (
@@ -3059,6 +3071,47 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
         </div>
         <ChevronRight size={18} className="text-gray-300" />
       </button>
+
+      {/* Complete Address */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4 mt-2">
+        <div className="flex items-center gap-2 mb-1">
+          <Home size={18} className="text-brand-600" />
+          <h3 className="font-semibold text-sm text-gray-800">Buong Address ng Bahay</h3>
+        </div>
+        <p className="text-xs text-gray-400 mb-3 leading-relaxed">
+          I-type ang buong address ng bahay mo (hal. Blk 3 Lot 12, Phase 2, Subdivision). Makikita ito ng rider kasama ang barangay, city, at region.
+        </p>
+        <textarea
+          value={completeAddress}
+          onChange={(e) => setCompleteAddress(e.target.value)}
+          placeholder="Hal. Blk 3 Lot 12, Phase 2, Subdivision, malapit sa gate"
+          rows={3}
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition text-sm resize-none"
+        />
+        <button
+          onClick={saveCompleteAddress}
+          disabled={savingAddress}
+          className="w-full mt-3 py-3 bg-brand-600 text-white rounded-xl font-semibold text-sm active:scale-[0.98] transition disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {savingAddress ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Nagsasave...
+            </>
+          ) : (
+            <>
+              <Check size={16} />
+              I-save ang Address
+            </>
+          )}
+        </button>
+        {profile?.complete_address && (
+          <div className="mt-2 flex items-start gap-1.5 text-xs text-green-600">
+            <CheckCircle size={14} className="mt-0.5 flex-shrink-0" />
+            <span>Nai-save na: {profile.complete_address}</span>
+          </div>
+        )}
+      </div>
 
       {/* Video Call Credits */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4 mt-2">
