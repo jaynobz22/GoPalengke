@@ -1,12 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import { compressImage } from '@/lib/imageCompress';
 import type { VideoCreditPurchase, CreditPackage } from '@/lib/types';
 import { VIDEO_CREDIT_PACKAGES } from '@/lib/types';
 import {
   Video, Loader2, X, Check, AlertCircle, QrCode,
-  Upload, Coins, Clock, ShoppingCart,
+  Coins, Clock, ShoppingCart, Download,
 } from 'lucide-react';
 
 export function VideoCreditStore() {
@@ -122,9 +121,9 @@ export function VideoCreditStore() {
         <p className="text-xs text-blue-700 font-medium mb-2">Paano bumili:</p>
         <ul className="text-xs text-blue-600 space-y-1">
           <li>1. Piliin ang package na gusto mo</li>
-          <li>2. I-scan ang GoTyme QR code gamit ang e-wallet app</li>
+          <li>2. I-scan ang QR code gamit ang e-wallet app, o i-download ang QR para i-upload sa GCash</li>
           <li>3. Magbayad at kumuha ng reference number</li>
-          <li>4. I-upload ang screenshot at i-submit para sa approval</li>
+          <li>4. Ilagay ang reference number at i-submit para sa approval</li>
           <li>5. Maghintay ng admin approval — idadagdag ang credits sa account mo</li>
         </ul>
       </div>
@@ -194,13 +193,10 @@ function PaymentModal({
 }) {
   const { profile } = useAuth();
   const [referenceNumber, setReferenceNumber] = useState('');
-  const [screenshotUrl, setScreenshotUrl] = useState('');
-  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [qrLoading, setQrLoading] = useState(true);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function loadQrCode() {
@@ -216,27 +212,21 @@ function PaymentModal({
     loadQrCode();
   }, []);
 
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setError(null);
-    setUploading(true);
+  async function handleDownloadQr() {
+    if (!qrCodeUrl) return;
     try {
-      const compressed = await compressImage(file);
-      const ext = compressed.name.split('.').pop() || 'webp';
-      const fileName = `payments/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from('payment-screenshots')
-        .upload(fileName, compressed);
-      if (uploadError) throw uploadError;
-      const { data: { publicUrl } } = supabase.storage
-        .from('payment-screenshots')
-        .getPublicUrl(fileName);
-      setScreenshotUrl(publicUrl);
-    } catch (err: any) {
-      setError(err.message || 'Hindi ma-upload ang larawan.');
-    } finally {
-      setUploading(false);
+      const res = await fetch(qrCodeUrl);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'gopalengke-qr-code.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(qrCodeUrl, '_blank');
     }
   }
 
@@ -244,7 +234,6 @@ function PaymentModal({
     e.preventDefault();
     if (!profile) return;
     if (!referenceNumber.trim()) { setError('Ilagay ang payment reference number.'); return; }
-    if (!screenshotUrl) { setError('Mag-upload ng screenshot ng payment.'); return; }
     setSubmitting(true);
     setError(null);
     const { error: insertError } = await supabase.from('video_credit_purchases').insert({
@@ -252,7 +241,6 @@ function PaymentModal({
       credits: pkg.credits,
       amount_paid: pkg.price,
       reference_number: referenceNumber.trim(),
-      screenshot_url: screenshotUrl,
       status: 'pending',
     });
     setSubmitting(false);
@@ -267,7 +255,7 @@ function PaymentModal({
     <div className="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center px-4 overflow-y-auto">
       <div className="bg-white rounded-3xl w-full max-w-sm my-8 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-3xl">
+        <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-3xl z-10">
           <h2 className="font-bold text-gray-800">Bumili ng {pkg.credits} Credits</h2>
           <button onClick={onClose} className="p-1 -mr-1">
             <X size={22} className="text-gray-400" />
@@ -292,6 +280,20 @@ function PaymentModal({
                 </div>
               )}
             </div>
+            {qrCodeUrl && !qrLoading && (
+              <button
+                type="button"
+                onClick={handleDownloadQr}
+                className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-xs font-semibold active:scale-95 transition"
+              >
+                <Download size={14} /> I-download ang QR Code
+              </button>
+            )}
+            {qrCodeUrl && !qrLoading && (
+              <p className="text-xs text-gray-400 mt-2 px-2">
+                Kung isang phone lang gamit mo, i-download ang QR para ma-upload sa GCash app.
+              </p>
+            )}
           </div>
 
           {/* Amount to Pay */}
@@ -312,45 +314,9 @@ function PaymentModal({
               placeholder="Ilagay ang reference number mula sa e-wallet"
               className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-brand-400"
             />
-          </div>
-
-          {/* Screenshot Upload */}
-          <div>
-            <label className="text-sm font-medium text-gray-600 mb-1 block">
-              Screenshot ng Payment
-            </label>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            {screenshotUrl ? (
-              <div className="relative">
-                <img src={screenshotUrl} alt="Payment screenshot" className="w-full h-40 rounded-xl object-cover" />
-                <button
-                  type="button"
-                  onClick={() => setScreenshotUrl('')}
-                  className="absolute bottom-2 right-2 bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-1"
-                >
-                  <X size={14} /> Palitan
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="w-full h-40 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 text-gray-400 active:scale-[0.98] transition disabled:opacity-50"
-              >
-                {uploading ? (
-                  <><Loader2 size={28} className="animate-spin" /><span className="text-sm">Nag-uupload...</span></>
-                ) : (
-                  <><Upload size={28} /><span className="text-sm">Mag-upload ng screenshot</span></>
-                )}
-              </button>
-            )}
+            <p className="text-xs text-gray-400 mt-1.5">
+              Makikita ang reference number sa confirmation message o receipt ng e-wallet pagkatapos magbayad.
+            </p>
           </div>
 
           {error && (

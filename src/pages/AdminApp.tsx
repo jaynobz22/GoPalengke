@@ -2401,9 +2401,8 @@ function VideoCreditsTab() {
                 <span className="font-mono font-medium text-gray-700 truncate">{p.reference_number}</span>
               </div>
 
-              {/* Screenshot thumbnail — only shown for pending requests.
-                  After approve/reject the image is auto-deleted from storage
-                  and screenshot_url becomes NULL, so we hide this section. */}
+              {/* Screenshot thumbnail — legacy: only shown if a purchase has one.
+                  New purchases no longer require a screenshot; reference number only. */}
               {p.screenshot_url && p.status === 'pending' && (
                 <div className="mb-3">
                   <button
