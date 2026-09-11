@@ -9,8 +9,9 @@ import { AdminVideoCall } from '@/components/AdminVideoCall';
 import { AdminChat, getOrCreateAdminConversation } from '@/components/AdminChat';
 import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { UserProfileReview } from '@/components/UserProfileReview';
 import {
-  Megaphone, Plus, Trash2, Power, Check, Loader2, LogOut,
+  Megaphone, Plus, Trash2, Power, Check, Loader2, LogOut, Eye,
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
   AlertCircle, X, UserCheck, UserX, DollarSign, TrendingUp, Receipt,
   Lock, Unlock, Video, MessageCircle, Shield, QrCode, MapPin, Mail, Send, Coins,
@@ -360,6 +361,7 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
   const [subtab, setSubtab] = useState<UserSubtab>('active');
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [reviewingUser, setReviewingUser] = useState<Profile | null>(null);
 
   const load = useCallback(async () => {
     let q = supabase.from('profiles').select('*').order('created_at', { ascending: false });
@@ -549,9 +551,18 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
                 </button>
               </div>
 
+              {/* View Profile Button */}
+              <button
+                onClick={() => setReviewingUser(user)}
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold bg-brand-50 text-brand-600 border border-brand-200 active:scale-95 transition mb-2"
+              >
+                <Eye size={15} />
+                Silipin ang Profile
+              </button>
+
               {/* Chat + Video Call + Delete */}
               {user.id !== adminProfile?.id && (
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2">
                   <button
                     onClick={() => onStartChat(user)}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200 active:scale-95 transition"
@@ -578,6 +589,10 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
             </div>
           ))}
         </div>
+      )}
+
+      {reviewingUser && (
+        <UserProfileReview user={reviewingUser} onClose={() => setReviewingUser(null)} />
       )}
     </div>
   );
