@@ -5,11 +5,16 @@ import { Video, PhoneOff, ExternalLink, AlertCircle, Coins, Clock } from 'lucide
 import { VIDEO_CREDIT_RATE_SECONDS } from '@/lib/types';
 import { loadZegoSDK } from '@/lib/zego';
 
-const ZEGO_APP_ID = 859723970;
-const ZEGO_SERVER_SECRET = 'b09d6611fd4974338195c5e40cb94eb8';
+// ─── ZEGO Credentials (sanitized) ───────────────────────────────────────────
+const ZEGO_APP_ID_RAW = 859723970;
+const ZEGO_SERVER_SECRET_RAW = 'b09d6611fd4974338195c5e40cb94eb8';
 
-// Fixed test room ID — guarantees both caller and receiver join the exact same room
-const TEST_ROOM_ID = 'gopalengke_global_test_room';
+// Strict casts — AppID must be a number, ServerSecret must be a trimmed string
+const ZEGO_APP_ID = Number(ZEGO_APP_ID_RAW);
+const ZEGO_SERVER_SECRET = String(ZEGO_SERVER_SECRET_RAW).trim();
+
+// Hardcoded debug room — both caller and receiver join this exact string
+const FINAL_ROOM_ID = 'gopalengke_debug_room_2026';
 
 type CallPhase = 'outgoing' | 'connecting' | 'connected' | 'ended';
 
@@ -22,17 +27,18 @@ interface VideoCallProps {
   onEnd: () => void;
 }
 
-function log(...args: unknown[]) {
-  console.log('%c[VideoCall]', 'color:#3b82f6;font-weight:bold', ...args);
-}
-
-export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps) {
+export function VideoCall({ isCaller, otherName, onEnd }: VideoCallProps) {
   const { profile } = useAuth();
+
+  // ─── Refs: ZEGO instance + init guards survive React re-renders ──────────
+  const zpInstance = useRef<any>(null);
+  const hasJoined = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const zpRef = useRef<any>(null);
+
   const creditTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const callTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ─── UI state only — never drives ZEGO lifecycle ─────────────────────────
   const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'connecting');
   const [error, setError] = useState<string | null>(null);
   const [showFallback, setShowFallback] = useState(false);
@@ -40,19 +46,7 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
   const [callSeconds, setCallSeconds] = useState(0);
   const [showNoCreditsAlert, setShowNoCreditsAlert] = useState(false);
 
-  function hasMediaDevices(): boolean {
-    return typeof navigator !== 'undefined'
-      && !!navigator.mediaDevices
-      && typeof navigator.mediaDevices.getUserMedia === 'function';
-  }
-
-  function isStandalonePWA(): boolean {
-    try {
-      return window.matchMedia('(display-mode: standalone)').matches
-        || (window.navigator as any).standalone === true;
-    } catch { return false; }
-  }
-
+  // ─── Credit deduction helpers ────────────────────────────────────────────
   const stopCreditDeduction = () => {
     if (creditTimerRef.current) { clearInterval(creditTimerRef.current); creditTimerRef.current = null; }
     if (callTimerRef.current) { clearInterval(callTimerRef.current); callTimerRef.current = null; }
@@ -68,84 +62,88 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
     }, 1000);
 
     creditTimerRef.current = setInterval(async () => {
-      log('DEDUCTING 1 credit');
       const { data, error: rpcError } = await supabase.rpc('deduct_video_credit');
-      if (rpcError) { log('CREDIT DEDUCT ERROR', rpcError.message); return; }
+      if (rpcError) return;
       const newBalance = data as number;
+      setCreditsLeft(newBalance);
       if (newBalance <= 0) {
         stopCreditDeduction();
         setShowNoCreditsAlert(true);
-        try { zpRef.current?.destroy(); } catch { /* ignore */ }
-        zpRef.current = null;
-        (window as any).zegoInitialized = false;
+        try { zpInstance.current?.destroy(); } catch { /* ignore */ }
+        zpInstance.current = null;
+        hasJoined.current = false;
       }
     }, VIDEO_CREDIT_RATE_SECONDS * 1000);
   };
 
+  // ─── SINGLE EFFECT: init ZEGO once, never destroy on re-render ──────────
   useEffect(() => {
     if (!profile?.id) return;
 
-    // Use the fixed test room ID — both sides join the exact same room
-    const effectiveRoomId = TEST_ROOM_ID;
-    log('MOUNT', `effectiveRoomId="${effectiveRoomId}" isCaller=${isCaller} window.zegoInitialized=${(window as any).zegoInitialized}`);
-
-    if (!hasMediaDevices()) {
-      if (isStandalonePWA()) setShowFallback(true);
-      setError('Hindi available ang camera sa device na ito.');
+    // Absolute guard: if ZEGO already joined, do nothing
+    if (hasJoined.current) {
+      console.log('[VideoCall] hasJoined already true — skipping init');
       return;
     }
 
-    // Block double-init via window property — survives React re-renders and StrictMode
-    if ((window as any).zegoInitialized) {
-      log('window.zegoInitialized is true — skipping duplicate init');
+    // Credential validation before anything else
+    if (!ZEGO_APP_ID || isNaN(ZEGO_APP_ID) || ZEGO_APP_ID <= 0) {
+      console.error('[VideoCall] Invalid AppID:', ZEGO_APP_ID);
+      setError('Invalid ZEGO AppID configuration.');
       return;
     }
-    (window as any).zegoInitialized = true;
-    log('Set window.zegoInitialized = true');
+    if (!ZEGO_SERVER_SECRET || ZEGO_SERVER_SECRET.length < 10) {
+      console.error('[VideoCall] Invalid ServerSecret');
+      setError('Invalid ZEGO ServerSecret configuration.');
+      return;
+    }
 
-    let asyncCancelled = false;
+    let cancelled = false;
 
-    const initZego = async () => {
+    const init = async () => {
+      hasJoined.current = true; // Set immediately to block any parallel run
+
       try {
-        log('Loading ZEGOCLOUD SDK...');
+        console.log('[VideoCall] Loading SDK...');
         const ZegoUIKitPrebuilt = await loadZegoSDK();
-        if (asyncCancelled) { log('Cancelled after SDK load'); return; }
+        if (cancelled) return;
 
-        const appIdNum = Number(ZEGO_APP_ID);
-        const serverSecretStr = String(ZEGO_SERVER_SECRET);
-        if (!appIdNum || isNaN(appIdNum) || appIdNum <= 0) throw new Error(`Invalid AppID: ${ZEGO_APP_ID}`);
-        if (!serverSecretStr || serverSecretStr.length < 10) throw new Error('Invalid ServerSecret');
-
-        // Poll for container — it's always rendered, so this should resolve immediately
+        // Wait for container to be in the DOM (should be immediate — it's always rendered)
         let container = containerRef.current;
         let retries = 0;
-        while (!container && retries < 30 && !asyncCancelled) {
-          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+        while (!container && retries < 30 && !cancelled) {
+          await new Promise<void>(r => requestAnimationFrame(() => r()));
           container = containerRef.current;
           retries++;
         }
-        if (asyncCancelled || !container) {
-          console.error('ZEGO_INIT_FAILED: Container not available');
-          (window as any).zegoInitialized = false;
+        if (cancelled || !container) {
+          console.error('[VideoCall] Container never appeared');
+          hasJoined.current = false;
+          setError('Video container not available.');
           return;
         }
 
-        // Small settle delay for DOM paint
-        await new Promise<void>(resolve => setTimeout(resolve, 200));
-        if (asyncCancelled) { (window as any).zegoInitialized = false; return; }
+        // Brief settle for DOM paint
+        await new Promise<void>(r => setTimeout(r, 200));
+        if (cancelled) { hasJoined.current = false; return; }
 
         const userID = profile.id;
         const userName = profile.full_name || `user_${userID.slice(0, 6)}`;
 
-        log('Generating kit token for room:', effectiveRoomId);
+        console.log('[VideoCall] Generating token for room:', FINAL_ROOM_ID);
         const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
-          appIdNum, serverSecretStr, effectiveRoomId, userID, userName,
+          ZEGO_APP_ID,
+          ZEGO_SERVER_SECRET,
+          FINAL_ROOM_ID,
+          userID,
+          userName,
         );
 
         const zp = ZegoUIKitPrebuilt.create(kitToken);
-        zpRef.current = zp;
+        zpInstance.current = zp;
 
-        log('Calling zp.joinRoom...');
+        console.log('!!! GO_PALENGKE_JOINING_ROOM:', FINAL_ROOM_ID);
+
         zp.joinRoom({
           container,
           scenario: { mode: ZegoUIKitPrebuilt.OneONoneCall },
@@ -157,76 +155,74 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
           turnOnCameraWhenJoining: true,
           turnOnMicrophoneWhenJoining: true,
           onJoinRoom: () => {
-            log('onJoinRoom — connected!');
+            console.log('[VideoCall] onJoinRoom — CONNECTED');
             setPhase('connected');
             setError(null);
             startCreditDeduction();
           },
           onLeaveRoom: () => {
-            log('onLeaveRoom — ended');
+            console.log('[VideoCall] onLeaveRoom — ENDED');
             stopCreditDeduction();
             setPhase('ended');
           },
         });
       } catch (err: any) {
-        console.error('ZEGO_INIT_FAILED:', err);
-        (window as any).zegoInitialized = false;
+        console.error('[VideoCall] INIT FAILED:', err);
+        hasJoined.current = false;
         setError(`Hindi ma-start ang video call: ${err?.message || String(err)}`);
       }
     };
 
-    initZego();
+    init();
 
-    // Cleanup: do NOT destroy on React re-render / StrictMode remount.
-    // Only destroy when the component is truly leaving (navigation away).
+    // Cleanup: intentionally does NOT destroy the ZEGO session.
+    // React may re-run this effect during state updates; we keep the session alive.
     return () => {
-      asyncCancelled = true;
-      // Intentionally NOT calling zp.destroy() here.
-      // The ZEGO session survives React's internal re-renders.
-      // It is cleaned up via endCall() or the credits-exhausted path.
-      log('useEffect cleanup — keeping ZEGO session alive (no destroy)');
+      cancelled = true;
+      // No zp.destroy() here — session survives React re-renders.
+      console.log('[VideoCall] effect cleanup — session preserved');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, profile?.id]);
+  }, [profile?.id]);
+
+  // ─── Explicit end call (user action) ────────────────────────────────────
+  function endCall() {
+    console.log('[VideoCall] endCall — destroying session');
+    stopCreditDeduction();
+    try { zpInstance.current?.destroy(); } catch { /* ignore */ }
+    zpInstance.current = null;
+    hasJoined.current = false;
+    setPhase('ended');
+  }
 
   function openInBrowser() {
     window.open(window.location.href, '_blank', 'noopener,noreferrer');
   }
 
-  function endCall() {
-    log('endCall — explicit destroy');
-    stopCreditDeduction();
-    try { zpRef.current?.destroy(); } catch { /* ignore */ }
-    zpRef.current = null;
-    (window as any).zegoInitialized = false;
-    setPhase('ended');
-  }
-
-  // SINGLE RETURN — container div is always in the DOM, overlays layered on top.
-  // The container is never conditionally removed, only its CSS visibility changes.
+  // ─── RENDER: single return, container always in DOM ─────────────────────
+  // The ZEGO container div is NEVER conditionally removed.
+  // Overlays are positioned absolutely on top of it.
   return (
-    <div className="fixed inset-0 z-[80] bg-gray-900 max-w-md mx-auto overflow-hidden">
+    <div className="fixed inset-0 max-w-md mx-auto overflow-hidden bg-gray-900">
 
-      {/* ZEGO injects its UI here. Always rendered, never unmounted by React.
-          Uses inline styles to guarantee dimensions regardless of CSS load order. */}
+      {/* ZEGO injects its video UI here. Always rendered. Always in DOM. */}
       <div
         ref={containerRef}
-        id="zego-video-container"
+        id="zego-video-frame"
         style={{
           width: '100%',
-          height: '100%',
-          position: 'absolute',
-          inset: 0,
-          // Hide the container visually until connected, but keep it in the DOM
-          // so ZEGO can inject into it. Once connected, show it.
-          visibility: phase === 'connected' ? 'visible' : 'hidden',
-          zIndex: phase === 'connected' ? 5 : 0,
+          height: '100vh',
+          position: 'relative',
+          zIndex: 9999,
+          background: '#111827',
         }}
       />
 
-      {/* ── NO CREDITS ── */}
+      {/* ── OVERLAYS (absolute, layered on top of container) ── */}
+
+      {/* No credits */}
       {showNoCreditsAlert && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 px-5" style={{ zIndex: 30 }}>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 px-5" style={{ zIndex: 10001 }}>
           <div className="text-center">
             <div className="w-24 h-24 rounded-full bg-red-600 flex items-center justify-center mx-auto mb-4">
               <Coins size={40} className="text-white" />
@@ -240,9 +236,9 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
         </div>
       )}
 
-      {/* ── PWA FALLBACK ── */}
+      {/* PWA fallback */}
       {showFallback && !showNoCreditsAlert && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-blue-900 to-gray-900 px-5" style={{ zIndex: 30 }}>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-blue-900 to-gray-900 px-5" style={{ zIndex: 10001 }}>
           <div className="text-center">
             <div className="w-28 h-28 rounded-full bg-amber-600 flex items-center justify-center mx-auto mb-4">
               <AlertCircle size={48} className="text-white" />
@@ -259,9 +255,9 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
         </div>
       )}
 
-      {/* ── CALL ENDED ── */}
+      {/* Call ended */}
       {phase === 'ended' && !showNoCreditsAlert && !showFallback && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900" style={{ zIndex: 30 }}>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900" style={{ zIndex: 10001 }}>
           <div className="text-center">
             <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center mx-auto mb-4">
               <PhoneOff size={36} className="text-gray-400" />
@@ -275,12 +271,9 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
         </div>
       )}
 
-      {/* ── CONNECTING / OUTGOING OVERLAY ──
-          This overlay sits on top of the (hidden) ZEGO container.
-          When phase becomes 'connected', this overlay disappears and the
-          container becomes visible — so ZEGO's UI is never blocked. */}
+      {/* Connecting / outgoing overlay — sits on top of (hidden) ZEGO container */}
       {phase !== 'connected' && phase !== 'ended' && !showFallback && !showNoCreditsAlert && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-blue-900 to-gray-900" style={{ zIndex: 20 }}>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-blue-900 to-gray-900" style={{ zIndex: 10000 }}>
           <div className="text-center">
             <div className="w-28 h-28 rounded-full bg-blue-700 flex items-center justify-center mx-auto mb-6 animate-pulse">
               <Video size={48} className="text-white" />
@@ -309,9 +302,9 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
         </div>
       )}
 
-      {/* ── CREDIT + TIMER (caller, when connected) ── */}
+      {/* Credit + timer (caller, connected) */}
       {phase === 'connected' && isCaller && creditsLeft !== null && (
-        <div className="absolute top-4 left-4 flex items-center gap-2" style={{ zIndex: 25 }}>
+        <div className="absolute top-4 left-4 flex items-center gap-2" style={{ zIndex: 10001 }}>
           <span className="flex items-center gap-1 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
             <Coins size={12} /> {creditsLeft} credits
           </span>
@@ -321,9 +314,9 @@ export function VideoCall({ roomId, isCaller, otherName, onEnd }: VideoCallProps
         </div>
       )}
 
-      {/* ── END CALL BUTTON (when connected) ── */}
+      {/* End call button (connected) */}
       {phase === 'connected' && (
-        <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center" style={{ zIndex: 25 }}>
+        <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center" style={{ zIndex: 10001 }}>
           <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center active:scale-90 transition shadow-lg">
             <PhoneOff size={28} className="text-white" />
           </button>
