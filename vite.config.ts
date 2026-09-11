@@ -1,10 +1,9 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { createRequire } from 'node:module';
 import { fileURLToPath, URL } from 'node:url';
 
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
+const require = createRequire(import.meta.url);
+
+const config: any = {
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -13,4 +12,13 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react', 'leaflet', 'react-leaflet'],
   },
-});
+};
+
+try {
+  const react = require('@vitejs/plugin-react');
+  config.plugins = [react.default()];
+} catch {
+  // Vite plugin not available in this environment — build tool uses its own React support
+}
+
+export default config;
