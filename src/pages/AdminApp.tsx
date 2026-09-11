@@ -21,7 +21,7 @@ export function AdminApp() {
   const { profile, signOut } = useAuth();
   const [tab, setTab] = useState<Tab>('overview');
   const [activeCall, setActiveCall] = useState<{ roomId: string; isCaller: boolean; callId: string; otherName: string } | null>(null);
-  const [activeChat, setActiveChat] = useState<{ conversationId: string; otherName: string } | null>(null);
+  const [activeChat, setActiveChat] = useState<{ conversationId: string; otherName: string; userId: string } | null>(null);
 
   function startAdminCall(user: Profile) {
     const roomId = `admin-call-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -49,7 +49,7 @@ export function AdminApp() {
     if (!profile) return;
     const convId = await getOrCreateAdminConversation(profile.id, user.id);
     if (convId) {
-      setActiveChat({ conversationId: convId, otherName: user.full_name });
+      setActiveChat({ conversationId: convId, otherName: user.full_name, userId: user.id });
     }
   }
 
@@ -113,7 +113,7 @@ export function AdminApp() {
       {tab === 'users' && <UsersTab onStartCall={startAdminCall} onStartChat={startAdminChat} />}
       {tab === 'geographic' && <GeographicTab />}
       {tab === 'campaigns' && <CampaignsTab />}
-      {tab === 'messages' && <AdminMessagesTab onOpenChat={(convId, name) => setActiveChat({ conversationId: convId, otherName: name })} />}
+      {tab === 'messages' && <AdminMessagesTab onOpenChat={(convId, name, userId) => setActiveChat({ conversationId: convId, otherName: name, userId })} />}
       {tab === 'fees' && <FeesTab />}
       {tab === 'announcements' && <AnnouncementsTab />}
       {tab === 'security' && <SecurityDashboardTab />}
@@ -127,6 +127,24 @@ export function AdminApp() {
           otherName={activeChat.otherName}
           isAdmin={true}
           onBack={endAdminChat}
+          onStartCall={isAdmin => {
+            if (!profile) return;
+            const roomId = `admin-call-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+            (async () => {
+              const { data, error } = await supabase
+                .from('admin_calls')
+                .insert({
+                  admin_id: profile.id,
+                  target_user_id: activeChat.userId,
+                  room_id: roomId,
+                  status: 'pending',
+                })
+                .select('*')
+                .single();
+              if (error || !data) return;
+              setActiveCall({ roomId, isCaller: true, callId: (data as AdminCall).id, otherName: activeChat.otherName });
+            })();
+          }}
         />
       )}
 
@@ -2084,7 +2102,7 @@ function SettingsTab() {
 }
 
 // ============= ADMIN MESSAGES TAB =============
-function AdminMessagesTab({ onOpenChat }: { onOpenChat: (conversationId: string, name: string) => void }) {
+function AdminMessagesTab({ onOpenChat }: { onOpenChat: (conversationId: string, name: string, userId: string) => void }) {
   const { profile } = useAuth();
   const [conversations, setConversations] = useState<(AdminConversation & { user: { full_name: string; email: string; role: string; avatar_url: string | null } })[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2160,7 +2178,7 @@ function AdminMessagesTab({ onOpenChat }: { onOpenChat: (conversationId: string,
             return (
               <button
                 key={c.id}
-                onClick={() => onOpenChat(c.id, c.user?.full_name || 'User')}
+                onClick={() => onOpenChat(c.id, c.user?.full_name || 'User', c.user_id)}
                 className="w-full bg-white rounded-2xl border border-gray-100 p-3 flex items-center gap-3 text-left active:scale-[0.98] transition"
               >
                 <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">

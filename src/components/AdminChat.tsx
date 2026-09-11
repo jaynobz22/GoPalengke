@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { AdminMessage } from '@/lib/types';
-import { ArrowLeft, Send, Shield, ImagePlus, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Send, Shield, ImagePlus, Trash2, X, Video } from 'lucide-react';
 import { compressImage } from '@/lib/imageCompress';
 
 interface AdminChatProps {
@@ -10,9 +10,10 @@ interface AdminChatProps {
   otherName: string;
   isAdmin: boolean;
   onBack: () => void;
+  onStartCall?: () => void;
 }
 
-export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, onBack }: AdminChatProps) {
+export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, onBack, onStartCall }: AdminChatProps) {
   const [messages, setMessages] = useState<AdminMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -156,6 +157,15 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
             <p className="text-white/60 text-xs">{isAdmin ? 'Admin Support' : 'GoPalengke Admin'}</p>
           </div>
         </div>
+        {isAdmin && onStartCall && (
+          <button
+            onClick={onStartCall}
+            className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition flex-shrink-0"
+            title="Video call"
+          >
+            <Video size={18} className="text-white" />
+          </button>
+        )}
         <button
           onClick={() => setShowDeleteConfirm(true)}
           className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition flex-shrink-0"
