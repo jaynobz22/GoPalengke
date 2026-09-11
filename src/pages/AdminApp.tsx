@@ -7,15 +7,16 @@ import { ImageUploadField } from '@/components/ImageUploadField';
 import { SecurityDashboardTab } from '@/components/SecurityDashboard';
 import { AdminVideoCall } from '@/components/AdminVideoCall';
 import { AdminChat, getOrCreateAdminConversation } from '@/components/AdminChat';
+import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
 import {
   Megaphone, Plus, Trash2, Power, Check, Loader2, LogOut,
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
   AlertCircle, X, UserCheck, UserX, DollarSign, TrendingUp, Receipt,
   Lock, Unlock, Video, MessageCircle, Shield, QrCode, MapPin, Mail, Send, Coins,
-  ChevronUp, ChevronDown,
+  ChevronUp, ChevronDown, BarChart3,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'announcements' | 'security' | 'video_credits' | 'settings';
+type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'announcements' | 'security' | 'video_credits' | 'settings' | 'analytics';
 
 export function AdminApp() {
   const { profile, signOut } = useAuth();
@@ -68,6 +69,7 @@ export function AdminApp() {
     { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'video_credits', label: 'Credits', icon: Coins },
+    { id: 'analytics', label: 'Stats', icon: BarChart3 },
   ];
 
   return (
@@ -118,6 +120,7 @@ export function AdminApp() {
       {tab === 'announcements' && <AnnouncementsTab />}
       {tab === 'security' && <SecurityDashboardTab />}
       {tab === 'video_credits' && <VideoCreditsTab />}
+      {tab === 'analytics' && <AnalyticsDashboard />}
       {tab === 'settings' && <SettingsTab />}
 
       {activeChat && profile && (
