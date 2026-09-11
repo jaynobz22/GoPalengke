@@ -530,7 +530,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const { profile } = useAuth();
   const [items, setItems] = useState<OrderItem[]>([]);
   const [store, setStore] = useState<Store | null>(null);
-  const [buyer, setBuyer] = useState<{ full_name: string; phone: string | null; avatar_url: string | null } | null>(null);
+  const [buyer, setBuyer] = useState<{ full_name: string; phone: string | null; avatar_url: string | null; house_photo_url: string | null } | null>(null);
   const [currentOrder, setCurrentOrder] = useState(order);
   const [updating, setUpdating] = useState(false);
   const [gpsActive, setGpsActive] = useState(false);
@@ -552,7 +552,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   useEffect(() => {
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
     supabase.from('stores').select('*').eq('id', order.store_id).maybeSingle().then(({ data }) => setStore(data as Store | null));
-    supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', order.buyer_id).maybeSingle().then(({ data }) => setBuyer(data as any));
+    supabase.from('profiles').select('full_name, phone, avatar_url, house_photo_url').eq('id', order.buyer_id).maybeSingle().then(({ data }) => setBuyer(data as any));
 
     if (order.delivery_group_id) {
       supabase.from('orders').select('*, store:stores(*)').eq('delivery_group_id', order.delivery_group_id)
@@ -888,6 +888,18 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
             <p className="font-semibold text-sm text-gray-800">{buyer?.full_name || 'Buyer'}</p>
             <p className="text-sm text-gray-500">{currentOrder.delivery_address}</p>
             <p className="text-sm text-gray-500">{currentOrder.delivery_barangay}, {currentOrder.delivery_city}, {currentOrder.delivery_region}</p>
+            {buyer?.house_photo_url && (
+              <div className="mt-2">
+                <p className="text-xs font-medium text-gray-500 mb-1">Larawan ng Bahay</p>
+                <img
+                  src={buyer.house_photo_url}
+                  alt="Bahay ng buyer"
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full max-w-[200px] rounded-xl border border-gray-200 object-cover h-32"
+                />
+              </div>
+            )}
           </div>
         </div>
         <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-around">

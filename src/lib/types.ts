@@ -13,6 +13,7 @@ export interface Profile {
   city: string | null;
   region: string | null;
   avatar_url: string | null;
+  house_photo_url: string | null;
   slug: string | null;
   is_available: boolean;
   is_approved: boolean;

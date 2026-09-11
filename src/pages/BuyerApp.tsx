@@ -1377,6 +1377,10 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
 
   async function placeOrder() {
     if (!profile) return;
+    if (!profile.house_photo_url) {
+      alert('Kailangan mag-upload ng larawan ng bahay mo sa Profile bago mag-order. Para makilala ng rider kung aling bahay ang pupuntahan.');
+      return;
+    }
     setPlacing(true);
 
     // Security: Order flooding check — max 4 distinct stores in 2 min
@@ -1534,6 +1538,19 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
         )}
       </div>
 
+      {/* House photo warning */}
+      {!profile?.house_photo_url && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4 flex items-start gap-3">
+          <Home size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-sm text-amber-800 mb-1">Kailangan ang larawan ng bahay</p>
+            <p className="text-xs text-amber-700 leading-relaxed">
+              Mag-upload muna ng larawan ng labas ng bahay (makikita ang pinto o gate) sa Profile mo bago ka makapag-order. Para makilala ng rider kung aling bahay ang pupuntahan.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Order Items by Store with Delivery Fee Breakdown */}
       {Object.entries(grouped).map(([storeId, items]) => {
         const store = items[0].store;
@@ -1661,7 +1678,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
 
       <button
         onClick={placeOrder}
-        disabled={placing || !canAct}
+        disabled={placing || !canAct || !profile?.house_photo_url}
         className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50"
       >
         {placing ? 'Nagpapadala...' : `Mag-order Na · ₱${grandTotal.toFixed(2)}`}
@@ -2901,6 +2918,7 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
   const { profile, refreshProfile } = useAuth();
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [housePhotoUploading, setHousePhotoUploading] = useState(false);
   const [location, setLocation] = useState<LocationData>({
     barangay: profile?.barangay || '',
     district: profile?.district || '',
@@ -2960,6 +2978,39 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
           }}
         />
         {avatarUploading && <p className="text-xs text-brand-500 mt-1">Nag-a-upload...</p>}
+      </div>
+
+      {/* House Photo Upload — required for delivery */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Home size={18} className="text-brand-600" />
+          <h3 className="font-semibold text-sm text-gray-800">Larawan ng Bahay (Required)</h3>
+        </div>
+        <p className="text-xs text-gray-400 mb-3 leading-relaxed">
+          Mag-upload ng larawan ng labas ng bahay na makikita ang pinto o gate. Para makilala ng rider kung aling bahay ang pupuntahan niya.
+        </p>
+        <ImageUploadField
+          label=""
+          value={profile?.house_photo_url || ''}
+          bucket="profile-images"
+          folder={`houses/${profile?.id}`}
+          aspectClass="h-40"
+          hint="Kailangan makita ang pinto o gate ng bahay."
+          onChange={async (url) => {
+            if (!profile) return;
+            setHousePhotoUploading(true);
+            await supabase.from('profiles').update({ house_photo_url: url || null }).eq('id', profile.id);
+            await refreshProfile();
+            setHousePhotoUploading(false);
+          }}
+        />
+        {housePhotoUploading && <p className="text-xs text-brand-500 mt-1">Nag-a-upload...</p>}
+        {profile?.house_photo_url && (
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-green-600">
+            <CheckCircle size={14} />
+            <span>Na-upload na ang larawan ng bahay</span>
+          </div>
+        )}
       </div>
 
       <button
