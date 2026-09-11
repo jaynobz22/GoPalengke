@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { Video, PhoneOff, Phone, AlertCircle } from 'lucide-react';
-import { ZegoUIKitPrebuilt } from '@zegocloud/zego-uikit-prebuilt';
+import { getZegoUIKitPrebuilt } from '@/lib/zego';
 
 const ZEGO_APP_ID = 859723970;
 const ZEGO_SERVER_SECRET = 'b09d6611fd4974338195c5e40cb94eb8';
@@ -45,6 +45,7 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
     const userName = profile.full_name || (isCaller ? 'Admin' : otherName);
 
     try {
+      const ZegoUIKitPrebuilt = getZegoUIKitPrebuilt();
       const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
         ZEGO_APP_ID,
         ZEGO_SERVER_SECRET,
@@ -88,13 +89,13 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
   async function acceptCall() {
     if (!zpRef.current || !containerRef.current) return;
     try {
+      const ZegoUIKitPrebuilt = getZegoUIKitPrebuilt();
       zpRef.current.joinRoom({
         container: containerRef.current,
         scenario: { mode: ZegoUIKitPrebuilt.OneONoneCall },
         showScreenSharingButton: false,
         showMyCameraToggleButton: false,
-        showMicrophoneToggleButton: false,
-        showAudioVideoButtons: false,
+        showMyMicrophoneToggleButton: false,
         showTextChat: false,
         showUserList: false,
         turnOnCameraWhenJoining: true,

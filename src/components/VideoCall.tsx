@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { Video, VideoOff, Mic, MicOff, PhoneOff, Phone, Loader2, ExternalLink, AlertCircle, Coins, Clock } from 'lucide-react';
 import { VIDEO_CREDIT_RATE_SECONDS } from '@/lib/types';
-import { ZegoUIKitPrebuilt } from '@zegocloud/zego-uikit-prebuilt';
+import { getZegoUIKitPrebuilt } from '@/lib/zego';
 
 const ZEGO_APP_ID = 859723970;
 const ZEGO_SERVER_SECRET = 'b09d6611fd4974338195c5e40cb94eb8';
@@ -108,6 +108,7 @@ export function VideoCall({ roomId, isCaller, otherName, autoAccept, onEnd }: Vi
     const userName = profile.full_name || `user_${userID.slice(0, 6)}`;
 
     try {
+      const ZegoUIKitPrebuilt = getZegoUIKitPrebuilt();
       log('Generating ZEGOCLOUD Kit Token');
       const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
         ZEGO_APP_ID,
