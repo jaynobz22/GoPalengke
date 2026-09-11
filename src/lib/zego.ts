@@ -4,6 +4,10 @@ declare global {
   }
 }
 
+export function isZegoLoaded(): boolean {
+  return typeof window !== 'undefined' && !!window.ZegoUIKitPrebuilt;
+}
+
 export function getZegoUIKitPrebuilt(): any {
   if (typeof window === 'undefined') {
     throw new Error('ZEGOCLOUD SDK can only be used in the browser');
