@@ -2258,13 +2258,17 @@ function VideoCreditsTab() {
   }, []);
 
   async function approve(id: string) {
-    const { error } = await supabase.rpc('approve_video_credit_purchase', { purchase_id: id });
-    if (error) {
-      showToast('Error approving: ' + error.message, 'error');
-      return;
+    try {
+      const { error } = await supabase.rpc('approve_video_credit_purchase', { purchase_id: id });
+      if (error) {
+        showToast('Error approving: ' + error.message, 'error');
+        return;
+      }
+      showToast('Na-approve na ang top-up request!', 'success');
+      load();
+    } catch (err: any) {
+      showToast('Error approving: ' + (err?.message || 'Hindi matapos ang approval.'), 'error');
     }
-    showToast('Na-approve na ang top-up request!', 'success');
-    load();
   }
 
   async function confirmReject(id: string) {
@@ -2273,19 +2277,24 @@ function VideoCreditsTab() {
       return;
     }
     setRejecting(true);
-    const { error } = await supabase.rpc('reject_video_credit_purchase', {
-      purchase_id: id,
-      p_rejection_reason: rejectReason.trim(),
-    });
-    setRejecting(false);
-    if (error) {
-      showToast('Error rejecting: ' + error.message, 'error');
-      return;
+    try {
+      const { error } = await supabase.rpc('reject_video_credit_purchase', {
+        purchase_id: id,
+        p_rejection_reason: rejectReason.trim(),
+      });
+      setRejecting(false);
+      if (error) {
+        showToast('Error rejecting: ' + error.message, 'error');
+        return;
+      }
+      showToast('Na-reject ang top-up request.', 'success');
+      setRejectingId(null);
+      setRejectReason('');
+      load();
+    } catch (err: any) {
+      setRejecting(false);
+      showToast('Error rejecting: ' + (err?.message || 'Hindi matapos ang reject.'), 'error');
     }
-    showToast('Na-reject ang top-up request.', 'success');
-    setRejectingId(null);
-    setRejectReason('');
-    load();
   }
 
   const filtered = purchases.filter(p => filter === 'all' ? true : p.status === filter);
