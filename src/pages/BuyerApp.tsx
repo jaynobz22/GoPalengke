@@ -173,7 +173,7 @@ export function BuyerApp() {
       {/* Content */}
       <div className="flex-1 pb-24 overflow-y-auto">
         {tab === 'home' && view === 'browse' && (
-          <BrowseView onProductClick={navigateToProduct} onStoreClick={navigateToStore} orderUpdates={orderUpdates} onOpenOrders={() => { setTab('orders'); setView('browse'); }} onSignOut={signOut} />
+          <BrowseView onProductClick={navigateToProduct} onStoreClick={navigateToStore} orderUpdates={orderUpdates} onOpenOrders={() => { setTab('orders'); setView('browse'); }} onSignOut={signOut} onGoToProfile={() => setTab('profile')} />
         )}
         {tab === 'home' && view === 'product' && selectedProduct && (
           <ProductView product={selectedProduct} store={selectedStore!} onBack={() => { setView('store'); setSelectedProduct(null); }} onAddToCart={refreshCart} onGoToStore={(s, pid) => { setSelectedStore(s); setHighlightProductId(pid); setSelectedProduct(null); setView('store'); }} />
@@ -272,7 +272,7 @@ export function BuyerApp() {
 }
 
 // ============= BROWSE VIEW =============
-function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, onSignOut }: { onProductClick: (p: Product, s: Store) => void; onStoreClick: (s: Store) => void; orderUpdates: number; onOpenOrders: () => void; onSignOut: () => void }) {
+function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, onSignOut, onGoToProfile }: { onProductClick: (p: Product, s: Store) => void; onStoreClick: (s: Store) => void; orderUpdates: number; onOpenOrders: () => void; onSignOut: () => void; onGoToProfile: () => void }) {
   const { profile } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<(Product & { store: Store })[]>([]);
@@ -395,8 +395,31 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
     return aRegion - bRegion;
   });
 
+  const needsProfilePic = !profile?.avatar_url;
+  const needsHousePhoto = !profile?.house_photo_url;
+  const showProfileBanner = needsProfilePic || needsHousePhoto;
+
   return (
     <div>
+      {/* Profile completion banner */}
+      {showProfileBanner && (
+        <button onClick={onGoToProfile} className="w-full bg-amber-50 border-b border-amber-200 px-5 py-3 flex items-center gap-3 text-left active:bg-amber-100 transition">
+          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+            {needsHousePhoto ? <Home size={20} className="text-amber-600" /> : <User size={20} className="text-amber-600" />}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-amber-800">Kumpleto ang profile mo</p>
+            <p className="text-xs text-amber-700 leading-snug">
+              {needsProfilePic && needsHousePhoto
+                ? 'Mag-upload ng profile picture at larawan ng bahay mo sa Profile tab.'
+                : needsProfilePic
+                ? 'Mag-upload ng profile picture mo sa Profile tab.'
+                : 'Mag-upload ng larawan ng bahay mo sa Profile tab. Kailangan ito bago makapag-order.'}
+            </p>
+          </div>
+          <ChevronRight size={18} className="text-amber-400 flex-shrink-0 ml-auto" />
+        </button>
+      )}
       {/* Header */}
       <div className="bg-gradient-to-br from-brand-600 to-brand-700 px-5 pt-12 pb-6 text-white">
         <div className="flex items-center justify-between mb-3">
