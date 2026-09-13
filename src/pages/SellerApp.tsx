@@ -63,6 +63,15 @@ export function SellerApp() {
 
   useEffect(() => { loadStore(); }, [loadStore]);
 
+  // Realtime: reload store when it changes (e.g. admin verifies the store)
+  useEffect(() => {
+    if (!profile) return;
+    const sub = supabase.channel('seller-store-updates')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stores', filter: `seller_id=eq.${profile.id}` }, () => loadStore())
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [profile, loadStore]);
+
   // Check and apply freezes, then load seller fee data
   useEffect(() => {
     if (!profile) return;
@@ -330,6 +339,7 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
   const [farmType, setFarmType] = useState('');
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -348,6 +358,7 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
       name, description,
       barangay: location.barangay, district: location.district, city: location.city, region: location.region,
       banner_url: bannerUrl || null,
+      qr_code_url: qrCodeUrl || null,
       payment_method: paymentMethod,
       palengke_name: sellerType === 'palengke' ? (finalPalengkeName || null) : null,
       seller_type: sellerType || null,
@@ -464,6 +475,15 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
           aspectClass="h-40"
           icon={<StoreIcon size={16} />}
         />
+        <ImageUploadField
+          label="QR Code (para sa GCash payment)"
+          value={qrCodeUrl}
+          onChange={setQrCodeUrl}
+          folder="qr-codes"
+          aspectClass="h-48"
+          icon={<QrCode size={16} />}
+          hint="I-screenshot ang QR code mo sa GCash app, tapos i-upload dito. Makikita ito ng buyers pag nag-checkout sila."
+        />
         <div>
           <label className="text-sm font-medium text-gray-600 mb-1 block">Payment Method</label>
           <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}
@@ -485,8 +505,7 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
 
 // ============= DASHBOARD =============
 function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onViewStore, onSignOut, unreadMessages, canAct }: { store: Store; onEditStore: () => void; onOpenMessages: () => void; onOpenOrders: () => void; onViewStore: () => void; onSignOut: () => void; unreadMessages: number; canAct: boolean }) {
-  const { profile, refreshProfile } = useAuth();
-  const [avatarUploading, setAvatarUploading] = useState(false);
+  const { profile } = useAuth();
   const [stats, setStats] = useState({ totalOrders: 0, pendingOrders: 0, totalRevenue: 0, productCount: 0, paidOrders: 0 });
   const [recentOrders, setRecentOrders] = useState<(Order & { buyer: { full_name: string } })[]>([]);
   const [isOpen, setIsOpen] = useState(store.is_open);
@@ -692,38 +711,6 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
           </div>
         )}
       </div>
-
-      {/* Profile Picture Upload */}
-      {profile && (
-        <div className="px-5 pb-4">
-          <div className="bg-white rounded-2xl border border-gray-100 p-4">
-            <div className="flex items-center gap-3 mb-4">
-              <Avatar src={profile?.avatar_url} name={profile?.full_name} size={64} />
-              <div>
-                <p className="font-bold text-gray-800">{profile?.full_name}</p>
-                <p className="text-sm text-gray-400">{profile?.email}</p>
-                <span className="inline-block mt-1 text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Tindera/Tindero</span>
-              </div>
-            </div>
-            <ImageUploadField
-              label="Profile Picture"
-              value={profile?.avatar_url || ''}
-              bucket="profile-images"
-              folder={`avatars/${profile?.id}`}
-              aspectClass="h-32"
-              hint="Mag-upload ng larawan para makilala ka ng buyers at riders. Para sa transparency ng transaction."
-              onChange={async (url) => {
-                if (!profile) return;
-                setAvatarUploading(true);
-                await supabase.from('profiles').update({ avatar_url: url || null }).eq('id', profile.id);
-                await refreshProfile();
-                setAvatarUploading(false);
-              }}
-            />
-            {avatarUploading && <p className="text-xs text-brand-500 mt-1">Nag-a-upload...</p>}
-          </div>
-        </div>
-      )}
 
       {/* Shareable Links */}
       {store.slug && (

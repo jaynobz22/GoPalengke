@@ -215,10 +215,16 @@ function OverviewTab() {
     }
     load();
 
-    // Realtime: reload when seller_fees or orders change so platform earnings stay live
+    // Realtime: reload when seller_fees, orders, or stores change so verification status stays live
     const sub = supabase.channel('admin-overview-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'seller_fees' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => load())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stores' }, (payload) => {
+        // If a store's is_verified changed, reload the overview
+        if (payload.new && payload.old && payload.new.is_verified !== payload.old.is_verified) {
+          load();
+        }
+      })
       .subscribe();
     return () => { supabase.removeChannel(sub); };
   }, []);
@@ -275,8 +281,10 @@ function OverviewTab() {
                 </div>
                 <button
                   onClick={async () => {
-                    await supabase.from('stores').update({ is_verified: true }).eq('id', s.id);
-                    setStats(prev => ({ ...prev, unverifiedStores: prev.unverifiedStores.filter((st: any) => st.id !== s.id) }));
+                    const { error } = await supabase.rpc('admin_verify_store', { p_store_id: s.id });
+                    if (!error) {
+                      setStats(prev => ({ ...prev, unverifiedStores: prev.unverifiedStores.filter((st: any) => st.id !== s.id) }));
+                    }
                   }}
                   className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold active:scale-95 transition"
                 >
