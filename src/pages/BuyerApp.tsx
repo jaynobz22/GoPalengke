@@ -35,7 +35,7 @@ import {
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, ChevronDown, Bike, Store as StoreIcon,
   QrCode, Clock, Phone, Navigation, Filter, ShoppingBag, MessageCircle, Send,
   Share2, Copy, ExternalLink, Download, ImageOff, Bell, Timer, CheckCircle, LogOut,
-  Shield, Info, ShieldAlert, Lock, AlertTriangle, Facebook,
+  Shield, Info, ShieldAlert, Lock, AlertTriangle, Facebook, Loader2,
 } from 'lucide-react';
 
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
@@ -1153,6 +1153,16 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
           </div>
         )}
       </div>
+
+      {/* Seller Reviews Section */}
+      <div className="px-5 pb-6">
+        <div className="bg-white rounded-2xl border border-gray-100 p-4">
+          <h3 className="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2">
+            <Star size={18} className="text-amber-500" /> Mga Review ng Tindahan
+          </h3>
+          <ReviewSection userId={store.seller_id} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -2231,6 +2241,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
   const [paymentRef, setPaymentRef] = useState(order.payment_reference || '');
   const [submitting, setSubmitting] = useState(false);
   const [siblingOrders, setSiblingOrders] = useState<(Order & { store: Store })[]>([]);
+  const [showRiderProfile, setShowRiderProfile] = useState(false);
 
   useEffect(() => {
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
@@ -2540,10 +2551,18 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
             <span className="font-semibold text-gray-800">Rider</span>
           </div>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowRiderProfile(true)}
+              className="flex items-center gap-2 active:scale-95 transition"
+            >
               <Avatar src={rider.avatar_url} name={rider.full_name} size={36} />
-              <span className="text-sm text-gray-600">{rider.full_name}</span>
-            </div>
+              <div className="text-left">
+                <span className="text-sm text-gray-600 block">{rider.full_name}</span>
+                <span className="text-xs text-blue-600 flex items-center gap-0.5">
+                  <Star size={10} className="fill-amber-400 text-amber-400" /> Tingnan ang profile at reviews
+                </span>
+              </div>
+            </button>
             <a href={`tel:${rider.phone}`} className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center">
               <Phone size={16} className="text-blue-600" />
             </a>
@@ -2557,6 +2576,17 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
             </button>
           )}
         </div>
+      )}
+
+      {/* Rider Profile Modal */}
+      {showRiderProfile && rider && currentOrder.rider_id && (
+        <RiderProfileModal
+          riderId={currentOrder.rider_id}
+          riderName={rider.full_name}
+          riderAvatar={rider.avatar_url}
+          riderPhone={rider.phone}
+          onClose={() => setShowRiderProfile(false)}
+        />
       )}
 
       {/* Delivery Address */}
@@ -2687,6 +2717,80 @@ function ShareStoreCard({ storeName, storeSlug }: { storeName: string; storeSlug
           {copied ? <Check size={20} /> : <Copy size={20} />}
           {copied ? 'Nakopya!' : 'Kopyahin'}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ============= RIDER PROFILE MODAL =============
+function RiderProfileModal({ riderId, riderName, riderAvatar, riderPhone, onClose }: {
+  riderId: string;
+  riderName: string;
+  riderAvatar: string | null;
+  riderPhone: string | null;
+  onClose: () => void;
+}) {
+  const [riderProfile, setRiderProfile] = useState<{ full_name: string; phone: string | null; avatar_url: string | null; barangay: string | null; city: string | null; region: string | null; is_available: boolean } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.from('profiles').select('full_name, phone, avatar_url, barangay, city, region, is_available').eq('id', riderId).maybeSingle()
+      .then(({ data }) => { setRiderProfile(data as any); setLoading(false); });
+  }, [riderId]);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-end max-w-md mx-auto animate-fade-in" onClick={onClose}>
+      <div className="bg-white w-full rounded-t-3xl max-h-[85vh] overflow-y-auto animate-slide-up" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white px-5 py-4 flex items-center justify-between border-b border-gray-100 z-10">
+          <h2 className="text-lg font-bold text-gray-800">Profile ng Rider</h2>
+          <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
+            <X size={20} className="text-gray-600" />
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 size={24} className="animate-spin text-gray-300" />
+          </div>
+        ) : riderProfile ? (
+          <div className="px-5 py-4 pb-8">
+            {/* Rider header */}
+            <div className="flex flex-col items-center mb-4">
+              <Avatar src={riderProfile.avatar_url} name={riderProfile.full_name} size={80} />
+              <h3 className="font-bold text-gray-800 text-lg mt-3">{riderProfile.full_name}</h3>
+              <div className="flex items-center gap-2 mt-1">
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${riderProfile.is_available ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {riderProfile.is_available ? 'Available' : 'Offline'}
+                </span>
+                <span className="text-xs text-gray-400 flex items-center gap-0.5">
+                  <Bike size={12} /> Rider
+                </span>
+              </div>
+              {(riderProfile.barangay || riderProfile.city) && (
+                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                  <MapPin size={12} /> {riderProfile.barangay}, {riderProfile.city}, {riderProfile.region}
+                </p>
+              )}
+              {riderPhone && (
+                <a href={`tel:${riderPhone}`} className="mt-3 w-full py-2.5 bg-blue-50 text-blue-700 rounded-xl font-medium text-sm flex items-center justify-center gap-2 active:scale-95 transition border border-blue-100">
+                  <Phone size={16} /> Tumawag sa Rider
+                </a>
+              )}
+            </div>
+
+            {/* Rider Reviews */}
+            <div className="bg-gray-50 rounded-2xl p-4">
+              <h4 className="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2">
+                <Star size={16} className="text-amber-500" /> Mga Review mula sa mga naunaang transaksyon
+              </h4>
+              <ReviewSection userId={riderId} />
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-12 text-gray-400">
+            <p className="text-sm">Hindi mahanap ang profile ng rider.</p>
+          </div>
+        )}
       </div>
     </div>
   );
