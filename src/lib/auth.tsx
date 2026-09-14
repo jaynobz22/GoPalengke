@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       region: location.region || null,
       email_verified: false,
       phone_verified: true,
-      is_approved: role === 'seller' || role === 'buyer',
+      is_approved: role !== 'admin',
     });
 
     if (profileError) { setPendingVerif(false); return { error: profileError.message }; }
