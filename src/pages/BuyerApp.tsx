@@ -2574,15 +2574,15 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         </div>
       )}
 
-      {/* COD: Rider QR code for buyer to pay delivery fee — shown when rider has picked up */}
+      {/* COD: Rider QR code for buyer to pay full amount — shown when rider has picked up */}
       {!isCancelled && currentOrder.status === 'picked_up' && currentOrder.payment_method === 'cod' && rider?.rider_qr_code_url && (
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-3">
           <div className="flex items-center gap-2 mb-3">
             <QrCode size={18} className="text-blue-600" />
-            <span className="font-semibold text-sm text-blue-800">Magbayad ng Delivery Fee sa Rider</span>
+            <span className="font-semibold text-sm text-blue-800">Magbayad sa Rider</span>
           </div>
           <p className="text-xs text-blue-700 mb-3 leading-relaxed">
-            Pwede mong bayaran ang delivery fee na <strong>₱{Number(currentOrder.delivery_fee).toFixed(2)}</strong> sa rider gamit ang QR code, o maghanda ng cash pagdating niya.
+            Pwede mong bayaran ang buong halaga na <strong>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</strong> (paninda + delivery fee) sa rider gamit ang QR code, o maghanda ng cash pagdating niya.
           </p>
           <div className="bg-white rounded-xl p-3 flex justify-center mb-2">
             <img src={rider.rider_qr_code_url} alt="QR Code ng Rider" loading="lazy" decoding="async" className="w-40 h-40 rounded-xl object-contain" />
@@ -2613,7 +2613,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
       {!isCancelled && currentOrder.status === 'picked_up' && currentOrder.payment_method === 'cod' && rider && !rider.rider_qr_code_url && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3 flex items-center gap-2">
           <Package size={16} className="text-amber-500 flex-shrink-0" />
-          <p className="text-sm text-amber-700">Maghanda ng <strong>₱{Number(currentOrder.delivery_fee).toFixed(2)}</strong> cash para sa delivery fee ng rider pagdating.</p>
+          <p className="text-sm text-amber-700">Maghanda ng <strong>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</strong> cash (paninda + delivery fee) para sa rider pagdating.</p>
         </div>
       )}
 

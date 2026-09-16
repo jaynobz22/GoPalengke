@@ -712,27 +712,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         </div>
       )}
 
-      {/* Live ETA Timer — hidden for livestock (pickup/meetup) orders */}
-      {currentOrder.status === 'picked_up' && currentOrder.picked_up_at && currentOrder.delivery_method !== 'pickup' && currentOrder.delivery_method !== 'meetup' && store && (() => {
-        const bCoords = getDeliveryCoords({
-          lat: currentOrder.delivery_lat,
-          lng: currentOrder.delivery_lng,
-          barangay: currentOrder.delivery_barangay,
-          city: currentOrder.delivery_city,
-          region: currentOrder.delivery_region,
-        });
-        if (!bCoords) return null;
-        return (
-          <LiveETATimer
-            riderCoords={liveRiderCoords || (currentOrder.rider_lat != null && currentOrder.rider_lng != null ? { lat: currentOrder.rider_lat, lng: currentOrder.rider_lng } : null)}
-            buyerCoords={bCoords}
-            variant="rider"
-            gpsActive={gpsActive}
-          />
-        );
-      })()}
-
-      {/* COD Payment Section — shown after delivery */}
+      {/* COD Payment Section — last step in the flow, shown after delivery */}
       {isDelivered && isCod && !codAccepted && (
         <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-3">
           <div className="flex items-center gap-2 mb-3">
@@ -809,6 +789,26 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           <p className="text-sm text-green-700 font-medium">Na-tanggap na ng seller ang COD payment. Tapos na ang transaction!</p>
         </div>
       )}
+
+      {/* Live ETA Timer — hidden for livestock (pickup/meetup) orders */}
+      {currentOrder.status === 'picked_up' && currentOrder.picked_up_at && currentOrder.delivery_method !== 'pickup' && currentOrder.delivery_method !== 'meetup' && store && (() => {
+        const bCoords = getDeliveryCoords({
+          lat: currentOrder.delivery_lat,
+          lng: currentOrder.delivery_lng,
+          barangay: currentOrder.delivery_barangay,
+          city: currentOrder.delivery_city,
+          region: currentOrder.delivery_region,
+        });
+        if (!bCoords) return null;
+        return (
+          <LiveETATimer
+            riderCoords={liveRiderCoords || (currentOrder.rider_lat != null && currentOrder.rider_lng != null ? { lat: currentOrder.rider_lat, lng: currentOrder.rider_lng } : null)}
+            buyerCoords={bCoords}
+            variant="rider"
+            gpsActive={gpsActive}
+          />
+        );
+      })()}
 
       {/* In-App Navigation Map */}
       {currentOrder.status === 'picked_up' && store && (() => {
@@ -1009,16 +1009,16 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         )}
       </div>
 
-      {/* Non-COD: Note to collect delivery fee via QR */}
+      {/* Non-COD: Rider shows QR code to seller to collect delivery fee at pickup */}
       {currentOrder.status === 'picked_up' && !isCod && (
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-3 flex items-start gap-3">
           <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
             <Info size={20} className="text-white" />
           </div>
           <div>
-            <p className="font-semibold text-sm text-blue-800 mb-1">Kolektahin ang Delivery Fee</p>
+            <p className="font-semibold text-sm text-blue-800 mb-1">Kolektahin ang Delivery Fee sa Seller</p>
             <p className="text-xs text-blue-700 leading-relaxed">
-              Pwede mo nang kunin ang delivery fee na <strong>₱{totalFee.toFixed(2)}</strong> mula sa buyer via QR code bago ka umalis. Ipakita ang QR code mo sa buyer para ma-scan at mabayaran ka agad.
+              Kolektahin ang delivery fee na <strong>₱{totalFee.toFixed(2)}</strong> mula sa seller gamit ang QR code mo. Ipakita ang QR code mo sa seller bago ka umalis sa tindahan.
             </p>
             {profile?.rider_qr_code_url && (
               <div className="mt-3 bg-white rounded-xl p-3 flex justify-center">
@@ -1026,7 +1026,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
               </div>
             )}
             {!profile?.rider_qr_code_url && (
-              <p className="text-xs text-amber-600 mt-2">Wala ka pang QR code. Mag-upload sa Profile mo para makapagbayad ang buyer sa iyo.</p>
+              <p className="text-xs text-amber-600 mt-2">Wala ka pang QR code. Mag-upload sa Profile mo para makapagbayad ang seller sa iyo.</p>
             )}
           </div>
         </div>
