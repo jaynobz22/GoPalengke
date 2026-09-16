@@ -120,21 +120,20 @@ export function ReviewForm({
             <Facebook size={20} />
             Facebook
           </a>
-          <button
-            type="button"
-            onClick={() => {
+          <a
+            href={`fb-messenger://share?link=${encodedShareUrl}`}
+            onClick={(e) => {
               const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-              if (isMobile && navigator.share) {
-                navigator.share({ title: revieweeName, text: shareText, url: shareUrl }).catch(() => {});
-                return;
+              if (!isMobile) {
+                e.preventDefault();
+                window.open(`https://www.facebook.com/dialog/send?app_id=140586622674355&link=${encodedShareUrl}&redirect_uri=${encodedShareUrl}`, '_blank', 'noopener,noreferrer');
               }
-              window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedShareUrl}&quote=${encodedShareText}`, '_blank', 'noopener,noreferrer');
             }}
             className="flex flex-col items-center gap-1 py-3 bg-gradient-to-br from-[#00B2FF] to-[#006AFF] text-white rounded-xl font-semibold text-xs active:scale-95 transition"
           >
             <MessageCircle size={20} />
             Messenger
-          </button>
+          </a>
           <button
             onClick={copyLink}
             className="flex flex-col items-center gap-1 py-3 bg-gray-700 text-white rounded-xl font-semibold text-xs active:scale-95 transition"
