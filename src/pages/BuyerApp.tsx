@@ -2759,11 +2759,18 @@ function RiderProfileModal({ riderId, riderName, riderAvatar, riderPhone, onClos
   riderPhone: string | null;
   onClose: () => void;
 }) {
-  const [riderProfile, setRiderProfile] = useState<{ full_name: string; phone: string | null; avatar_url: string | null; barangay: string | null; city: string | null; region: string | null; is_available: boolean } | null>(null);
+  const [riderProfile, setRiderProfile] = useState<{
+    full_name: string; phone: string | null; avatar_url: string | null;
+    barangay: string | null; city: string | null; region: string | null;
+    complete_address: string | null; is_available: boolean;
+    rider_age: number | null; rider_family_status: string | null;
+    rider_residence_address: string | null; rider_plate_number: string | null;
+    rider_motor_model: string | null;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.from('profiles').select('full_name, phone, avatar_url, barangay, city, region, is_available').eq('id', riderId).maybeSingle()
+    supabase.from('profiles').select('full_name, phone, avatar_url, barangay, city, region, complete_address, is_available, rider_age, rider_family_status, rider_residence_address, rider_plate_number, rider_motor_model').eq('id', riderId).maybeSingle()
       .then(({ data }) => { setRiderProfile(data as any); setLoading(false); });
   }, [riderId]);
 
@@ -2805,6 +2812,57 @@ function RiderProfileModal({ riderId, riderName, riderAvatar, riderPhone, onClos
                   <Phone size={16} /> Tumawag sa Rider
                 </a>
               )}
+            </div>
+
+            {/* Rider Details */}
+            <div className="bg-gray-50 rounded-2xl p-4 mb-3">
+              <h4 className="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2">
+                <UserRound size={16} className="text-brand-600" /> Detalye ng Rider
+              </h4>
+              <div className="space-y-2.5">
+                {riderProfile.rider_age != null && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-400 w-28 flex-shrink-0">Edad</span>
+                    <span className="text-gray-700 font-medium">{riderProfile.rider_age} taong gulang</span>
+                  </div>
+                )}
+                {riderProfile.rider_family_status && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-400 w-28 flex-shrink-0">Pamilya</span>
+                    <span className="text-gray-700 font-medium">{riderProfile.rider_family_status}</span>
+                  </div>
+                )}
+                {riderProfile.rider_residence_address && (
+                  <div className="flex items-start gap-2 text-sm">
+                    <span className="text-gray-400 w-28 flex-shrink-0">Totoong Address</span>
+                    <span className="text-gray-700 font-medium">{riderProfile.rider_residence_address}</span>
+                  </div>
+                )}
+                {riderProfile.complete_address && (
+                  <div className="flex items-start gap-2 text-sm">
+                    <span className="text-gray-400 w-28 flex-shrink-0">Kumpletong Address</span>
+                    <span className="text-gray-700 font-medium">{riderProfile.complete_address}</span>
+                  </div>
+                )}
+                {riderProfile.rider_plate_number && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-400 w-28 flex-shrink-0">Plate Number</span>
+                    <span className="text-gray-700 font-medium">{riderProfile.rider_plate_number}</span>
+                  </div>
+                )}
+                {riderProfile.rider_motor_model && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-400 w-28 flex-shrink-0">Model ng Motor</span>
+                    <span className="text-gray-700 font-medium">{riderProfile.rider_motor_model}</span>
+                  </div>
+                )}
+                {riderPhone && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-400 w-28 flex-shrink-0">Telepono</span>
+                    <span className="text-gray-700 font-medium">{riderPhone}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Rider Reviews */}
