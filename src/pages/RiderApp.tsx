@@ -531,7 +531,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const { profile } = useAuth();
   const [items, setItems] = useState<OrderItem[]>([]);
   const [store, setStore] = useState<Store | null>(null);
-  const [buyer, setBuyer] = useState<{ full_name: string; phone: string | null; avatar_url: string | null; house_photo_url: string | null } | null>(null);
+  const [buyer, setBuyer] = useState<{ full_name: string; phone: string | null; avatar_url: string | null; house_photo_url: string | null; complete_address: string | null; barangay: string | null; city: string | null; region: string | null } | null>(null);
   const [currentOrder, setCurrentOrder] = useState(order);
   const [updating, setUpdating] = useState(false);
   const [gpsActive, setGpsActive] = useState(false);
@@ -553,7 +553,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   useEffect(() => {
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
     supabase.from('stores').select('*').eq('id', order.store_id).maybeSingle().then(({ data }) => setStore(data as Store | null));
-    supabase.from('profiles').select('full_name, phone, avatar_url, house_photo_url').eq('id', order.buyer_id).maybeSingle().then(({ data }) => setBuyer(data as any));
+    supabase.from('profiles').select('full_name, phone, avatar_url, house_photo_url, complete_address, barangay, city, region').eq('id', order.buyer_id).maybeSingle().then(({ data }) => setBuyer(data as any));
 
     if (order.delivery_group_id) {
       supabase.from('orders').select('*, store:stores(*)').eq('delivery_group_id', order.delivery_group_id)
@@ -887,8 +887,17 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           <div className="flex-1">
             <p className="text-xs text-gray-400 font-medium">DROPOFF</p>
             <p className="font-semibold text-sm text-gray-800">{buyer?.full_name || 'Buyer'}</p>
-            <p className="text-sm text-gray-500">{currentOrder.delivery_address}</p>
-            <p className="text-sm text-gray-500">{currentOrder.delivery_barangay}, {currentOrder.delivery_city}, {currentOrder.delivery_region}</p>
+            {currentOrder.delivery_address ? (
+              <>
+                <p className="text-sm text-gray-500">{currentOrder.delivery_address}</p>
+                <p className="text-sm text-gray-500">{currentOrder.delivery_barangay}, {currentOrder.delivery_city}, {currentOrder.delivery_region}</p>
+              </>
+            ) : (
+              <>
+                {buyer?.complete_address && <p className="text-sm text-gray-500">{buyer.complete_address}</p>}
+                <p className="text-sm text-gray-500">{buyer?.barangay}, {buyer?.city}, {buyer?.region}</p>
+              </>
+            )}
             {buyer?.house_photo_url && (
               <div className="mt-2">
                 <p className="text-xs font-medium text-gray-500 mb-1">Larawan ng Bahay</p>
