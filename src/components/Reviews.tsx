@@ -121,7 +121,18 @@ export function ReviewForm({
             Facebook
           </a>
           <a
-            href={`https://www.facebook.com/dialog/send?app_id=294910641025624&link=${encodedShareUrl}&redirect_uri=${encodedShareUrl}`}
+            href={`fb-messenger://share?link=${encodedShareUrl}`}
+            onClick={(e) => {
+              const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+              if (!isMobile) {
+                e.preventDefault();
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                });
+                window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedShareUrl}&quote=${encodedShareText}`, '_blank', 'noopener,noreferrer');
+              }
+            }}
             target="_blank"
             rel="noopener noreferrer"
             className="flex flex-col items-center gap-1 py-3 bg-gradient-to-br from-[#00B2FF] to-[#006AFF] text-white rounded-xl font-semibold text-xs active:scale-95 transition"
