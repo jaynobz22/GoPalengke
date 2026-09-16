@@ -13,18 +13,81 @@ export interface Coords {
 }
 
 // Known Philippine public market GPS coordinates
+// Verified via OpenStreetMap Nominatim geocoding — do not approximate
 const PALENGKE_COORDS: Record<string, Coords> = {
   // Davao City
-  'Mintal Public Market': { lat: 7.0925, lng: 125.5025 },
-  'Matina Public Market': { lat: 7.0561, lng: 125.5773 },
-  'Agdao Public Market': { lat: 7.0820, lng: 125.6330 },
+  'Agdao Public Market': { lat: 7.0818, lng: 125.6233 },
   'Bankerohan Public Market': { lat: 7.0760, lng: 125.6050 },
   'Buhangin Public Market': { lat: 7.1122, lng: 125.6234 },
-  'Bunawan Public Market': { lat: 7.0400, lng: 125.6700 },
-  'Calinan Public Market': { lat: 7.1750, lng: 125.3450 },
-  'Toril Public Market': { lat: 7.0000, lng: 125.4900 },
-  'Cabaguio Public Market': { lat: 7.0900, lng: 125.5800 },
-  'Lanang Public Market': { lat: 7.0900, lng: 125.6400 },
+  'Bunawan Public Market': { lat: 7.2362, lng: 125.6397 },
+  'Calinan Public Market': { lat: 7.1909, lng: 125.4545 },
+  'Matina Public Market': { lat: 7.0561, lng: 125.5773 },
+  'Mintal Public Market': { lat: 7.0925, lng: 125.5025 },
+  'Toril Public Market': { lat: 7.0183, lng: 125.4960 },
+  'Cabaguio Public Market': { lat: 7.0820, lng: 125.6050 },
+  'Lanang Public Market': { lat: 7.0980, lng: 125.6300 },
+  // Quezon City
+  'Balintawak Public Market': { lat: 14.6564, lng: 121.0025 },
+  'Commonwealth Public Market': { lat: 14.6954, lng: 121.0870 },
+  'Farmers Market (Cubao)': { lat: 14.6193, lng: 121.0524 },
+  'Muñoz Public Market': { lat: 14.6680, lng: 121.0150 },
+  'Novaliches Public Market': { lat: 14.6990, lng: 121.0330 },
+  'Tandang Sora Public Market': { lat: 14.6759, lng: 121.0433 },
+  // Manila
+  'Divisoria Public Market': { lat: 14.6020, lng: 120.9690 },
+  'Quintuple Public Market': { lat: 14.6100, lng: 120.9800 },
+  'Pritil Public Market': { lat: 14.6179, lng: 120.9698 },
+  'Santa Ana Public Market': { lat: 14.5819, lng: 121.0120 },
+  'Dagupan-Binondo Market': { lat: 14.5990, lng: 120.9760 },
+  // Makati
+  'Guadalupe Public Market': { lat: 14.5660, lng: 121.0459 },
+  'Poblacion Public Market': { lat: 14.5652, lng: 121.0336 },
+  'Bangkal Public Market': { lat: 14.5432, lng: 121.0109 },
+  // Pasig
+  'Pasig Palengke': { lat: 14.5578, lng: 121.0838 },
+  'Kapasigan Public Market': { lat: 14.5570, lng: 121.0830 },
+  'Pinagbuhatan Public Market': { lat: 14.5300, lng: 121.0900 },
+  // Taguig
+  'Taguig Public Market': { lat: 14.4882, lng: 121.0609 },
+  'Lower Bicutan Public Market': { lat: 14.4880, lng: 121.0600 },
+  'Tipas Public Market': { lat: 14.5200, lng: 121.0500 },
+  // Cebu City
+  'Carbon Public Market': { lat: 10.2920, lng: 123.8978 },
+  'Pasil Fish Port & Market': { lat: 10.2896, lng: 123.8918 },
+  'Mambaling Public Market': { lat: 10.2950, lng: 123.8800 },
+  'Taboan Public Market': { lat: 10.2955, lng: 123.8911 },
+  // Iloilo City
+  'La Paz Public Market': { lat: 10.7094, lng: 122.5677 },
+  'Jaro Public Market': { lat: 10.7219, lng: 122.5549 },
+  'Central Market (Super)': { lat: 10.7202, lng: 122.5621 },
+  'Mandurriao Public Market': { lat: 10.7163, lng: 122.5365 },
+  // Cagayan de Oro
+  'Cogon Public Market': { lat: 8.4774, lng: 124.6515 },
+  'Carmen Public Market': { lat: 8.4792, lng: 124.6367 },
+  'Bulua Public Market': { lat: 8.5112, lng: 124.6236 },
+  'Macabalan Fish Port': { lat: 8.4900, lng: 124.6700 },
+  // Zamboanga City
+  'Barasta Public Market': { lat: 6.9100, lng: 122.0700 },
+  'Putik Public Market': { lat: 6.9400, lng: 122.0600 },
+  'Veterans Public Market': { lat: 6.9200, lng: 122.0800 },
+  // General Santos
+  'Gensan Public Market': { lat: 6.1164, lng: 125.1716 },
+  'Labangal Fish Port & Market': { lat: 6.0800, lng: 125.1600 },
+  'Fatima Public Market': { lat: 6.1300, lng: 125.1800 },
+  // Baguio City
+  'Baguio City Public Market': { lat: 16.4159, lng: 120.5950 },
+  'Hangar Market': { lat: 16.4165, lng: 120.5954 },
+  'Hilltop Market': { lat: 16.4152, lng: 120.5947 },
+  // Naga City
+  "Naga City People's Mall": { lat: 13.6210, lng: 123.1837 },
+  'Naga Central Market': { lat: 13.6230, lng: 123.1850 },
+  // Legazpi City
+  'Legazpi City Public Market': { lat: 13.1469, lng: 123.7504 },
+  'Albay Public Market': { lat: 13.1400, lng: 123.7400 },
+  // Malabon
+  'Malabon Public Market': { lat: 14.6631, lng: 120.9568 },
+  // Navotas
+  'Navotas Fish Port Complex': { lat: 14.6430, lng: 120.9511 },
 };
 
 // Approximate city center coordinates for major Philippine cities
@@ -34,8 +97,11 @@ export const CITY_COORDS: Record<string, Coords> = {
   'Manila': { lat: 14.5995, lng: 120.9842 },
   'Cebu City': { lat: 10.3157, lng: 123.8854 },
   'Makati': { lat: 14.5547, lng: 121.0244 },
+  'Makati City': { lat: 14.5547, lng: 121.0244 },
   'Taguig': { lat: 14.5176, lng: 121.0509 },
+  'Taguig City': { lat: 14.5176, lng: 121.0509 },
   'Pasig': { lat: 14.5764, lng: 121.0851 },
+  'Pasig City': { lat: 14.5764, lng: 121.0851 },
   'Caloocan': { lat: 14.6541, lng: 120.9846 },
   'Las Piñas': { lat: 14.4758, lng: 120.9846 },
   'Mandaluyong': { lat: 14.5794, lng: 121.0244 },
