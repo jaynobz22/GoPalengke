@@ -51,6 +51,7 @@ export function BuyerApp() {
   const [highlightProductId, setHighlightProductId] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [cartRefresh, setCartRefresh] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
   const [paymentGroupOrders, setPaymentGroupOrders] = useState<Order[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [chatPartnerName, setChatPartnerName] = useState('');
@@ -95,6 +96,7 @@ export function BuyerApp() {
 
   function refreshCart() {
     setCartRefresh(c => c + 1);
+    setCartCount(c => c + 1);
   }
 
   async function openChat(
@@ -119,6 +121,20 @@ export function BuyerApp() {
     setView('browse');
     setActiveConversationId(null);
   }
+
+  // Load initial cart count and keep in sync via realtime
+  useEffect(() => {
+    if (!profile) return;
+    async function loadCartCount() {
+      const { data } = await supabase.from('cart_items').select('id').eq('buyer_id', profile.id);
+      setCartCount(data?.length || 0);
+    }
+    loadCartCount();
+    const sub = supabase.channel('cart-count-nav')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cart_items', filter: `buyer_id=eq.${profile.id}` }, () => loadCartCount())
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [profile]);
 
   // Track unread messages for badge
   useEffect(() => {
@@ -265,7 +281,7 @@ export function BuyerApp() {
       )}
 
       {/* Bottom Nav */}
-      <BottomNav tab={tab} setTab={(t) => { setTab(t); setView('browse'); }} unreadMessages={totalUnread} orderUpdates={orderUpdates} />
+      <BottomNav tab={tab} setTab={(t) => { setTab(t); setView('browse'); }} unreadMessages={totalUnread} orderUpdates={orderUpdates} cartCount={cartCount} />
 
       <LoginReminderPopup storageKey="buyer_login_reminder" variant="buyer" />
     </div>
@@ -3387,24 +3403,8 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
 }
 
 // ============= BOTTOM NAV =============
-function BottomNav({ tab, setTab, unreadMessages, orderUpdates }: { tab: Tab; setTab: (t: Tab) => void; unreadMessages: number; orderUpdates: number }) {
+function BottomNav({ tab, setTab, unreadMessages, orderUpdates, cartCount }: { tab: Tab; setTab: (t: Tab) => void; unreadMessages: number; orderUpdates: number; cartCount: number }) {
   const { profile } = useAuth();
-  const [cartCount, setCartCount] = useState(0);
-
-  useEffect(() => {
-    if (!profile) return;
-    supabase.from('cart_items').select('id').eq('buyer_id', profile.id)
-      .then(({ data }) => setCartCount(data?.length || 0));
-
-    const sub = supabase.channel('cart-nav')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cart_items', filter: `buyer_id=eq.${profile.id}` }, () => {
-        supabase.from('cart_items').select('id').eq('buyer_id', profile.id)
-          .then(({ data }) => setCartCount(data?.length || 0));
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(sub); };
-  }, [profile]);
 
   const items: { id: Tab; icon: typeof Home; label: string; badge?: number; alert?: boolean }[] = [
     { id: 'home', icon: Home, label: 'Home' },
