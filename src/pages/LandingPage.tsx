@@ -87,23 +87,24 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
       <div className="absolute top-10 left-10 w-40 h-40 bg-brand-400/20 rounded-full blur-3xl animate-float" />
       <div className="absolute bottom-10 right-10 w-56 h-56 bg-brand-300/10 rounded-full blur-3xl animate-float-slow" />
 
+      {/* Announcement bar — top of page, full width */}
+      {announcement && (
+        <div className="relative z-20 bg-amber-400/95 backdrop-blur-sm overflow-hidden flex items-center gap-2 px-4 py-2">
+          <Megaphone size={14} className="text-amber-900 flex-shrink-0" />
+          <div className="overflow-hidden flex-1">
+            <div className="animate-marquee whitespace-nowrap text-xs font-medium text-amber-900">
+              {announcement.message}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Desktop nav bar */}
       <nav className="hidden md:flex relative max-w-6xl mx-auto px-6 pt-6 pb-2 items-center justify-between gap-4">
         <div className="flex items-center gap-2 flex-shrink-0">
           <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-10 h-10 rounded-xl object-cover" />
           <span className="text-xl font-bold text-white tracking-tight">GoPalengke</span>
         </div>
-        {/* Announcement bar — same level as logo and sign-in/sign-up */}
-        {announcement && (
-          <div className="flex-1 max-w-md bg-amber-400/90 backdrop-blur-sm rounded-full overflow-hidden flex items-center gap-2 px-4 py-1.5">
-            <Megaphone size={14} className="text-amber-900 flex-shrink-0" />
-            <div className="overflow-hidden flex-1">
-              <div className="animate-marquee whitespace-nowrap text-xs font-medium text-amber-900">
-                {announcement.message}
-              </div>
-            </div>
-          </div>
-        )}
         <div className="flex items-center gap-3 flex-shrink-0">
           <button onClick={onGetStarted} className="px-5 py-2 text-white/90 text-sm font-medium hover:text-white transition">
             Mag-sign In
@@ -114,20 +115,10 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
         </div>
       </nav>
 
-      {/* Mobile logo + announcement */}
+      {/* Mobile logo */}
       <div className="md:hidden relative px-5 pt-14 pb-2 flex items-center gap-2 animate-slide-in-left">
         <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-11 h-11 rounded-2xl object-cover flex-shrink-0" />
         <span className="text-2xl font-bold text-white tracking-tight flex-shrink-0">GoPalengke</span>
-        {announcement && (
-          <div className="flex-1 bg-amber-400/90 backdrop-blur-sm rounded-full overflow-hidden flex items-center gap-1.5 px-3 py-1">
-            <Megaphone size={12} className="text-amber-900 flex-shrink-0" />
-            <div className="overflow-hidden flex-1">
-              <div className="animate-marquee whitespace-nowrap text-[10px] font-medium text-amber-900">
-                {announcement.message}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="relative w-full px-5 md:px-8 lg:px-10 pb-10 md:pb-14 pt-4 md:pt-8">
