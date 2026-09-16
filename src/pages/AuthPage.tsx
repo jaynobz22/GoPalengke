@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import type { UserRole } from '@/lib/types';
-import { Store, Bike, ShoppingCart, ArrowLeft, Check, Mail, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Store, Bike, ShoppingCart, ArrowLeft, Check, Mail, ShieldCheck, Eye, EyeOff, PlayCircle, X, Youtube } from 'lucide-react';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
 
 const ROLES = [
@@ -9,6 +9,37 @@ const ROLES = [
   { id: 'seller' as UserRole, name: 'Tindera/Tindero', desc: 'Magbenta ng paninda sa palengke', icon: Store, color: 'bg-orange-500' },
   { id: 'rider' as UserRole, name: 'Rider', desc: 'Mag-deliver ng orders sa buyers', icon: Bike, color: 'bg-blue-500' },
 ];
+
+const TUTORIAL_VIDEOS = [
+  { id: 'MCnyHwyE4R8', title: 'GoPalengke Tutorial: Paano mag-sign up at mag-order', desc: 'Matuto kung paano gumawa ng account, maghanap ng palengke, at mag-order ng sariwang paninda.' },
+];
+
+function VideoModal({ video, onClose }: { video: { id: string; title: string } | null; onClose: () => void }) {
+  if (!video) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
+      <div className="relative w-full max-w-2xl mx-4" onClick={e => e.stopPropagation()}>
+        <button
+          onClick={onClose}
+          className="absolute -top-12 right-0 w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 transition"
+          aria-label="Isara ang video"
+        >
+          <X size={22} />
+        </button>
+        <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black">
+          <iframe
+            src={`https://www.youtube.com/embed/${video.id}?autoplay=1&rel=0`}
+            title={video.title}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="w-full h-full"
+          />
+        </div>
+        <p className="text-white text-sm font-medium mt-3 text-center">{video.title}</p>
+      </div>
+    </div>
+  );
+}
 
 export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: boolean; onBack?: () => void }) {
   const { signIn, signUp, sendEmailOtp, verifyEmailOtp } = useAuth();
@@ -26,6 +57,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
   const [otpCode, setOtpCode] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [activeVideo, setActiveVideo] = useState<{ id: string; title: string } | null>(null);
 
   function startResendCooldown() {
     setResendCooldown(60);
@@ -158,6 +190,46 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
             >
               May account na? Mag-sign In
             </button>
+          </div>
+
+          {/* Tutorial Videos */}
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Youtube size={18} className="text-red-500" />
+              <h3 className="text-sm font-bold text-gray-700">Paano gamitin ang GoPalengke?</h3>
+            </div>
+            <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+              Bago ka mag-sign up, panoorin muna ang tutorial para magka-idea ka paano gamitin ang app. Opsyonal lang — pwede ka pa ring mag-sign up kahit hindi manood.
+            </p>
+            <div className="space-y-3">
+              {TUTORIAL_VIDEOS.map((video) => (
+                <button
+                  key={video.id}
+                  onClick={() => setActiveVideo(video)}
+                  className="w-full text-left bg-white rounded-2xl border border-gray-200 overflow-hidden active:scale-[0.98] transition shadow-sm"
+                >
+                  <div className="relative w-full aspect-video bg-gray-100">
+                    <img
+                      src={`https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`}
+                      alt={video.title}
+                      loading="lazy"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`;
+                      }}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                      <PlayCircle size={48} className="text-white drop-shadow-lg" />
+                    </div>
+                    <span className="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-full font-medium">YouTube</span>
+                  </div>
+                  <div className="p-3">
+                    <p className="text-sm font-semibold text-gray-800 leading-snug">{video.title}</p>
+                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">{video.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="mt-auto pb-8 text-center text-xs text-gray-400">
@@ -389,6 +461,8 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
           </div>
         </div>
       )}
+
+      <VideoModal video={activeVideo} onClose={() => setActiveVideo(null)} />
     </div>
   );
 }
