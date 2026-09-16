@@ -142,9 +142,16 @@ Deno.serve(async (req: Request) => {
 
     const parts = path.split("/");
     const appUrl = `https://${url.host}/`;
+    const redirectTo = url.searchParams.get("redirect_to");
 
-    // For humans, redirect to the app
+    // For humans, redirect to the app (honour ?redirect_to= override first)
     if (!isBot) {
+      if (redirectTo) {
+        return new Response(null, {
+          status: 302,
+          headers: { ...corsHeaders, Location: `${appUrl}${redirectTo}` },
+        });
+      }
       if (parts.length >= 2 && parts[0] === "s") {
         const slug = decodeURIComponent(parts[1]);
         return new Response(null, {
