@@ -17,25 +17,27 @@ const TUTORIAL_VIDEOS = [
 function VideoModal({ video, onClose }: { video: { id: string; title: string } | null; onClose: () => void }) {
   if (!video) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative w-full max-w-2xl mx-4" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black flex flex-col" onClick={onClose}>
+      <div className="flex items-center justify-between px-4 py-3 pt-5" onClick={e => e.stopPropagation()}>
+        <p className="text-white text-sm font-medium truncate flex-1 mr-3">{video.title}</p>
         <button
           onClick={onClose}
-          className="absolute -top-12 right-0 w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 transition"
+          className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 transition flex-shrink-0"
           aria-label="Isara ang video"
         >
           <X size={22} />
         </button>
-        <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black">
+      </div>
+      <div className="flex-1 flex items-center justify-center" onClick={e => e.stopPropagation()}>
+        <div className="w-full h-full">
           <iframe
-            src={`https://www.youtube.com/embed/${video.id}?autoplay=1&rel=0`}
+            src={`https://www.youtube.com/embed/${video.id}?autoplay=1&rel=0&playsinline=1`}
             title={video.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
             className="w-full h-full"
           />
         </div>
-        <p className="text-white text-sm font-medium mt-3 text-center">{video.title}</p>
       </div>
     </div>
   );
