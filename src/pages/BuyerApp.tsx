@@ -408,7 +408,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
             {needsHousePhoto ? <Home size={20} className="text-amber-600" /> : <User size={20} className="text-amber-600" />}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-amber-800">Kumpleto ang profile mo</p>
+            <p className="text-sm font-semibold text-amber-800">Kumpletuhin muna ang profile mo</p>
             <p className="text-xs text-amber-700 leading-snug">
               {needsProfilePic && needsHousePhoto
                 ? 'Mag-upload ng profile picture at larawan ng bahay mo sa Profile tab.'
