@@ -2310,7 +2310,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
   const { profile } = useAuth();
   const [items, setItems] = useState<OrderItem[]>([]);
   const [store, setStore] = useState<Store | null>(null);
-  const [rider, setRider] = useState<{ full_name: string; phone: string | null; avatar_url: string | null } | null>(null);
+  const [rider, setRider] = useState<{ full_name: string; phone: string | null; avatar_url: string | null; rider_qr_code_url: string | null } | null>(null);
   const [currentOrder, setCurrentOrder] = useState(order);
   const [paymentRef, setPaymentRef] = useState(order.payment_reference || '');
   const [submitting, setSubmitting] = useState(false);
@@ -2321,7 +2321,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
     supabase.from('stores').select('*').eq('id', order.store_id).maybeSingle().then(({ data }) => setStore(data as Store | null));
     if (order.rider_id) {
-      supabase.from('profiles').select('full_name, phone, avatar_url').eq('id', order.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
+      supabase.from('profiles').select('full_name, phone, avatar_url, rider_qr_code_url').eq('id', order.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
     }
 
     if (order.delivery_group_id) {
@@ -2571,6 +2571,49 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
               <p className="text-xs text-blue-600">Nasa daan na ang rider papunta sa iyo. Makikita ang live location dito pag nagsimula na ang rider.</p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Rider QR code for delivery fee payment (non-COD) — shown when rider has picked up */}
+      {!isCancelled && currentOrder.status === 'picked_up' && currentOrder.payment_method !== 'cod' && rider?.rider_qr_code_url && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-3">
+          <div className="flex items-center gap-2 mb-3">
+            <QrCode size={18} className="text-blue-600" />
+            <span className="font-semibold text-sm text-blue-800">Magbayad ng Delivery Fee sa Rider</span>
+          </div>
+          <p className="text-xs text-blue-700 mb-3 leading-relaxed">
+            I-scan ang QR code ng rider para mabayaran ang delivery fee na <strong>₱{Number(currentOrder.delivery_fee).toFixed(2)}</strong> bago pa dumating sa iyo.
+          </p>
+          <div className="bg-white rounded-xl p-3 flex justify-center mb-2">
+            <img src={rider.rider_qr_code_url} alt="QR Code ng Rider" loading="lazy" decoding="async" className="w-40 h-40 rounded-xl object-contain" />
+          </div>
+          <button
+            onClick={async () => {
+              try {
+                const response = await fetch(rider.rider_qr_code_url!);
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `rider-qr-${rider.full_name.replace(/\\s+/g, '-').toLowerCase()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              } catch {
+                window.open(rider.rider_qr_code_url!, '_blank');
+              }
+            }}
+            className="w-full py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
+          >
+            <Download size={16} /> I-download ang QR Code
+          </button>
+        </div>
+      )}
+      {!isCancelled && currentOrder.status === 'picked_up' && currentOrder.payment_method !== 'cod' && rider && !rider.rider_qr_code_url && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3 flex items-center gap-2">
+          <ImageOff size={16} className="text-amber-500 flex-shrink-0" />
+          <p className="text-sm text-amber-700">Wala pang QR code ang rider para sa delivery fee. Makipag-ugnayan sa rider via chat.</p>
         </div>
       )}
 
