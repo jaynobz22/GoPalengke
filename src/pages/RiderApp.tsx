@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { navigate } from '@/lib/router';
 import type { Order, OrderItem, Store, Conversation, AdminConversation } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
-import { estimateDistanceKm, computeDeliveryFee, PER_KM_RATE, BASE_DELIVERY_FEE, getStoreCoords, getDeliveryCoords, type Coords } from '@/lib/deliveryFee';
+import { estimateDistanceKm, computeDeliveryFee, haversineKm, PER_KM_RATE, BASE_DELIVERY_FEE, getStoreCoords, getDeliveryCoords, type Coords } from '@/lib/deliveryFee';
 import { RiderNavigationMap, type NavPhase } from '@/components/RiderNavigationMap';
 import { LiveETATimer } from '@/components/LiveETATimer';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
@@ -675,10 +675,23 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   }
 
   const sameCity = store?.city === currentOrder.delivery_city;
-  const estimatedKm = estimateDistanceKm(
-    store ? { barangay: store.barangay, city: store.city, region: store.region } : null,
-    { barangay: currentOrder.delivery_barangay, city: currentOrder.delivery_city, region: currentOrder.delivery_region },
-  );
+  const estimatedKm = (() => {
+    const sCoords = store ? getStoreCoords(store) : null;
+    const bCoords = getDeliveryCoords({
+      lat: currentOrder.delivery_lat,
+      lng: currentOrder.delivery_lng,
+      barangay: currentOrder.delivery_barangay,
+      city: currentOrder.delivery_city,
+      region: currentOrder.delivery_region,
+    });
+    if (sCoords && bCoords && currentOrder.delivery_lat != null && currentOrder.delivery_lng != null) {
+      return Math.round(haversineKm(sCoords, bCoords) * 100) / 100;
+    }
+    return estimateDistanceKm(
+      store ? { barangay: store.barangay, city: store.city, region: store.region } : null,
+      { barangay: currentOrder.delivery_barangay, city: currentOrder.delivery_city, region: currentOrder.delivery_region },
+    );
+  })();
 
   return (
     <div className="px-5 py-4">

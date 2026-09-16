@@ -11,7 +11,7 @@ import { InactiveBanner } from '@/components/InactiveBanner';
 import {
   computeDeliveryFee, estimateDistanceKm,
   haversineKm, getStoreCoords, getDeliveryCoords,
-  hasExactDeliveryCoords, computeDeliveryFeeFromCoords, fetchRoadDistance,
+  computeDeliveryFeeFromCoords, fetchRoadDistance,
   BASE_DELIVERY_FEE, PER_KM_RATE,
   type Coords, type RouteResult,
 } from '@/lib/deliveryFee';
@@ -1408,7 +1408,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
 
   // Fetch road distance for each store when delivery coords are available
   useEffect(() => {
-    if (!deliveryCoords || !hasExactDeliveryCoords(deliveryLocation)) return;
+    if (!deliveryCoords || !deliveryPin) return;
     const stores = Object.values(grouped).map(items => items[0].store);
     const storeIds = stores.map(s => s.id);
     const missing = storeIds.filter(id => !roadDistanceCache[id]);
@@ -1442,13 +1442,12 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   // Calculate fee per store using road distance when available
   function getFeeForStore(store: Store): { fee: number; distanceKm: number; isEstimated: boolean } {
     const sCoords = getStoreCoords(store);
-    const hasExactPin = hasExactDeliveryCoords(deliveryLocation);
 
     // Only use coordinate-based calculation when we have an exact delivery pin.
     // Without a pin, deliveryCoords falls back to city center which can be
     // far from the store (e.g. Mintal Market is 23.5km from Davao City center),
     // producing absurd fees like ₱400+ for a same-city delivery.
-    if (sCoords && deliveryCoords && hasExactPin) {
+    if (sCoords && deliveryCoords && deliveryPin) {
       const road = roadDistanceCache[store.id];
       if (road) {
         return { fee: BASE_DELIVERY_FEE + PER_KM_RATE * road.distanceKm, distanceKm: road.distanceKm, isEstimated: false };
