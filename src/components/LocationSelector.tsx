@@ -137,10 +137,6 @@ export function LocationSelector({ value, onChange, label, compact }: Props) {
     onChange({ ...value, barangay: b });
   }
 
-  function handleDistrictChange(d: string) {
-    onChange({ ...value, district: d });
-  }
-
   const inputClass = compact
     ? 'w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition text-sm'
     : 'w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition text-sm';
@@ -243,17 +239,6 @@ export function LocationSelector({ value, onChange, label, compact }: Props) {
           )}
         </div>
 
-        {/* District */}
-        <div className="col-span-2">
-          <label className={labelClass}>District (opsyonal)</label>
-          <input
-            type="text"
-            value={value.district}
-            onChange={(e) => handleDistrictChange(e.target.value)}
-            placeholder="Hal. District 1"
-            className={inputClass}
-          />
-        </div>
       </div>
     </div>
   );

@@ -1177,7 +1177,7 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
         {store.description && <p className="text-gray-600 text-sm mt-3">{store.description}</p>}
         <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
           <MapPin size={16} />
-          <span>{store.barangay}, {store.district}, {store.city}, {store.region}</span>
+          <span>{[store.barangay, store.city, store.region].filter(Boolean).join(', ')}</span>
         </div>
       </div>
 
