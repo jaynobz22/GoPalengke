@@ -21,7 +21,7 @@ const config: any = {
     },
   },
   optimizeDeps: {
-    exclude: ['lucide-react', 'leaflet', 'react-leaflet'],
+    exclude: ['lucide-react'],
   },
   css: {
     postcss: {

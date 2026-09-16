@@ -11,7 +11,7 @@ import {
 
 const SOCIAL_PLATFORMS = [
   { id: 'facebook', name: 'Facebook', color: '#1877F2', shareUrl: (url: string, _text: string) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}` },
-  { id: 'messenger', name: 'Messenger', color: '#00B2FF', shareUrl: (url: string, _text: string) => `https://www.facebook.com/dialog/send?app_id=140586622674355&link=${encodeURIComponent(url)}&redirect_uri=${encodeURIComponent(url)}` },
+  { id: 'messenger', name: 'Messenger', color: '#00B2FF', shareUrl: (url: string, _text: string) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}` },
   { id: 'x', name: 'X', color: '#000000', shareUrl: (url: string, text: string) => `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}` },
   { id: 'linkedin', name: 'LinkedIn', color: '#0A66C2', shareUrl: (url: string, _text: string) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}` },
 ];

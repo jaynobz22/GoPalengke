@@ -2724,26 +2724,21 @@ function ShareStoreCard({ storeName, storeSlug }: { storeName: string; storeSlug
           <Facebook size={20} />
           Facebook
         </a>
-        <a
-          href={`fb-messenger://share?link=${encodedUrl}`}
-          onClick={(e) => {
+        <button
+          type="button"
+          onClick={() => {
             const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-            if (!isMobile) {
-              e.preventDefault();
-              navigator.clipboard.writeText(shareUrl).then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              });
-              window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`, '_blank', 'noopener,noreferrer');
+            if (isMobile && navigator.share) {
+              navigator.share({ title: storeName, text: shareText, url: shareUrl }).catch(() => {});
+              return;
             }
+            window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`, '_blank', 'noopener,noreferrer');
           }}
-          target="_blank"
-          rel="noopener noreferrer"
           className="flex flex-col items-center gap-1 py-3 bg-gradient-to-br from-[#00B2FF] to-[#006AFF] text-white rounded-xl font-semibold text-xs active:scale-95 transition"
         >
           <MessageCircle size={20} />
           Messenger
-        </a>
+        </button>
         <button
           onClick={copyLink}
           className="flex flex-col items-center gap-1 py-3 bg-gray-700 text-white rounded-xl font-semibold text-xs active:scale-95 transition"
