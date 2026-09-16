@@ -517,7 +517,7 @@ function ReviewsMarquee() {
       <div className="px-5 md:px-6 mb-4 max-w-6xl mx-auto">
         <div className="flex items-center gap-2">
           <Star size={20} className="text-amber-500 fill-amber-400" />
-          <h2 className="text-lg md:text-2xl font-bold text-gray-800">Sabi ng mga Gumagamit</h2>
+          <h2 className="text-lg md:text-2xl font-bold text-gray-800">Totoong Review Mula sa mga Buyer</h2>
         </div>
         <p className="text-xs md:text-sm text-gray-500 mt-0.5">Totoong reviews mula sa mga buyer at seller sa GoPalengke</p>
       </div>
