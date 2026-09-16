@@ -15,7 +15,16 @@ import {
   BASE_DELIVERY_FEE, PER_KM_RATE,
   type Coords, type RouteResult,
 } from '@/lib/deliveryFee';
-import { getCityBarangays } from '@/lib/philippineLocations';
+import { fetchBarangaysByCity, fetchCitiesByRegion, fetchCitiesByProvince, fetchProvincesByRegion } from '@/lib/philippineLocations';
+
+const OLD_REGION_MAP: Record<string, string> = {
+  'NCR': '1300000000', 'CAR': '1400000000',
+  'Region I': '0100000000', 'Region II': '0200000000', 'Region III': '0300000000',
+  'Region IV-A': '0400000000', 'Region IV-B': '1700000000', 'Region V': '0500000000',
+  'Region VI': '0600000000', 'Region VII': '0700000000', 'Region VIII': '0800000000',
+  'Region IX': '0900000000', 'Region X': '1000000000', 'Region XI': '1100000000',
+  'Region XII': '1200000000', 'Region XIII': '1600000000', 'BARMM': '1900000000',
+};
 import { BuyerLiveTrackingMap } from '@/components/BuyerLiveTrackingMap';
 import { LiveETATimer } from '@/components/LiveETATimer';
 import { DeliveryMap } from '@/components/DeliveryMap';
@@ -302,13 +311,38 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
   const [showBarangayDropdown, setShowBarangayDropdown] = useState(false);
   const [showPalengkeDropdown, setShowPalengkeDropdown] = useState(false);
 
-  // Compute barangay options based on buyer's city/region
-  const barangayOptions: string[] = (() => {
+  // Fetch barangay options based on buyer's city/region (async from PSGC API)
+  const [barangayOptions, setBarangayOptions] = useState<string[]>([]);
+  useEffect(() => {
     const city = locationFilter.city || profile?.city || '';
-    const region = locationFilter.region || profile?.region || '';
-    if (!city || !region) return [];
-    return getCityBarangays(region, city);
-  })();
+    const rawRegion = locationFilter.region || profile?.region || '';
+    if (!city || !rawRegion) { setBarangayOptions([]); return; }
+    // Normalize old region codes to PSGC format
+    const region = /^\d{10}$/.test(rawRegion) ? rawRegion : (OLD_REGION_MAP[rawRegion] || rawRegion);
+    if (!region) { setBarangayOptions([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const isNCR = region.startsWith('13');
+        let cityCode: string | null = null;
+        if (isNCR) {
+          const cities = await fetchCitiesByRegion(region);
+          cityCode = cities.find(c => c.name.toLowerCase() === city.toLowerCase())?.code || null;
+        } else {
+          const provinces = await fetchProvincesByRegion(region);
+          for (const prov of provinces) {
+            const cities = await fetchCitiesByProvince(prov.code);
+            cityCode = cities.find(c => c.name.toLowerCase() === city.toLowerCase())?.code || null;
+            if (cityCode) break;
+          }
+        }
+        if (!cityCode) { if (!cancelled) setBarangayOptions([]); return; }
+        const brgys = await fetchBarangaysByCity(cityCode);
+        if (!cancelled) setBarangayOptions(brgys);
+      } catch { if (!cancelled) setBarangayOptions([]); }
+    })();
+    return () => { cancelled = true; };
+  }, [locationFilter.city, locationFilter.region, profile?.city, profile?.region]);
 
   // Compute palengke options from loaded stores in the same city
   const palengkeOptions: string[] = (() => {

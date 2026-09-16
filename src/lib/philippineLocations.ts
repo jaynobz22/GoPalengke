@@ -1,454 +1,89 @@
 export interface CityInfo {
   name: string;
+  code: string;
   barangays: string[];
+}
+
+export interface ProvinceInfo {
+  name: string;
+  code: string;
 }
 
 export interface RegionInfo {
   code: string;
   name: string;
-  cities: CityInfo[];
 }
 
-const NO_BRG: string[] = [];
+const API_BASE = 'https://psgc.cloud/api';
 
-export const REGIONS_LIST: RegionInfo[] = [
-  {
-    code: 'NCR',
-    name: 'National Capital Region (NCR)',
-    cities: [
-      {
-        name: 'Manila',
-        barangays: [
-          'Barangay 1', 'Barangay 2', 'Barangay 3', 'Barangay 4', 'Barangay 5', 'Barangay 6', 'Barangay 7', 'Barangay 8', 'Barangay 9', 'Barangay 10',
-          'Barangay 11', 'Barangay 12', 'Barangay 13', 'Barangay 14', 'Barangay 15', 'Barangay 16', 'Barangay 17', 'Barangay 18', 'Barangay 19', 'Barangay 20',
-          'Barangay 21', 'Barangay 22', 'Barangay 23', 'Barangay 24', 'Barangay 25', 'Barangay 26', 'Barangay 27', 'Barangay 28', 'Barangay 29', 'Barangay 30',
-          'Barangay 31', 'Barangay 32', 'Barangay 33', 'Barangay 34', 'Barangay 35', 'Barangay 36', 'Barangay 37', 'Barangay 38', 'Barangay 39', 'Barangay 40',
-          'Barangay 41', 'Barangay 42', 'Barangay 43', 'Barangay 44', 'Barangay 45', 'Barangay 46', 'Barangay 47', 'Barangay 48', 'Barangay 49', 'Barangay 50',
-          'Barangay 51', 'Barangay 52', 'Barangay 53', 'Barangay 54', 'Barangay 55', 'Barangay 56', 'Barangay 57', 'Barangay 58', 'Barangay 59', 'Barangay 60',
-          'Barangay 61', 'Barangay 62', 'Barangay 63', 'Barangay 64', 'Barangay 65', 'Barangay 66', 'Barangay 67', 'Barangay 68', 'Barangay 69', 'Barangay 70',
-          'Barangay 71', 'Barangay 72', 'Barangay 73', 'Barangay 74', 'Barangay 75', 'Barangay 76', 'Barangay 77', 'Barangay 78', 'Barangay 79', 'Barangay 80',
-          'Barangay 81', 'Barangay 82', 'Barangay 83', 'Barangay 84', 'Barangay 85', 'Barangay 86', 'Barangay 87', 'Barangay 88', 'Barangay 89', 'Barangay 90',
-          'Barangay 91', 'Barangay 92', 'Barangay 93', 'Barangay 94', 'Barangay 95', 'Barangay 96', 'Barangay 97', 'Barangay 100', 'Barangay 101', 'Barangay 102',
-          'Barangay 103', 'Barangay 104', 'Barangay 105', 'Barangay 106', 'Barangay 107', 'Barangay 108', 'Barangay 109', 'Barangay 110', 'Barangay 111', 'Barangay 112',
-          'Barangay 113', 'Barangay 114', 'Barangay 115', 'Barangay 116', 'Barangay 117', 'Barangay 118', 'Barangay 119', 'Barangay 120', 'Barangay 121', 'Barangay 122',
-          'Barangay 123', 'Barangay 124', 'Barangay 125', 'Barangay 126', 'Barangay 127', 'Barangay 128', 'Barangay 129', 'Barangay 130', 'Barangay 131', 'Barangay 132',
-          'Barangay 133', 'Barangay 134', 'Barangay 135', 'Barangay 136', 'Barangay 137', 'Barangay 138', 'Barangay 139', 'Barangay 140', 'Barangay 141', 'Barangay 142',
-          'Barangay 143', 'Barangay 144', 'Barangay 145', 'Barangay 146', 'Barangay 147', 'Barangay 148', 'Barangay 149', 'Barangay 150', 'Barangay 151', 'Barangay 152',
-          'Barangay 153', 'Barangay 154', 'Barangay 155', 'Barangay 156', 'Barangay 157', 'Barangay 158', 'Barangay 159', 'Barangay 160', 'Barangay 161', 'Barangay 162',
-          'Barangay 163', 'Barangay 164', 'Barangay 165', 'Barangay 166', 'Barangay 167', 'Barangay 168', 'Barangay 169', 'Barangay 170', 'Barangay 171', 'Barangay 172',
-          'Barangay 173', 'Barangay 174', 'Barangay 175', 'Barangay 176', 'Barangay 177', 'Barangay 178', 'Barangay 179', 'Barangay 180', 'Barangay 181', 'Barangay 182',
-          'Barangay 183', 'Barangay 184', 'Barangay 185', 'Barangay 186', 'Barangay 187', 'Barangay 188', 'Barangay 189', 'Barangay 190', 'Barangay 191', 'Barangay 192',
-          'Barangay 193', 'Barangay 194', 'Barangay 195', 'Barangay 196', 'Barangay 197', 'Barangay 267', 'Barangay 268', 'Barangay 269', 'Barangay 270', 'Barangay 271',
-          'Barangay 272', 'Barangay 273', 'Barangay 274', 'Barangay 275', 'Barangay 276', 'Barangay 277', 'Barangay 278', 'Barangay 279', 'Barangay 280', 'Barangay 281',
-          'Barangay 282', 'Barangay 283', 'Barangay 284', 'Barangay 285', 'Barangay 286', 'Barangay 287', 'Barangay 288', 'Barangay 289', 'Barangay 291', 'Barangay 292',
-          'Barangay 293', 'Barangay 294', 'Barangay 295', 'Barangay 296', 'Barangay 297', 'Barangay 298', 'Barangay 299', 'Barangay 300', 'Barangay 301', 'Barangay 302',
-          'Barangay 303', 'Barangay 304', 'Barangay 305', 'Barangay 306', 'Barangay 307', 'Barangay 308', 'Barangay 309', 'Barangay 310', 'Barangay 311', 'Barangay 312',
-          'Barangay 313', 'Barangay 314', 'Barangay 315', 'Barangay 316', 'Barangay 317', 'Barangay 318', 'Barangay 319', 'Barangay 320', 'Barangay 321', 'Barangay 322',
-          'Barangay 323', 'Barangay 324', 'Barangay 325', 'Barangay 326', 'Barangay 327', 'Barangay 328', 'Barangay 329', 'Barangay 330', 'Barangay 331', 'Barangay 332',
-          'Barangay 333', 'Barangay 334', 'Barangay 335', 'Barangay 336', 'Barangay 337', 'Barangay 338', 'Barangay 339', 'Barangay 340', 'Barangay 341', 'Barangay 342',
-          'Barangay 343', 'Barangay 344', 'Barangay 345', 'Barangay 346', 'Barangay 347', 'Barangay 348', 'Barangay 349', 'Barangay 350', 'Barangay 351', 'Barangay 352',
-          'Barangay 353', 'Barangay 354', 'Barangay 355', 'Barangay 356', 'Barangay 357', 'Barangay 358', 'Barangay 359', 'Barangay 360', 'Barangay 361', 'Barangay 362',
-          'Barangay 363', 'Barangay 364', 'Barangay 365', 'Barangay 366', 'Barangay 367', 'Barangay 368', 'Barangay 369', 'Barangay 370', 'Barangay 371', 'Barangay 372',
-          'Barangay 373', 'Barangay 374', 'Barangay 375', 'Barangay 376', 'Barangay 377', 'Barangay 378', 'Barangay 379', 'Barangay 380', 'Barangay 381', 'Barangay 382',
-          'Barangay 383', 'Barangay 384', 'Barangay 385', 'Barangay 386', 'Barangay 387', 'Barangay 388', 'Barangay 389', 'Barangay 390', 'Barangay 391', 'Barangay 392',
-          'Barangay 393', 'Barangay 394', 'Barangay 395', 'Barangay 396', 'Barangay 397', 'Barangay 398', 'Barangay 399', 'Barangay 400', 'Barangay 401', 'Barangay 402',
-          'Barangay 403', 'Barangay 404', 'Barangay 405', 'Barangay 406', 'Barangay 407', 'Barangay 408', 'Barangay 409', 'Barangay 410', 'Barangay 411', 'Barangay 412',
-          'Barangay 413', 'Barangay 414', 'Barangay 415', 'Barangay 416', 'Barangay 417', 'Barangay 418', 'Barangay 419', 'Barangay 420', 'Barangay 421', 'Barangay 422',
-          'Barangay 423', 'Barangay 424', 'Barangay 425', 'Barangay 426', 'Barangay 427', 'Barangay 428', 'Barangay 429', 'Barangay 430', 'Barangay 431', 'Barangay 432',
-          'Barangay 433', 'Barangay 434', 'Barangay 435', 'Barangay 436', 'Barangay 437', 'Barangay 438', 'Barangay 439', 'Barangay 440', 'Barangay 441', 'Barangay 442',
-          'Barangay 443', 'Barangay 444', 'Barangay 445', 'Barangay 446', 'Barangay 447', 'Barangay 448', 'Barangay 449', 'Barangay 450', 'Barangay 451', 'Barangay 452',
-          'Barangay 453', 'Barangay 454', 'Barangay 455', 'Barangay 456', 'Barangay 457', 'Barangay 458', 'Barangay 459', 'Barangay 460', 'Barangay 461', 'Barangay 462',
-          'Barangay 463', 'Barangay 464', 'Barangay 465', 'Barangay 466', 'Barangay 467', 'Barangay 468', 'Barangay 469', 'Barangay 470', 'Barangay 471', 'Barangay 472',
-          'Barangay 473', 'Barangay 474', 'Barangay 475', 'Barangay 476', 'Barangay 477', 'Barangay 478', 'Barangay 479', 'Barangay 480', 'Barangay 481', 'Barangay 482',
-          'Barangay 483', 'Barangay 484', 'Barangay 485', 'Barangay 486', 'Barangay 487', 'Barangay 488', 'Barangay 489', 'Barangay 490', 'Barangay 491', 'Barangay 492',
-          'Barangay 493', 'Barangay 494', 'Barangay 495', 'Barangay 496', 'Barangay 497', 'Barangay 498', 'Barangay 499', 'Barangay 500', 'Barangay 501', 'Barangay 502',
-          'Barangay 503', 'Barangay 504', 'Barangay 505', 'Barangay 506', 'Barangay 507', 'Barangay 508', 'Barangay 509', 'Barangay 510', 'Barangay 511', 'Barangay 512',
-          'Barangay 513', 'Barangay 514', 'Barangay 515', 'Barangay 516', 'Barangay 517', 'Barangay 518', 'Barangay 519', 'Barangay 520', 'Barangay 521', 'Barangay 522',
-          'Barangay 523', 'Barangay 524', 'Barangay 525', 'Barangay 526', 'Barangay 527', 'Barangay 528', 'Barangay 529', 'Barangay 530', 'Barangay 531', 'Barangay 532',
-          'Barangay 533', 'Barangay 534', 'Barangay 535', 'Barangay 536', 'Barangay 537', 'Barangay 538', 'Barangay 539', 'Barangay 540', 'Barangay 541', 'Barangay 542',
-          'Barangay 543', 'Barangay 544', 'Barangay 545', 'Barangay 546', 'Barangay 547', 'Barangay 548', 'Barangay 549', 'Barangay 550', 'Barangay 551', 'Barangay 552',
-          'Barangay 553', 'Barangay 554', 'Barangay 555', 'Barangay 556', 'Barangay 557', 'Barangay 558', 'Barangay 559', 'Barangay 560', 'Barangay 561', 'Barangay 562',
-          'Barangay 563', 'Barangay 564', 'Barangay 565', 'Barangay 566', 'Barangay 567', 'Barangay 568', 'Barangay 569', 'Barangay 570', 'Barangay 571', 'Barangay 572',
-          'Barangay 573', 'Barangay 574', 'Barangay 575', 'Barangay 576', 'Barangay 577', 'Barangay 578', 'Barangay 579', 'Barangay 580', 'Barangay 581', 'Barangay 582',
-          'Barangay 583', 'Barangay 584', 'Barangay 585', 'Barangay 586', 'Barangay 587', 'Barangay 588', 'Barangay 589', 'Barangay 590', 'Barangay 591', 'Barangay 592',
-          'Barangay 593', 'Barangay 594', 'Barangay 595', 'Barangay 596', 'Barangay 597', 'Barangay 598', 'Barangay 599', 'Barangay 600', 'Barangay 601', 'Barangay 602',
-          'Barangay 603', 'Barangay 604', 'Barangay 605', 'Barangay 606', 'Barangay 607', 'Barangay 608', 'Barangay 609', 'Barangay 610', 'Barangay 611', 'Barangay 612',
-          'Barangay 613', 'Barangay 614', 'Barangay 615', 'Barangay 616', 'Barangay 617', 'Barangay 618', 'Barangay 619', 'Barangay 620', 'Barangay 621', 'Barangay 622',
-          'Barangay 623', 'Barangay 624', 'Barangay 625', 'Barangay 626', 'Barangay 627', 'Barangay 628', 'Barangay 629', 'Barangay 630', 'Barangay 631', 'Barangay 632',
-          'Barangay 633', 'Barangay 634', 'Barangay 635', 'Barangay 636', 'Barangay 637', 'Barangay 638', 'Barangay 639', 'Barangay 640', 'Barangay 641', 'Barangay 642',
-          'Barangay 643', 'Barangay 644', 'Barangay 645', 'Barangay 646', 'Barangay 647', 'Barangay 648', 'Barangay 649', 'Barangay 650', 'Barangay 651', 'Barangay 652',
-          'Barangay 653', 'Barangay 654', 'Barangay 655', 'Barangay 656', 'Barangay 657', 'Barangay 658', 'Barangay 659', 'Barangay 660', 'Barangay 661', 'Barangay 662',
-          'Barangay 663', 'Barangay 664', 'Barangay 665', 'Barangay 666', 'Barangay 667', 'Barangay 668', 'Barangay 669', 'Barangay 670', 'Barangay 671', 'Barangay 672',
-          'Barangay 673', 'Barangay 674', 'Barangay 675', 'Barangay 676', 'Barangay 677', 'Barangay 678', 'Barangay 679', 'Barangay 680', 'Barangay 681', 'Barangay 682',
-          'Barangay 683', 'Barangay 684', 'Barangay 685', 'Barangay 686', 'Barangay 687', 'Barangay 688', 'Barangay 689', 'Barangay 690', 'Barangay 691', 'Barangay 692',
-          'Barangay 693', 'Barangay 694', 'Barangay 695', 'Barangay 696', 'Barangay 697', 'Barangay 698', 'Barangay 699', 'Barangay 700', 'Barangay 701', 'Barangay 702',
-          'Barangay 703', 'Barangay 704', 'Barangay 705', 'Barangay 706', 'Barangay 707', 'Barangay 708', 'Barangay 709', 'Barangay 710', 'Barangay 711', 'Barangay 712',
-          'Barangay 713', 'Barangay 714', 'Barangay 715', 'Barangay 716', 'Barangay 717', 'Barangay 718', 'Barangay 719', 'Barangay 720', 'Barangay 721', 'Barangay 722',
-          'Barangay 723', 'Barangay 724', 'Barangay 725', 'Barangay 726', 'Barangay 727', 'Barangay 728', 'Barangay 729', 'Barangay 730', 'Barangay 731', 'Barangay 732',
-          'Barangay 733', 'Barangay 734', 'Barangay 735', 'Barangay 736', 'Barangay 737', 'Barangay 738', 'Barangay 739', 'Barangay 740', 'Barangay 741', 'Barangay 742',
-          'Barangay 743', 'Barangay 744', 'Barangay 745', 'Barangay 746', 'Barangay 747', 'Barangay 748', 'Barangay 749', 'Barangay 750', 'Barangay 751', 'Barangay 752',
-          'Barangay 753', 'Barangay 754', 'Barangay 755', 'Barangay 756', 'Barangay 757', 'Barangay 758', 'Barangay 759', 'Barangay 760', 'Barangay 761', 'Barangay 762',
-          'Barangay 763', 'Barangay 764', 'Barangay 765', 'Barangay 766', 'Barangay 767', 'Barangay 768', 'Barangay 769', 'Barangay 770', 'Barangay 771', 'Barangay 772',
-          'Barangay 773', 'Barangay 774', 'Barangay 775', 'Barangay 776', 'Barangay 777', 'Barangay 778', 'Barangay 779', 'Barangay 780', 'Barangay 781', 'Barangay 782',
-          'Barangay 783', 'Barangay 784', 'Barangay 785', 'Barangay 786', 'Barangay 787', 'Barangay 788', 'Barangay 789', 'Barangay 790', 'Barangay 791', 'Barangay 792',
-          'Barangay 793', 'Barangay 794', 'Barangay 795', 'Barangay 796', 'Barangay 797', 'Barangay 798', 'Barangay 799', 'Barangay 800', 'Barangay 801', 'Barangay 802',
-          'Barangay 803', 'Barangay 804', 'Barangay 805', 'Barangay 806', 'Barangay 807', 'Barangay 808', 'Barangay 809', 'Barangay 810', 'Barangay 811', 'Barangay 812',
-          'Barangay 813', 'Barangay 814', 'Barangay 815', 'Barangay 816', 'Barangay 817', 'Barangay 818', 'Barangay 819', 'Barangay 820', 'Barangay 821', 'Barangay 822',
-          'Barangay 823', 'Barangay 824', 'Barangay 825', 'Barangay 826', 'Barangay 827', 'Barangay 828', 'Barangay 829', 'Barangay 830', 'Barangay 831', 'Barangay 832',
-          'Barangay 833', 'Barangay 834', 'Barangay 835', 'Barangay 836', 'Barangay 837', 'Barangay 838', 'Barangay 839', 'Barangay 840', 'Barangay 841', 'Barangay 842',
-          'Barangay 843', 'Barangay 844', 'Barangay 845', 'Barangay 846', 'Barangay 847', 'Barangay 848', 'Barangay 849', 'Barangay 850', 'Barangay 851', 'Barangay 852',
-          'Barangay 853', 'Barangay 854', 'Barangay 855', 'Barangay 856', 'Barangay 857', 'Barangay 858', 'Barangay 859', 'Barangay 860', 'Barangay 861', 'Barangay 862',
-          'Barangay 863', 'Barangay 864', 'Barangay 865', 'Barangay 866', 'Barangay 867', 'Barangay 868', 'Barangay 869', 'Barangay 870', 'Barangay 871', 'Barangay 872',
-          'Barangay 873', 'Barangay 874', 'Barangay 875', 'Barangay 876', 'Barangay 877', 'Barangay 878', 'Barangay 879', 'Barangay 880', 'Barangay 881', 'Barangay 882',
-          'Barangay 883', 'Barangay 884', 'Barangay 885', 'Barangay 886', 'Barangay 887', 'Barangay 888', 'Barangay 889', 'Barangay 890', 'Barangay 891', 'Barangay 892',
-          'Barangay 893', 'Barangay 894', 'Barangay 895', 'Barangay 896', 'Barangay 897', 'Barangay 898', 'Barangay 899', 'Barangay 900', 'Barangay 901', 'Barangay 902',
-          'Barangay 903', 'Barangay 904', 'Barangay 905', 'Barangay 906', 'Barangay 907', 'Barangay 908', 'Barangay 909', 'Barangay 910', 'Barangay 911', 'Barangay 912',
-          'Barangay 913', 'Barangay 914', 'Barangay 915', 'Barangay 916', 'Barangay 917', 'Barangay 918', 'Barangay 919', 'Barangay 920', 'Barangay 921', 'Barangay 922',
-          'Barangay 923', 'Barangay 924', 'Barangay 925', 'Barangay 926', 'Barangay 927', 'Barangay 928', 'Barangay 929', 'Barangay 930', 'Barangay 931', 'Barangay 932',
-          'Barangay 933', 'Barangay 934', 'Barangay 935', 'Barangay 936', 'Barangay 937', 'Barangay 938', 'Barangay 939', 'Barangay 940', 'Barangay 941', 'Barangay 942',
-          'Barangay 943', 'Barangay 944', 'Barangay 945', 'Barangay 946', 'Barangay 947', 'Barangay 948', 'Barangay 949', 'Barangay 950', 'Barangay 951', 'Barangay 952',
-          'Barangay 953', 'Barangay 954', 'Barangay 955', 'Barangay 956', 'Barangay 957', 'Barangay 958', 'Barangay 959', 'Barangay 960', 'Barangay 961', 'Barangay 962',
-          'Barangay 963', 'Barangay 964', 'Barangay 965', 'Barangay 966', 'Barangay 967', 'Barangay 968', 'Barangay 969', 'Barangay 970', 'Barangay 971', 'Barangay 972',
-          'Barangay 973',
-          'Intramuros', 'Ermita', 'Malate', 'Paco', 'Binondo', 'Quiapo', 'Sampaloc', 'San Miguel', 'San Nicolas', 'Santa Cruz', 'Santa Mesa', 'Tondo', 'Port Area',
-        ],
-      },
-      {
-        name: 'Quezon City',
-        barangays: [
-          'Bagong Pag-asa', 'Bahay Toro', 'Balingasa', 'Barangay 20', 'Barangay 22', 'Barangay 28', 'Barangay 29', 'Barangay 42', 'Barangay 45', 'Barangay 46',
-          'Barangay 48', 'Barangay 50', 'Barangay 58', 'Barangay 59', 'Barangay 70', 'Barangay 76', 'Barangay 77', 'Barangay 82', 'Barangay 83', 'Barangay 84',
-          'Barangay 85', 'Barangay 86', 'Barangay 87', 'Barangay 88', 'Barangay 89', 'Barangay 90', 'Barangay 91', 'Barangay 92', 'Barangay 93', 'Barangay 94',
-          'Barangay 95', 'Barangay 96', 'Barangay 97', 'Barangay 98', 'Barangay 99', 'Barangay 100', 'Commonwealth', 'Holy Spirit', 'New Era', 'Pasong Tamo',
-          'Aurora', 'Bagumbayan', 'Claro M. Recto', 'Culiat', 'Diliman', 'E. Rodriguez', 'Fairview', 'Galas', 'Kamias', 'Kamatihan', 'Lourdes', 'Malaya',
-          'Mariblo', 'Masambong', 'Matandang Balara', 'Munoz', 'Nagkaisang Nayon', 'Nicolson', 'Novaliches', 'Pasig', 'Pinagkaisahan', 'Pinyahan', 'Roxas',
-          'Sacred Heart', 'San Agustin', 'San Antonio', 'San Bartolome', 'San Isidro', 'San Jose', 'San Martin de Porres', 'San Mateo', 'San Roque',
-          'San Vicente', 'Santa Monica', 'Santo Cristo', 'Santo Domingo', 'Siena', 'Silangan', 'St. Peter', 'Tagumpay', 'Tandang Sora', 'Tatalon',
-          'Teachers Village', 'Ugong Norte', 'UP Village', 'Valencia', 'Vasra', 'Visayas Avenue',
-        ],
-      },
-      { name: 'Makati City', barangays: ['Bangkal', 'Bel-Air', 'Carmona', 'Cembo', 'Comembo', 'Dasmariñas', 'East Rembo', 'Forbes Park', 'Guadalupe Nuevo', 'Guadalupe Viejo', 'Kasilawan', 'La Paz', 'Magallanes', 'Olympia', 'Palanan', 'Pembo', 'Pinagkaisahan', 'Pio del Pilar', 'Pitogo', 'Poblacion', 'Post Proper Northside', 'Post Proper Southside', 'Rizal', 'San Antonio', 'San Isidro', 'San Lorenzo', 'Santa Cruz', 'Singkamas', 'South Cembo', 'Tejeros', 'Urdaneta', 'Valenzuela', 'West Rembo'] },
-      { name: 'Pasig City', barangays: ['Bagong Ilog', 'Bagong Katipunan', 'Bambang', 'Buting', 'Canioga', 'Dela Paz', 'Kalawaan', 'Kapasigan', 'Kapitolyo', 'Malinao', 'Manggahan', 'Maybunga', 'Nagpayong', 'Pinagbuhatan', 'Pineda', 'Rosario', 'San Antonio', 'San Joaquin', 'San Jose', 'San Miguel', 'San Nicolas', 'Santa Cruz', 'Santa Lucia', 'Santa Rosa', 'Santolan', 'Sumilang', 'Tikay', 'Ugong'] },
-      { name: 'Taguig City', barangays: ['Bagumbayan', 'Bambang', 'Calzada', 'Central Bicutan', 'Central Signal Village', 'Fort Bonifacio', 'Hagonoy', 'Ibayo Tipas', 'Ligid', 'Lower Bicutan', 'Maharlika Village', 'Napindan', 'New Lower Bicutan', 'North Signal Village', 'North Daan Bantayan', 'Palingon', 'Pinagsama', 'San Miguel', 'Santa Ana', 'South Daan Bantayan', 'South Signal Village', 'Tanyag', 'Tipas', 'Tuktukan', 'Upper Bicutan', 'Ususan', 'Wawa', 'Western Bicutan'] },
-      { name: 'Marikina City', barangays: ['Barangka', 'Calumpang', 'Concepcion I', 'Concepcion II', 'Jesus de la Peña', 'Malanday', 'Nangka', 'Parang', 'San Roque', 'Santa Elena', 'Santo Niño', 'Tañong', 'Tumana', 'Industrial Valley', 'Fortune'] },
-      { name: 'Muntinlupa City', barangays: ['Alabang', 'Ayala Alabang', 'Bayanan', 'Buli', 'Cupang', 'Filinvest City', 'Linang', 'Poblacion', 'Putatan', 'Sucat', 'Tunasan'] },
-      { name: 'Las Piñas City', barangays: ['Almanza Uno', 'Almanza Dos', 'Daniel Fajardo', 'Elias Aldana', 'Ilaya', 'Manuyo Uno', 'Manuyo Dos', 'Pamplona Uno', 'Pamplona Dos', 'Pamplona Tres', 'Pilar', 'Pulang Lupa Uno', 'Pulang Lupa Dos', 'Talon Uno', 'Talon Dos', 'Talon Tres', 'Talon Cuatro', 'Talon Singko', 'Zapote'] },
-      { name: 'Parañaque City', barangays: ['Baclaran', 'Bakawan', 'Don Galo', 'La Huerta', 'San Dionisio', 'San Isidro', 'Martin de Porres', 'Marcelo Green', 'Moonwalk', 'Sun Valley', 'Vitalez', 'San Antonio', 'B. F. Homes', 'Multinational Village', 'Merville', 'Don Bosco', 'San Agustin', 'Tambo'] },
-      { name: 'Valenzuela City', barangays: ['Arkong Bato', 'Bagbaguin', 'Bignay', 'Bisig', 'Canumay East', 'Canumay West', 'Coloong', 'Dalandanan', 'Gen. T. de Leon', 'Karuhatan', 'Lawang Bato', 'Lingunan', 'Malinta', 'Mapulang Lupa', 'Maysan', 'Parada', 'Paso de Blas', 'Poblacion', 'Polo', 'Rincon', 'Tagalag', 'Ugong', 'Veinte Reales', 'Wawang Pulo'] },
-      { name: 'Malabon City', barangays: ['Acacia', 'Baritan', 'Bayan-bayan', 'Catmon', 'Concepcion', 'Dampalit', 'Flores', 'Hulong Duhat', 'Ibaba', 'Longos', 'Maysilo', 'Muzon', 'Niugan', 'Panghulo', 'Pinagsama', 'Potrero', 'San Agustin', 'Santulan', 'Tañong', 'Tinajeros', 'Tonsuya', 'Tugatog'] },
-      { name: 'Navotas City', barangays: ['Bagumbayan North', 'Bagumbayan South', 'Bangkulasi', 'Daanghari', 'Navotas East', 'Navotas West', 'North Bay Boulevard North', 'North Bay Boulevard South', 'San Jose', 'San Rafael Village', 'San Roque', 'Sipac', 'Tangos', 'Tanza I', 'Tanza II'] },
-      { name: 'Caloocan City', barangays: ['Bagong Silang', 'Bagumbong', 'Balingasa', 'Camarin', 'Deparo', 'Gubat', 'Ligas', 'Tala', 'Tandang Sora', 'Barangay 1', 'Barangay 2', 'Barangay 3', 'Barangay 4', 'Barangay 5', 'Barangay 6', 'Barangay 7', 'Barangay 8', 'Barangay 9', 'Barangay 10', 'Barangay 11', 'Barangay 12', 'Barangay 13', 'Barangay 14', 'Barangay 15', 'Barangay 16', 'Barangay 17', 'Barangay 18', 'Barangay 19', 'Barangay 20', 'Barangay 21', 'Barangay 22', 'Barangay 23', 'Barangay 24', 'Barangay 25', 'Barangay 26', 'Barangay 28', 'Barangay 29', 'Barangay 30', 'Barangay 31', 'Barangay 32', 'Barangay 33', 'Barangay 34', 'Barangay 35', 'Barangay 36', 'Barangay 37', 'Barangay 38', 'Barangay 39', 'Barangay 40', 'Barangay 41', 'Barangay 42', 'Barangay 43', 'Barangay 44', 'Barangay 45', 'Barangay 46', 'Barangay 47', 'Barangay 48', 'Barangay 49', 'Barangay 50', 'Barangay 51', 'Barangay 52', 'Barangay 53', 'Barangay 54', 'Barangay 55', 'Barangay 56', 'Barangay 57', 'Barangay 58', 'Barangay 59', 'Barangay 60', 'Barangay 61', 'Barangay 62', 'Barangay 63', 'Barangay 64', 'Barangay 65', 'Barangay 66', 'Barangay 67', 'Barangay 68', 'Barangay 69', 'Barangay 70', 'Barangay 71', 'Barangay 72', 'Barangay 73', 'Barangay 74', 'Barangay 75', 'Barangay 76', 'Barangay 77', 'Barangay 78', 'Barangay 79', 'Barangay 80', 'Barangay 81', 'Barangay 82', 'Barangay 83', 'Barangay 84', 'Barangay 85', 'Barangay 86', 'Barangay 87', 'Barangay 88', 'Barangay 89', 'Barangay 90', 'Barangay 91', 'Barangay 92', 'Barangay 93', 'Barangay 94', 'Barangay 95', 'Barangay 96', 'Barangay 97', 'Barangay 98', 'Barangay 99', 'Barangay 100', 'Barangay 101', 'Barangay 102', 'Barangay 103', 'Barangay 104', 'Barangay 105', 'Barangay 106', 'Barangay 107', 'Barangay 108', 'Barangay 109', 'Barangay 110', 'Barangay 111', 'Barangay 112', 'Barangay 113', 'Barangay 114', 'Barangay 115', 'Barangay 116', 'Barangay 117', 'Barangay 118', 'Barangay 119', 'Barangay 120', 'Barangay 121', 'Barangay 122', 'Barangay 123', 'Barangay 124', 'Barangay 125', 'Barangay 126', 'Barangay 127', 'Barangay 128', 'Barangay 129', 'Barangay 130', 'Barangay 131', 'Barangay 132', 'Barangay 133', 'Barangay 134', 'Barangay 135', 'Barangay 136', 'Barangay 137', 'Barangay 138', 'Barangay 139', 'Barangay 140', 'Barangay 141', 'Barangay 142', 'Barangay 143', 'Barangay 144', 'Barangay 145', 'Barangay 146', 'Barangay 147', 'Barangay 148', 'Barangay 149', 'Barangay 150', 'Barangay 151', 'Barangay 152', 'Barangay 153', 'Barangay 154', 'Barangay 155', 'Barangay 156', 'Barangay 157', 'Barangay 158', 'Barangay 159', 'Barangay 160', 'Barangay 161', 'Barangay 162', 'Barangay 163', 'Barangay 164', 'Barangay 165', 'Barangay 166', 'Barangay 167', 'Barangay 168', 'Barangay 169', 'Barangay 170', 'Barangay 171', 'Barangay 172', 'Barangay 173', 'Barangay 174', 'Barangay 175', 'Barangay 176', 'Barangay 177', 'Barangay 178', 'Barangay 179', 'Barangay 180', 'Barangay 181', 'Barangay 182', 'Barangay 183'] },
-      { name: 'Pasay City', barangays: ['Barangay 1', 'Barangay 2', 'Barangay 3', 'Barangay 4', 'Barangay 5', 'Barangay 6', 'Barangay 7', 'Barangay 8', 'Barangay 9', 'Barangay 10', 'Barangay 11', 'Barangay 12', 'Barangay 13', 'Barangay 14', 'Barangay 15', 'Barangay 16', 'Barangay 17', 'Barangay 18', 'Barangay 19', 'Barangay 20', 'Barangay 21', 'Barangay 22', 'Barangay 23', 'Barangay 24', 'Barangay 25', 'Barangay 26', 'Barangay 27', 'Barangay 28', 'Barangay 29', 'Barangay 30', 'Barangay 31', 'Barangay 32', 'Barangay 33', 'Barangay 34', 'Barangay 35', 'Barangay 36', 'Barangay 37', 'Barangay 38', 'Barangay 39', 'Barangay 40', 'Barangay 41', 'Barangay 42', 'Barangay 43', 'Barangay 44', 'Barangay 45', 'Barangay 46', 'Barangay 47', 'Barangay 48', 'Barangay 49', 'Barangay 50', 'Barangay 51', 'Barangay 52', 'Barangay 53', 'Barangay 54', 'Barangay 55', 'Barangay 56', 'Barangay 57', 'Barangay 58', 'Barangay 59', 'Barangay 60', 'Barangay 61', 'Barangay 62', 'Barangay 63', 'Barangay 64', 'Barangay 65', 'Barangay 66', 'Barangay 67', 'Barangay 68', 'Barangay 69', 'Barangay 70', 'Barangay 71', 'Barangay 72', 'Barangay 73', 'Barangay 74', 'Barangay 75', 'Barangay 76', 'Barangay 77', 'Barangay 78', 'Barangay 79', 'Barangay 80', 'Barangay 81', 'Barangay 82', 'Barangay 83', 'Barangay 84', 'Barangay 85', 'Barangay 86', 'Barangay 87', 'Barangay 88', 'Barangay 89', 'Barangay 90', 'Barangay 91', 'Barangay 92', 'Barangay 93', 'Barangay 94', 'Barangay 95', 'Barangay 96', 'Barangay 97', 'Barangay 98', 'Barangay 99', 'Barangay 100', 'Barangay 101', 'Barangay 102', 'Barangay 103', 'Barangay 104', 'Barangay 105', 'Barangay 106', 'Barangay 107', 'Barangay 108', 'Barangay 109', 'Barangay 110', 'Barangay 111', 'Barangay 112', 'Barangay 113', 'Barangay 114', 'Barangay 115', 'Barangay 116', 'Barangay 117', 'Barangay 118', 'Barangay 119', 'Barangay 120', 'Barangay 121', 'Barangay 122', 'Barangay 123', 'Barangay 124', 'Barangay 125', 'Barangay 126', 'Barangay 127', 'Barangay 128', 'Barangay 129', 'Barangay 130', 'Barangay 131', 'Barangay 132', 'Barangay 133', 'Barangay 134', 'Barangay 135', 'Barangay 136', 'Barangay 137', 'Barangay 138', 'Barangay 139', 'Barangay 140', 'Barangay 141', 'Barangay 142', 'Barangay 143', 'Barangay 144', 'Barangay 145', 'Barangay 146', 'Barangay 147', 'Barangay 148', 'Barangay 149', 'Barangay 150', 'Barangay 151', 'Barangay 152', 'Barangay 153', 'Barangay 154', 'Barangay 155', 'Barangay 156', 'Barangay 157', 'Barangay 158', 'Barangay 159', 'Barangay 160', 'Barangay 161', 'Barangay 162', 'Barangay 163', 'Barangay 164', 'Barangay 165', 'Barangay 166', 'Barangay 167', 'Barangay 168', 'Barangay 169', 'Barangay 170', 'Barangay 171', 'Barangay 172', 'Barangay 173', 'Barangay 174', 'Barangay 175', 'Barangay 176', 'Barangay 177', 'Barangay 178', 'Barangay 179', 'Barangay 180', 'Barangay 181', 'Barangay 182', 'Barangay 183', 'Barangay 184', 'Barangay 185', 'Barangay 186', 'Barangay 187', 'Barangay 188', 'Barangay 189', 'Barangay 190', 'Barangay 191', 'Barangay 192', 'Barangay 193', 'Barangay 194', 'Barangay 195', 'Barangay 196', 'Barangay 197'] },
-      { name: 'Pateros', barangays: ['Bagong Calzada', 'Bukid', 'Martires del 96', 'Poblacion', 'San Pedro', 'Sta. Ana', 'Sto. Rosario-Kanluran', 'Sto. Rosario-Silangan', 'Tabacalera', 'Aguho', 'Magnolia', 'Nueva'] },
-      { name: 'San Juan City', barangays: ['Barangay 1', 'Barangay 2', 'Barangay 3', 'Barangay 4', 'Barangay 5', 'Barangay 6', 'Barangay 7', 'Barangay 8', 'Barangay 9', 'Barangay 10', 'Barangay 11', 'Barangay 12', 'Barangay 13', 'Barangay 14', 'Barangay 15', 'Barangay 16', 'Barangay 17', 'Barangay 18', 'Barangay 19', 'Barangay 20', 'Barangay 21', 'Barangay 22', 'Barangay 23', 'Barangay 24', 'Barangay 25', 'Barangay 26', 'Barangay 27', 'Barangay 28', 'Barangay 29', 'Barangay 30', 'Barangay 31', 'Barangay 32', 'Barangay 33', 'Barangay 34', 'Barangay 35', 'Barangay 36', 'Barangay 37', 'Barangay 38', 'Barangay 39', 'Barangay 40', 'Barangay 41', 'Barangay 42', 'Barangay 43', 'Barangay 44', 'Barangay 45', 'Barangay 46', 'Barangay 47', 'Barangay 48', 'Barangay 49', 'Barangay 50', 'Barangay 51', 'Barangay 52', 'Barangay 53', 'Barangay 54', 'Barangay 55', 'Barangay 56', 'Barangay 57', 'Barangay 58', 'Barangay 59'] },
-      { name: 'Mandaluyong City', barangays: ['Addition Hills', 'Bagong Silang', 'Barangka Drive', 'Barangka Ibarra', 'Barangka Itaas', 'Barangka Mandaluyong', 'Batasan Hills', 'Buayang Bato', 'Daang Bakal', 'Hulo', 'Mabini-J. Rizal', 'Malamig', 'Namayan', 'Pag-Asa', 'Plainview', 'Poblacion', 'San Roque', 'Santa Cruz', 'Vergara', 'Wack-Wack', 'Highway Hills', 'Mauway', 'New Zaniga', 'Old Zaniga', 'San Jose'] },
-    ],
-  },
-  {
-    code: 'CAR',
-    name: 'Cordillera Administrative Region (CAR)',
-    cities: [
-      { name: 'Baguio City', barangays: ['Alfonso Norte', 'Alfonso Sur', 'Ambiong', 'Andres Bonifacio', 'Aping', 'Asin', 'Atok Trail', 'Aurora Hill', 'Bagong Lipunan', 'Bakakeng Central', 'Bakakeng Norte', 'Bal-Marcos', 'Balsigan', 'Bayan Park West', 'Bayan Park East', 'BGH Compound', 'Brookside', 'Brookspoint', 'Cabinet Hill-Teacher\'s Camp', 'Camp 7', 'Camp 8', 'Camp Allen', 'Campo Filipino', 'City Camp Central', 'City Camp Lagoon', 'Country Club Village', 'Cresencia Village', 'Dagsian High', 'Dagsian Low', 'Dizon', 'Dominican-Mirador', 'Dontogan', 'Downtown', 'Engineers\' Hill', 'Fairview', 'Ferdinand', 'Fort del Pilar', 'Gabriela Silang', 'General Emilio F. Aguinaldo', 'General Luna', 'General Roxas', 'Gibraltar', 'Greenwater Village', 'Guisad', 'Guisad Central', 'Harrison-Claude', 'Hillside', 'Holy Ghost Extension', 'Holy Ghost Proper', 'Honeymoon', 'Irisan', 'Kabayanihan', 'Kagitingan', 'Kayang', 'Kayapa', 'Kias', 'Legarda-Burnham', 'Liwanag-Loakan', 'Lopez Jaena Norte', 'Lopez Jaena Sur', 'Loakan', 'Lourdes Extension', 'Lourdes Proper', 'Lower Quirino Hill', 'Magsaysay Private Road', 'Magsaysay Upper', 'Magsaysay Lower', 'Malcolm Square', 'Manuel A. Roxas', 'Marcos Highway', 'Market Sub', 'Middle Quezon Hill', 'Military Cut-off', 'Mirador', 'Modern Site', 'New Lucban', 'North Bay Drive', 'Outlook Drive', 'Pacdal', 'Padre Burgos', 'Padre Zamora', 'Palma', 'Pinget', 'Pinya', 'Policarpio', 'Pucsusan', 'Quezon Hill Central', 'Quezon Hill Proper', 'Quezon Hill Upper', 'Quirino Hill', 'Quirino Lower', 'Quirino Middle', 'Quirino Upper', 'Rizal Monument', 'Rock Quarry Middle', 'Rock Quarry Lower', 'Rock Quarry Upper', 'Saint Joseph', 'Salud Mitra', 'San Antonio', 'San Luis', 'San Marcos', 'San Roque', 'San Vicente', 'Santa Escolastica', 'Santo Rosario', 'Santo Tomas', 'Santo Tomas Proper', 'Scout Barrio', 'Session Road', 'Slaughter House', 'SLU-SVP', 'South Drive', 'Teodora Alonzo', 'Trancoville', 'Upper Quezon Hill', 'Victoria Village', 'Washington'] },
-      { name: 'Tabuk City', barangays: NO_BRG },
-      { name: 'Bangued', barangays: NO_BRG },
-      { name: 'Bontoc', barangays: NO_BRG },
-      { name: 'Lagawe', barangays: NO_BRG },
-      { name: 'Kiangan', barangays: NO_BRG },
-      { name: 'Luna', barangays: NO_BRG },
-    ],
-  },
-  {
-    code: 'Region I',
-    name: 'Ilocos Region (Region I)',
-    cities: [
-      { name: 'San Fernando City', barangays: NO_BRG },
-      { name: 'Vigan City', barangays: NO_BRG },
-      { name: 'Laoag City', barangays: NO_BRG },
-      { name: 'Alaminos City', barangays: NO_BRG },
-      { name: 'Urdaneta City', barangays: NO_BRG },
-      { name: 'Dagupan City', barangays: NO_BRG },
-      { name: 'Batac City', barangays: NO_BRG },
-      { name: 'Candon City', barangays: NO_BRG },
-    ],
-  },
-  {
-    code: 'Region II',
-    name: 'Cagayan Valley (Region II)',
-    cities: [
-      { name: 'Tuguegarao City', barangays: NO_BRG },
-      { name: 'Ilagan City', barangays: NO_BRG },
-      { name: 'Cauayan City', barangays: NO_BRG },
-      { name: 'Santiago City', barangays: NO_BRG },
-      { name: 'Bayombong', barangays: NO_BRG },
-      { name: 'Solana', barangays: NO_BRG },
-    ],
-  },
-  {
-    code: 'Region III',
-    name: 'Central Luzon (Region III)',
-    cities: [
-      { name: 'Angeles City', barangays: NO_BRG },
-      { name: 'Olongapo City', barangays: NO_BRG },
-      { name: 'San Jose del Monte', barangays: NO_BRG },
-      { name: 'Balanga City', barangays: NO_BRG },
-      { name: 'Malolos City', barangays: NO_BRG },
-      { name: 'Meycauayan City', barangays: NO_BRG },
-      { name: 'San Fernando City', barangays: NO_BRG },
-      { name: 'Cabanatuan City', barangays: NO_BRG },
-      { name: 'Gapan City', barangays: NO_BRG },
-      { name: 'Muñoz City', barangays: NO_BRG },
-      { name: 'Tarlac City', barangays: NO_BRG },
-      { name: 'Capas', barangays: NO_BRG },
-      { name: 'Concepcion', barangays: NO_BRG },
-      { name: 'Baliwag', barangays: NO_BRG },
-      { name: 'Marilao', barangays: NO_BRG },
-      { name: 'Santa Maria', barangays: NO_BRG },
-      { name: 'Norzagaray', barangays: NO_BRG },
-      { name: 'Guiguinto', barangays: NO_BRG },
-      { name: 'Plaridel', barangays: NO_BRG },
-      { name: 'Pulilan', barangays: NO_BRG },
-    ],
-  },
-  {
-    code: 'Region IV-A',
-    name: 'CALABARZON (Region IV-A)',
-    cities: [
-      { name: 'Antipolo City', barangays: NO_BRG },
-      { name: 'Bacoor City', barangays: NO_BRG },
-      { name: 'Calamba City', barangays: NO_BRG },
-      { name: 'Cavite City', barangays: NO_BRG },
-      { name: 'Dasmariñas City', barangays: NO_BRG },
-      { name: 'General Trias', barangays: NO_BRG },
-      { name: 'Imus City', barangays: NO_BRG },
-      { name: 'Lipa City', barangays: NO_BRG },
-      { name: 'San Pablo City', barangays: NO_BRG },
-      { name: 'Santa Rosa City', barangays: NO_BRG },
-      { name: 'Tagaytay City', barangays: NO_BRG },
-      { name: 'Tanza', barangays: NO_BRG },
-      { name: 'Trece Martires', barangays: NO_BRG },
-      { name: 'Batangas City', barangays: NO_BRG },
-      { name: 'Tanauan City', barangays: NO_BRG },
-      { name: 'Binan City', barangays: NO_BRG },
-      { name: 'Cabuyao City', barangays: NO_BRG },
-      { name: 'San Pedro', barangays: NO_BRG },
-      { name: 'Carmona', barangays: NO_BRG },
-      { name: 'Silang', barangays: NO_BRG },
-      { name: 'Indang', barangays: NO_BRG },
-      { name: 'Maragondon', barangays: NO_BRG },
-      { name: 'Naic', barangays: NO_BRG },
-      { name: 'Ternate', barangays: NO_BRG },
-      { name: 'Cainta', barangays: NO_BRG },
-      { name: 'Taytay', barangays: NO_BRG },
-      { name: 'Angono', barangays: NO_BRG },
-      { name: 'Binangonan', barangays: NO_BRG },
-      { name: 'San Mateo', barangays: NO_BRG },
-      { name: 'Rodriguez', barangays: NO_BRG },
-      { name: 'Tanay', barangays: NO_BRG },
-      { name: 'Pililla', barangays: NO_BRG },
-      { name: 'Baras', barangays: NO_BRG },
-      { name: 'Morong', barangays: NO_BRG },
-      { name: 'Jala-jala', barangays: NO_BRG },
-      { name: 'Cardona', barangays: NO_BRG },
-    ],
-  },
-  {
-    code: 'Region IV-B',
-    name: 'MIMAROPA (Region IV-B)',
-    cities: [
-      { name: 'Calapan City', barangays: NO_BRG },
-      { name: 'Puerto Princesa City', barangays: NO_BRG },
-      { name: 'Coron', barangays: NO_BRG },
-      { name: 'El Nido', barangays: NO_BRG },
-      { name: 'Roxas', barangays: NO_BRG },
-      { name: 'San Jose', barangays: NO_BRG },
-      { name: 'Boac', barangays: NO_BRG },
-      { name: 'Santa Cruz', barangays: NO_BRG },
-    ],
-  },
-  {
-    code: 'Region V',
-    name: 'Bicol Region (Region V)',
-    cities: [
-      { name: 'Legazpi City', barangays: NO_BRG },
-      { name: 'Naga City', barangays: NO_BRG },
-      { name: 'Sorsogon City', barangays: NO_BRG },
-      { name: 'Tabaco City', barangays: NO_BRG },
-      { name: 'Ligao City', barangays: NO_BRG },
-      { name: 'Masbate City', barangays: NO_BRG },
-      { name: 'Iriga City', barangays: NO_BRG },
-      { name: 'Daet', barangays: NO_BRG },
-      { name: 'Virac', barangays: NO_BRG },
-      { name: 'Camarines Sur', barangays: NO_BRG },
-    ],
-  },
-  {
-    code: 'Region VI',
-    name: 'Western Visayas (Region VI)',
-    cities: [
-      { name: 'Iloilo City', barangays: ['Aduana', 'Amparo', 'Bachao', 'Badiang', 'Bakhaw', 'Balabago', 'Balantang', 'Bantud', 'Bina-iao', 'Buntatala', 'Buru-ong', 'Ca-ao', 'Cabaluayan', 'Cabancalan', 'Cagamutan', 'Calahunan', 'Calajunan', 'Calaparan', 'Calubihan', 'Camalig', 'Cochero', 'Concepcion', 'Cubay', 'Dawahan', 'Dela Paz', 'Desamparados', 'Dilig', 'Dungon', 'Duran', 'East Timawa', 'Edganzon', 'E. Lopez', 'Gebu-an', 'Gimeno', 'Guisihan', 'Ingore', 'Jalandoni', 'Jaro', 'Jereos', 'Katilingban', 'Kasingkasing', 'Lagasca', 'Laguda', 'Lambuyao', 'Lanit', 'Lapaz', 'Legaspi', 'Lico', 'Linion', 'Llorente', 'Loboc', 'Lopez Jaena Norte', 'Lopez Jaena Sur', 'Luna', 'Magsaysay', 'Mahinog', 'Magsasay', 'Mandurriao', 'Manin', 'Mapa', 'Mohon', 'Montinola', 'Molo', 'Nabitasan', 'Nanga', 'Nonong', 'Obrero', 'Ongbun', 'Oton', 'Paho', 'Pakiad', 'Palabayan', 'Palapala I', 'Palapala II', 'Palian', 'Parcon', 'Parina', 'Pavia', 'Perez', 'Plaza', 'Poblacion', 'Quintin Salas', 'Rizal', 'Roxas', 'San Jose', 'San Pedro', 'San Roque', 'Santa Cruz', 'Sapian', 'So-ong', 'Suay', 'Tabucan', 'Tagbac', 'Tagpo', 'Tambis', 'Ticud', 'Tigbauan', 'Tilad', 'Tiring', 'Tondo', 'Tuburan', 'Tucud', 'Ungca', 'Vega', 'Villa', 'Vito', 'West Timawa', 'Yulo', 'Zamora'] },
-      { name: 'Bacolod City', barangays: NO_BRG },
-      { name: 'Roxas City', barangays: NO_BRG },
-      { name: 'Silay City', barangays: NO_BRG },
-      { name: 'Himamaylan City', barangays: NO_BRG },
-      { name: 'Sagay City', barangays: NO_BRG },
-      { name: 'Cadiz City', barangays: NO_BRG },
-      { name: 'Talisay City', barangays: NO_BRG },
-      { name: 'Bago City', barangays: NO_BRG },
-      { name: 'San Carlos City', barangays: NO_BRG },
-      { name: 'Kabankalan City', barangays: NO_BRG },
-      { name: 'Passi City', barangays: NO_BRG },
-      { name: 'La Carlota City', barangays: NO_BRG },
-      { name: 'Victorias City', barangays: NO_BRG },
-      { name: 'Escalante City', barangays: NO_BRG },
-      { name: 'Sipalay City', barangays: NO_BRG },
-      { name: 'Kalibo', barangays: NO_BRG },
-      { name: 'Malay', barangays: NO_BRG },
-    ],
-  },
-  {
-    code: 'Region VII',
-    name: 'Central Visayas (Region VII)',
-    cities: [
-      { name: 'Cebu City', barangays: ['Adlawon', 'Agujo', 'Ahluzor', 'Aplaya', 'Bacayan', 'Baclayan', 'Baclig', 'Banawa', 'Banicug', 'Banilad', 'Basak', 'Basak Pardo', 'Bato', 'Binaliw', 'Binitayan', 'Buhisan', 'Bulacao', 'Bunal', 'Bunal II', 'Busay', 'Butucan', 'Calamba', 'Cambin', 'Camputhaw', 'Capitol Site', 'Carreta', 'Cogon', 'Cogon Pardo', 'Colon', 'Cortes', 'Coti-coti', 'Cruz', 'Dakit', 'Dambaan', 'Day-as', 'Duljo', 'Duljo Fatima', 'Ermita', 'Garo', 'Gasangan', 'Gaudiencio', 'Guadalupe', 'Gun-ob', 'Hipodromo', 'Inayawan', 'Industrias', 'Ibabao', 'Ibabao Estancia', 'Ibabao Proper', 'Ibabao Pardo', 'Kalambuan', 'Kamagayan', 'Kampo', 'Kasilak', 'Kawayan', 'Kinasang-an', 'Labangon', 'Lahug', 'Lambang', 'Lambaolambaon', 'Langogan', 'Lapu-lapu', 'Linao', 'Looc', 'Lorega', 'Lorega San Miguel', 'Lusaran', 'Mabini', 'Mabolo', 'Mahayahay', 'Malabor', 'Malambago', 'Mambaling', 'Mambaling II', 'Mambaling III', 'Mambaling IV', 'Mambaling V', 'Mananga', 'Mandani', 'Mango', 'Mansinas', 'Marcelo', 'Maribago', 'Marihusan', 'Masambong', 'Matina', 'Matina Aplaya', 'Matina Pardo', 'Mina', 'Mohon', 'Monteblanco', 'Mambaling VI', 'Nasipit', 'Navarro', 'Pablo', 'Pahina', 'Pahina Central', 'Pahina San Nicolas', 'Pajac', 'Pangdan', 'Panghulan', 'Pardo', 'Parian', 'Paril', 'Pasil', 'Pasil II', 'Patag', 'Pit-os', 'Poblacion', 'Poblacion Pardo', 'Pogon', 'Pook', 'Pulangbato', 'Punta', 'Punta Princesa', 'Quiot', 'Ramos', 'Rawis', 'Riverside', 'Sabang', 'Sambag I', 'Sambag II', 'San Jose', 'San Nicolas', 'San Nicolas Proper', 'San Roque', 'Santa Cruz', 'Santa Filomena', 'Santa Rosa', 'Santo Niño', 'Sapangdaku', 'Sawang', 'Sawang Calero', 'Sambag III', 'Sibugay', 'Silo-g', 'Sirao', 'Sitio', 'Suba', 'Suba Pardo', 'Sudtungan', 'Tagba-o', 'T. Padilla', 'Taboan', 'Tabucan', 'Tagunol', 'Talisay', 'Tambisan', 'Tambis', 'Tangke', 'Tap-tap', 'Tayud', 'Tejero', 'T. Padilla', 'Tinago', 'Tipolo', 'Tisa', 'To-ong', 'Tops', 'Tugas', 'Uclaud', 'Umapad', 'Unidos', 'V. Rama', 'Valencia', 'Vicente Rama', 'Zacarias'] },
-      { name: 'Mandaue City', barangays: NO_BRG },
-      { name: 'Lapu-Lapu City', barangays: NO_BRG },
-      { name: 'Talisay City', barangays: NO_BRG },
-      { name: 'Dumaguete City', barangays: NO_BRG },
-      { name: 'Tagbilaran City', barangays: NO_BRG },
-      { name: 'Toledo City', barangays: NO_BRG },
-      { name: 'Bais City', barangays: NO_BRG },
-      { name: 'Bayawan City', barangays: NO_BRG },
-      { name: 'Canlaon City', barangays: NO_BRG },
-      { name: 'Danao City', barangays: NO_BRG },
-      { name: 'Guihulngan', barangays: NO_BRG },
-      { name: 'Tanjay', barangays: NO_BRG },
-      { name: 'Bogo City', barangays: NO_BRG },
-      { name: 'Carcar City', barangays: NO_BRG },
-      { name: 'Naga City', barangays: NO_BRG },
-    ],
-  },
-  {
-    code: 'Region VIII',
-    name: 'Eastern Visayas (Region VIII)',
-    cities: [
-      { name: 'Tacloban City', barangays: NO_BRG },
-      { name: 'Ormoc City', barangays: NO_BRG },
-      { name: 'Baybay City', barangays: NO_BRG },
-      { name: 'Calbayog City', barangays: NO_BRG },
-      { name: 'Catbalogan', barangays: NO_BRG },
-      { name: 'Borongan', barangays: NO_BRG },
-      { name: 'Maasin City', barangays: NO_BRG },
-    ],
-  },
-  {
-    code: 'Region IX',
-    name: 'Zamboanga Peninsula (Region IX)',
-    cities: [
-      { name: 'Zamboanga City', barangays: NO_BRG },
-      { name: 'Dipolog City', barangays: NO_BRG },
-      { name: 'Dapitan City', barangays: NO_BRG },
-      { name: 'Pagadian City', barangays: NO_BRG },
-      { name: 'Isabela City', barangays: NO_BRG },
-    ],
-  },
-  {
-    code: 'Region X',
-    name: 'Northern Mindanao (Region X)',
-    cities: [
-      { name: 'Cagayan de Oro', barangays: ['Barangay 1', 'Barangay 2', 'Barangay 3', 'Barangay 4', 'Barangay 5', 'Barangay 6', 'Barangay 7', 'Barangay 8', 'Barangay 9', 'Barangay 10', 'Barangay 11', 'Barangay 12', 'Barangay 13', 'Barangay 14', 'Barangay 15', 'Barangay 16', 'Barangay 17', 'Barangay 18', 'Barangay 19', 'Barangay 20', 'Barangay 21', 'Barangay 22', 'Barangay 23', 'Barangay 24', 'Barangay 25', 'Barangay 26', 'Barangay 27', 'Barangay 28', 'Barangay 29', 'Barangay 30', 'Barangay 31', 'Barangay 32', 'Barangay 33', 'Barangay 34', 'Barangay 35', 'Barangay 36', 'Barangay 37', 'Barangay 38', 'Barangay 39', 'Barangay 40', 'Agusan', 'Balubal', 'Bayabas', 'Bayanga', 'Bonbon', 'Bugo', 'Bulua', 'Camaman-an', 'Carmen', 'Consolacion', 'Corrales', 'Dansolihon', 'Del Carmen', 'F.S. Catanico', 'Gusa', 'Iponan', 'Kauswagan', 'Lapasan', 'Lumbia', 'Macabalan', 'Macasandig', 'Nazareth', 'Patag', 'Pigsag-an', 'Pagatpat', 'Puntod', 'Puasan', 'San Simon', 'Tablon', 'Tignapuloan', 'Indahag', 'Canitoan', 'Balulang', 'Kala-uban', 'Ligaya', 'Mambuaya', 'Mintal', 'Tuburan', 'Tumpalon', 'Upper Puerto', 'Vista Verde', 'Zayas'] },
-      { name: 'Iligan City', barangays: NO_BRG },
-      { name: 'Malaybalay City', barangays: NO_BRG },
-      { name: 'Valencia City', barangays: NO_BRG },
-      { name: 'El Salvador City', barangays: NO_BRG },
-      { name: 'Gingoog City', barangays: NO_BRG },
-      { name: 'Oroquieta City', barangays: NO_BRG },
-      { name: 'Ozamiz City', barangays: NO_BRG },
-      { name: 'Tangub City', barangays: NO_BRG },
-    ],
-  },
-  {
-    code: 'Region XI',
-    name: 'Davao Region (Region XI)',
-    cities: [
-      { name: 'Davao City', barangays: ['Agdao', 'Alambre', 'Alejal', 'Alfonso Ango', 'Angalan', 'Aplaya', 'Bago Aplaya', 'Bago Gallera', 'Bago Oshiro', 'Bagolibas', 'Baguio', 'Bahan', 'Balicbalic', 'Baliaong', 'Bangkas Heights', 'Baracatan', 'Barangay 14-A', 'Barangay 19-B', 'Barangay 20-A', 'Barangay 20-B', 'Barangay 21-C', 'Barangay 22-D', 'Barangay 23-C', 'Barangay 24-C', 'Barangay 25-C', 'Barangay 26-C', 'Barangay 27-C', 'Barangay 28-C', 'Barangay 29-C', 'Barangay 30-C', 'Barangay 31-D', 'Barangay 32-D', 'Barangay 33-D', 'Barangay 34-D', 'Barangay 35-D', 'Barangay 36-D', 'Barangay 37-D', 'Barangay 38-D', 'Barangay 5-A', 'Barangay 6-A', 'Barangay 7-A', 'Barangay 8-A', 'Barangay 9-A', 'Bato', 'Baugo', 'Bayabas', 'Binugao', 'Biao Escuela', 'Biao Guianga', 'Biao Joaquin', 'Binaugan', 'Binitilan', 'Binugao', 'Bucana', 'Buda', 'Buhangin', 'Buhisan', 'Bunawan', 'Buntuga', 'Cabantuga', 'Cabati', 'Cabintan', 'Cabagiu', 'Cabantuga', 'Caburacanan', 'Cadalian', 'Calinan', 'Callawa', 'Camansi', 'Catalunan Grande', 'Catalunan Pequeño', 'Catigan', 'Cawayan', 'Celestino Villacin', 'Central', 'Cleon', 'Colosas', 'Cotongan', 'Crossing Bayuhan', 'Crossing Lamban', 'Dacud', 'Dagohoy', 'Dalag', 'Daliao', 'Daliaon Plantation', 'Dalig', 'Datu Saada', 'Datu Salumay', 'Dawis', 'Domagoycon', 'Dona Pilar', 'Dugui', 'Dumalag', 'Eden', 'Eman', 'Fatima', 'F. Bangoy', 'G. Monteverde', 'Garcia Heights', 'Gigauan', 'Gomez', 'Gov. Generoso', 'Gov. Vicente Duterte', 'Gredu', 'Gumalang', 'Gupitan', 'Ilang', 'Imadejas', 'Indangan', 'Inayawan', 'Ipol', 'Island Garden', 'J. P. Cabaguio', 'J.P. Laurel', 'Kapatan', 'Kawayan', 'Kibalad', 'Kilometer 14', 'Lacson', 'Lamanan', 'Lampianao', 'Langkilaan', 'Lapu-lapu', 'Lasang', 'Lican', 'Lipadas', 'Lizo', 'Loreto', 'Lubog', 'Luman', 'Lumwal', 'Ma-a', 'Mabuhay', 'Madaum', 'Magtuod', 'Mahayag', 'Malabago', 'Malagos', 'Malamba', 'Malapatan', 'Maligaya', 'Mambaling', 'Mamacao', 'Manambalan', 'Mandug', 'Mangal', 'Manggahan', 'Manuel Guianga', 'Marapang', 'Marilog', 'Maroroy', 'Mat-i', 'Matina', 'Matina Aplaya', 'Matina Biao', 'Matina Crossings', 'Matina Pangi', 'Matina Ubalde', 'Megkawayan', 'Mintal', 'Mudiang', 'Muligan', 'Mustang', 'Nabunturan', 'Nancayasan', 'New Carmen', 'New Linao', 'Nipa', 'Nueva', 'Obrero', 'Pablo', 'Paciano', 'Pampanga', 'Pangyan', 'Paniman', 'Paradise Embac', 'Paquibato', 'Patosan', 'Piedad', 'Pinamaton', 'Puan', 'Quimpo', 'Ramon Magsaysay', 'Salapawan', 'Salaysay', 'Salih', 'Saloy', 'San Agustin', 'San Antonio', 'San Isidro', 'San Jose', 'San Juan', 'San Lorenzo', 'Manuel', 'Santa Maria', 'Santo Niño', 'Sasa', 'Sibayan', 'Sibolo', 'Sigaboy', 'Suawan', 'Subasta', 'Sumimotong', 'Sumlug', 'Tagastolis', 'Tagbak', 'Tagdangua', 'Tagpanan', 'Tagum', 'Talandang', 'Talomo', 'Talomo North', 'Talomo South', 'Talomo Proper', 'Tambobong', 'Tamayong', 'Tawan-tawan', 'Tibungco', 'Tigatto', 'Tiglao', 'Tiguman', 'Tilambo', 'Timbol', 'Tolosa', 'Tominaga', 'Torib', 'Tugbok', 'Tungkalan', 'Ula', 'Ubalde', 'Ubay', 'Union', 'Upper Kawayan', 'Wa-an', 'Wagsing', 'Wangan', 'Zonta'] },
-      { name: 'Tagum City', barangays: NO_BRG },
-      { name: 'Panabo City', barangays: NO_BRG },
-      { name: 'Digos City', barangays: NO_BRG },
-      { name: 'Mati City', barangays: NO_BRG },
-      { name: 'Samal Island', barangays: NO_BRG },
-    ],
-  },
-  {
-    code: 'Region XII',
-    name: 'SOCCSKSARGEN (Region XII)',
-    cities: [
-      { name: 'General Santos', barangays: NO_BRG },
-      { name: 'Koronadal City', barangays: NO_BRG },
-      { name: 'Kidapawan City', barangays: NO_BRG },
-      { name: 'Tacurong City', barangays: NO_BRG },
-      { name: 'Cotabato City', barangays: NO_BRG },
-    ],
-  },
-  {
-    code: 'Region XIII',
-    name: 'Caraga Region (Region XIII)',
-    cities: [
-      { name: 'Butuan City', barangays: NO_BRG },
-      { name: 'Surigao City', barangays: NO_BRG },
-      { name: 'Bislig City', barangays: NO_BRG },
-      { name: 'Cabadbaran City', barangays: NO_BRG },
-      { name: 'Bayugan City', barangays: NO_BRG },
-      { name: 'Tandag', barangays: NO_BRG },
-    ],
-  },
-  {
-    code: 'BARMM',
-    name: 'Bangsamoro Autonomous Region (BARMM)',
-    cities: [
-      { name: 'Cotabato City', barangays: NO_BRG },
-      { name: 'Marawi City', barangays: NO_BRG },
-      { name: 'Lamitan City', barangays: NO_BRG },
-    ],
-  },
-];
+// In-memory caches
+const cache = {
+  regions: null as RegionInfo[] | null,
+  provincesByRegion: new Map<string, ProvinceInfo[]>(),
+  allProvinces: null as ProvinceInfo[] | null,
+  citiesByProvince: new Map<string, CityInfo[]>(),
+  citiesByRegion: new Map<string, CityInfo[]>(),
+  barangaysByCity: new Map<string, string[]>(),
+};
 
+// Keep MARKET_NAMES for backward compatibility (SellerApp)
 export const MARKET_NAMES: Record<string, string[]> = {
+  'City of Manila': ['Divisoria Public Market', 'Quintuple Public Market', 'Pritil Public Market', 'Santa Ana Public Market', 'Dagupan-Binondo Market'],
   'Manila': ['Divisoria Public Market', 'Quintuple Public Market', 'Pritil Public Market', 'Santa Ana Public Market', 'Dagupan-Binondo Market'],
   'Quezon City': ['Balintawak Public Market', 'Commonwealth Public Market', 'Farmers Market (Cubao)', 'Muñoz Public Market', 'Novaliches Public Market', 'Tandang Sora Public Market'],
+  'City of Makati': ['Guadalupe Public Market', 'Poblacion Public Market', 'Bangkal Public Market'],
   'Makati City': ['Guadalupe Public Market', 'Poblacion Public Market', 'Bangkal Public Market'],
+  'City of Pasig': ['Pasig Palengke', 'Kapasigan Public Market', 'Pinagbuhatan Public Market'],
   'Pasig City': ['Pasig Palengke', 'Kapasigan Public Market', 'Pinagbuhatan Public Market'],
+  'City of Taguig': ['Taguig Public Market', 'Lower Bicutan Public Market', 'Tipas Public Market'],
   'Taguig City': ['Taguig Public Market', 'Lower Bicutan Public Market', 'Tipas Public Market'],
+  'City of Marikina': ['Marikina Public Market', 'Sto. Niño Public Market'],
   'Marikina City': ['Marikina Public Market', 'Sto. Niño Public Market'],
+  'City of Muntinlupa': ['Alabang Public Market', 'Putatan Public Market'],
   'Muntinlupa City': ['Alabang Public Market', 'Putatan Public Market'],
+  'City of Las Piñas': ['Las Piñas Public Market', 'Zapote Public Market'],
   'Las Piñas City': ['Las Piñas Public Market', 'Zapote Public Market'],
+  'City of Parañaque': ['Baclaran Public Market', 'Tambo Public Market'],
   'Parañaque City': ['Baclaran Public Market', 'Tambo Public Market'],
+  'City of Valenzuela': ['Malinta Public Market', 'Karuhatan Public Market'],
   'Valenzuela City': ['Malinta Public Market', 'Karuhatan Public Market'],
+  'City of Malabon': ['Malabon Public Market', 'Dampalit Public Market'],
   'Malabon City': ['Malabon Public Market', 'Dampalit Public Market'],
+  'City of Navotas': ['Navotas Public Market', 'Tanza Public Market'],
   'Navotas City': ['Navotas Public Market', 'Tanza Public Market'],
+  'City of Caloocan': ['Caloocan Public Market', 'Monumento Public Market', 'Bagong Silang Public Market'],
   'Caloocan City': ['Caloocan Public Market', 'Monumento Public Market', 'Bagong Silang Public Market'],
   'Pasay City': ['Pasay Public Market', 'Cartimar Market'],
+  'City of San Juan': ['Pinaglabanan Public Market', 'Greenhills Market'],
   'San Juan City': ['Pinaglabanan Public Market', 'Greenhills Market'],
+  'City of Mandaluyong': ['Mandaluyong Public Market', 'Shaw Market'],
   'Mandaluyong City': ['Mandaluyong Public Market', 'Shaw Market'],
   'Pateros': ['Pateros Public Market'],
   'Baguio City': ['Baguio City Public Market', 'Hangar Market', 'Hilltop Market'],
+  'City of San Fernando': ['San Fernando Public Market'],
   'San Fernando City': ['San Fernando Public Market'],
+  'City of Vigan': ['Vigan Public Market'],
   'Vigan City': ['Vigan Public Market'],
+  'City of Laoag': ['Laoag Public Market'],
   'Laoag City': ['Laoag Public Market'],
   'Angeles City': ['Angeles Public Market', 'Nepo Mart'],
   'Olongapo City': ['Olongapo Public Market'],
   'San Jose del Monte': ['San Jose del Monte Public Market'],
+  'City of Malolos': ['Malolos Public Market'],
   'Malolos City': ['Malolos Public Market'],
   'Cabanatuan City': ['Cabanatuan Public Market'],
   'Tarlac City': ['Tarlac Public Market', 'Capas Public Market'],
   'Antipolo City': ['Antipolo Public Market', 'Sumulong Public Market'],
   'Bacoor City': ['Bacoor Public Market'],
   'Dasmariñas City': ['Dasmariñas Public Market'],
+  'City of Dasmariñas': ['Dasmariñas Public Market'],
   'Imus City': ['Imus Public Market'],
   'Cavite City': ['Cavite Public Market'],
   'Tagaytay City': ['Tagaytay Public Market'],
   'Lipa City': ['Lipa Public Market'],
   'Batangas City': ['Batangas Public Market', 'Pulong Buhangin Market'],
   'Santa Rosa City': ['Santa Rosa Public Market'],
+  'City of Santa Rosa': ['Santa Rosa Public Market'],
   'Calamba City': ['Calamba Public Market'],
   'Iloilo City': ['La Paz Public Market', 'Jaro Public Market', 'Central Market (Super)', 'Mandurriao Public Market'],
   'Bacolod City': ['Bacolod Public Market', 'Lacson-Burgos Market'],
@@ -485,20 +120,131 @@ export const MARKET_NAMES: Record<string, string[]> = {
   'Daet': ['Daet Public Market'],
   'Virac': ['Virac Public Market'],
   'Puerto Princesa City': ['Puerto Princesa Public Market'],
+  'City of Puerto Princesa': ['Puerto Princesa Public Market'],
   'Calapan City': ['Calapan Public Market'],
 };
 
-export function getRegionCities(regionCode: string): CityInfo[] {
-  const region = REGIONS_LIST.find(r => r.code === regionCode);
-  return region?.cities || [];
+// Fetch all regions (cached)
+export async function fetchRegions(): Promise<RegionInfo[]> {
+  if (cache.regions) return cache.regions;
+  const res = await fetch(`${API_BASE}/regions`);
+  const data = await res.json();
+  cache.regions = data.map((r: any) => ({ code: r.code, name: r.name }));
+  return cache.regions;
 }
 
-export function getCityBarangays(regionCode: string, cityName: string): string[] {
-  const region = REGIONS_LIST.find(r => r.code === regionCode);
-  const city = region?.cities.find(c => c.name === cityName);
-  return city?.barangays || [];
+// Fetch all provinces (cached)
+export async function fetchAllProvinces(): Promise<ProvinceInfo[]> {
+  if (cache.allProvinces) return cache.allProvinces;
+  const res = await fetch(`${API_BASE}/provinces`);
+  const data = await res.json();
+  cache.allProvinces = data.map((p: any) => ({ code: p.code, name: p.name }));
+  return cache.allProvinces;
+}
+
+// Fetch provinces for a specific region (cached)
+export async function fetchProvincesByRegion(regionCode: string): Promise<ProvinceInfo[]> {
+  if (cache.provincesByRegion.has(regionCode)) return cache.provincesByRegion.get(regionCode)!;
+
+  const allProvinces = await fetchAllProvinces();
+  const prefix = regionCode.substring(0, 2);
+  const provinces = allProvinces.filter(p => p.code.startsWith(prefix));
+  cache.provincesByRegion.set(regionCode, provinces);
+  return provinces;
+}
+
+// Fetch cities/municipalities for a province (cached)
+export async function fetchCitiesByProvince(provinceCode: string): Promise<CityInfo[]> {
+  if (cache.citiesByProvince.has(provinceCode)) return cache.citiesByProvince.get(provinceCode)!;
+
+  const res = await fetch(`${API_BASE}/provinces/${provinceCode}/cities-municipalities`);
+  const data = await res.json();
+  const cities: CityInfo[] = data.map((c: any) => ({
+    name: c.name.trim(),
+    code: c.code,
+    barangays: [],
+  }));
+  cache.citiesByProvince.set(provinceCode, cities);
+  return cities;
+}
+
+// Fetch cities/municipalities for a region directly (for NCR which has no provinces)
+export async function fetchCitiesByRegion(regionCode: string): Promise<CityInfo[]> {
+  if (cache.citiesByRegion.has(regionCode)) return cache.citiesByRegion.get(regionCode)!;
+
+  const res = await fetch(`${API_BASE}/cities-municipalities`);
+  const data = await res.json();
+  const prefix = regionCode.substring(0, 2);
+  const cities: CityInfo[] = data
+    .filter((c: any) => c.code.startsWith(prefix))
+    .map((c: any) => ({
+      name: c.name.trim(),
+      code: c.code,
+      barangays: [],
+    }));
+  cache.citiesByRegion.set(regionCode, cities);
+  return cities;
+}
+
+// Fetch barangays for a city/municipality (cached)
+export async function fetchBarangaysByCity(cityCode: string): Promise<string[]> {
+  if (!cityCode) return [];
+  if (cache.barangaysByCity.has(cityCode)) return cache.barangaysByCity.get(cityCode)!;
+
+  const res = await fetch(`${API_BASE}/cities-municipalities/${cityCode}/barangays`);
+  const data = await res.json();
+  const barangays: string[] = data.map((b: any) => b.name.trim());
+  cache.barangaysByCity.set(cityCode, barangays);
+  return barangays;
+}
+
+// Find city code by name within a province's cities
+export async function findCityCode(provinceCode: string, cityName: string): Promise<string | null> {
+  const cities = await fetchCitiesByProvince(provinceCode);
+  const city = cities.find(c => c.name.toLowerCase() === cityName.toLowerCase());
+  return city?.code || null;
+}
+
+// Find city code by name within a region's cities (for NCR)
+export async function findCityCodeInRegion(regionCode: string, cityName: string): Promise<string | null> {
+  const cities = await fetchCitiesByRegion(regionCode);
+  const city = cities.find(c => c.name.toLowerCase() === cityName.toLowerCase());
+  return city?.code || null;
+}
+
+// ============= SYNCHRONOUS API (backward compatibility) =============
+// These use the old hardcoded data for the REGIONS_LIST export.
+// The async API above should be used for new code.
+
+export const REGIONS_LIST: RegionInfo[] = [
+  { code: '0100000000', name: 'Region I (Ilocos Region)' },
+  { code: '0200000000', name: 'Region II (Cagayan Valley)' },
+  { code: '0300000000', name: 'Region III (Central Luzon)' },
+  { code: '0400000000', name: 'Region IV-A (CALABARZON)' },
+  { code: '1700000000', name: 'MIMAROPA Region' },
+  { code: '0500000000', name: 'Region V (Bicol Region)' },
+  { code: '0600000000', name: 'Region VI (Western Visayas)' },
+  { code: '0700000000', name: 'Region VII (Central Visayas)' },
+  { code: '0800000000', name: 'Region VIII (Eastern Visayas)' },
+  { code: '0900000000', name: 'Region IX (Zamboanga Peninsula)' },
+  { code: '1000000000', name: 'Region X (Northern Mindanao)' },
+  { code: '1100000000', name: 'Region XI (Davao Region)' },
+  { code: '1200000000', name: 'Region XII (SOCCSKSARGEN)' },
+  { code: '1300000000', name: 'National Capital Region (NCR)' },
+  { code: '1400000000', name: 'Cordillera Administrative Region (CAR)' },
+  { code: '1600000000', name: 'Region XIII (Caraga)' },
+  { code: '1900000000', name: 'Bangsamoro Autonomous Region In Muslim Mindanao (BARMM)' },
+];
+
+// Synchronous stubs — return empty arrays. Use async versions instead.
+export function getRegionCities(_regionCode: string): CityInfo[] {
+  return [];
+}
+
+export function getCityBarangays(_regionCode: string, _cityName: string): string[] {
+  return [];
 }
 
 export function getCityMarkets(cityName: string): string[] {
-  return MARKET_NAMES[cityName] || [];
+  return MARKET_NAMES[cityName] || MARKET_NAMES[cityName.replace('City of ', '')] || [];
 }

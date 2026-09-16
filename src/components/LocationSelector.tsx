@@ -1,11 +1,48 @@
 import { useState, useEffect } from 'react';
-import { REGIONS_LIST, getRegionCities, getCityBarangays } from '@/lib/philippineLocations';
+import {
+  REGIONS_LIST,
+  fetchProvincesByRegion,
+  fetchCitiesByProvince,
+  fetchCitiesByRegion,
+  fetchBarangaysByCity,
+  type RegionInfo,
+  type ProvinceInfo,
+  type CityInfo,
+} from '@/lib/philippineLocations';
+
+// Map old region codes to PSGC codes for backward compatibility
+const OLD_REGION_MAP: Record<string, string> = {
+  'NCR': '1300000000',
+  'CAR': '1400000000',
+  'Region I': '0100000000',
+  'Region II': '0200000000',
+  'Region III': '0300000000',
+  'Region IV-A': '0400000000',
+  'Region IV-B': '1700000000',
+  'Region V': '0500000000',
+  'Region VI': '0600000000',
+  'Region VII': '0700000000',
+  'Region VIII': '0800000000',
+  'Region IX': '0900000000',
+  'Region X': '1000000000',
+  'Region XI': '1100000000',
+  'Region XII': '1200000000',
+  'Region XIII': '1600000000',
+  'BARMM': '1900000000',
+};
+
+function normalizeRegionCode(code: string): string {
+  if (!code) return '';
+  if (/^\d{10}$/.test(code)) return code; // already PSGC format
+  return OLD_REGION_MAP[code] || '';
+}
 
 export interface LocationData {
   barangay: string;
   district: string;
   city: string;
   region: string;
+  province?: string;
 }
 
 interface Props {
@@ -16,52 +53,91 @@ interface Props {
 }
 
 export function LocationSelector({ value, onChange, label, compact }: Props) {
-  const [regionCode, setRegionCode] = useState(value.region || 'NCR');
-  const [city, setCity] = useState(value.city || '');
-  const [barangay, setBarangay] = useState(value.barangay || '');
-  const [district, setDistrict] = useState(value.district || '');
+  const [regions] = useState<RegionInfo[]>(REGIONS_LIST);
+  const [provinces, setProvinces] = useState<ProvinceInfo[]>([]);
+  const [cities, setCities] = useState<CityInfo[]>([]);
+  const [barangays, setBarangays] = useState<string[]>([]);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingBarangays, setLoadingBarangays] = useState(false);
   const [useCustomBrgy, setUseCustomBrgy] = useState(false);
 
-  const cities = getRegionCities(regionCode);
-  const barangays = getCityBarangays(regionCode, city);
-  const hasBrgyList = barangays.length > 0;
+  const rawRegionCode = value.region || '';
+  const regionCode = normalizeRegionCode(rawRegionCode);
+  const provinceCode = value.province || '';
+  const cityCode = cities.find(c => c.name === value.city)?.code || '';
+  const isNCR = regionCode.startsWith('13');
 
+  // Load provinces when region changes
   useEffect(() => {
-    if (!value.region) return;
-    setRegionCode(value.region);
-    setCity(value.city || '');
-    setBarangay(value.barangay || '');
-    setDistrict(value.district || '');
-    const region = REGIONS_LIST.find(r => r.code === value.region);
-    if (region) {
-      const cityInfo = region.cities.find(c => c.name === value.city);
-      if (cityInfo && cityInfo.barangays.length === 0) setUseCustomBrgy(true);
+    if (!regionCode) { setProvinces([]); return; }
+    setLoadingProvinces(true);
+    setProvinces([]);
+    if (isNCR) {
+      // NCR has no provinces — load cities directly
+      setLoadingProvinces(false);
+      return;
     }
-  }, [value.region, value.city, value.barangay, value.district]);
+    fetchProvincesByRegion(regionCode)
+      .then(provs => setProvinces(provs))
+      .catch(() => setProvinces([]))
+      .finally(() => setLoadingProvinces(false));
+  }, [regionCode, isNCR]);
+
+  // Load cities when province changes (or when NCR region changes)
+  useEffect(() => {
+    if (!regionCode) { setCities([]); return; }
+    if (isNCR) {
+      setLoadingCities(true);
+      fetchCitiesByRegion(regionCode)
+        .then(cs => setCities(cs))
+        .catch(() => setCities([]))
+        .finally(() => setLoadingCities(false));
+      return;
+    }
+    if (!provinceCode) { setCities([]); return; }
+    setLoadingCities(true);
+    setCities([]);
+    fetchCitiesByProvince(provinceCode)
+      .then(cs => setCities(cs))
+      .catch(() => setCities([]))
+      .finally(() => setLoadingCities(false));
+  }, [regionCode, provinceCode, isNCR]);
+
+  // Load barangays when city changes
+  useEffect(() => {
+    if (!value.city || !cityCode) { setBarangays([]); return; }
+    setLoadingBarangays(true);
+    setBarangays([]);
+    fetchBarangaysByCity(cityCode)
+      .then(brgys => {
+        setBarangays(brgys);
+        if (brgys.length === 0) setUseCustomBrgy(true);
+      })
+      .catch(() => setBarangays([]))
+      .finally(() => setLoadingBarangays(false));
+  }, [value.city, cityCode]);
 
   function handleRegionChange(code: string) {
-    setRegionCode(code);
-    setCity('');
-    setBarangay('');
+    onChange({ ...value, region: code, province: '', city: '', barangay: '' });
     setUseCustomBrgy(false);
-    onChange({ ...value, region: code, city: '', barangay: '' });
+  }
+
+  function handleProvinceChange(code: string) {
+    onChange({ ...value, province: code, city: '', barangay: '' });
+    setUseCustomBrgy(false);
   }
 
   function handleCityChange(c: string) {
-    setCity(c);
-    setBarangay('');
-    const brgys = getCityBarangays(regionCode, c);
-    setUseCustomBrgy(brgys.length === 0);
     onChange({ ...value, city: c, barangay: '' });
+    setUseCustomBrgy(false);
   }
 
   function handleBarangayChange(b: string) {
-    setBarangay(b);
     onChange({ ...value, barangay: b });
   }
 
   function handleDistrictChange(d: string) {
-    setDistrict(d);
     onChange({ ...value, district: d });
   }
 
@@ -71,6 +147,8 @@ export function LocationSelector({ value, onChange, label, compact }: Props) {
   const labelClass = compact
     ? 'text-xs font-medium text-gray-500 mb-1 block'
     : 'text-sm font-medium text-gray-600 mb-1 block';
+
+  const hasBrgyList = barangays.length > 0;
 
   return (
     <div>
@@ -84,23 +162,45 @@ export function LocationSelector({ value, onChange, label, compact }: Props) {
             onChange={(e) => handleRegionChange(e.target.value)}
             className={inputClass}
           >
-            {REGIONS_LIST.map(r => (
+            <option value="">Pumili ng region...</option>
+            {regions.map(r => (
               <option key={r.code} value={r.code}>{r.name}</option>
             ))}
           </select>
         </div>
 
-        {/* City */}
+        {/* Province (hidden for NCR) */}
+        {!isNCR && regionCode && (
+          <div className="col-span-2">
+            <label className={labelClass}>Province</label>
+            <select
+              value={provinceCode}
+              onChange={(e) => handleProvinceChange(e.target.value)}
+              className={inputClass}
+              disabled={loadingProvinces}
+            >
+              <option value="">{loadingProvinces ? 'Naglo-load...' : 'Pumili ng probinsya...'}</option>
+              {provinces.map(p => (
+                <option key={p.code} value={p.code}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* City / Municipality */}
         <div className="col-span-2">
           <label className={labelClass}>City / Municipality</label>
           <select
-            value={city}
+            value={value.city}
             onChange={(e) => handleCityChange(e.target.value)}
             className={inputClass}
+            disabled={loadingCities || (!isNCR && !provinceCode)}
           >
-            <option value="">Pumili ng lungsod...</option>
+            <option value="">
+              {loadingCities ? 'Naglo-load...' : 'Pumili ng lungsod/munisipyo...'}
+            </option>
             {cities.map(c => (
-              <option key={c.name} value={c.name}>{c.name}</option>
+              <option key={c.code} value={c.name}>{c.name}</option>
             ))}
           </select>
         </div>
@@ -110,7 +210,7 @@ export function LocationSelector({ value, onChange, label, compact }: Props) {
           <label className={labelClass}>Barangay</label>
           {hasBrgyList && !useCustomBrgy ? (
             <select
-              value={barangay}
+              value={value.barangay}
               onChange={(e) => handleBarangayChange(e.target.value)}
               className={inputClass}
             >
@@ -122,9 +222,9 @@ export function LocationSelector({ value, onChange, label, compact }: Props) {
           ) : (
             <input
               type="text"
-              value={barangay}
+              value={value.barangay}
               onChange={(e) => handleBarangayChange(e.target.value)}
-              placeholder="I-type ang barangay"
+              placeholder={loadingBarangays ? 'Naglo-load...' : 'I-type ang barangay'}
               required
               className={inputClass}
             />
@@ -134,7 +234,6 @@ export function LocationSelector({ value, onChange, label, compact }: Props) {
               type="button"
               onClick={() => {
                 setUseCustomBrgy(!useCustomBrgy);
-                setBarangay('');
                 onChange({ ...value, barangay: '' });
               }}
               className="text-xs text-brand-600 mt-1 hover:underline"
@@ -149,7 +248,7 @@ export function LocationSelector({ value, onChange, label, compact }: Props) {
           <label className={labelClass}>District (opsyonal)</label>
           <input
             type="text"
-            value={district}
+            value={value.district}
             onChange={(e) => handleDistrictChange(e.target.value)}
             placeholder="Hal. District 1"
             className={inputClass}
