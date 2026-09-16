@@ -241,6 +241,7 @@ export interface AdminMessage {
   sender_id: string;
   body: string | null;
   image_url: string | null;
+  is_verification_image: boolean;
   read_at: string | null;
   created_at: string;
 }

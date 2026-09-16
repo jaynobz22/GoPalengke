@@ -20,6 +20,10 @@ export function useAdminConversations() {
 
     if (!existing || existing.length === 0) {
       await supabase.rpc('get_or_create_admin_conversation');
+      // Send pre-built verification welcome message for new sellers
+      if (profile.role === 'seller') {
+        await supabase.rpc('send_seller_welcome_message', { p_user_id: profile.id });
+      }
     }
 
     const { data } = await supabase

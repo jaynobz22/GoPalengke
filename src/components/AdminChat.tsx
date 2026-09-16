@@ -105,6 +105,7 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
         sender_id: currentUserId,
         body: null,
         image_url: urlData.publicUrl,
+        is_verification_image: !isAdmin,
       });
       if (!error) {
         await supabase.from('admin_conversations').update({ updated_at: new Date().toISOString() }).eq('id', conversationId);
