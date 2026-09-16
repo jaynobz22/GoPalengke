@@ -1547,7 +1547,8 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   let currentStepIndex = 0;
   if (currentOrder.status === 'pending') currentStepIndex = 0;
   else if (currentOrder.status === 'accepted') {
-    if (currentOrder.payment_method === 'qr_code' && currentOrder.payment_status !== 'paid') currentStepIndex = 1;
+    if (currentOrder.payment_method === 'cod') currentStepIndex = 1;
+    else if (currentOrder.payment_method === 'qr_code' && currentOrder.payment_status !== 'paid') currentStepIndex = 1;
     else currentStepIndex = 2;
   }
   else if (currentOrder.status === 'preparing') currentStepIndex = 3;
@@ -1558,6 +1559,12 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   sellerSteps.forEach((s, i) => {
     s.status = i < currentStepIndex ? 'completed' : i === currentStepIndex ? 'active' : 'pending';
   });
+
+  // For COD, "Nabayaran na!" should never show as completed — payment happens on delivery
+  if (currentOrder.payment_method === 'cod') {
+    const paidStep = sellerSteps.find(s => s.key === 'paid');
+    if (paidStep) paidStep.status = 'pending';
+  }
 
   return (
     <div className="px-5 py-4">
