@@ -15,11 +15,11 @@ export interface Coords {
 // Known Philippine public market GPS coordinates
 const PALENGKE_COORDS: Record<string, Coords> = {
   // Davao City
-  'Mintal Public Market': { lat: 7.1617, lng: 125.4120 },
-  'Matina Public Market': { lat: 7.0790, lng: 125.4560 },
+  'Mintal Public Market': { lat: 7.0925, lng: 125.5025 },
+  'Matina Public Market': { lat: 7.0561, lng: 125.5773 },
   'Agdao Public Market': { lat: 7.0820, lng: 125.6330 },
   'Bankerohan Public Market': { lat: 7.0760, lng: 125.6050 },
-  'Buhangin Public Market': { lat: 7.0980, lng: 125.6300 },
+  'Buhangin Public Market': { lat: 7.1122, lng: 125.6234 },
   'Bunawan Public Market': { lat: 7.0400, lng: 125.6700 },
   'Calinan Public Market': { lat: 7.1750, lng: 125.3450 },
   'Toril Public Market': { lat: 7.0000, lng: 125.4900 },
