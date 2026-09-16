@@ -171,7 +171,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   accepted: 'Na-confirm na',
   preparing: 'Inihahanda na',
   ready_for_pickup: 'Ready for pickup',
-  picked_up: 'Naka-pick up na',
+  picked_up: 'Na pick up na',
   delivered: 'Na-deliver na',
   cancelled: 'Nakansela',
 };
