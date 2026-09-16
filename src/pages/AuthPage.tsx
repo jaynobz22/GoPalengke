@@ -11,7 +11,7 @@ const ROLES = [
 ];
 
 const TUTORIAL_VIDEOS = [
-  { id: 'MCnyHwyE4R8', desc: 'Matuto kung paano gumawa ng account, maghanap ng palengke, at mag-order ng sariwang paninda.' },
+  { id: 'MCnyHwyE4R8' },
 ];
 
 function VideoModal({ video, onClose }: { video: { id: string; title: string } | null; onClose: () => void }) {
@@ -240,7 +240,6 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
                   </div>
                   <div className="p-3">
                     <p className="text-sm font-semibold text-gray-800 leading-snug">{title}</p>
-                    <p className="text-xs text-gray-500 mt-1 leading-relaxed">{video.desc}</p>
                   </div>
                 </button>
                 );
