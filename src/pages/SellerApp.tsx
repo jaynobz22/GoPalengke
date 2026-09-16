@@ -1762,7 +1762,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-2">
               <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-blue-700 leading-relaxed">
-                Pwede na magbayad ang buyer sa rider via QR code para sa delivery fee (₱{Number(currentOrder.delivery_fee).toFixed(2)}). Sabihin sa buyer na pwede na nilang i-scan ang QR code ng rider bago umalis.
+                Nasa iyo na ang delivery fee (₱{Number(currentOrder.delivery_fee).toFixed(2)}) mula sa binayaran ng buyer. Ibigay ito sa rider gamit ang QR code niya bago umalis.
               </p>
             </div>
           )}
@@ -1805,7 +1805,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-2">
               <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-blue-700 leading-relaxed">
-                Pwede na magbayad ang buyer sa rider via QR code para sa delivery fee (₱{Number(currentOrder.delivery_fee).toFixed(2)}). Sabihin sa buyer na pwede na nilang i-scan ang QR code ng rider.
+                Nasa iyo na ang delivery fee (₱{Number(currentOrder.delivery_fee).toFixed(2)}) mula sa binayaran ng buyer. Ibigay ito sa rider gamit ang QR code niya.
               </p>
             </div>
           )}
