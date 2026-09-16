@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import type { UserRole } from '@/lib/types';
 import { Store, Bike, ShoppingCart, ArrowLeft, Check, Mail, ShieldCheck, Eye, EyeOff, PlayCircle, X, Youtube } from 'lucide-react';
@@ -11,7 +11,7 @@ const ROLES = [
 ];
 
 const TUTORIAL_VIDEOS = [
-  { id: 'MCnyHwyE4R8', title: 'GoPalengke Tutorial: Paano mag-sign up at mag-order', desc: 'Matuto kung paano gumawa ng account, maghanap ng palengke, at mag-order ng sariwang paninda.' },
+  { id: 'MCnyHwyE4R8', desc: 'Matuto kung paano gumawa ng account, maghanap ng palengke, at mag-order ng sariwang paninda.' },
 ];
 
 function VideoModal({ video, onClose }: { video: { id: string; title: string } | null; onClose: () => void }) {
@@ -58,6 +58,17 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
   const [resendCooldown, setResendCooldown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [activeVideo, setActiveVideo] = useState<{ id: string; title: string } | null>(null);
+  const [videoTitles, setVideoTitles] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    TUTORIAL_VIDEOS.forEach(async (v) => {
+      try {
+        const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${v.id}&format=json`);
+        const data = await res.json();
+        setVideoTitles(prev => ({ ...prev, [v.id]: data.title }));
+      } catch { /* fallback to id */ }
+    });
+  }, []);
 
   function startResendCooldown() {
     setResendCooldown(60);
@@ -202,16 +213,18 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
               Bago ka mag-sign up, panoorin muna ang tutorial para magka-idea ka paano gamitin ang app. Opsyonal lang — pwede ka pa ring mag-sign up kahit hindi manood.
             </p>
             <div className="space-y-3">
-              {TUTORIAL_VIDEOS.map((video) => (
+              {TUTORIAL_VIDEOS.map((video) => {
+                const title = videoTitles[video.id] || 'Loading...';
+                return (
                 <button
                   key={video.id}
-                  onClick={() => setActiveVideo(video)}
+                  onClick={() => setActiveVideo({ id: video.id, title })}
                   className="w-full text-left bg-white rounded-2xl border border-gray-200 overflow-hidden active:scale-[0.98] transition shadow-sm"
                 >
                   <div className="relative w-full aspect-video bg-gray-100">
                     <img
                       src={`https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`}
-                      alt={video.title}
+                      alt={title}
                       loading="lazy"
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -224,11 +237,12 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
                     <span className="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-full font-medium">YouTube</span>
                   </div>
                   <div className="p-3">
-                    <p className="text-sm font-semibold text-gray-800 leading-snug">{video.title}</p>
+                    <p className="text-sm font-semibold text-gray-800 leading-snug">{title}</p>
                     <p className="text-xs text-gray-500 mt-1 leading-relaxed">{video.desc}</p>
                   </div>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
 
