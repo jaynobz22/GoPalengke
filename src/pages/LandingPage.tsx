@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { navigate } from '@/lib/router';
-import type { Store, Product, Category, Announcement } from '@/lib/types';
+import type { Store, Product, Category, Announcement, Review } from '@/lib/types';
 import {
   MapPin, Star, Plus, ArrowRight, ShoppingBag, Bike, Store as StoreIcon,
   Truck, Shield, Clock, ChevronRight, Sparkles, TrendingUp, Megaphone,
@@ -37,6 +37,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
       <FreshProducts products={products} loading={loading} onGetStarted={onGetStarted} />
       <HowItWorks />
       <WhySection />
+      <ReviewsMarquee />
       <CTASection onGetStarted={onGetStarted} />
       <Footer />
     </div>
@@ -483,6 +484,76 @@ function WhySection() {
               </div>
             );
           })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============= REVIEWS MARQUEE =============
+function ReviewsMarquee() {
+  const [reviews, setReviews] = useState<(Review & { reviewer: { full_name: string; avatar_url: string | null } })[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const { data } = await supabase
+        .from('reviews')
+        .select('*, reviewer:profiles!reviews_reviewer_id_fkey(full_name, avatar_url)')
+        .order('created_at', { ascending: false })
+        .limit(15);
+      setReviews((data || []) as any);
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  if (loading || reviews.length === 0) return null;
+
+  const items = [...reviews, ...reviews];
+
+  return (
+    <div className="py-6 md:py-10 bg-gradient-to-b from-brand-50/50 to-white">
+      <div className="px-5 md:px-6 mb-4 max-w-6xl mx-auto">
+        <div className="flex items-center gap-2">
+          <Star size={20} className="text-amber-500 fill-amber-400" />
+          <h2 className="text-lg md:text-2xl font-bold text-gray-800">Sabi ng mga Gumagamit</h2>
+        </div>
+        <p className="text-xs md:text-sm text-gray-500 mt-0.5">Totoong reviews mula sa mga buyer at seller sa GoPalengke</p>
+      </div>
+      <div className="overflow-hidden">
+        <div className="flex gap-3 animate-marquee-slow w-max px-5 md:px-6">
+          {items.map((r, i) => (
+            <div
+n              key={`${r.id}-${i}`}
+              className="flex-shrink-0 w-72 md:w-80 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition"
+            >
+              <div className="flex items-center gap-2.5 mb-2">
+                <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {r.reviewer?.avatar_url ? (
+                    <img src={r.reviewer.avatar_url} alt={r.reviewer.full_name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-bold text-brand-600">{r.reviewer?.full_name?.[0]?.toUpperCase() || '?'}</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-800 line-clamp-1">{r.reviewer?.full_name || 'Anonymous'}</p>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <Star key={n} size={11} className={n <= r.rating ? 'fill-amber-400 text-amber-400' : 'fill-gray-200 text-gray-200'} />
+                    ))}
+                    <span className="text-[10px] text-gray-400 ml-1">
+                      {r.review_type === 'seller' ? 'Tindahan' : 'Rider'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 line-clamp-3 leading-snug">"{r.comment}"</p>
+              <p className="text-[10px] text-gray-300 mt-2">
+                {new Date(r.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
