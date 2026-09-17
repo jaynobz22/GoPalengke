@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import {
   Wallet, TrendingUp, Store, Bike, Copy, CheckCheck, LogOut, ArrowLeft,
   Link as LinkIcon, Loader2, Receipt, Target, Users, RefreshCw, Download,
-  ChevronRight,
+  ChevronRight, QrCode,
 } from 'lucide-react';
 
 interface Referral {
@@ -300,6 +300,20 @@ export function AffiliateDashboard() {
                     </div>
                   </div>
                 </div>
+
+                {/* Payout QR Code */}
+                {affiliate.payout_qr_url && (
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <QrCode size={18} className="text-brand-600" />
+                      <h2 className="font-bold text-gray-800 text-sm">Your Payout QR Code</h2>
+                    </div>
+                    <div className="flex justify-center">
+                      <img src={affiliate.payout_qr_url} alt="Payout QR" className="w-40 h-40 rounded-xl object-cover border border-gray-100" />
+                    </div>
+                    <p className="text-xs text-gray-400 text-center mt-2">Ito ang QR code na gagamitin ng admin para magpadala ng payout sa'yo.</p>
+                  </div>
+                )}
               </div>
             )}
 

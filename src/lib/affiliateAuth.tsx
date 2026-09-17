@@ -5,7 +5,7 @@ export interface Affiliate {
   id: string;
   email: string;
   full_name: string;
-  payout_account: string;
+  payout_qr_url: string;
   promo_code: string;
   referral_code: string;
   wallet_balance: number;
@@ -17,7 +17,7 @@ interface AffiliateAuthContextType {
   affiliate: Affiliate | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (data: { email: string; password: string; full_name: string; payout_account: string; promo_code?: string }) => Promise<{ error: string | null }>;
+  signUp: (data: { email: string; password: string; full_name: string; payout_qr_url: string; promo_code?: string }) => Promise<{ error: string | null }>;
   signOut: () => void;
   refresh: () => Promise<void>;
 }
@@ -82,7 +82,7 @@ export function AffiliateAuthProvider({ children }: { children: ReactNode }) {
     return { error: null };
   }, []);
 
-  const signUp = useCallback(async (data: { email: string; password: string; full_name: string; payout_account: string; promo_code?: string }): Promise<{ error: string | null }> => {
+  const signUp = useCallback(async (data: { email: string; password: string; full_name: string; payout_qr_url: string; promo_code?: string }): Promise<{ error: string | null }> => {
     const email = data.email.toLowerCase().trim();
     const { data: existing } = await supabase.from('affiliates').select('id').eq('email', email).maybeSingle();
     if (existing) return { error: 'Ginagamit na ang email na ito.' };
@@ -92,7 +92,7 @@ export function AffiliateAuthProvider({ children }: { children: ReactNode }) {
       .insert({
         email,
         full_name: data.full_name.trim(),
-        payout_account: data.payout_account.trim(),
+        payout_qr_url: data.payout_qr_url,
         promo_code: data.promo_code?.trim() || '',
         password_hash: simpleHash(data.password),
       })

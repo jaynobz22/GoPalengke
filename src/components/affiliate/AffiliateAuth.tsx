@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useAffiliateAuth } from '@/lib/affiliateAuth';
 import { navigate } from '@/lib/router';
 import {
-  ArrowLeft, Store, Bike, Mail, Lock, User, Wallet, Tag, Eye, EyeOff,
-  Check, Loader2, AlertCircle, ShoppingBag,
+  ArrowLeft, Mail, Lock, User, Tag, Eye, EyeOff,
+  Check, Loader2, AlertCircle, QrCode,
 } from 'lucide-react';
+import { ImageUploadField } from '@/components/ImageUploadField';
 
 export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
   const { signIn, signUp } = useAffiliateAuth();
@@ -12,7 +13,7 @@ export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [payoutAccount, setPayoutAccount] = useState('');
+  const [payoutQrUrl, setPayoutQrUrl] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +38,8 @@ export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
         navigate('/affiliate/dashboard');
       }
     } else {
-      if (!email.trim() || !password || !fullName.trim() || !payoutAccount.trim()) {
-        setError('Punan ang lahat ng kailangan.');
+      if (!email.trim() || !password || !fullName.trim() || !payoutQrUrl.trim()) {
+        setError('Punan ang lahat ng kailangan at mag-upload ng QR code.');
         setSubmitting(false);
         return;
       }
@@ -47,7 +48,7 @@ export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
         setSubmitting(false);
         return;
       }
-      const { error } = await signUp({ email, password, full_name: fullName, payout_account: payoutAccount, promo_code: promoCode });
+      const { error } = await signUp({ email, password, full_name: fullName, payout_qr_url: payoutQrUrl, promo_code: promoCode });
       if (error) {
         setError(error);
         setSubmitting(false);
@@ -63,7 +64,7 @@ export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
     setEmail('');
     setPassword('');
     setFullName('');
-    setPayoutAccount('');
+    setPayoutQrUrl('');
     setPromoCode('');
   }
 
@@ -162,19 +163,16 @@ export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
 
             {!isLogin && (
               <>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 mb-1 block">GCash / Bank Account Number</label>
-                  <div className="relative">
-                    <Wallet size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      value={payoutAccount}
-                      onChange={e => setPayoutAccount(e.target.value)}
-                      placeholder="09XX XXX XXXX o Bank Account No."
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500"
-                    />
-                  </div>
-                </div>
+                <ImageUploadField
+                  label="Payout QR Code"
+                  value={payoutQrUrl}
+                  onChange={setPayoutQrUrl}
+                  bucket="profile-images"
+                  folder="affiliate-qr"
+                  aspectClass="h-48"
+                  icon={<QrCode size={16} className="text-gray-500" />}
+                  hint="Mag-upload ng QR code para sa pagtanggap ng payout (GCash, Maya, Bank transfer, atbp.)"
+                />
 
                 <div>
                   <label className="text-xs font-medium text-gray-500 mb-1 block">Promo Code (Optional)</label>
