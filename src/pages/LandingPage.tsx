@@ -606,6 +606,7 @@ function Footer() {
     { label: 'Anti Scam & Spam Policy', hash: '/legal/antiscam' },
     { label: 'FAQ', hash: '/legal/faq' },
     { label: 'Tutorials', hash: '/tutorial' },
+    { label: 'Affiliate', hash: '/affiliate' },
   ];
 
   return (

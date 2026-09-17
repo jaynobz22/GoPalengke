@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Clock } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { AuthProvider, useAuth } from './lib/auth';
-import { navigate, useRoute, useLegalRoute, useTutorialRoute } from './lib/router';
+import { navigate, useRoute, useLegalRoute, useTutorialRoute, useAffiliateRoute } from './lib/router';
 import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 import { BuyerApp } from './pages/BuyerApp';
@@ -13,6 +13,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { PublicPages } from './components/PublicPages';
 import { LegalPages, type LegalPageType } from './components/LegalPages';
 import { TutorialPage } from './components/TutorialPage';
+import { AffiliateApp } from './pages/AffiliateApp';
 
 function AppContent() {
   const { session, profile, loading, pendingVerification } = useAuth();
@@ -20,6 +21,12 @@ function AppContent() {
   const publicRoute = useRoute();
   const legalRoute = useLegalRoute();
   const tutorialRoute = useTutorialRoute();
+  const affiliateRoute = useAffiliateRoute();
+
+  // Affiliate sub-system — fully isolated, takes priority
+  if (affiliateRoute.isAffiliate) {
+    return <AffiliateApp subpath={affiliateRoute.subpath} />;
+  }
 
   // Tutorial page — visible even without login
   if (tutorialRoute) {

@@ -51,6 +51,15 @@ export function useTutorialRoute(): boolean {
   return path === '/tutorial';
 }
 
+export function useAffiliateRoute(): { isAffiliate: boolean; subpath: string } {
+  const path = usePath();
+  if (path === '/affiliate' || path.startsWith('/affiliate/')) {
+    const subpath = path.replace('/affiliate', '') || '/';
+    return { isAffiliate: true, subpath };
+  }
+  return { isAffiliate: false, subpath: '' };
+}
+
 export function useNavigate() {
   return useCallback(navigate, []);
 }
