@@ -60,7 +60,7 @@ export function AffiliateLanding() {
             Kumita ng Unli-Passive Income sa Pag Share ng GoPalengke Para Malaman ng Maraming Tao
           </h1>
           <p className="text-green-50 text-base md:text-lg max-w-2xl mx-auto mb-8">
-            I-refer ang mga seller at rider sa GoPalengke at kumita ng lifetime commission sa bawat
+            Mag refer ng mga seller at rider sa GoPalengke at kumita ng lifetime commission sa bawat
             milestone na maabot nila. Walang limit.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
