@@ -74,61 +74,11 @@ export function AffiliateDashboard() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Auto-seed demo data if none exists
-  useEffect(() => {
-    if (!affiliate || loading) return;
-    if (referrals.length === 0 && transactions.length === 0) {
-      seedDemoData(affiliate);
-    }
-  }, [affiliate, loading, referrals.length, transactions.length]);
-
-  async function seedDemoData(aff: Affiliate) {
-    const sellerNames = ['Juan Dela Cruz', 'Maria Santos', 'Pedro Reyes', 'Ana Lim'];
-    const riderNames = ['Carlos Garcia', 'Rosa Flores', 'Miguel Torres'];
-
-    const sellerRefs = sellerNames.map((name, i) => ({
-      affiliate_id: aff.id,
-      referred_role: 'seller',
-      referred_name: name,
-      accumulated_admin_collected: [650, 1200, 320, 880][i],
-      milestones_hit: [0, 1, 0, 0][i],
-      total_commission_earned: [0, 200, 0, 0][i],
-    }));
-
-    const riderRefs = riderNames.map((name, i) => ({
-      affiliate_id: aff.id,
-      referred_role: 'rider',
-      referred_name: name,
-      accumulated_admin_collected: [250, 550, 180][i],
-      milestones_hit: [0, 1, 0][i],
-      total_commission_earned: [0, 50, 0][i],
-    }));
-
-    const { data: insertedRefs } = await supabase.from('affiliate_referrals')
-      .insert([...sellerRefs, ...riderRefs])
-      .select('*');
-
-    // Seed transactions
-    const txs = [
-      { affiliate_id: aff.id, type: 'seller_milestone', description: 'Commission from Seller Maria Santos - Milestone Completed', amount: 200, status: 'credited' },
-      { affiliate_id: aff.id, type: 'rider_milestone', description: 'Commission from Rider Rosa Flores - Milestone Completed', amount: 50, status: 'credited' },
-    ];
-    await supabase.from('affiliate_transactions').insert(txs);
-
-    // Update wallet
-    await supabase.from('affiliates')
-      .update({ wallet_balance: 250, lifetime_earnings: 250 })
-      .eq('id', aff.id);
-
-    refresh();
-    load();
-  }
-
-  function copyLink(type: 'seller' | 'rider') {
+  function copyLink() {
     if (!affiliate) return;
-    const link = `${window.location.origin}/?ref=${affiliate.referral_code}&type=${type}`;
+    const link = `${window.location.origin}/?ref=${affiliate.referral_code}`;
     navigator.clipboard.writeText(link).then(() => {
-      setCopiedLink(type);
+      setCopiedLink('link');
       setTimeout(() => setCopiedLink(null), 2000);
     });
   }
@@ -237,55 +187,34 @@ export function AffiliateDashboard() {
                   />
                 </div>
 
-                {/* Invite Links */}
+                {/* Invite Link */}
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <LinkIcon size={18} className="text-brand-600" />
-                    <h2 className="font-bold text-gray-800 text-sm">Your Referral Links</h2>
+                    <h2 className="font-bold text-gray-800 text-sm">Your Referral Link</h2>
                   </div>
 
-                  <div className="space-y-3">
-                    {/* Seller Link */}
-                    <div className="bg-orange-50 rounded-xl p-3 border border-orange-100">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Store size={16} className="text-orange-600" />
-                        <span className="text-sm font-semibold text-gray-700">Seller Referral Link</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-white rounded-lg px-3 py-2 border border-gray-200 overflow-hidden">
-                          <p className="text-xs text-gray-500 font-mono truncate">
-                            {baseUrl}/?ref={affiliate.referral_code}&type=seller
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => copyLink('seller')}
-                          className="flex-shrink-0 w-10 h-10 rounded-lg bg-orange-500 text-white flex items-center justify-center active:scale-90 transition"
-                        >
-                          {copiedLink === 'seller' ? <CheckCheck size={18} /> : <Copy size={18} />}
-                        </button>
-                      </div>
+                  <div className="bg-brand-50 rounded-xl p-3 border border-brand-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users size={16} className="text-brand-600" />
+                      <span className="text-sm font-semibold text-gray-700">Referral Link</span>
                     </div>
-
-                    {/* Rider Link */}
-                    <div className="bg-blue-50 rounded-xl p-3 border border-blue-100">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Bike size={16} className="text-blue-600" />
-                        <span className="text-sm font-semibold text-gray-700">Rider Referral Link</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-white rounded-lg px-3 py-2 border border-gray-200 overflow-hidden">
+                        <p className="text-xs text-gray-500 font-mono truncate">
+                          {baseUrl}/?ref={affiliate.referral_code}
+                        </p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-white rounded-lg px-3 py-2 border border-gray-200 overflow-hidden">
-                          <p className="text-xs text-gray-500 font-mono truncate">
-                            {baseUrl}/?ref={affiliate.referral_code}&type=rider
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => copyLink('rider')}
-                          className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-500 text-white flex items-center justify-center active:scale-90 transition"
-                        >
-                          {copiedLink === 'rider' ? <CheckCheck size={18} /> : <Copy size={18} />}
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => copyLink()}
+                        className="flex-shrink-0 w-10 h-10 rounded-lg bg-brand-600 text-white flex items-center justify-center active:scale-90 transition"
+                      >
+                        {copiedLink === 'link' ? <CheckCheck size={18} /> : <Copy size={18} />}
+                      </button>
                     </div>
+                    <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                      I-share ang link na ito sa mga taong gusto mong mag-sign up sa GoPalengke. Sila na ang pipili kung seller o rider ang role nila sa sign up page. Awtomatikong mai-credit sa'yo ang commission kapag naabot nila ang milestone.
+                    </p>
                   </div>
 
                   <div className="mt-3 bg-gray-50 rounded-xl p-3 flex items-center gap-2">

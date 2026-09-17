@@ -85,7 +85,7 @@ export function AffiliateLanding() {
       <section className="max-w-5xl mx-auto px-5 py-12">
         <div className="text-center mb-8">
           <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Paano Ito Gumagana?</h2>
-          <p className="text-gray-500 text-sm">Dalawang paraan para kumita as an affiliate— Seller Milestone at Rider Milestone</p>
+          <p className="text-gray-500 text-sm">Isang referral link lang ang kailangan — sila na ang pipili kung seller o rider. Dalawang paraan para kumita: Seller Milestone at Rider Milestone</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-5">
