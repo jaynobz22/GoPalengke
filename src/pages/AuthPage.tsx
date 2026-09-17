@@ -207,15 +207,11 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
 
           {/* Tutorial Videos */}
           <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Youtube size={18} className="text-red-500" />
-              <h3 className="text-sm font-bold text-gray-700">Paano gamitin ang GoPalengke?</h3>
-            </div>
-            <p className="text-xs text-gray-500 mb-3 leading-relaxed">
-              Bago ka mag-sign up, panoorin muna ang tutorial para magka-idea ka paano gamitin ang app. Opsyonal lang — pwede ka pa ring mag-sign up kahit hindi manood.
-            </p>
+            <h2 className="text-2xl font-semibold text-gray-800 leading-tight mb-4">
+              Paano Gamitin ang GoPalengke?<br />Panoorin Muna ang Mga Video sa Baba
+            </h2>
             <div className="space-y-3">
-              {TUTORIAL_VIDEOS.map((video) => {
+              {TUTORIAL_VIDEOS.map((video, index) => {
                 const title = videoTitles[video.id] || 'Loading...';
                 return (
                 <button
@@ -223,6 +219,12 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
                   onClick={() => setActiveVideo({ id: video.id, title })}
                   className="w-full text-left bg-white rounded-2xl border border-gray-200 overflow-hidden active:scale-[0.98] transition shadow-sm"
                 >
+                  <div className="p-3 pb-2 flex items-center gap-2">
+                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-brand-600 text-white text-sm font-bold flex items-center justify-center">
+                      {index + 1}
+                    </span>
+                    <p className="text-sm font-semibold text-gray-800 leading-snug line-clamp-2">{title}</p>
+                  </div>
                   <div className="relative w-full aspect-video bg-gray-100">
                     <img
                       src={`https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`}
@@ -237,9 +239,6 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
                       <PlayCircle size={48} className="text-white drop-shadow-lg" />
                     </div>
                     <span className="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-full font-medium">YouTube</span>
-                  </div>
-                  <div className="p-3">
-                    <p className="text-sm font-semibold text-gray-800 leading-snug">{title}</p>
                   </div>
                 </button>
                 );
