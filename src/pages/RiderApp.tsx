@@ -89,10 +89,19 @@ export function RiderApp() {
   }
 
   const canAct = profile?.is_active ?? true;
+  const [freezeReason, setFreezeReason] = useState<'billing' | 'admin' | null>(null);
+
+  useEffect(() => {
+    if (!profile || canAct) { setFreezeReason(null); return; }
+    supabase.from('rider_fees').select('frozen_at').eq('rider_id', profile.id).maybeSingle()
+      .then(({ data }) => {
+        setFreezeReason(data?.frozen_at ? 'billing' : 'admin');
+      });
+  }, [profile, canAct]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
-      {!canAct && <InactiveBanner />}
+      {!canAct && <InactiveBanner reason={freezeReason || undefined} />}
       <div className="flex-1 pb-24 overflow-y-auto">
         {tab === 'deliveries' && (
           selectedOrder ? (
