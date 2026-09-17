@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Clock } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { AuthProvider, useAuth } from './lib/auth';
-import { navigate, useRoute, useLegalRoute } from './lib/router';
+import { navigate, useRoute, useLegalRoute, useTutorialRoute } from './lib/router';
 import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 import { BuyerApp } from './pages/BuyerApp';
@@ -12,12 +12,19 @@ import { AdminApp } from './pages/AdminApp';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PublicPages } from './components/PublicPages';
 import { LegalPages, type LegalPageType } from './components/LegalPages';
+import { TutorialPage } from './components/TutorialPage';
 
 function AppContent() {
   const { session, profile, loading, pendingVerification } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
   const publicRoute = useRoute();
   const legalRoute = useLegalRoute();
+  const tutorialRoute = useTutorialRoute();
+
+  // Tutorial page — visible even without login
+  if (tutorialRoute) {
+    return <TutorialPage />;
+  }
 
   // Legal pages — visible even without login
   if (legalRoute) {

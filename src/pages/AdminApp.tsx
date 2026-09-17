@@ -15,10 +15,10 @@ import {
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
   AlertCircle, X, UserCheck, UserX, DollarSign, TrendingUp, Receipt,
   Lock, Unlock, Video, MessageCircle, Shield, QrCode, MapPin, Mail, Send, Coins,
-  ChevronUp, ChevronDown, BarChart3,
+  ChevronUp, ChevronDown, BarChart3, PlayCircle, ArrowUp, ArrowDown,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'rider_fees' | 'announcements' | 'security' | 'video_credits' | 'settings' | 'analytics';
+type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'rider_fees' | 'announcements' | 'security' | 'video_credits' | 'tutorials' | 'settings' | 'analytics';
 
 export function AdminApp() {
   const { profile, signOut } = useAuth();
@@ -72,6 +72,7 @@ export function AdminApp() {
     { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'video_credits', label: 'Credits', icon: Coins },
+    { id: 'tutorials', label: 'Tutorials', icon: PlayCircle },
     { id: 'analytics', label: 'Stats', icon: BarChart3 },
   ];
 
@@ -124,6 +125,7 @@ export function AdminApp() {
       {tab === 'announcements' && <ErrorBoundary><AnnouncementsTab /></ErrorBoundary>}
       {tab === 'security' && <ErrorBoundary><SecurityDashboardTab /></ErrorBoundary>}
       {tab === 'video_credits' && <ErrorBoundary><VideoCreditsTab /></ErrorBoundary>}
+      {tab === 'tutorials' && <ErrorBoundary><TutorialsTab /></ErrorBoundary>}
       {tab === 'analytics' && <ErrorBoundary><AnalyticsDashboard /></ErrorBoundary>}
       {tab === 'settings' && <ErrorBoundary><SettingsTab /></ErrorBoundary>}
 
@@ -2879,6 +2881,319 @@ function VideoCreditsTab() {
             className="max-w-full max-h-[90vh] rounded-2xl object-contain"
             onClick={(e) => e.stopPropagation()}
           />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============= TUTORIALS TAB =============
+type TutorialVideo = {
+  id: string;
+  youtube_url: string;
+  youtube_id: string;
+  title: string;
+  description: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+function extractYouTubeId(url: string): string {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
+    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return '';
+}
+
+function TutorialsTab() {
+  const [videos, setVideos] = useState<TutorialVideo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [url, setUrl] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const { data } = await supabase
+      .from('tutorial_videos')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true });
+    setVideos((data || []) as TutorialVideo[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  function resetForm() {
+    setUrl('');
+    setTitle('');
+    setDescription('');
+    setEditingId(null);
+    setError(null);
+    setShowForm(false);
+  }
+
+  function startEdit(v: TutorialVideo) {
+    setUrl(v.youtube_url);
+    setTitle(v.title);
+    setDescription(v.description || '');
+    setEditingId(v.id);
+    setError(null);
+    setShowForm(true);
+  }
+
+  async function handleSave() {
+    const trimmedUrl = url.trim();
+    const trimmedTitle = title.trim();
+    if (!trimmedUrl || !trimmedTitle) {
+      setError('Kailangan ng YouTube link at title.');
+      return;
+    }
+    const ytId = extractYouTubeId(trimmedUrl);
+    if (!ytId) {
+      setError('Hindi wastong YouTube link. Ilagay ang buong URL (hal. https://www.youtube.com/watch?v=...).');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+
+    if (editingId) {
+      const { error: err } = await supabase
+        .from('tutorial_videos')
+        .update({
+          youtube_url: trimmedUrl,
+          youtube_id: ytId,
+          title: trimmedTitle,
+          description: description.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingId);
+      if (err) setError('Error: ' + err.message);
+    } else {
+      const maxSort = videos.length > 0 ? Math.max(...videos.map(v => v.sort_order)) : 0;
+      const { error: err } = await supabase
+        .from('tutorial_videos')
+        .insert({
+          youtube_url: trimmedUrl,
+          youtube_id: ytId,
+          title: trimmedTitle,
+          description: description.trim(),
+          sort_order: maxSort + 1,
+        });
+      if (err) setError('Error: ' + err.message);
+    }
+
+    setSaving(false);
+    if (!error) {
+      resetForm();
+      load();
+    }
+  }
+
+  async function toggleActive(v: TutorialVideo) {
+    await supabase.from('tutorial_videos').update({ is_active: !v.is_active }).eq('id', v.id);
+    load();
+  }
+
+  async function deleteVideo(v: TutorialVideo) {
+    if (!confirm(`Sigurado ka bang burahin ang "${v.title}"?`)) return;
+    await supabase.from('tutorial_videos').delete().eq('id', v.id);
+    load();
+  }
+
+  async function moveVideo(v: TutorialVideo, direction: 'up' | 'down') {
+    const idx = videos.findIndex(x => x.id === v.id);
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === videos.length - 1) return;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const other = videos[swapIdx];
+    await Promise.all([
+      supabase.from('tutorial_videos').update({ sort_order: other.sort_order }).eq('id', v.id),
+      supabase.from('tutorial_videos').update({ sort_order: v.sort_order }).eq('id', other.id),
+    ]);
+    load();
+  }
+
+  return (
+    <div className="px-5 py-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h2 className="text-lg font-bold text-gray-800">Tutorial Videos</h2>
+          <p className="text-xs text-gray-400">Magdagdag ng YouTube video tutorials na makikita ng users sa tutorial page.</p>
+        </div>
+        <button
+          onClick={() => { resetForm(); setShowForm(true); }}
+          className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-semibold active:scale-95 transition"
+        >
+          <Plus size={16} /> Bagong Video
+        </button>
+      </div>
+
+      {/* Form Modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center px-5" onClick={() => { resetForm(); }}>
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-800">{editingId ? 'I-edit ang Video' : 'Bagong Tutorial Video'}</h3>
+              <button onClick={() => resetForm()} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <X size={18} className="text-gray-500" />
+              </button>
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl p-3 mb-3">
+                <AlertCircle size={16} className="text-red-600 flex-shrink-0" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">YouTube Link</label>
+                <input
+                  type="text"
+                  value={url}
+                  onChange={e => setUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Title</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder="Hal. Paano mag-order bilang Buyer"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Description (optional)</label>
+                <textarea
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  placeholder="Maikling paglalarawan ng video..."
+                  rows={4}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 resize-none"
+                />
+              </div>
+
+              <button
+                onClick={handleSave}
+                disabled={saving || !url.trim() || !title.trim()}
+                className="w-full py-3 bg-brand-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                {saving ? 'Nagsasave...' : editingId ? 'I-save ang Pagbabago' : 'I-add ang Video'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Video List */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 size={24} className="animate-spin text-brand-500" />
+        </div>
+      ) : videos.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+            <PlayCircle size={28} className="text-gray-300" />
+          </div>
+          <p className="text-gray-400 text-sm">Wala pang tutorial videos.</p>
+          <p className="text-gray-400 text-xs mt-1">Magdagdag ng YouTube video para makita ng users sa tutorial page.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {videos.map((v, idx) => (
+            <div key={v.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+              <div className="flex flex-col sm:flex-row">
+                {/* Thumbnail */}
+                <div className="relative w-full sm:w-40 aspect-video sm:aspect-auto sm:h-28 bg-black flex-shrink-0">
+                  <img
+                    src={`https://img.youtube.com/vi/${v.youtube_id}/hqdefault.jpg`}
+                    alt={v.title}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                  <span className="absolute top-1.5 left-1.5 text-[10px] font-bold text-white bg-black/60 rounded-lg px-2 py-0.5">
+                    #{idx + 1}
+                  </span>
+                </div>
+
+                {/* Info + Actions */}
+                <div className="flex-1 p-3 flex flex-col">
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h3 className="font-semibold text-sm text-gray-800 leading-snug">{v.title}</h3>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                        v.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {v.is_active ? 'Active' : 'Hidden'}
+                      </span>
+                    </div>
+                    {v.description && (
+                      <p className="text-xs text-gray-400 leading-relaxed line-clamp-2 mt-1">{v.description}</p>
+                    )}
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex gap-1.5 mt-2">
+                    <button
+                      onClick={() => startEdit(v)}
+                      className="flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-medium bg-gray-100 text-gray-600 active:scale-95 transition"
+                    >
+                      <Eye size={14} /> Edit
+                    </button>
+                    <button
+                      onClick={() => toggleActive(v)}
+                      className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-medium active:scale-95 transition ${
+                        v.is_active ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'
+                      }`}
+                    >
+                      {v.is_active ? <Lock size={14} /> : <Unlock size={14} />}
+                      {v.is_active ? 'Hide' : 'Show'}
+                    </button>
+                    <button
+                      onClick={() => moveVideo(v, 'up')}
+                      disabled={idx === 0}
+                      className="flex items-center justify-center w-9 py-2 rounded-lg text-xs font-medium bg-gray-100 text-gray-500 active:scale-95 transition disabled:opacity-30"
+                    >
+                      <ArrowUp size={14} />
+                    </button>
+                    <button
+                      onClick={() => moveVideo(v, 'down')}
+                      disabled={idx === videos.length - 1}
+                      className="flex items-center justify-center w-9 py-2 rounded-lg text-xs font-medium bg-gray-100 text-gray-500 active:scale-95 transition disabled:opacity-30"
+                    >
+                      <ArrowDown size={14} />
+                    </button>
+                    <button
+                      onClick={() => deleteVideo(v)}
+                      className="flex items-center justify-center w-9 py-2 rounded-lg text-xs font-medium bg-red-50 text-red-500 active:scale-95 transition"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

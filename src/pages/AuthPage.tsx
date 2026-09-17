@@ -1,47 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import type { UserRole } from '@/lib/types';
-import { Store, Bike, ShoppingCart, ArrowLeft, Check, Mail, ShieldCheck, Eye, EyeOff, PlayCircle, X, Youtube } from 'lucide-react';
+import { Store, Bike, ShoppingCart, ArrowLeft, Check, Mail, ShieldCheck, Eye, EyeOff, BookOpen, ArrowRight, X } from 'lucide-react';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
+import { navigate } from '@/lib/router';
 
 const ROLES = [
   { id: 'buyer' as UserRole, name: 'Mamimili', desc: 'Bumili ng sariwang paninda online', icon: ShoppingCart, color: 'bg-brand-500' },
   { id: 'seller' as UserRole, name: 'Tindera/Tindero', desc: 'Magbenta ng paninda sa palengke', icon: Store, color: 'bg-orange-500' },
   { id: 'rider' as UserRole, name: 'Rider', desc: 'Mag-deliver ng orders sa buyers', icon: Bike, color: 'bg-blue-500' },
 ];
-
-const TUTORIAL_VIDEOS = [
-  { id: 'MCnyHwyE4R8' },
-];
-
-function VideoModal({ video, onClose }: { video: { id: string; title: string } | null; onClose: () => void }) {
-  if (!video) return null;
-  return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col" onClick={onClose}>
-      <div className="flex items-center justify-between px-4 py-3 pt-5" onClick={e => e.stopPropagation()}>
-        <p className="text-white text-sm font-medium truncate flex-1 mr-3">{video.title}</p>
-        <button
-          onClick={onClose}
-          className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 transition flex-shrink-0"
-          aria-label="Isara ang video"
-        >
-          <X size={22} />
-        </button>
-      </div>
-      <div className="flex-1 flex items-center justify-center" onClick={e => e.stopPropagation()}>
-        <div className="w-full h-full">
-          <iframe
-            src={`https://www.youtube.com/embed/${video.id}?autoplay=1&rel=0&playsinline=1`}
-            title={video.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-            className="w-full h-full"
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: boolean; onBack?: () => void }) {
   const { signIn, signUp, sendEmailOtp, verifyEmailOtp } = useAuth();
@@ -59,18 +27,6 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
   const [otpCode, setOtpCode] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
-  const [activeVideo, setActiveVideo] = useState<{ id: string; title: string } | null>(null);
-  const [videoTitles, setVideoTitles] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    TUTORIAL_VIDEOS.forEach(async (v) => {
-      try {
-        const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${v.id}&format=json`);
-        const data = await res.json();
-        setVideoTitles(prev => ({ ...prev, [v.id]: data.title }));
-      } catch { /* fallback to id */ }
-    });
-  }, []);
 
   function startResendCooldown() {
     setResendCooldown(60);
@@ -190,7 +146,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
             </p>
           </div>
 
-          <div className="space-y-3 mb-8">
+          <div className="space-y-3 mb-6">
             <button
               onClick={() => setMode('signup-role')}
               className="w-full py-3.5 bg-brand-600 text-white rounded-2xl font-extrabold text-sm tracking-tight shadow-lg shadow-brand-600/20 active:scale-[0.98] transition"
@@ -205,46 +161,20 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
             </button>
           </div>
 
-          {/* Tutorial Videos */}
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-gray-700 leading-tight mb-3">
-              Paano Gamitin ang GoPalengke?<br />Panoorin Muna ang Mga Video sa Baba
-            </h2>
-            <div className="space-y-3">
-              {TUTORIAL_VIDEOS.map((video, index) => {
-                const title = videoTitles[video.id] || 'Loading...';
-                return (
-                <button
-                  key={video.id}
-                  onClick={() => setActiveVideo({ id: video.id, title })}
-                  className="w-full text-left bg-white rounded-2xl border border-gray-200 overflow-hidden active:scale-[0.98] transition shadow-sm"
-                >
-                  <div className="p-3 pb-2 flex items-center gap-2">
-                    <span className="flex-shrink-0 w-7 h-7 rounded-full bg-brand-600 text-white text-sm font-bold flex items-center justify-center">
-                      {index + 1}
-                    </span>
-                    <p className="text-sm font-semibold text-gray-800 leading-snug line-clamp-2">{title}</p>
-                  </div>
-                  <div className="relative w-full aspect-video bg-gray-100">
-                    <img
-                      src={`https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`}
-                      alt={title}
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`;
-                      }}
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                      <PlayCircle size={48} className="text-white drop-shadow-lg" />
-                    </div>
-                    <span className="absolute bottom-2 left-2 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-full font-medium">YouTube</span>
-                  </div>
-                </button>
-                );
-              })}
+          {/* Tutorial Link */}
+          <button
+            onClick={() => navigate('/tutorial')}
+            className="w-full flex items-center gap-3 bg-white rounded-2xl border border-gray-200 p-3.5 active:scale-[0.98] transition shadow-sm mb-4"
+          >
+            <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0">
+              <BookOpen size={20} className="text-brand-600" />
             </div>
-          </div>
+            <div className="text-left flex-1">
+              <p className="text-sm font-semibold text-gray-800">Paano Gamitin ang GoPalengke?</p>
+              <p className="text-xs text-gray-400">Panoorin ang mga tutorial video para matuto</p>
+            </div>
+            <ArrowRight size={18} className="text-gray-400 flex-shrink-0" />
+          </button>
 
           <div className="mt-auto pb-8 text-center text-xs text-gray-400">
             <p>By continuing, pumapayag ka sa Terms at Privacy Policy ng GoPalengke.</p>
@@ -475,8 +405,6 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
           </div>
         </div>
       )}
-
-      <VideoModal video={activeVideo} onClose={() => setActiveVideo(null)} />
     </div>
   );
 }

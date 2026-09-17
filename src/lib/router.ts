@@ -46,6 +46,11 @@ export function useLegalRoute(): string | null {
   return null;
 }
 
+export function useTutorialRoute(): boolean {
+  const path = usePath();
+  return path === '/tutorial';
+}
+
 export function useNavigate() {
   return useCallback(navigate, []);
 }

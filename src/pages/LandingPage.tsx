@@ -605,6 +605,7 @@ function Footer() {
     { label: 'Cancellation Policy', hash: '/legal/cancellation' },
     { label: 'Anti Scam & Spam Policy', hash: '/legal/antiscam' },
     { label: 'FAQ', hash: '/legal/faq' },
+    { label: 'Tutorials', hash: '/tutorial' },
   ];
 
   return (
