@@ -160,7 +160,7 @@ export function AffiliateLanding() {
               <span className="text-brand-700 text-sm font-medium">Earnings Calculator</span>
             </div>
             <h2 className="text-2xl font-bold text-gray-800">Kalkulahin ang Potensyal na Kita</h2>
-            <p className="text-gray-500 text-sm mt-1">i click at drag ang orange na dot sa line makita ng sample na dami ng mga referrals para makita ang potensyal na kita bawat buwan</p>
+            <p className="text-gray-500 text-sm mt-1">i click at drag ang orange na dot sa line makita ang sample na dami ng mga referrals para makita ang potensyal na kita bawat buwan</p>
           </div>
 
           <div className="bg-white rounded-3xl border border-gray-100 shadow-lg p-6 md:p-8">
