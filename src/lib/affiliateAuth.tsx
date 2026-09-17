@@ -119,7 +119,7 @@ export function AffiliateAuthProvider({ children }: { children: ReactNode }) {
       sessionStorage.removeItem('gopalengke_aff_ref_code');
     }
 
-    // If no explicit affiliate recruitment link, check if this user was already
+    // If no explicit affiliate invite link, check if this user was already
     // referred by an affiliate as a seller/rider — that affiliate becomes their sponsor.
     if (!sponsorId && linkedUserId) {
       const { data: existingReferral } = await supabase

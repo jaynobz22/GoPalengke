@@ -23,7 +23,7 @@ function AppContent() {
   const tutorialRoute = useTutorialRoute();
   const affiliateRoute = useAffiliateRoute();
 
-  // Capture referral code from URL (?ref=CODE for seller/rider, ?aff_ref=CODE for affiliate recruitment) and clean the URL
+  // Capture referral code from URL (?ref=CODE for seller/rider, ?aff_ref=CODE for affiliate invite) and clean the URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');

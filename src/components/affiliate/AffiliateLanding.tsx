@@ -61,7 +61,7 @@ export function AffiliateLanding() {
           </h1>
           <p className="text-green-50 text-base md:text-lg max-w-2xl mx-auto mb-8">
             Mag refer ng mga seller at rider sa GoPalengke at kumita ng lifetime commission sa bawat
-            milestone na maabot nila. Walang limit. Plus, mag-recruit ka rin ng iba pang affiliates at kumita ng Tier 2 override commission!
+            milestone na maabot nila. Walang limit. Plus, mag-invite ka rin ng iba pang affiliates at kumita ng Tier 2 override commission!
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
@@ -85,7 +85,7 @@ export function AffiliateLanding() {
       <section className="max-w-5xl mx-auto px-5 py-12">
         <div className="text-center mb-8">
           <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Paano Ito Gumagana?</h2>
-          <p className="text-gray-500 text-sm">Isang referral link lang ang kailangan — sila na ang pipili kung seller o rider. Dalawang paraan para kumita: Seller Milestone at Rider Milestone. Plus Tier 2 override kapag nag-recruit ka ng iba pang affiliates!</p>
+          <p className="text-gray-500 text-sm">Isang referral link lang ang kailangan — sila na ang pipili kung seller o rider. Dalawang paraan para kumita: Seller Milestone at Rider Milestone. Plus Tier 2 override kapag nag-invite ka ng iba pang affiliates!</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-5">

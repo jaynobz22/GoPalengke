@@ -211,7 +211,7 @@ export function AffiliateDashboard() {
                     <div className="flex items-center justify-between bg-blue-50 rounded-xl p-3">
                       <div>
                         <p className="text-sm font-semibold text-blue-800">Kita sa 2nd Level Affiliates (Tier 2)</p>
-                        <p className="text-xs text-gray-500">Override mula sa mga recruits ng recruits mo</p>
+                        <p className="text-xs text-gray-500">Override mula sa mga na-invite ng mga na-invite mo</p>
                       </div>
                       <p className="text-lg font-bold text-blue-700">₱{tier2Earnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                     </div>
@@ -258,16 +258,16 @@ export function AffiliateDashboard() {
                   </div>
                 </div>
 
-                {/* Affiliate Recruitment Link (Tier 2) */}
+                {/* Affiliate Invite Link (Tier 2) */}
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <Users size={18} className="text-blue-600" />
-                    <h2 className="font-bold text-gray-800 text-sm">Affiliate Recruitment Link (Tier 2)</h2>
+                    <h2 className="font-bold text-gray-800 text-sm">Affiliate Invite Link (Tier 2)</h2>
                   </div>
                   <div className="bg-blue-50 rounded-xl p-3 border border-blue-100">
                     <div className="flex items-center gap-2 mb-2">
                       <Users size={16} className="text-blue-600" />
-                      <span className="text-sm font-semibold text-gray-700">Recruit Other Affiliates</span>
+                      <span className="text-sm font-semibold text-gray-700">Invite Other Affiliates</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 bg-white rounded-lg px-3 py-2 border border-gray-200 overflow-hidden">
@@ -289,7 +289,7 @@ export function AffiliateDashboard() {
                       </button>
                     </div>
                     <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-                      I-share ang link na ito para mag-recruit ng iba pang affiliates. Kapag nag-sign up sila bilang affiliate gamit ang link mo, awtomatikong ikaw ang kanilang sponsor. Makakakuha ka ng Tier 2 override commission (₱{SELLER_TIER2} kada seller milestone, ₱{RIDER_TIER2} kada rider milestone) mula sa mga referrals nila.
+                      I-share ang link na ito para mag-invite ng iba pang affiliates. Kapag nag-sign up sila bilang affiliate gamit ang link mo, awtomatikong ikaw ang kanilang sponsor. Makakakuha ka ng Tier 2 override commission (₱{SELLER_TIER2} kada seller milestone, ₱{RIDER_TIER2} kada rider milestone) mula sa mga referrals nila.
                     </p>
                   </div>
                 </div>
