@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall, AdminConversation, Store, VideoCreditPurchase } from '@/lib/types';
+import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall, AdminConversation, Store, VideoCreditPurchase, RiderFee, RiderFeePayment } from '@/lib/types';
 import { SUBSCRIPTION_THRESHOLD } from '@/lib/types';
 import { ImageUploadField } from '@/components/ImageUploadField';
 import { SecurityDashboardTab } from '@/components/SecurityDashboard';
@@ -18,7 +18,7 @@ import {
   ChevronUp, ChevronDown, BarChart3,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'announcements' | 'security' | 'video_credits' | 'settings' | 'analytics';
+type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'rider_fees' | 'announcements' | 'security' | 'video_credits' | 'settings' | 'analytics';
 
 export function AdminApp() {
   const { profile, signOut } = useAuth();
@@ -67,6 +67,7 @@ export function AdminApp() {
     { id: 'campaigns', label: 'Campaigns', icon: Mail },
     { id: 'messages', label: 'Messages', icon: MessageCircle },
     { id: 'fees', label: 'Fees', icon: Wallet },
+    { id: 'rider_fees', label: 'Rider Fees', icon: Bike },
     { id: 'announcements', label: 'Announcements', icon: Megaphone },
     { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'security', label: 'Security', icon: Shield },
@@ -119,6 +120,7 @@ export function AdminApp() {
       {tab === 'campaigns' && <ErrorBoundary><CampaignsTab /></ErrorBoundary>}
       {tab === 'messages' && <ErrorBoundary><AdminMessagesTab onOpenChat={(convId, name, userId) => setActiveChat({ conversationId: convId, otherName: name, userId })} /></ErrorBoundary>}
       {tab === 'fees' && <ErrorBoundary><FeesTab /></ErrorBoundary>}
+      {tab === 'rider_fees' && <ErrorBoundary><RiderFeesTab /></ErrorBoundary>}
       {tab === 'announcements' && <ErrorBoundary><AnnouncementsTab /></ErrorBoundary>}
       {tab === 'security' && <ErrorBoundary><SecurityDashboardTab /></ErrorBoundary>}
       {tab === 'video_credits' && <ErrorBoundary><VideoCreditsTab /></ErrorBoundary>}
@@ -170,15 +172,15 @@ export function AdminApp() {
 function OverviewTab() {
   const [stats, setStats] = useState({
     stores: 0, products: 0, buyers: 0, riders: 0, sellers: 0, orders: 0,
-    pendingApprovals: 0, pendingPayments: 0, frozenSellers: 0,
-    totalCommission: 0, totalSubscription: 0, totalPlatformEarnings: 0,
+    pendingApprovals: 0, pendingPayments: 0, pendingRiderPayments: 0, frozenSellers: 0, frozenRiders: 0,
+    totalCommission: 0, totalSubscription: 0, totalPlatformEarnings: 0, totalRiderFees: 0,
     unverifiedStores: [] as any[],
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      const [stores, products, buyers, riders, sellers, orders, pendingApprovals, pendingPayments, sellerFees, frozenCount, unverifiedStores] = await Promise.all([
+      const [stores, products, buyers, riders, sellers, orders, pendingApprovals, pendingPayments, sellerFees, frozenCount, unverifiedStores, pendingRiderPayments, frozenRiderCount, riderFees] = await Promise.all([
         supabase.from('stores').select('*', { count: 'exact', head: true }),
         supabase.from('products').select('*', { count: 'exact', head: true }),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'buyer'),
@@ -190,11 +192,16 @@ function OverviewTab() {
         supabase.from('seller_fees').select('*'),
         supabase.from('seller_fees').select('*', { count: 'exact', head: true }).not('frozen_at', 'is', null),
         supabase.from('stores').select('*, seller:profiles!stores_seller_id_fkey(full_name, email)').eq('is_verified', false).order('created_at', { ascending: false }),
+        supabase.from('rider_fee_payments').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('rider_fees').select('*', { count: 'exact', head: true }).not('frozen_at', 'is', null),
+        supabase.from('rider_fees').select('*'),
       ]);
 
       const fees = (sellerFees.data || []) as any[];
       const totalCommission = fees.reduce((s, f) => s + Number(f.commission_balance || 0), 0);
       const totalSubscription = fees.reduce((s, f) => s + Number(f.subscription_balance || 0), 0);
+      const rFees = (riderFees.data || []) as any[];
+      const totalRiderFees = rFees.reduce((s, f) => s + Number(f.platform_fee_balance || 0), 0);
 
       setStats({
         stores: stores.count || 0,
@@ -205,10 +212,13 @@ function OverviewTab() {
         orders: orders.count || 0,
         pendingApprovals: pendingApprovals.count || 0,
         pendingPayments: pendingPayments.count || 0,
+        pendingRiderPayments: pendingRiderPayments.count || 0,
         frozenSellers: frozenCount.count || 0,
+        frozenRiders: frozenRiderCount.count || 0,
         totalCommission,
         totalSubscription,
-        totalPlatformEarnings: totalCommission + totalSubscription,
+        totalPlatformEarnings: totalCommission + totalSubscription + totalRiderFees,
+        totalRiderFees,
         unverifiedStores: unverifiedStores.data || [],
       });
       setLoading(false);
@@ -218,6 +228,8 @@ function OverviewTab() {
     // Realtime: reload when seller_fees, orders, or stores change so verification status stays live
     const sub = supabase.channel('admin-overview-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'seller_fees' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rider_fees' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rider_fee_payments' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => load())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'stores' }, (payload) => {
         // If a store's is_verified changed, reload the overview
@@ -252,7 +264,15 @@ function OverviewTab() {
         <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-2xl p-3 mb-4">
           <Wallet size={18} className="text-blue-600 flex-shrink-0" />
           <p className="text-sm text-blue-700 font-medium">
-            May {stats.pendingPayments} payment na naghihintay ng approval.
+            May {stats.pendingPayments} seller payment na naghihintay ng approval.
+          </p>
+        </div>
+      )}
+      {stats.pendingRiderPayments > 0 && (
+        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-2xl p-3 mb-4">
+          <Bike size={18} className="text-blue-600 flex-shrink-0" />
+          <p className="text-sm text-blue-700 font-medium">
+            May {stats.pendingRiderPayments} rider payment na naghihintay ng approval.
           </p>
         </div>
       )}
@@ -261,6 +281,14 @@ function OverviewTab() {
           <Lock size={18} className="text-red-600 flex-shrink-0" />
           <p className="text-sm text-red-700 font-medium">
             May {stats.frozenSellers} seller na naka-freeze dahil sa hindi pagbabayad.
+          </p>
+        </div>
+      )}
+      {stats.frozenRiders > 0 && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-2xl p-3 mb-4">
+          <Bike size={18} className="text-red-600 flex-shrink-0" />
+          <p className="text-sm text-red-700 font-medium">
+            May {stats.frozenRiders} rider na naka-suspend dahil sa hindi pagbabayad.
           </p>
         </div>
       )}
@@ -306,6 +334,7 @@ function OverviewTab() {
         <div className="flex gap-4 mt-3 text-xs text-gray-400">
           <span>Commission: ₱{stats.totalCommission.toFixed(2)}</span>
           <span>Subscription: ₱{stats.totalSubscription.toFixed(2)}</span>
+          <span>Rider Fees: ₱{stats.totalRiderFees.toFixed(2)}</span>
         </div>
       </div>
 
@@ -1672,6 +1701,283 @@ function FeesTab() {
                     )}
                   </div>
                 )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============= RIDER FEES TAB =============
+function RiderFeesTab() {
+  const { profile: adminProfile } = useAuth();
+  const [payments, setPayments] = useState<(RiderFeePayment & { rider: { full_name: string; email: string } })[]>([]);
+  const [frozenRiders, setFrozenRiders] = useState<(RiderFee & { rider: { full_name: string; email: string } })[]>([]);
+  const [allRiderFees, setAllRiderFees] = useState<(RiderFee & { rider: { full_name: string; email: string } })[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState<string | null>(null);
+  const [reactivating, setReactivating] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const [payData, frozenData, allFeesData] = await Promise.all([
+      supabase.from('rider_fee_payments')
+        .select('*, rider:profiles!rider_fee_payments_rider_id_fkey(full_name, email)')
+        .order('created_at', { ascending: false }),
+      supabase.from('rider_fees')
+        .select('*, rider:profiles!rider_fees_rider_id_fkey(full_name, email)')
+        .not('frozen_at', 'is', null)
+        .order('frozen_at', { ascending: false }),
+      supabase.from('rider_fees')
+        .select('*, rider:profiles!rider_fees_rider_id_fkey(full_name, email)')
+        .order('updated_at', { ascending: false }),
+    ]);
+    setPayments((payData.data || []) as any);
+    setFrozenRiders((frozenData.data || []) as any);
+    setAllRiderFees((allFeesData.data || []) as any);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const sub = supabase.channel('admin-rider-fees')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rider_fee_payments' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rider_fees' }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [load]);
+
+  async function approvePayment(payment: RiderFeePayment) {
+    if (!adminProfile) return;
+    setProcessing(payment.id);
+    try {
+      const { error } = await supabase.rpc('approve_rider_fee_payment', {
+        p_payment_id: payment.id,
+        p_admin_id: adminProfile.id,
+      });
+      if (error) alert('Error: ' + error.message);
+    } catch (err: any) {
+      alert('Error: ' + (err?.message || 'Hindi matapos ang approval.'));
+    }
+    setProcessing(null);
+    load();
+  }
+
+  async function rejectPayment(payment: RiderFeePayment) {
+    if (!confirm('Sigurado ka bang gusto mong i-reject ang payment na ito?')) return;
+    setProcessing(payment.id);
+    try {
+      await supabase.from('rider_fee_payments').update({ status: 'rejected' }).eq('id', payment.id);
+    } catch (err: any) {
+      alert('Error: ' + (err?.message || 'Hindi matapos ang reject.'));
+    }
+    setProcessing(null);
+    load();
+  }
+
+  async function reactivateRider(riderId: string) {
+    if (!confirm('Sigurado ka bang gusto mong i-reactivate ang rider na ito? Titiyakin na nakapagbayad na siya.')) return;
+    setReactivating(riderId);
+    try {
+      const { error } = await supabase.rpc('reactivate_rider', { p_rider_id: riderId });
+      if (error) alert('Error: ' + error.message);
+    } catch (err: any) {
+      alert('Error: ' + (err?.message || 'Hindi matapos ang reactivation.'));
+    }
+    setReactivating(null);
+    load();
+  }
+
+  const pending = payments.filter(p => p.status === 'pending');
+  const history = payments.filter(p => p.status !== 'pending');
+
+  return (
+    <div className="px-5 py-4">
+      <h2 className="text-lg font-bold text-gray-800 mb-3">Rider Fee Payments</h2>
+
+      {pending.length > 0 && (
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4">
+          <AlertCircle size={18} className="text-amber-600 flex-shrink-0" />
+          <p className="text-sm text-amber-700 font-medium">
+            May {pending.length} rider payment na naghihintay ng approval.
+          </p>
+        </div>
+      )}
+
+      {/* Pending Payments */}
+      <h3 className="font-bold text-gray-800 mb-3 text-sm">Naghihintay ng Approval</h3>
+      {loading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 size={24} className="animate-spin text-blue-500" />
+        </div>
+      ) : pending.length === 0 ? (
+        <p className="text-center text-gray-400 text-sm py-6 mb-4">Walang pending rider payments.</p>
+      ) : (
+        <div className="space-y-2 mb-6">
+          {pending.map(p => (
+            <div key={p.id} className="bg-white rounded-2xl border border-amber-200 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="font-semibold text-sm text-gray-800">{p.rider?.full_name || 'Rider'}</p>
+                  <p className="text-xs text-gray-400">{p.rider?.email}</p>
+                </div>
+                <p className="font-bold text-lg text-gray-800">₱{Number(p.amount || 0).toFixed(2)}</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-2 mb-3">
+                <p className="text-xs text-gray-400">Reference Number</p>
+                <p className="text-sm font-mono text-gray-700">{p.reference_number}</p>
+              </div>
+              {p.screenshot_url && (
+                <div className="mb-3">
+                  <p className="text-xs text-gray-400 mb-1">Receipt Screenshot:</p>
+                  <img src={p.screenshot_url} alt="Receipt" className="w-full max-w-48 rounded-xl border border-gray-100" />
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => approvePayment(p)}
+                  disabled={processing === p.id}
+                  className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-green-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition disabled:opacity-50"
+                >
+                  {processing === p.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                  Approve
+                </button>
+                <button
+                  onClick={() => rejectPayment(p)}
+                  disabled={processing === p.id}
+                  className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-red-50 text-red-600 rounded-xl text-xs font-semibold active:scale-95 transition disabled:opacity-50"
+                >
+                  <X size={14} />
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Frozen Riders */}
+      {frozenRiders.length > 0 && (
+        <>
+          <h3 className="font-bold text-red-700 mb-3 text-sm flex items-center gap-2 mt-4">
+            <Lock size={16} /> Naka-suspend na Rider
+          </h3>
+          <div className="space-y-2 mb-6">
+            {frozenRiders.map(f => (
+              <div key={f.id} className="bg-white rounded-2xl border border-red-200 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="font-semibold text-sm text-gray-800">{f.rider?.full_name || 'Rider'}</p>
+                    <p className="text-xs text-gray-400">{f.rider?.email}</p>
+                  </div>
+                  <p className="font-bold text-lg text-red-600">₱{Number(f.total_payable || 0).toFixed(2)}</p>
+                </div>
+                <p className="text-xs text-gray-400 mb-3">
+                  Na-suspend no: {f.frozen_at ? new Date(f.frozen_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                </p>
+                <button
+                  onClick={() => reactivateRider(f.rider_id)}
+                  disabled={reactivating === f.rider_id}
+                  className="w-full flex items-center justify-center gap-1 py-2.5 bg-green-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition disabled:opacity-50"
+                >
+                  {reactivating === f.rider_id ? <Loader2 size={14} className="animate-spin" /> : <Unlock size={14} />}
+                  Reactivate Rider
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Payment History */}
+      <h3 className="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2">
+        <Receipt size={16} /> Kasaysayan
+      </h3>
+      {history.length === 0 ? (
+        <p className="text-center text-gray-400 text-sm py-6">Wala pang rider payment history.</p>
+      ) : (
+        <div className="space-y-2 mb-6">
+          {history.map(p => (
+            <div key={p.id} className="bg-white rounded-2xl border border-gray-100 p-3">
+              <div className="flex items-center justify-between mb-1">
+                <p className="font-semibold text-sm text-gray-800">{p.rider?.full_name || 'Rider'}</p>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  p.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                }`}>
+                  {p.status === 'approved' ? 'Approved' : 'Rejected'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-400">Ref: {p.reference_number}</p>
+                <p className="font-semibold text-sm text-gray-700">₱{Number(p.amount || 0).toFixed(2)}</p>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                {new Date(p.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Rider Earnings Breakdown */}
+      <h3 className="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2 mt-4">
+        <Bike size={16} /> Earnings Breakdown ng Rider
+      </h3>
+      {allRiderFees.length === 0 ? (
+        <p className="text-center text-gray-400 text-sm py-6">Wala pang rider earnings data.</p>
+      ) : (
+        <div className="space-y-2">
+          {allRiderFees.map((f) => {
+            const totalEarnings = Number(f.total_career_earnings || 0);
+            const platformBalance = Number(f.platform_fee_balance || 0);
+            const totalPayable = Number(f.total_payable || 0);
+            const onboardingStatus = f.onboarding_fee_status;
+            const isFrozen = !!f.frozen_at;
+
+            return (
+              <div key={f.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-blue-600 font-bold text-xs">
+                        {(f.rider?.full_name || '?').charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm text-gray-800">{f.rider?.full_name || 'Unknown'}</p>
+                      <p className="text-xs text-gray-400">{f.rider?.email}</p>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                    isFrozen ? 'bg-red-100 text-red-700' :
+                    onboardingStatus === 'paid' ? 'bg-green-100 text-green-700' :
+                    onboardingStatus === 'active' ? 'bg-amber-100 text-amber-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>
+                    {isFrozen ? 'Suspended' : onboardingStatus === 'paid' ? 'Onboarding Paid' : onboardingStatus === 'active' ? 'Onboarding Active' : 'Free Tier'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-gray-50 rounded-lg p-2.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">Career Earnings</p>
+                    <p className="font-bold text-sm text-gray-800">₱{totalEarnings.toFixed(2)}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-2.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">Total Payable</p>
+                    <p className="font-bold text-sm text-gray-800">₱{totalPayable.toFixed(2)}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-2.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">Platform Fee (3%)</p>
+                    <p className="font-bold text-sm text-gray-800">₱{platformBalance.toFixed(2)}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-2.5">
+                    <p className="text-[10px] text-gray-400 mb-0.5">Onboarding</p>
+                    <p className="font-bold text-sm text-gray-800 capitalize">{onboardingStatus}</p>
+                  </div>
+                </div>
               </div>
             );
           })}

@@ -6,6 +6,7 @@ import type { Order, OrderItem, Store, Conversation, AdminConversation } from '@
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
 import { estimateDistanceKm, computeDeliveryFee, haversineKm, PER_KM_RATE, BASE_DELIVERY_FEE, getStoreCoords, getDeliveryCoords, type Coords } from '@/lib/deliveryFee';
 import { RiderNavigationMap, type NavPhase } from '@/components/RiderNavigationMap';
+import { RiderBilling } from '@/components/RiderBilling';
 import { LiveETATimer } from '@/components/LiveETATimer';
 import { ChatView, getOrCreateConversation } from '@/components/ChatView';
 import { Avatar } from '@/components/Avatar';
@@ -22,10 +23,10 @@ import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
   Share2, Copy, ExternalLink, Power, Star, UserCheck, LogOut, Shield,
-  QrCode, Download, DollarSign, X, Info, Trash2,
+  QrCode, Download, DollarSign, X, Info, Trash2, Wallet,
 } from 'lucide-react';
 
-type Tab = 'deliveries' | 'messages' | 'history' | 'profile';
+type Tab = 'deliveries' | 'messages' | 'history' | 'billing' | 'profile';
 
 export function RiderApp() {
   const { profile, signOut } = useAuth();
@@ -112,6 +113,7 @@ export function RiderApp() {
             <RiderHistory onOrderClick={setSelectedOrder} />
           )
         )}
+        {tab === 'billing' && <RiderBilling />}
         {tab === 'profile' && <RiderProfile onSignOut={signOut} />}
 
         {showChat && activeConversationId && (
@@ -1663,6 +1665,7 @@ function RiderBottomNav({ tab, setTab, riderId, unreadMessages }: { tab: Tab; se
     { id: 'deliveries' as Tab, icon: Bike, label: 'Deliveries', badge: activeCount },
     { id: 'messages' as Tab, icon: MessageCircle, label: 'Messages', badge: unreadMessages },
     { id: 'history' as Tab, icon: Clock, label: 'History' },
+    { id: 'billing' as Tab, icon: Wallet, label: 'Billing' },
     { id: 'profile' as Tab, icon: User, label: 'Profile' },
   ];
 

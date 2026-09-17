@@ -347,6 +347,51 @@ export const SUBSCRIPTION_FEE = 499;
 export const SUBSCRIPTION_THRESHOLD = 5000;
 export const PAYMENT_THRESHOLD = 1000;
 
+// Rider billing constants
+export const RIDER_PLATFORM_FEE_RATE = 0.03;
+export const RIDER_FEE_THRESHOLD = 500;
+export const RIDER_FEE_WARNING_80 = 400;
+export const RIDER_FEE_WARNING_90 = 450;
+export const RIDER_ONBOARDING_FEE = 300;
+export const RIDER_ONBOARDING_ACTIVATION_THRESHOLD = 1000;
+
+export type RiderOnboardingFeeStatus = 'not_applicable' | 'pending' | 'active' | 'paid';
+
+export interface RiderFee {
+  id: string;
+  rider_id: string;
+  platform_fee_balance: number;
+  total_career_earnings: number;
+  onboarding_fee_status: RiderOnboardingFeeStatus;
+  onboarding_fee_paid_at: string | null;
+  total_payable: number;
+  frozen_at: string | null;
+  warning_80_sent_at: string | null;
+  warning_90_sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type RiderFeePaymentStatus = 'pending' | 'approved' | 'rejected';
+export type RiderFeeType = 'platform_fee' | 'onboarding_fee' | 'both';
+
+export interface RiderFeePayment {
+  id: string;
+  rider_id: string;
+  amount: number;
+  reference_number: string;
+  screenshot_url: string | null;
+  screenshot_delete_at: string | null;
+  status: RiderFeePaymentStatus;
+  approved_by: string | null;
+  approved_at: string | null;
+  fee_type: RiderFeeType;
+  platform_fee_paid: number;
+  onboarding_fee_paid: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export const REGIONS = [
   'NCR', 'CAR', 'Region I', 'Region II', 'Region III', 'Region IV-A', 'Region IV-B',
   'Region V', 'Region VI', 'Region VII', 'Region VIII', 'Region IX', 'Region X',
