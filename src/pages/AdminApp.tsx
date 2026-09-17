@@ -333,7 +333,7 @@ function OverviewTab() {
         <p className="text-3xl font-bold">₱{stats.totalPlatformEarnings.toFixed(2)}</p>
         <div className="flex gap-4 mt-3 text-xs text-gray-400">
           <span>Commission: ₱{stats.totalCommission.toFixed(2)}</span>
-          <span>Subscription: ₱{stats.totalSubscription.toFixed(2)}</span>
+          <span>Rent: ₱{stats.totalSubscription.toFixed(2)}</span>
           <span>Rider Fees: ₱{stats.totalRiderFees.toFixed(2)}</span>
         </div>
       </div>
@@ -1619,7 +1619,7 @@ function FeesTab() {
                       subscriptionActive ? 'bg-green-100 text-green-700' :
                       'bg-gray-100 text-gray-600'
                     }`}>
-                      {f.frozen_at ? 'Frozen' : subscriptionActive ? 'Subscribed' : 'Free Tier'}
+                      {f.frozen_at ? 'Frozen' : subscriptionActive ? 'Rent Active' : 'Free Tier'}
                     </span>
                     {isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
                   </div>
@@ -1640,7 +1640,7 @@ function FeesTab() {
                     <p className="font-bold text-sm text-gray-800">₱{commissionBalance.toFixed(2)}</p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-2.5">
-                    <p className="text-[10px] text-gray-400 mb-0.5">Subscription</p>
+                    <p className="text-[10px] text-gray-400 mb-0.5">Monthly Rent</p>
                     <p className="font-bold text-sm text-gray-800">₱{subscriptionBalance.toFixed(2)}</p>
                   </div>
                 </div>
@@ -1648,7 +1648,7 @@ function FeesTab() {
                 {/* Subscription progress bar */}
                 <div className="mt-3">
                   <div className="flex items-center justify-between text-[10px] text-gray-400 mb-1">
-                    <span>Subscription Threshold (₱{SUBSCRIPTION_THRESHOLD.toFixed(0)})</span>
+                    <span>Rent Threshold (₱{SUBSCRIPTION_THRESHOLD.toFixed(0)})</span>
                     <span>{salesProgress.toFixed(0)}%</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
@@ -1660,7 +1660,7 @@ function FeesTab() {
                   <p className="text-[10px] text-gray-400 mt-1">
                     {subscriptionActive
                       ? `Na-activate noong ${f.subscription_activated_at ? new Date(f.subscription_activated_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}`
-                      : `₱${(SUBSCRIPTION_THRESHOLD - totalSales).toFixed(2)} pa bago ma-activate ang monthly subscription`
+                      : `₱${(SUBSCRIPTION_THRESHOLD - totalSales).toFixed(2)} pa bago ma-activate ang ₱700 monthly rent`
                     }
                   </p>
                 </div>

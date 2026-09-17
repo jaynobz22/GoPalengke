@@ -113,7 +113,7 @@ export function SellerBilling() {
 
   return (
     <div className="px-5 py-4 pb-8">
-      <h2 className="text-xl font-bold text-gray-800 mb-4">Fees at Billing</h2>
+      <h2 className="text-xl font-bold text-gray-800 mb-4">Billing at Bayaran</h2>
 
       {success && (
         <div className="flex items-center gap-2 text-green-600 text-sm bg-green-50 px-4 py-3 rounded-xl mb-4">
@@ -128,11 +128,34 @@ export function SellerBilling() {
         </div>
       )}
 
-      {/* Total Payable Card */}
+      {/* Total Gross Sales Card */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <TrendingUp size={18} className="text-green-600" />
+            <span className="text-sm font-medium text-gray-600">Kabuuang Gross Sales</span>
+          </div>
+          <span className="text-lg font-bold text-gray-800">₱{totalSales.toFixed(2)}</span>
+        </div>
+        <div className="h-3 bg-gray-100 rounded-full overflow-hidden mb-2">
+          <div
+            className={`h-full rounded-full transition-all ${subscriptionActive ? 'bg-green-500' : 'bg-brand-500'}`}
+            style={{ width: `${salesProgress}%` }}
+          />
+        </div>
+        <p className="text-xs text-gray-400">
+          {subscriptionActive
+            ? 'Na-activate na ang ₱700 monthly rent. Kasama na ito sa kasalukuyang balanse.'
+            : `₱${(SUBSCRIPTION_THRESHOLD - totalSales).toFixed(2)} pa bago ma-activate ang ₱700 monthly rent.`
+          }
+        </p>
+      </div>
+
+      {/* Current Balance Due Card */}
       <div className={`rounded-2xl p-5 mb-4 ${canPay ? 'bg-gradient-to-br from-red-500 to-red-600 text-white' : 'bg-white border border-gray-100'}`}>
         <div className="flex items-center gap-2 mb-2">
           <Wallet size={20} className={canPay ? 'text-white' : 'text-gray-400'} />
-          <span className={`text-sm font-medium ${canPay ? 'text-white/90' : 'text-gray-400'}`}>Total Payable</span>
+          <span className={`text-sm font-medium ${canPay ? 'text-white/90' : 'text-gray-400'}`}>Kasalukuyang Balanse</span>
         </div>
         <p className={`text-3xl font-bold ${canPay ? 'text-white' : 'text-gray-800'}`}>₱{totalPayable.toFixed(2)}</p>
         {canPay && (
@@ -147,12 +170,12 @@ export function SellerBilling() {
           </button>
         )}
         {!canPay && totalPayable > 0 && (
-          <p className="text-xs text-gray-400 mt-2">
+          <p className={`text-xs mt-2 ${canPay ? 'text-white/70' : 'text-gray-400'}`}>
             Kailangan maabot ang ₱{PAYMENT_THRESHOLD.toFixed(0)} para makapagbayad. (₱{(PAYMENT_THRESHOLD - totalPayable).toFixed(2)} pa)
           </p>
         )}
         {!canPay && totalPayable === 0 && (
-          <p className="text-xs text-gray-400 mt-2">Wala pang babayaran. Keep selling!</p>
+          <p className={`text-xs mt-2 ${canPay ? 'text-white/70' : 'text-gray-400'}`}>Wala pang babayaran. Ipagpatuloy ang pagbebenta!</p>
         )}
       </div>
 
@@ -199,17 +222,19 @@ export function SellerBilling() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Calendar size={16} className="text-blue-500" />
-                <span className="text-sm text-gray-600">Monthly Subscription</span>
+                <span className="text-sm text-gray-600">Monthly Rent {subscriptionActive ? '' : '(Hindi pa aktibo)'}</span>
               </div>
-              <span className="font-semibold text-sm text-gray-800">₱{subscriptionBalance.toFixed(2)}</span>
+              <span className="font-semibold text-sm text-gray-800">
+                {subscriptionActive ? `₱${subscriptionBalance.toFixed(2)}` : 'FREE'}
+              </span>
             </div>
           </div>
 
-          {/* Sales Progress */}
+          {/* Sales Progress toward ₱5,000 */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-600">Total Sales</span>
-              <span className="text-sm font-bold text-gray-800">₱{totalSales.toFixed(2)}</span>
+              <span className="text-sm font-medium text-gray-600">Progreso patungo sa ₱5,000</span>
+              <span className="text-sm font-bold text-gray-800">₱{totalSales.toFixed(2)} / ₱{SUBSCRIPTION_THRESHOLD.toFixed(0)}</span>
             </div>
             <div className="h-3 bg-gray-100 rounded-full overflow-hidden mb-2">
               <div
@@ -219,10 +244,20 @@ export function SellerBilling() {
             </div>
             <p className="text-xs text-gray-400">
               {subscriptionActive
-                ? 'Aktibo na ang monthly subscription (₱499/buwan).'
-                : `₱${(SUBSCRIPTION_THRESHOLD - totalSales).toFixed(2)} pa bago ma-activate ang monthly subscription.`
+                ? 'Na-activate na ang monthly rent (₱700/buwan).'
+                : `₱${(SUBSCRIPTION_THRESHOLD - totalSales).toFixed(2)} pa bago ma-activate ang ₱700 monthly rent.`
               }
             </p>
+          </div>
+
+          {/* Rent notice */}
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4">
+            <div className="flex items-start gap-2">
+              <AlertCircle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700 font-medium leading-relaxed">
+                Ang ₱700 monthly rent ay magsisimula lamang kapag ang iyong kabuuang benta ay umabot na ng ₱5,000. Bago ito, libre ang paggamit ng platform — pay lang ang 3% commission sa bawat order.
+              </p>
+            </div>
           </div>
 
           {/* How it works */}
@@ -230,8 +265,8 @@ export function SellerBilling() {
             <p className="text-xs text-blue-700 font-medium mb-2">Paano ito gumagana:</p>
             <ul className="text-xs text-blue-600 space-y-1">
               <li>• 3% ng bawat benta ang commission ng platform</li>
-              <li>• Kapag ₱{SUBSCRIPTION_THRESHOLD.toFixed(0)} na benta, mag-activate ang ₱{SUBSCRIPTION_FEE}/buwan subscription</li>
-              <li>• Kapag ₱{PAYMENT_THRESHOLD.toFixed(0)} na ang total payable, pwede na magbayad</li>
+              <li>• Kapag ₱{SUBSCRIPTION_THRESHOLD.toFixed(0)} na ang kabuuang benta, mag-activate ang ₱{SUBSCRIPTION_FEE}/buwan na rent</li>
+              <li>• Kapag ₱{PAYMENT_THRESHOLD.toFixed(0)} na ang kasalukuyang balanse, kailangan na magbayad</li>
               <li>• I-scan ang QR code ng admin, magbayad, at ilagay ang reference number</li>
             </ul>
           </div>

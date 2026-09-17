@@ -343,7 +343,7 @@ export const VIDEO_CREDIT_PACKAGES: CreditPackage[] = [
 export const VIDEO_CREDIT_RATE_SECONDS = 60;
 
 export const COMMISSION_RATE = 0.03;
-export const SUBSCRIPTION_FEE = 499;
+export const SUBSCRIPTION_FEE = 700;
 export const SUBSCRIPTION_THRESHOLD = 5000;
 export const PAYMENT_THRESHOLD = 1000;
 
