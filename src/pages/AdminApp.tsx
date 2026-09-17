@@ -3457,7 +3457,7 @@ function AffiliatesTab() {
                   <p className="text-sm font-bold text-green-700">₱{Number(selectedAff.tier1_earnings || 0).toFixed(2)}</p>
                 </div>
                 <div className="bg-blue-50 rounded-xl p-3 border border-blue-100">
-                  <p className="text-xs text-gray-400">Tier 2 (Kita sa Sponsor)</p>
+                  <p className="text-xs text-gray-400">Tier 2 (Kita sa 2nd Level Affiliates)</p>
                   <p className="text-sm font-bold text-blue-700">₱{Number(selectedAff.tier2_earnings || 0).toFixed(2)}</p>
                 </div>
               </div>

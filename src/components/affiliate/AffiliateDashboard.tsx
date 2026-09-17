@@ -210,7 +210,7 @@ export function AffiliateDashboard() {
                     </div>
                     <div className="flex items-center justify-between bg-blue-50 rounded-xl p-3">
                       <div>
-                        <p className="text-sm font-semibold text-blue-800">Kita sa Sponsor (Tier 2)</p>
+                        <p className="text-sm font-semibold text-blue-800">Kita sa 2nd Level Affiliates (Tier 2)</p>
                         <p className="text-xs text-gray-500">Override mula sa mga recruits ng recruits mo</p>
                       </div>
                       <p className="text-lg font-bold text-blue-700">₱{tier2Earnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
