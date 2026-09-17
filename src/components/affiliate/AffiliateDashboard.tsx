@@ -272,12 +272,12 @@ export function AffiliateDashboard() {
                     <div className="flex items-center gap-2">
                       <div className="flex-1 bg-white rounded-lg px-3 py-2 border border-gray-200 overflow-hidden">
                         <p className="text-xs text-gray-500 font-mono truncate">
-                          {baseUrl}/affiliate/register?aff_ref={affiliate.referral_code}
+                          {baseUrl}/affiliate?aff_ref={affiliate.referral_code}
                         </p>
                       </div>
                       <button
                         onClick={() => {
-                          const link = `${baseUrl}/affiliate/register?aff_ref=${affiliate.referral_code}`;
+                          const link = `${baseUrl}/affiliate?aff_ref=${affiliate.referral_code}`;
                           navigator.clipboard.writeText(link).then(() => {
                             setCopiedLink('aff_link');
                             setTimeout(() => setCopiedLink(null), 2000);
