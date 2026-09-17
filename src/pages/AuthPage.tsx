@@ -193,13 +193,13 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
           <div className="space-y-3 mb-8">
             <button
               onClick={() => setMode('signup-role')}
-              className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition"
+              className="w-full py-3.5 bg-brand-600 text-white rounded-2xl font-extrabold text-sm tracking-tight shadow-lg shadow-brand-600/20 active:scale-[0.98] transition"
             >
               Mag-sign Up
             </button>
             <button
               onClick={() => setMode('signin')}
-              className="w-full py-4 bg-white text-gray-700 rounded-2xl font-semibold text-lg border border-gray-200 active:scale-[0.98] transition"
+              className="w-full py-3.5 bg-amber-400 text-amber-900 rounded-2xl font-bold text-sm tracking-tight shadow-lg active:scale-[0.98] transition"
             >
               May account na? Mag-sign In
             </button>
