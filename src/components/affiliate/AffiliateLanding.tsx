@@ -9,13 +9,13 @@ export function AffiliateLanding() {
   const [sellers, setSellers] = useState(10);
   const [riders, setRiders] = useState(20);
 
-  // Calculation logic from the spec:
-  // Per seller: ₱50,000 gross sales → 3% = ₱1,500 commission + ₱700 rent = ₱2,200 admin collections
-  // ₱2,200 / ₱1,000 = 2.2 milestones × ₱200 = ₱440 per seller
-  // Per rider: 20 trips/day × 25 days = 500 trips × ₱10 = ₱5,000 admin collections
-  // ₱5,000 / ₱500 = 10 milestones × ₱50 = ₱500 per rider
-  const sellerIncome = sellers * 440;
-  const riderIncome = riders * 500;
+  // 2-Tier Calculation:
+  // Tier 1 (Direct): Seller ₱150/milestone, Rider ₱35/milestone
+  // Tier 2 (Sponsor override): Seller ₱50/milestone, Rider ₱15/milestone
+  // Seller: ₱2,200 collected / ₱1,000 = 2.2 milestones × ₱150 = ₱330 per seller (Tier 1)
+  // Rider: ₱5,000 collected / ₱500 = 10 milestones × ₱35 = ₱350 per rider (Tier 1)
+  const sellerIncome = sellers * 330;
+  const riderIncome = riders * 350;
   const totalIncome = sellerIncome + riderIncome;
 
   return (
@@ -61,7 +61,7 @@ export function AffiliateLanding() {
           </h1>
           <p className="text-green-50 text-base md:text-lg max-w-2xl mx-auto mb-8">
             Mag refer ng mga seller at rider sa GoPalengke at kumita ng lifetime commission sa bawat
-            milestone na maabot nila. Walang limit.
+            milestone na maabot nila. Walang limit. Plus, mag-recruit ka rin ng iba pang affiliates at kumita ng Tier 2 override commission!
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
@@ -85,7 +85,7 @@ export function AffiliateLanding() {
       <section className="max-w-5xl mx-auto px-5 py-12">
         <div className="text-center mb-8">
           <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Paano Ito Gumagana?</h2>
-          <p className="text-gray-500 text-sm">Isang referral link lang ang kailangan — sila na ang pipili kung seller o rider. Dalawang paraan para kumita: Seller Milestone at Rider Milestone</p>
+          <p className="text-gray-500 text-sm">Isang referral link lang ang kailangan — sila na ang pipili kung seller o rider. Dalawang paraan para kumita: Seller Milestone at Rider Milestone. Plus Tier 2 override kapag nag-recruit ka ng iba pang affiliates!</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-5">
@@ -109,12 +109,13 @@ export function AffiliateLanding() {
                   Kapag ang admin ay nakapag-collect ng <strong>₱1,000</strong> mula sa seller na ikaw ang nag refer
                   (mula sa 3% transaction fee + ₱700 platform rent), awtomatikong ibabawas ang
                   <strong> ₱200</strong> at ipapasa sa iyo as kita mo bilang affiliate.
+                  <span className="block mt-1 text-xs text-gray-500">2-Tier Split: ₱150 sa iyo (Tier 1) + ₱50 sa sponsor mo (Tier 2, kung may sponsor ka).</span>
                 </p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-500">
                 <p className="font-medium text-gray-600 mb-1">Halimbawa:</p>
                 <p>₱50,000 sales × 3% = ₱1,500 + ₱700 rent = <strong>₱2,200 collected</strong></p>
-                <p>₱2,200 / ₱1,000 = 2.2 milestones × ₱200 = <strong>₱440 sa'yo</strong></p>
+                <p>₱2,200 / ₱1,000 = 2.2 milestones × ₱150 = <strong>₱330 sa'yo (Tier 1)</strong></p>
               </div>
             </div>
           </div>
@@ -139,12 +140,13 @@ export function AffiliateLanding() {
                   Kapag ang admin ay nakapag-collect ng <strong>₱500</strong> mula sa rider na ikaw ang nag refer
                   (mula sa booking fees / wallet deductions), awtomatikong ibabawas ang
                   <strong> ₱50</strong> at ipapasa sa iyo as affiliate bilang kita.
+                  <span className="block mt-1 text-xs text-gray-500">2-Tier Split: ₱35 sa iyo (Tier 1) + ₱15 sa sponsor mo (Tier 2, kung may sponsor ka).</span>
                 </p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-500">
                 <p className="font-medium text-gray-600 mb-1">Halimbawa:</p>
                 <p>20 trips/day × 25 days = 500 trips × ₱10 fee = <strong>₱5,000 collected</strong></p>
-                <p>₱5,000 / ₱500 = 10 milestones × ₱50 = <strong>₱500 sa'yo</strong></p>
+                <p>₱5,000 / ₱500 = 10 milestones × ₱35 = <strong>₱350 sa'yo (Tier 1)</strong></p>
               </div>
             </div>
           </div>
@@ -185,7 +187,7 @@ export function AffiliateLanding() {
                 <div className="flex justify-between text-[10px] text-gray-400 mt-1">
                   <span>1</span><span>50</span><span>100</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">₱440 per seller / month</p>
+                <p className="text-xs text-gray-400 mt-1">₱330 per seller / month (Tier 1) + ₱50 Tier 2 override</p>
               </div>
 
               {/* Riders slider */}
@@ -207,7 +209,7 @@ export function AffiliateLanding() {
                 <div className="flex justify-between text-[10px] text-gray-400 mt-1">
                   <span>1</span><span>100</span><span>200</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">₱500 per rider / month</p>
+                <p className="text-xs text-gray-400 mt-1">₱350 per rider / month (Tier 1) + ₱15 Tier 2 override</p>
               </div>
             </div>
 

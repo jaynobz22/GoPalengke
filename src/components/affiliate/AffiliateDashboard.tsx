@@ -24,13 +24,18 @@ interface Transaction {
   description: string;
   amount: number;
   status: string;
+  tier: number;
   created_at: string;
 }
 
 const SELLER_MILESTONE = 1000;
-const SELLER_COMMISSION = 200;
+const SELLER_COMMISSION_TOTAL = 200;
+const SELLER_TIER1 = 150;
+const SELLER_TIER2 = 50;
 const RIDER_MILESTONE = 500;
-const RIDER_COMMISSION = 50;
+const RIDER_COMMISSION_TOTAL = 50;
+const RIDER_TIER1 = 35;
+const RIDER_TIER2 = 15;
 const PAYOUT_MINIMUM = 1000;
 
 async function requestPayout(affiliateId: string, walletBalance: number): Promise<{ error: string | null }> {
@@ -90,6 +95,8 @@ export function AffiliateDashboard() {
   const totalReferrals = referrals.length;
   const lifetimeEarnings = Number(affiliate.lifetime_earnings) || 0;
   const walletBalance = Number(affiliate.wallet_balance) || 0;
+  const tier1Earnings = Number(affiliate.tier1_earnings) || 0;
+  const tier2Earnings = Number(affiliate.tier2_earnings) || 0;
 
   const baseUrl = window.location.origin;
 
@@ -187,6 +194,34 @@ export function AffiliateDashboard() {
                   />
                 </div>
 
+                {/* 2-Tier Earnings Breakdown */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <TrendingUp size={18} className="text-brand-600" />
+                    <h2 className="font-bold text-gray-800 text-sm">Kita Breakdown (2-Tier)</h2>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between bg-green-50 rounded-xl p-3">
+                      <div>
+                        <p className="text-sm font-semibold text-green-800">Direktang Kita (Tier 1)</p>
+                        <p className="text-xs text-gray-500">Kita mula sa mga direktang referrals mo</p>
+                      </div>
+                      <p className="text-lg font-bold text-green-700">₱{tier1Earnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="flex items-center justify-between bg-blue-50 rounded-xl p-3">
+                      <div>
+                        <p className="text-sm font-semibold text-blue-800">Kita sa Sponsor (Tier 2)</p>
+                        <p className="text-xs text-gray-500">Override mula sa mga recruits ng recruits mo</p>
+                      </div>
+                      <p className="text-lg font-bold text-blue-700">₱{tier2Earnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 rounded-xl p-3 border border-gray-100">
+                      <p className="text-sm font-semibold text-gray-700">Kabuuang Kita</p>
+                      <p className="text-lg font-bold text-gray-800">₱{(tier1Earnings + tier2Earnings).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Invite Link */}
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <div className="flex items-center gap-2 mb-4">
@@ -220,6 +255,42 @@ export function AffiliateDashboard() {
                   <div className="mt-3 bg-gray-50 rounded-xl p-3 flex items-center gap-2">
                     <span className="text-xs text-gray-400">Referral Code:</span>
                     <span className="text-sm font-mono font-bold text-gray-700">{affiliate.referral_code}</span>
+                  </div>
+                </div>
+
+                {/* Affiliate Recruitment Link (Tier 2) */}
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Users size={18} className="text-blue-600" />
+                    <h2 className="font-bold text-gray-800 text-sm">Affiliate Recruitment Link (Tier 2)</h2>
+                  </div>
+                  <div className="bg-blue-50 rounded-xl p-3 border border-blue-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users size={16} className="text-blue-600" />
+                      <span className="text-sm font-semibold text-gray-700">Recruit Other Affiliates</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-white rounded-lg px-3 py-2 border border-gray-200 overflow-hidden">
+                        <p className="text-xs text-gray-500 font-mono truncate">
+                          {baseUrl}/affiliate/register?aff_ref={affiliate.referral_code}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const link = `${baseUrl}/affiliate/register?aff_ref=${affiliate.referral_code}`;
+                          navigator.clipboard.writeText(link).then(() => {
+                            setCopiedLink('aff_link');
+                            setTimeout(() => setCopiedLink(null), 2000);
+                          });
+                        }}
+                        className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center active:scale-90 transition"
+                      >
+                        {copiedLink === 'aff_link' ? <CheckCheck size={18} /> : <Copy size={18} />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                      I-share ang link na ito para mag-recruit ng iba pang affiliates. Kapag nag-sign up sila bilang affiliate gamit ang link mo, awtomatikong ikaw ang kanilang sponsor. Makakakuha ka ng Tier 2 override commission (₱{SELLER_TIER2} kada seller milestone, ₱{RIDER_TIER2} kada rider milestone) mula sa mga referrals nila.
+                    </p>
                   </div>
                 </div>
 
@@ -302,7 +373,7 @@ export function AffiliateDashboard() {
                             </div>
                             <p className="text-[10px] text-gray-400 mt-1">
                               {remaining > 0
-                                ? `₱${remaining.toFixed(0)} pa bago maabot ang next milestone (₱${SELLER_COMMISSION} sa'yo)`
+                                ? `₱${remaining.toFixed(0)} pa bago maabot ang next milestone (₱${SELLER_TIER1} sa'yo + ₱${SELLER_TIER2} sa sponsor)`
                                 : 'Milestone reached! Waiting for next cycle.'}
                             </p>
                           </div>
@@ -343,7 +414,7 @@ export function AffiliateDashboard() {
                             </div>
                             <p className="text-[10px] text-gray-400 mt-1">
                               {remaining > 0
-                                ? `₱${remaining.toFixed(0)} pa bago maabot ang next milestone (₱${RIDER_COMMISSION} sa'yo)`
+                                ? `₱${remaining.toFixed(0)} pa bago maabot ang next milestone (₱${RIDER_TIER1} sa'yo + ₱${RIDER_TIER2} sa sponsor)`
                                 : 'Milestone reached! Waiting for next cycle.'}
                             </p>
                           </div>
@@ -408,15 +479,21 @@ export function AffiliateDashboard() {
                       <div key={tx.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-800 leading-snug">{tx.description}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-gray-800 leading-snug">{tx.description}</p>
+                              {tx.tier === 2 && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium flex-shrink-0">Tier 2</span>
+                              )}
+                              {tx.tier === 1 && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium flex-shrink-0">Tier 1</span>
+                              )}
+                            </div>
                             <p className="text-xs text-gray-400 mt-1">
                               {new Date(tx.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                             </p>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className={`text-sm font-bold ${
-                              tx.type === 'payout' ? 'text-red-600' : 'text-green-600'
-                            }`}>
+                            <p className={`text-sm font-bold ${tx.type === 'payout' ? 'text-red-600' : tx.tier === 2 ? 'text-blue-600' : 'text-green-600'}`}>
                               {tx.type === 'payout' ? '-' : '+'}₱{Number(tx.amount).toFixed(2)}
                             </p>
                             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${

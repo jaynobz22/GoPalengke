@@ -23,14 +23,21 @@ function AppContent() {
   const tutorialRoute = useTutorialRoute();
   const affiliateRoute = useAffiliateRoute();
 
-  // Capture referral code from URL (?ref=CODE) and clean the URL
+  // Capture referral code from URL (?ref=CODE for seller/rider, ?aff_ref=CODE for affiliate recruitment) and clean the URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref');
+    const affRef = params.get('aff_ref');
     if (ref) {
       sessionStorage.setItem('gopalengke_ref_code', ref);
+    }
+    if (affRef) {
+      sessionStorage.setItem('gopalengke_aff_ref_code', affRef);
+    }
+    if (ref || affRef) {
       const url = new URL(window.location.href);
       url.searchParams.delete('ref');
+      url.searchParams.delete('aff_ref');
       window.history.replaceState({}, '', url.pathname);
     }
   }, []);

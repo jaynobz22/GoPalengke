@@ -111,8 +111,8 @@ export function AffiliateTerms() {
                 an accumulated amount of <strong>₱1,000</strong> from a referred seller. This
                 accumulation combines the <strong>3% seller transaction fee</strong> and the
                 <strong> ₱700 platform rental fee</strong>. Upon successful collection and
-                verification of the full ₱1,000 threshold, a commission of <strong>₱200</strong> is
-                credited to the affiliate's wallet.
+                verification of the full ₱1,000 threshold, a total commission of <strong>₱200</strong> is
+                credited: <strong>₱150 to the direct affiliate (Tier 1)</strong> and <strong>₱50 to the sponsor affiliate (Tier 2)</strong>, if a sponsor exists.
               </p>
             </div>
 
@@ -126,8 +126,8 @@ export function AffiliateTerms() {
                 A commission is triggered <strong>only</strong> when the Admin successfully collects
                 an accumulated amount of <strong>₱500</strong> from a referred rider, whether through
                 booking fees or wallet deductions. Upon successful collection and verification of the
-                full ₱500 threshold, a commission of <strong>₱50</strong> is credited to the
-                affiliate's wallet.
+                full ₱500 threshold, a total commission of <strong>₱50</strong> is credited:
+                <strong>₱35 to the direct affiliate (Tier 1)</strong> and <strong>₱15 to the sponsor affiliate (Tier 2)</strong>, if a sponsor exists.
               </p>
             </div>
 

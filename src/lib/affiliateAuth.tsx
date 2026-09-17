@@ -11,6 +11,9 @@ export interface Affiliate {
   referral_code: string;
   wallet_balance: number;
   lifetime_earnings: number;
+  tier1_earnings: number;
+  tier2_earnings: number;
+  sponsor_id: string | null;
   payout_status: string;
   payout_requested_at: string | null;
   linked_user_id: string | null;
@@ -103,6 +106,19 @@ export function AffiliateAuthProvider({ children }: { children: ReactNode }) {
       linkedUserId = (linkedProfile as any).id;
     }
 
+    // Look up sponsor affiliate from ?aff_ref= code (2-tier system)
+    let sponsorId: string | null = null;
+    const affRefCode = sessionStorage.getItem('gopalengke_aff_ref_code');
+    if (affRefCode) {
+      const { data: sponsor } = await supabase
+        .from('affiliates')
+        .select('id')
+        .eq('referral_code', affRefCode)
+        .maybeSingle();
+      if (sponsor) sponsorId = (sponsor as any).id;
+      sessionStorage.removeItem('gopalengke_aff_ref_code');
+    }
+
     const { data: inserted, error } = await supabase
       .from('affiliates')
       .insert({
@@ -113,6 +129,7 @@ export function AffiliateAuthProvider({ children }: { children: ReactNode }) {
         promo_code: data.promo_code?.trim() || '',
         password_hash: simpleHash(data.password),
         linked_user_id: linkedUserId,
+        sponsor_id: sponsorId,
       })
       .select('*')
       .single();

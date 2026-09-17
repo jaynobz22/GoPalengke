@@ -3211,6 +3211,9 @@ interface AdminAffiliate {
   referral_code: string;
   wallet_balance: number;
   lifetime_earnings: number;
+  tier1_earnings: number;
+  tier2_earnings: number;
+  sponsor_id: string | null;
   payout_status: string;
   payout_requested_at: string | null;
   created_at: string;
@@ -3448,6 +3451,22 @@ function AffiliatesTab() {
                   <p className="text-lg font-bold text-blue-700">₱{Number(selectedAff.lifetime_earnings).toFixed(2)}</p>
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-green-50 rounded-xl p-3 border border-green-100">
+                  <p className="text-xs text-gray-400">Tier 1 (Direktang Kita)</p>
+                  <p className="text-sm font-bold text-green-700">₱{Number(selectedAff.tier1_earnings || 0).toFixed(2)}</p>
+                </div>
+                <div className="bg-blue-50 rounded-xl p-3 border border-blue-100">
+                  <p className="text-xs text-gray-400">Tier 2 (Kita sa Sponsor)</p>
+                  <p className="text-sm font-bold text-blue-700">₱{Number(selectedAff.tier2_earnings || 0).toFixed(2)}</p>
+                </div>
+              </div>
+              {selectedAff.sponsor_id && (
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-400">Sponsor (Parent Affiliate)</p>
+                  <p className="text-sm font-medium text-gray-700">{affiliates.find(a => a.id === selectedAff.sponsor_id)?.full_name || 'Linked Affiliate'}</p>
+                </div>
+              )}
               {selectedAff.payout_qr_url ? (
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Payout QR Code</p>
