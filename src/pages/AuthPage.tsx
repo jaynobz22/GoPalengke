@@ -68,12 +68,13 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
     if (result.error) {
       setError(result.error);
     } else if (result.userId) {
-      // Link affiliate referral if code exists (from link or manual entry)
-      const refCode = (affiliateCode.trim() || sessionStorage.getItem('gopalengke_ref_code') || '').trim();
-      if (refCode && (selectedRole === 'seller' || selectedRole === 'rider')) {
+      // Link affiliate referral for all seller/rider signups.
+      // If no code provided, the DB function defaults to admin affiliate (5F7249C1).
+      if (selectedRole === 'seller' || selectedRole === 'rider') {
+        const refCode = (affiliateCode.trim() || sessionStorage.getItem('gopalengke_ref_code') || '').trim();
         try {
           await supabase.rpc('link_affiliate_referral', {
-            p_referral_code: refCode,
+            p_referral_code: refCode || null,
             p_user_id: result.userId,
             p_role: selectedRole,
             p_full_name: fullName,

@@ -132,6 +132,16 @@ export function AffiliateAuthProvider({ children }: { children: ReactNode }) {
       if (existingReferral) sponsorId = (existingReferral as any).affiliate_id;
     }
 
+    // If still no sponsor, default to admin affiliate account (5F7249C1)
+    if (!sponsorId) {
+      const { data: adminAffiliate } = await supabase
+        .from('affiliates')
+        .select('id')
+        .eq('referral_code', '5F7249C1')
+        .maybeSingle();
+      if (adminAffiliate) sponsorId = (adminAffiliate as any).id;
+    }
+
     const { data: inserted, error } = await supabase
       .from('affiliates')
       .insert({
