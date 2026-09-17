@@ -10,6 +10,8 @@ export interface Affiliate {
   referral_code: string;
   wallet_balance: number;
   lifetime_earnings: number;
+  payout_status: string;
+  payout_requested_at: string | null;
   created_at: string;
 }
 

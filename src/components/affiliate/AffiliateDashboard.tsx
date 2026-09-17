@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import {
   Wallet, TrendingUp, Store, Bike, Copy, CheckCheck, LogOut, ArrowLeft,
   Link as LinkIcon, Loader2, Receipt, Target, Users, RefreshCw, Download,
-  ChevronRight, QrCode,
+  ChevronRight, QrCode, AlertCircle,
 } from 'lucide-react';
 
 interface Referral {
@@ -31,6 +31,19 @@ const SELLER_MILESTONE = 1000;
 const SELLER_COMMISSION = 200;
 const RIDER_MILESTONE = 500;
 const RIDER_COMMISSION = 50;
+const PAYOUT_MINIMUM = 1000;
+
+async function requestPayout(affiliateId: string, walletBalance: number): Promise<{ error: string | null }> {
+  if (walletBalance < PAYOUT_MINIMUM) {
+    return { error: `Dapat maabot ang ₱${PAYOUT_MINIMUM} wallet balance bago mag-request ng payout.` };
+  }
+  const { error } = await supabase
+    .from('affiliates')
+    .update({ payout_status: 'requested', payout_requested_at: new Date().toISOString() })
+    .eq('id', affiliateId);
+  if (error) return { error: error.message };
+  return { error: null };
+}
 
 export function AffiliateDashboard() {
   const { affiliate, signOut, refresh } = useAffiliateAuth();
@@ -39,6 +52,8 @@ export function AffiliateDashboard() {
   const [loading, setLoading] = useState(true);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'history'>('overview');
+  const [payoutSubmitting, setPayoutSubmitting] = useState(false);
+  const [payoutMsg, setPayoutMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!affiliate) return;
@@ -417,13 +432,42 @@ export function AffiliateDashboard() {
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold text-gray-800">Transaction & Payout History</h2>
                   <button
-                    onClick={() => alert('Payout request sent! The admin will process it within 24 hours.')}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 rounded-xl text-xs font-semibold border border-green-200 active:scale-95 transition"
+                    onClick={async () => {
+                      setPayoutMsg(null);
+                      setPayoutSubmitting(true);
+                      const { error } = await requestPayout(affiliate.id, walletBalance);
+                      setPayoutSubmitting(false);
+                      if (error) {
+                        setPayoutMsg(error);
+                      } else {
+                        setPayoutMsg('Naipadala na ang payout request! Ipoproseso ng admin sa loob ng 24 oras.');
+                        refresh();
+                      }
+                    }}
+                    disabled={payoutSubmitting || affiliate.payout_status === 'requested'}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 rounded-xl text-xs font-semibold border border-green-200 active:scale-95 transition disabled:opacity-50"
                   >
-                    <Download size={14} /> Request Payout
+                    {payoutSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                    {affiliate.payout_status === 'requested' ? 'Payout Pending' : 'Request Payout'}
                   </button>
                 </div>
 
+                {payoutMsg && (
+                  <div className={`flex items-center gap-2 rounded-xl p-3 ${
+                    payoutMsg.includes('Naipadala') ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'
+                  }`}>
+                    <AlertCircle size={16} className="flex-shrink-0" />
+                    <p className="text-sm">{payoutMsg}</p>
+                  </div>
+                )}
+                {walletBalance < PAYOUT_MINIMUM && (
+                  <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                    <AlertCircle size={16} className="text-amber-600 flex-shrink-0" />
+                    <p className="text-sm text-amber-700">
+                      Minimum payout threshold: ₱{PAYOUT_MINIMUM}. Kasalukuyang balance: ₱{walletBalance.toFixed(2)}. Kulang pa ng ₱{(PAYOUT_MINIMUM - walletBalance).toFixed(2)}.
+                    </p>
+                  </div>
+                )}
                 {transactions.length === 0 ? (
                   <div className="text-center py-12 bg-white rounded-2xl border border-gray-100">
                     <Receipt size={32} className="text-gray-300 mx-auto mb-2" />

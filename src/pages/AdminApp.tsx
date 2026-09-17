@@ -15,10 +15,10 @@ import {
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
   AlertCircle, X, UserCheck, UserX, DollarSign, TrendingUp, Receipt,
   Lock, Unlock, Video, MessageCircle, Shield, QrCode, MapPin, Mail, Send, Coins,
-  ChevronUp, ChevronDown, BarChart3, PlayCircle, ArrowUp, ArrowDown,
+  ChevronUp, ChevronDown, BarChart3, PlayCircle, ArrowUp, ArrowDown, Clock,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'rider_fees' | 'announcements' | 'security' | 'video_credits' | 'tutorials' | 'settings' | 'analytics';
+type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'rider_fees' | 'announcements' | 'security' | 'video_credits' | 'tutorials' | 'settings' | 'analytics' | 'affiliates';
 
 export function AdminApp() {
   const { profile, signOut } = useAuth();
@@ -74,6 +74,7 @@ export function AdminApp() {
     { id: 'video_credits', label: 'Credits', icon: Coins },
     { id: 'tutorials', label: 'Tutorials', icon: PlayCircle },
     { id: 'analytics', label: 'Stats', icon: BarChart3 },
+    { id: 'affiliates', label: 'Affiliates', icon: Users },
   ];
 
   return (
@@ -128,6 +129,7 @@ export function AdminApp() {
       {tab === 'tutorials' && <ErrorBoundary><TutorialsTab /></ErrorBoundary>}
       {tab === 'analytics' && <ErrorBoundary><AnalyticsDashboard /></ErrorBoundary>}
       {tab === 'settings' && <ErrorBoundary><SettingsTab /></ErrorBoundary>}
+      {tab === 'affiliates' && <ErrorBoundary><AffiliatesTab /></ErrorBoundary>}
 
       {activeChat && profile && (
         <AdminChat
@@ -3194,6 +3196,307 @@ function TutorialsTab() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============= AFFILIATES =============
+interface AdminAffiliate {
+  id: string;
+  email: string;
+  full_name: string;
+  payout_qr_url: string;
+  referral_code: string;
+  wallet_balance: number;
+  lifetime_earnings: number;
+  payout_status: string;
+  payout_requested_at: string | null;
+  created_at: string;
+}
+
+interface AdminReferral {
+  id: string;
+  referred_name: string;
+  referred_role: string;
+  accumulated_admin_collected: number;
+  milestones_hit: number;
+  total_commission_earned: number;
+}
+
+function AffiliatesTab() {
+  const [affiliates, setAffiliates] = useState<AdminAffiliate[]>([]);
+  const [referrals, setReferrals] = useState<Record<string, AdminReferral[]>>({});
+  const [loading, setLoading] = useState(true);
+  const [selectedAff, setSelectedAff] = useState<AdminAffiliate | null>(null);
+  const [processing, setProcessing] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const { data: affData } = await supabase
+      .from('affiliates')
+      .select('*')
+      .order('created_at', { ascending: false });
+    const affs = (affData || []) as AdminAffiliate[];
+    setAffiliates(affs);
+
+    if (affs.length > 0) {
+      const { data: refData } = await supabase
+        .from('affiliate_referrals')
+        .select('*')
+        .in('affiliate_id', affs.map(a => a.id));
+      const refMap: Record<string, AdminReferral[]> = {};
+      (refData || []).forEach((r: any) => {
+        if (!refMap[r.affiliate_id]) refMap[r.affiliate_id] = [];
+        refMap[r.affiliate_id].push(r);
+      });
+      setReferrals(refMap);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    load();
+    const sub = supabase.channel('admin-affiliates-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'affiliates' }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [load]);
+
+  async function processPayout(aff: AdminAffiliate) {
+    setProcessing(aff.id);
+    const amount = Number(aff.wallet_balance);
+    await supabase.from('affiliate_transactions').insert({
+      affiliate_id: aff.id,
+      type: 'payout',
+      description: `Payout processed by admin - ₱${amount.toFixed(2)}`,
+      amount,
+      status: 'paid',
+    });
+    await supabase
+      .from('affiliates')
+      .update({
+        wallet_balance: 0,
+        payout_status: 'paid',
+        payout_requested_at: null,
+      })
+      .eq('id', aff.id);
+    setProcessing(null);
+    setSelectedAff(null);
+    load();
+  }
+
+  async function rejectPayout(aff: AdminAffiliate) {
+    setProcessing(aff.id);
+    await supabase
+      .from('affiliates')
+      .update({ payout_status: 'none', payout_requested_at: null })
+      .eq('id', aff.id);
+    setProcessing(null);
+    setSelectedAff(null);
+    load();
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={32} className="animate-spin text-brand-500" />
+      </div>
+    );
+  }
+
+  const totalAffiliates = affiliates.length;
+  const totalWalletOutstanding = affiliates.reduce((s, a) => s + Number(a.wallet_balance || 0), 0);
+  const totalLifetimePayouts = affiliates.reduce((s, a) => s + Number(a.lifetime_earnings || 0), 0);
+  const pendingPayouts = affiliates.filter(a => a.payout_status === 'requested');
+
+  return (
+    <div className="px-5 py-4 space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mb-2">
+            <Users size={20} className="text-white" />
+          </div>
+          <p className="text-xs text-gray-400">Total Affiliates</p>
+          <p className="text-lg font-bold text-gray-800">{totalAffiliates}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center mb-2">
+            <Wallet size={20} className="text-white" />
+          </div>
+          <p className="text-xs text-gray-400">Wallet Outstanding</p>
+          <p className="text-lg font-bold text-gray-800">₱{totalWalletOutstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center mb-2">
+            <TrendingUp size={20} className="text-white" />
+          </div>
+          <p className="text-xs text-gray-400">Lifetime Earnings</p>
+          <p className="text-lg font-bold text-gray-800">₱{totalLifetimePayouts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+        </div>
+      </div>
+
+      {pendingPayouts.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle size={18} className="text-amber-600" />
+            <h3 className="font-bold text-amber-800 text-sm">Payout Requests ({pendingPayouts.length})</h3>
+          </div>
+          <div className="space-y-2">
+            {pendingPayouts.map(aff => (
+              <div key={aff.id} className="flex items-center justify-between bg-white rounded-xl p-3 border border-amber-100">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-gray-800">{aff.full_name}</p>
+                  <p className="text-xs text-gray-400">{aff.email} · ₱{Number(aff.wallet_balance).toFixed(2)}</p>
+                  {aff.payout_requested_at && (
+                    <p className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
+                      <Clock size={10} />
+                      {new Date(aff.payout_requested_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => processPayout(aff)}
+                    disabled={processing === aff.id}
+                    className="flex items-center gap-1 px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-semibold active:scale-95 transition disabled:opacity-50"
+                  >
+                    {processing === aff.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                    Pay
+                  </button>
+                  <button
+                    onClick={() => rejectPayout(aff)}
+                    disabled={processing === aff.id}
+                    className="flex items-center gap-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg text-xs font-semibold border border-red-200 active:scale-95 transition disabled:opacity-50"
+                  >
+                    <X size={12} />
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-50">
+          <h3 className="font-bold text-gray-800 text-sm">All Affiliates</h3>
+        </div>
+        {affiliates.length === 0 ? (
+          <p className="text-center text-gray-400 text-sm py-8">Wala pang affiliates.</p>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {affiliates.map(aff => {
+              const affRefs = referrals[aff.id] || [];
+              const sellerCount = affRefs.filter(r => r.referred_role === 'seller').length;
+              const riderCount = affRefs.filter(r => r.referred_role === 'rider').length;
+              const totalMilestones = affRefs.reduce((s, r) => s + r.milestones_hit, 0);
+              return (
+                <div key={aff.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-sm text-gray-800 truncate">{aff.full_name}</p>
+                      {aff.payout_status === 'requested' && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Payout Requested</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 truncate">{aff.email} · Code: {aff.referral_code}</p>
+                    <div className="flex gap-3 mt-1">
+                      <span className="text-[10px] text-gray-500">Wallet: ₱{Number(aff.wallet_balance).toFixed(0)}</span>
+                      <span className="text-[10px] text-gray-500">Sellers: {sellerCount}</span>
+                      <span className="text-[10px] text-gray-500">Riders: {riderCount}</span>
+                      <span className="text-[10px] text-gray-500">Milestones: {totalMilestones}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedAff(aff)}
+                    className="flex-shrink-0 px-3 py-2 bg-gray-50 text-gray-600 rounded-lg text-xs font-semibold active:scale-95 transition"
+                  >
+                    <Eye size={14} className="inline mr-1" /> View
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {selectedAff && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedAff(null)}>
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+              <h3 className="font-bold text-gray-800">Affiliate Details</h3>
+              <button onClick={() => setSelectedAff(null)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <X size={16} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <p className="text-xs text-gray-400">Name</p>
+                <p className="font-semibold text-gray-800">{selectedAff.full_name}</p>
+                <p className="text-xs text-gray-400 mt-1">{selectedAff.email}</p>
+                <p className="text-xs text-gray-400">Referral Code: <span className="font-mono font-bold text-gray-700">{selectedAff.referral_code}</span></p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-green-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-400">Wallet Balance</p>
+                  <p className="text-lg font-bold text-green-700">₱{Number(selectedAff.wallet_balance).toFixed(2)}</p>
+                </div>
+                <div className="bg-blue-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-400">Lifetime Earnings</p>
+                  <p className="text-lg font-bold text-blue-700">₱{Number(selectedAff.lifetime_earnings).toFixed(2)}</p>
+                </div>
+              </div>
+              {selectedAff.payout_qr_url ? (
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">Payout QR Code</p>
+                  <div className="flex justify-center">
+                    <img src={selectedAff.payout_qr_url} alt="Payout QR" className="w-40 h-40 rounded-xl object-cover border border-gray-100" />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 text-center bg-gray-50 rounded-xl p-3">Wala pang QR code na na-upload.</p>
+              )}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">Referrals ({(referrals[selectedAff.id] || []).length})</p>
+                {(referrals[selectedAff.id] || []).length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-3 bg-gray-50 rounded-xl">Wala pang referrals.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {(referrals[selectedAff.id] || []).map(r => (
+                      <div key={r.id} className="flex items-center justify-between bg-gray-50 rounded-xl p-2.5">
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">{r.referred_name}</p>
+                          <p className="text-[10px] text-gray-400 capitalize">{r.referred_role} · {r.milestones_hit} milestones · ₱{Number(r.total_commission_earned).toFixed(0)} earned</p>
+                        </div>
+                        <span className="text-xs font-bold text-gray-600">₱{Number(r.accumulated_admin_collected).toFixed(0)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {selectedAff.payout_status === 'requested' && (
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => processPayout(selectedAff)}
+                    disabled={processing === selectedAff.id}
+                    className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold active:scale-95 transition disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    {processing === selectedAff.id ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                    Process Payout
+                  </button>
+                  <button
+                    onClick={() => rejectPayout(selectedAff)}
+                    disabled={processing === selectedAff.id}
+                    className="py-2.5 px-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-200 active:scale-95 transition disabled:opacity-50"
+                  >
+                    Reject
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
