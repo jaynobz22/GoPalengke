@@ -169,15 +169,15 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8 md:mt-10 animate-slide-in-up" style={{ animationDelay: '0.3s' }}>
           <button
             onClick={onGetStarted}
-            className="w-full sm:w-auto min-w-64 px-8 py-4 bg-white text-brand-700 rounded-2xl font-bold text-base shadow-xl active:scale-[0.98] transition flex items-center justify-center gap-2 animate-pulse-glow"
+            className="w-full sm:w-auto px-6 py-3.5 bg-white text-brand-700 rounded-2xl font-extrabold text-sm tracking-tight shadow-xl active:scale-[0.98] transition flex items-center justify-center gap-2 animate-pulse-glow"
           >
-            <ShoppingBag size={20} />
+            <ShoppingBag size={18} />
             Magsimula — Mag-sign Up
-            <ArrowRight size={18} />
+            <ArrowRight size={16} />
           </button>
           <button
             onClick={onGetStarted}
-            className="w-full sm:w-auto min-w-64 px-8 py-4 bg-white/10 backdrop-blur-sm text-white rounded-2xl font-semibold text-base border border-white/20 active:scale-[0.98] transition"
+            className="w-full sm:w-auto px-6 py-3.5 bg-amber-400 text-amber-900 rounded-2xl font-bold text-sm tracking-tight shadow-lg active:scale-[0.98] transition"
           >
             May account na? Mag-sign In
           </button>
