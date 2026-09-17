@@ -180,12 +180,12 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
 
       {/* Welcome */}
       {mode === 'welcome' && (
-        <div className="flex-1 px-5 flex flex-col">
-          <div className="mt-8 mb-10">
+        <div className="flex-1 px-5 flex flex-col overflow-y-auto pb-8">
+          <div className="mt-4 mb-6">
             <h1 className="text-2xl font-semibold text-gray-800 leading-tight">
               The First Online<br />Wet Market in the Philippines
             </h1>
-            <p className="mt-3 text-gray-500 text-base">
+            <p className="mt-2 text-gray-500 text-sm">
               Sariwang Isda, Karne, Gulay, Prutas at marami pang iba, galing sa Palengke na pinaka malapit, i-deliver sa bahay nyo!
             </p>
           </div>
@@ -207,7 +207,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
 
           {/* Tutorial Videos */}
           <div className="mb-6">
-            <h2 className="text-2xl font-semibold text-gray-800 leading-tight mb-4">
+            <h2 className="text-lg font-semibold text-gray-700 leading-tight mb-3">
               Paano Gamitin ang GoPalengke?<br />Panoorin Muna ang Mga Video sa Baba
             </h2>
             <div className="space-y-3">
