@@ -108,7 +108,7 @@ export function AffiliateLanding() {
                 <p className="text-sm text-gray-600 leading-relaxed">
                   Kapag ang admin ay nakapag-collect ng <strong>₱1,000</strong> mula sa isang seller
                   (mula sa 3% transaction fee + ₱700 platform rent), awtomatikong ibabawas ang
-                  <strong> ₱200</strong> at ipapasa sa i-refer mong affiliate.
+                  <strong> ₱200</strong> at ipapasa sa iyo as kita mo bilang affiliate.
                 </p>
               </div>
               <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-500">
