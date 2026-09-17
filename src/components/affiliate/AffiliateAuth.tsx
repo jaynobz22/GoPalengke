@@ -3,7 +3,7 @@ import { useAffiliateAuth } from '@/lib/affiliateAuth';
 import { navigate } from '@/lib/router';
 import {
   ArrowLeft, Mail, Lock, User, Tag, Eye, EyeOff,
-  Check, Loader2, AlertCircle, QrCode,
+  Check, Loader2, AlertCircle, QrCode, Phone,
 } from 'lucide-react';
 import { ImageUploadField } from '@/components/ImageUploadField';
 
@@ -13,6 +13,7 @@ export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [payoutQrUrl, setPayoutQrUrl] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -38,7 +39,7 @@ export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
         navigate('/affiliate/dashboard');
       }
     } else {
-      if (!email.trim() || !password || !fullName.trim() || !payoutQrUrl.trim()) {
+      if (!email.trim() || !password || !fullName.trim() || !phone.trim() || !payoutQrUrl.trim()) {
         setError('Punan ang lahat ng kailangan at mag-upload ng QR code.');
         setSubmitting(false);
         return;
@@ -48,7 +49,7 @@ export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
         setSubmitting(false);
         return;
       }
-      const { error } = await signUp({ email, password, full_name: fullName, payout_qr_url: payoutQrUrl, promo_code: promoCode });
+      const { error } = await signUp({ email, password, full_name: fullName, phone, payout_qr_url: payoutQrUrl, promo_code: promoCode });
       if (error) {
         setError(error);
         setSubmitting(false);
@@ -64,6 +65,7 @@ export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
     setEmail('');
     setPassword('');
     setFullName('');
+    setPhone('');
     setPayoutQrUrl('');
     setPromoCode('');
   }
@@ -111,19 +113,35 @@ export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
             )}
 
             {!isLogin && (
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Buong Pangalan</label>
-                <div className="relative">
-                  <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={e => setFullName(e.target.value)}
-                    placeholder="Juan Dela Cruz"
-                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500"
-                  />
+              <>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">Buong Pangalan</label>
+                  <div className="relative">
+                    <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={e => setFullName(e.target.value)}
+                      placeholder="Juan Dela Cruz"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500"
+                    />
+                  </div>
                 </div>
-              </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">Phone Number</label>
+                  <div className="relative">
+                    <Phone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={e => setPhone(e.target.value)}
+                      placeholder="09XX XXX XXXX"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500"
+                    />
+                  </div>
+                </div>
+              </>
             )}
 
             <div>

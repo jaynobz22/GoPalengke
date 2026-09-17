@@ -5,6 +5,7 @@ export interface Affiliate {
   id: string;
   email: string;
   full_name: string;
+  phone: string | null;
   payout_qr_url: string;
   promo_code: string;
   referral_code: string;
@@ -12,6 +13,7 @@ export interface Affiliate {
   lifetime_earnings: number;
   payout_status: string;
   payout_requested_at: string | null;
+  linked_user_id: string | null;
   created_at: string;
 }
 
@@ -19,7 +21,7 @@ interface AffiliateAuthContextType {
   affiliate: Affiliate | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (data: { email: string; password: string; full_name: string; payout_qr_url: string; promo_code?: string }) => Promise<{ error: string | null }>;
+  signUp: (data: { email: string; password: string; full_name: string; phone: string; payout_qr_url: string; promo_code?: string }) => Promise<{ error: string | null }>;
   signOut: () => void;
   refresh: () => Promise<void>;
 }
@@ -84,19 +86,33 @@ export function AffiliateAuthProvider({ children }: { children: ReactNode }) {
     return { error: null };
   }, []);
 
-  const signUp = useCallback(async (data: { email: string; password: string; full_name: string; payout_qr_url: string; promo_code?: string }): Promise<{ error: string | null }> => {
+  const signUp = useCallback(async (data: { email: string; password: string; full_name: string; phone: string; payout_qr_url: string; promo_code?: string }): Promise<{ error: string | null }> => {
     const email = data.email.toLowerCase().trim();
+    const phone = data.phone.trim();
     const { data: existing } = await supabase.from('affiliates').select('id').eq('email', email).maybeSingle();
     if (existing) return { error: 'Ginagamit na ang email na ito.' };
+
+    // Check if this email matches an existing GoPalengke user (seller/rider/buyer)
+    let linkedUserId: string | null = null;
+    const { data: linkedProfile } = await supabase
+      .from('profiles')
+      .select('id, phone')
+      .eq('email', email)
+      .maybeSingle();
+    if (linkedProfile) {
+      linkedUserId = (linkedProfile as any).id;
+    }
 
     const { data: inserted, error } = await supabase
       .from('affiliates')
       .insert({
         email,
         full_name: data.full_name.trim(),
+        phone,
         payout_qr_url: data.payout_qr_url,
         promo_code: data.promo_code?.trim() || '',
         password_hash: simpleHash(data.password),
+        linked_user_id: linkedUserId,
       })
       .select('*')
       .single();

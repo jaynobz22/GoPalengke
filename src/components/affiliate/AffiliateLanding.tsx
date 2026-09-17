@@ -246,7 +246,7 @@ export function AffiliateLanding() {
         <div className="max-w-3xl mx-auto bg-gray-900 rounded-3xl p-8 text-center">
           <DollarSign size={32} className="text-green-400 mx-auto mb-3" />
           <h2 className="text-xl font-bold text-white mb-2">Ready to Start Earning?</h2>
-          <p className="text-gray-400 text-sm mb-5">Mag-register na bilang affiliate partner at magsimulang i-refer ang mga seller at rider.</p>
+          <p className="text-gray-400 text-sm mb-5">Mag-register na bilang affiliate partner at magsimulang i-refer ang mga seller at rider. May account ka na sa GoPalengke? Gamitin ang parehong email at phone number — awtomatikong makakonekta ang affiliate account mo sa iyong existing account.</p>
           <button
             onClick={() => navigate('/affiliate/register')}
             className="px-8 py-3.5 bg-green-500 text-white rounded-2xl font-bold text-sm shadow-lg active:scale-95 transition inline-flex items-center gap-2"
