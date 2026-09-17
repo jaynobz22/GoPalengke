@@ -265,9 +265,15 @@ export function AffiliateLanding() {
             <span className="text-lg font-bold text-white">GoPalengke</span>
           </div>
           <p className="text-xs mb-3">© 2026 GoPalengke Affiliate Program. All rights reserved.</p>
-          <button onClick={() => navigate('/')} className="text-xs text-gray-400 hover:text-white transition">
-            Bumalik sa GoPalengke
-          </button>
+          <div className="flex items-center justify-center gap-4">
+            <button onClick={() => navigate('/')} className="text-xs text-gray-400 hover:text-white transition">
+              Bumalik sa GoPalengke
+            </button>
+            <span className="text-gray-600">·</span>
+            <button onClick={() => navigate('/affiliate/terms')} className="text-xs text-gray-400 hover:text-white transition">
+              Terms of Service
+            </button>
+          </div>
         </div>
       </footer>
     </div>

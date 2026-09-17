@@ -4,6 +4,7 @@ import { navigate } from '@/lib/router';
 import { AffiliateLanding } from '@/components/affiliate/AffiliateLanding';
 import { AffiliateAuth } from '@/components/affiliate/AffiliateAuth';
 import { AffiliateDashboard } from '@/components/affiliate/AffiliateDashboard';
+import { AffiliateTerms } from '@/components/affiliate/AffiliateTerms';
 import { Loader2 } from 'lucide-react';
 
 export function AffiliateApp({ subpath }: { subpath: string }) {
@@ -52,6 +53,11 @@ function AffiliateRouter({ subpath }: { subpath: string }) {
       return <AffiliateDashboard />;
     }
     return <AffiliateAuth mode="login" />;
+  }
+
+  // /affiliate/terms — public legal page
+  if (subpath === '/terms') {
+    return <AffiliateTerms />;
   }
 
   // /affiliate (landing)
