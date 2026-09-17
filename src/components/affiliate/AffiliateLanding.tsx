@@ -136,7 +136,7 @@ export function AffiliateLanding() {
                   <Check size={14} className="text-green-600" />
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  Kapag ang admin ay nakapag-collect ng <strong>₱500</strong> mula sa isang rider
+                  Kapag ang admin ay nakapag-collect ng <strong>₱500</strong> mula sa rider na ikaw ang nag refer
                   (mula sa booking fees / wallet deductions), awtomatikong ibabawas ang
                   <strong> ₱50</strong> at ipapasa sa iyo as affiliate bilang kita.
                 </p>
