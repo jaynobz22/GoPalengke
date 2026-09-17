@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { AuthProvider, useAuth } from './lib/auth';
@@ -22,6 +22,18 @@ function AppContent() {
   const legalRoute = useLegalRoute();
   const tutorialRoute = useTutorialRoute();
   const affiliateRoute = useAffiliateRoute();
+
+  // Capture referral code from URL (?ref=CODE) and clean the URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) {
+      sessionStorage.setItem('gopalengke_ref_code', ref);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('ref');
+      window.history.replaceState({}, '', url.pathname);
+    }
+  }, []);
 
   // Affiliate sub-system — fully isolated, takes priority
   if (affiliateRoute.isAffiliate) {
@@ -64,7 +76,7 @@ function AppContent() {
   }
 
   if (!profile) {
-    return <AuthPage needsProfile />;
+    return <AuthPage needsProfile onBack={() => navigate('/')} />;
   }
 
   // Pending approval screen for non-admin, non-seller users (riders still need approval)

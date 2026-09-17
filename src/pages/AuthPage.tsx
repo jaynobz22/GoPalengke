@@ -4,6 +4,7 @@ import type { UserRole } from '@/lib/types';
 import { Store, Bike, ShoppingCart, ArrowLeft, Check, Mail, ShieldCheck, Eye, EyeOff, BookOpen, ArrowRight, X } from 'lucide-react';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
 import { navigate } from '@/lib/router';
+import { supabase } from '@/lib/supabase';
 
 const ROLES = [
   { id: 'buyer' as UserRole, name: 'Mamimili', desc: 'Bumili ng sariwang paninda online', icon: ShoppingCart, color: 'bg-brand-500' },
@@ -66,6 +67,26 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
     if (result.error) {
       setError(result.error);
     } else if (result.userId) {
+      // Create affiliate referral record if signup came from a referral link
+      const refCode = sessionStorage.getItem('gopalengke_ref_code');
+      if (refCode && (selectedRole === 'seller' || selectedRole === 'rider')) {
+        try {
+          const { data: affiliate } = await supabase
+            .from('affiliates')
+            .select('id')
+            .eq('referral_code', refCode)
+            .maybeSingle();
+          if (affiliate) {
+            await supabase.from('affiliate_referrals').insert({
+              affiliate_id: affiliate.id,
+              referred_user_id: result.userId,
+              referred_role: selectedRole,
+              referred_name: fullName,
+            });
+          }
+        } catch { /* best-effort */ }
+        sessionStorage.removeItem('gopalengke_ref_code');
+      }
       setUserId(result.userId);
       setMode('verify-email');
       setInfo('Nagpadala kami ng verification code sa email mo. I-check ang inbox at spam folder.');
