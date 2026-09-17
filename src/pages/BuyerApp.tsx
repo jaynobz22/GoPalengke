@@ -1383,12 +1383,28 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   const [note, setNote] = useState('');
   const [deliveryPin, setDeliveryPin] = useState<Coords | null>(null);
   const [showMap, setShowMap] = useState(false);
+  const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'found' | 'denied' | 'unavailable'>('idle');
 
   useEffect(() => {
     if (!profile) return;
     supabase.from('cart_items').select('*, product:products(*), store:stores(*)').eq('buyer_id', profile.id)
       .then(({ data }) => { setCartItems((data || []) as any); setLoading(false); });
   }, [profile]);
+
+  // Auto-detect buyer's GPS location on checkout load
+  useEffect(() => {
+    if (!navigator.geolocation) { setGpsStatus('unavailable'); return; }
+    setGpsStatus('locating');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setDeliveryPin({ lat: latitude, lng: longitude });
+        setGpsStatus('found');
+      },
+      () => { setGpsStatus('denied'); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  }, []);
 
   const grouped = cartItems.reduce((acc, item) => {
     if (!acc[item.store_id]) acc[item.store_id] = [];
@@ -1589,6 +1605,32 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
             className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition text-sm"
           />
         </div>
+
+        {/* Auto GPS status */}
+        {gpsStatus === 'locating' && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-brand-600 bg-brand-50 rounded-xl px-3 py-2">
+            <span className="w-4 h-4 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
+            Hinahanap ang iyong lokasyon...
+          </div>
+        )}
+        {gpsStatus === 'found' && deliveryPin && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-green-700 bg-green-50 rounded-xl px-3 py-2">
+            <MapPin size={14} className="text-green-600 flex-shrink-0" />
+            Nakuha ang iyong lokasyon: {deliveryPin.lat.toFixed(4)}, {deliveryPin.lng.toFixed(4)}
+          </div>
+        )}
+        {gpsStatus === 'denied' && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2">
+            <MapPin size={14} className="text-amber-600 flex-shrink-0" />
+            Hindi ma-access ang lokasyon. I-drop ang pin sa mapa sa baba para sa eksaktong lokasyon.
+          </div>
+        )}
+        {gpsStatus === 'unavailable' && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
+            <MapPin size={14} className="text-gray-400 flex-shrink-0" />
+            Hindi available ang GPS. I-drop ang pin sa mapa sa baba.
+          </div>
+        )}
 
         {/* Map pin toggle */}
         <button
