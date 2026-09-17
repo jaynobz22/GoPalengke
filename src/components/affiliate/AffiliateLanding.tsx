@@ -106,7 +106,7 @@ export function AffiliateLanding() {
                   <Check size={14} className="text-green-600" />
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  Kapag ang admin ay nakapag-collect ng <strong>₱1,000</strong> mula sa isang seller
+                  Kapag ang admin ay nakapag-collect ng <strong>₱1,000</strong> mula sa seller na ikaw ang nag refer
                   (mula sa 3% transaction fee + ₱700 platform rent), awtomatikong ibabawas ang
                   <strong> ₱200</strong> at ipapasa sa iyo as kita mo bilang affiliate.
                 </p>
