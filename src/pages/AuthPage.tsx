@@ -28,6 +28,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
   const [otpCode, setOtpCode] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [affiliateCode, setAffiliateCode] = useState('');
 
   function startResendCooldown() {
     setResendCooldown(60);
@@ -67,23 +68,16 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
     if (result.error) {
       setError(result.error);
     } else if (result.userId) {
-      // Create affiliate referral record if signup came from a referral link
-      const refCode = sessionStorage.getItem('gopalengke_ref_code');
+      // Link affiliate referral if code exists (from link or manual entry)
+      const refCode = (affiliateCode.trim() || sessionStorage.getItem('gopalengke_ref_code') || '').trim();
       if (refCode && (selectedRole === 'seller' || selectedRole === 'rider')) {
         try {
-          const { data: affiliate } = await supabase
-            .from('affiliates')
-            .select('id')
-            .eq('referral_code', refCode)
-            .maybeSingle();
-          if (affiliate) {
-            await supabase.from('affiliate_referrals').insert({
-              affiliate_id: affiliate.id,
-              referred_user_id: result.userId,
-              referred_role: selectedRole,
-              referred_name: fullName,
-            });
-          }
+          await supabase.rpc('link_affiliate_referral', {
+            p_referral_code: refCode,
+            p_user_id: result.userId,
+            p_role: selectedRole,
+            p_full_name: fullName,
+          });
         } catch { /* best-effort */ }
         sessionStorage.removeItem('gopalengke_ref_code');
       }
@@ -121,6 +115,12 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
       startResendCooldown();
     }
   }
+
+  // Auto-fill affiliate code from referral link
+  useEffect(() => {
+    const refCode = sessionStorage.getItem('gopalengke_ref_code');
+    if (refCode) setAffiliateCode(refCode);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-orange-50 flex flex-col">
@@ -353,6 +353,22 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
                 </button>
               </div>
             </div>
+
+            {(selectedRole === 'seller' || selectedRole === 'rider') && (
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">Affiliate Code (Opsyonal)</label>
+                <input
+                  type="text"
+                  value={affiliateCode}
+                  onChange={(e) => setAffiliateCode(e.target.value.toUpperCase())}
+                  placeholder="Hal. ABC12345"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  Kung may nag-invite sa'yo, ilagay ang affiliate code nila dito.
+                </p>
+              </div>
+            )}
 
             <div className="pt-2">
               <LocationSelector
