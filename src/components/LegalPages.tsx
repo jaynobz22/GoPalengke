@@ -38,7 +38,7 @@ export function LegalPages({ type, onBack }: { type: LegalPageType; onBack: () =
             {type === 'antiscam' && <ShieldCheck size={28} className="text-white" />}
             <h1 className="text-2xl font-bold">{titles[type]}</h1>
           </div>
-          <p className="text-brand-100 text-sm mt-2">Last updated: September 8, 2026</p>
+          <p className="text-brand-100 text-sm mt-2">Last updated: September 17, 2026</p>
         </div>
       </div>
 
@@ -80,8 +80,8 @@ function TermsContent() {
       <Section title="3. Types of User Accounts">
         <ul className="list-disc pl-5 space-y-2">
           <li><strong>Buyer</strong> — Can browse, order, and chat or video call with the seller before purchasing.</li>
-          <li><strong>Seller</strong> — Can set up a store, post products, and receive orders. Required to pay a 3% commission on each sale and a ₱499/month subscription fee once total sales reach ₱5,000.</li>
-          <li><strong>Rider</strong> — Can accept delivery assignments, update order status, and deliver orders to buyers. Required to submit identity verification (valid ID, plate number, motor model, etc.).</li>
+          <li><strong>Seller</strong> — Can set up a store, post products, and receive orders. Required to pay a 3% commission on each sale. Once total sales reach ₱5,000, a monthly rent of ₱700 is automatically activated and added to the running balance.</li>
+          <li><strong>Rider</strong> — Can accept delivery assignments, update order status, and deliver orders to buyers. Required to submit identity verification (valid ID, plate number, motor model, etc.). A 3% platform fee is deducted from each delivery earning. Once accumulated fees reach ₱500, the rider must pay via the Billing tab to continue accepting new deliveries.</li>
           <li><strong>Admin</strong> — Manages platform approvals, announcements, commission, and moderation.</li>
         </ul>
       </Section>
@@ -122,15 +122,26 @@ function TermsContent() {
           <li>Keep availability status updated on the dashboard.</li>
           <li>Ensure correct change is given for COD orders.</li>
           <li>Do not cancel a delivery assignment once accepted, except for legitimate reasons.</li>
+          <li>A 3% platform fee is deducted from each delivery earning. Once accumulated fees reach ₱500,
+          the rider must pay through the Billing tab. Until payment is made, the rider cannot accept new
+          deliveries but can still log in and view the dashboard. After payment is approved, the account
+          is reactivated and fees begin accumulating again.</li>
         </ul>
       </Section>
 
-      <Section title="8. Commission and Subscription Fee">
+      <Section title="8. Commission and Monthly Rent">
         <p>
-          Each seller is obligated to pay a 3% commission on every completed sale. Once the seller's total
-          sales reach ₱5,000, a monthly subscription fee of ₱499 applies. The total amount due can be viewed
-          in the Billing tab of the seller dashboard. If fees are not paid within the grace period, the
-          seller's account may be frozen until payment is made.
+          Each seller is obligated to pay a 3% commission on every completed sale. This is tracked
+          automatically in the seller's Billing tab. Once the seller's total gross sales reach or exceed
+          ₱5,000, a monthly rent of ₱700 is automatically activated and added to the running balance.
+          Before reaching ₱5,000, the monthly rent is <strong>FREE</strong> — only the 3% commission applies.
+        </p>
+        <p className="mt-2">
+          The 3% commission and ₱700 monthly rent are consolidated into a single "Current Balance Due"
+          in the Billing tab. Sellers can continue using the app while the balance grows. Once the
+          combined balance reaches ₱1,000, the system will require payment to prevent dashboard
+          deactivation. If fees are not paid within the grace period, the seller's account may be frozen
+          until payment is made.
         </p>
       </Section>
 
@@ -335,7 +346,7 @@ function PrivacyContent() {
           <li>Communication between buyers, sellers, riders, and admin</li>
           <li>Identity verification, especially for riders and sellers</li>
           <li>Verification of livestock vendor permits (BAI Registration and LGU Veterinary Health Certificates)</li>
-          <li>Computing and collecting commission and subscription fees from sellers</li>
+          <li>Computing and collecting commission and monthly rent from sellers, and platform fees from riders</li>
           <li>Displaying public profiles and store pages to other users</li>
           <li>Live tracking of rider location during active delivery</li>
           <li>Reviews and ratings system</li>
@@ -900,12 +911,12 @@ function FaqContent() {
       a: 'After being approved by the admin, set up your store on the dashboard — store name, description, logo, banner, and palengke location. Post products with prices, stock, and photos. When you receive an order, you will get a notification and can chat with the buyer.',
     },
     {
-      q: 'How much is the commission and subscription fee for Sellers?',
-      a: 'Each sale has a 3% commission paid to the platform. Once your total sales reach ₱5,000, a monthly subscription fee of ₱499 applies. The total amount due can be viewed in the Billing tab of the seller dashboard.',
+      q: 'How much is the commission and monthly rent for Sellers?',
+      a: 'Each sale has a 3% commission paid to the platform. The monthly rent is FREE until your total gross sales reach ₱5,000. Once you reach ₱5,000, a monthly rent of ₱700 is automatically activated and added to your running balance. The 3% commission and ₱700 rent are combined into a single "Current Balance Due" in the Billing tab. You can keep using the app while the balance grows, but once it reaches ₱1,000, you will need to pay to avoid account deactivation.',
     },
     {
       q: 'What happens if I cannot pay my fees as a Seller?',
-      a: 'The platform provides a grace period. If you still have not paid within the grace period, your account will be frozen — you will not be able to post products or receive orders until the outstanding balance is paid.',
+      a: 'You can continue using the app while your balance grows. Once your combined balance (3% commission + ₱700 rent) reaches ₱1,000, the system will alert you and show the payment portal (QR code). If you do not pay within the grace period, your account will be frozen — you will not be able to post products or receive orders until the outstanding balance is paid.',
     },
     {
       q: 'What happens if there is a negative review about spoiled or damaged products?',
@@ -914,6 +925,10 @@ function FaqContent() {
     {
       q: 'How do I get started as a Rider?',
       a: 'After signing up as a rider and being approved by the admin, you must submit identity verification — age, family status, residence address, plate number, motor model, and a valid ID photo. After that, you can accept delivery assignments on the dashboard.',
+    },
+    {
+      q: 'How much does it cost to be a Rider?',
+      a: 'A 3% platform fee is deducted from each delivery earning. Once your accumulated platform fees reach ₱500, you will need to pay through the Billing tab. While your account is frozen due to unpaid fees, you can still log in and view your dashboard, but you cannot accept new deliveries. After your payment is approved by the admin, your account is reactivated and the 3% fee starts accumulating again.',
     },
     {
       q: 'How do I accept a delivery assignment as a Rider?',
