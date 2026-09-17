@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAffiliateAuth, type Affiliate } from '@/lib/affiliateAuth';
 import { navigate } from '@/lib/router';
 import { supabase } from '@/lib/supabase';
+import { AffiliateMarketingTools } from '@/components/affiliate/AffiliateMarketingTools';
 import {
   Wallet, TrendingUp, Store, Bike, Copy, CheckCheck, LogOut, ArrowLeft,
   Link as LinkIcon, Loader2, Receipt, Target, Users, RefreshCw, Download,
-  ChevronRight, QrCode, AlertCircle,
+  ChevronRight, QrCode, AlertCircle, Megaphone,
 } from 'lucide-react';
 
 interface Referral {
@@ -56,7 +57,7 @@ export function AffiliateDashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'history'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'history' | 'marketing'>('overview');
   const [payoutSubmitting, setPayoutSubmitting] = useState(false);
   const [payoutMsg, setPayoutMsg] = useState<string | null>(null);
 
@@ -135,6 +136,7 @@ export function AffiliateDashboard() {
             { id: 'overview' as const, label: 'Overview', icon: TrendingUp },
             { id: 'milestones' as const, label: 'Milestones', icon: Target },
             { id: 'history' as const, label: 'History', icon: Receipt },
+            { id: 'marketing' as const, label: 'Marketing', icon: Megaphone },
           ].map(t => {
             const Icon = t.icon;
             return (
@@ -510,6 +512,11 @@ export function AffiliateDashboard() {
                   </div>
                 )}
               </div>
+            )}
+
+            {/* MARKETING TAB */}
+            {activeTab === 'marketing' && (
+              <AffiliateMarketingTools affiliate={affiliate} />
             )}
           </>
         )}

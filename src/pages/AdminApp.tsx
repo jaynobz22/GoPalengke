@@ -10,6 +10,7 @@ import { AdminChat, getOrCreateAdminConversation } from '@/components/AdminChat'
 import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { UserProfileReview } from '@/components/UserProfileReview';
+import { AdminMarketingMaterials } from '@/components/affiliate/AdminMarketingMaterials';
 import {
   Megaphone, Plus, Trash2, Power, Check, Loader2, LogOut, Eye,
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
@@ -18,7 +19,7 @@ import {
   ChevronUp, ChevronDown, BarChart3, PlayCircle, ArrowUp, ArrowDown, Clock,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'rider_fees' | 'announcements' | 'security' | 'video_credits' | 'tutorials' | 'settings' | 'analytics' | 'affiliates';
+type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'rider_fees' | 'announcements' | 'security' | 'video_credits' | 'tutorials' | 'settings' | 'analytics' | 'affiliates' | 'marketing';
 
 export function AdminApp() {
   const { profile, signOut } = useAuth();
@@ -75,6 +76,7 @@ export function AdminApp() {
     { id: 'tutorials', label: 'Tutorials', icon: PlayCircle },
     { id: 'analytics', label: 'Stats', icon: BarChart3 },
     { id: 'affiliates', label: 'Affiliates', icon: Users },
+    { id: 'marketing', label: 'Marketing', icon: Megaphone },
   ];
 
   return (
@@ -130,6 +132,7 @@ export function AdminApp() {
       {tab === 'analytics' && <ErrorBoundary><AnalyticsDashboard /></ErrorBoundary>}
       {tab === 'settings' && <ErrorBoundary><SettingsTab /></ErrorBoundary>}
       {tab === 'affiliates' && <ErrorBoundary><AffiliatesTab /></ErrorBoundary>}
+      {tab === 'marketing' && <ErrorBoundary><AdminMarketingMaterials /></ErrorBoundary>}
 
       {activeChat && profile && (
         <AdminChat
