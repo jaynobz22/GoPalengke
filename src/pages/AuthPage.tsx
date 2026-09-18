@@ -357,7 +357,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
 
             {(selectedRole === 'seller' || selectedRole === 'rider') && (
               <div>
-                <label className="text-sm font-medium text-gray-600 mb-1 block">Affiliate Code (Opsyonal)</label>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">Sponsor's Code (Opsyonal)</label>
                 <input
                   type="text"
                   value={affiliateCode}
