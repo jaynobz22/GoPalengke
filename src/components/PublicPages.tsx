@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { navigate, useRoute } from '@/lib/router';
-import { ogPreviewUrl } from '@/lib/share';
 import type { Store, Product, Profile } from '@/lib/types';
 import {
   MapPin, Star, ShoppingBag, Bike, Store as StoreIcon, ArrowLeft,
@@ -162,7 +161,7 @@ function PublicStorePage({ slug }: { slug: string }) {
     );
   }
 
-  const fullUrl = ogPreviewUrl(`/s/${store.slug}`);
+  const fullUrl = `${window.location.origin}/s/${store.slug}`;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -245,7 +244,7 @@ function PublicStorePage({ slug }: { slug: string }) {
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {products.map(p => {
-              const productUrl = ogPreviewUrl(`/p/${p.id}?redirect_to=s/${store.slug}`);
+              const productUrl = `${window.location.origin}/s/${store.slug}`;
               const shareText = `${p.name} - ₱${p.price}/${p.unit} at ${store.name} | GoPalengke`;
               return (
               <div key={p.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">

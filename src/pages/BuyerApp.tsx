@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { navigate } from '@/lib/router';
-import { ogPreviewUrl } from '@/lib/share';
 import { checkOrderFlood, checkIpMismatch } from '@/lib/security';
 import type { Product, Store, Category, CartItem, Order, OrderItem, OrderStatus, Conversation, AdminConversation } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
@@ -2837,7 +2836,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
 // ============= SHARE STORE CARD =============
 function ShareStoreCard({ storeName, storeSlug }: { storeName: string; storeSlug: string }) {
   const [copied, setCopied] = useState(false);
-  const shareUrl = ogPreviewUrl(`/s/${storeSlug}`);
+  const shareUrl = `${window.location.origin}/s/${storeSlug}`;
   const shareText = `Napakagandang experience ko sa ${storeName} sa Pamalengke Online! Subukan nyo din!`;
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedText = encodeURIComponent(shareText);
@@ -3040,15 +3039,11 @@ function ReviewSectionForOrder({
 }) {
   const [existingReviews, setExistingReviews] = useState<{ review_type: string }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [firstProductId, setFirstProductId] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.from('reviews').select('review_type').eq('order_id', orderId).then(({ data }) => {
       setExistingReviews(data || []);
       setLoading(false);
-    });
-    supabase.from('order_items').select('product_id').eq('order_id', orderId).limit(1).maybeSingle().then(({ data }) => {
-      setFirstProductId(data?.product_id || null);
     });
   }, [orderId]);
 
@@ -3071,7 +3066,6 @@ function ReviewSectionForOrder({
           reviewType="seller"
           revieweeName={store.name}
           storeSlug={store.slug}
-          productId={firstProductId}
           onSubmitted={() => setExistingReviews(prev => [...prev, { review_type: 'seller' }])}
         />
       )}

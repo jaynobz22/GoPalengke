@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
-import { ogPreviewUrl } from '@/lib/share';
 import type { Review, ReviewType } from '@/lib/types';
 import { Star, Loader2, X, Check, Share2, Facebook, MessageCircle, Copy } from 'lucide-react';
 
@@ -42,7 +41,6 @@ export function ReviewForm({
   reviewType: ReviewType;
   revieweeName: string;
   storeSlug?: string | null;
-  productId?: string | null;
   onSubmitted: () => void;
 }) {
   const { profile } = useAuth() as any;
@@ -53,10 +51,7 @@ export function ReviewForm({
   const [submitted, setSubmitted] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const ogPath = productId
-    ? `/p/${productId}?redirect_to=s/${storeSlug}`
-    : `/s/${storeSlug}`;
-  const shareUrl = storeSlug ? ogPreviewUrl(ogPath) : '';
+  const shareUrl = storeSlug ? `${window.location.origin}/s/${storeSlug}` : '';
   const shareText = `Napakagandang experience ko sa ${revieweeName} sa Pamalengke Online! ${rating > 0 ? `${'⭐'.repeat(rating)} ` : ''}Subukan nyo din!`;
   const encodedShareUrl = encodeURIComponent(shareUrl);
   const encodedShareText = encodeURIComponent(shareText);
