@@ -24,6 +24,12 @@ const OLD_REGION_MAP: Record<string, string> = {
   'Region IX': '0900000000', 'Region X': '1000000000', 'Region XI': '1100000000',
   'Region XII': '1200000000', 'Region XIII': '1600000000', 'BARMM': '1900000000',
 };
+
+function formatRegionForDisplay(region: string | null | undefined): string {
+  if (!region) return '';
+  if (/^\d{10}$/.test(region)) return String(Number(region.slice(0, 2)));
+  return region.replace(/^Region /, '').replace(/^XI$/, '11');
+}
 import { BuyerLiveTrackingMap } from '@/components/BuyerLiveTrackingMap';
 import { LiveETATimer } from '@/components/LiveETATimer';
 import { DeliveryMap } from '@/components/DeliveryMap';
@@ -497,7 +503,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
         <div className="flex items-center gap-2 mt-3 text-xs text-brand-100">
           <MapPin size={14} />
           <button onClick={() => setShowLocationModal(true)} className="text-left hover:underline">
-            {locationFilter.city || profile?.barangay || 'Set location'}, {locationFilter.region || profile?.city || ''} {locationFilter.region || profile?.region || ''}
+            {locationFilter.city || profile?.barangay || 'Set location'}, {formatRegionForDisplay(locationFilter.region || profile?.region)}
           </button>
         </div>
       </div>
@@ -1002,7 +1008,7 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
 
         <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
           <MapPin size={16} />
-          <span>{store.barangay}, {store.city}, {store.region}</span>
+          <span>{store.barangay}, {store.city}, {formatRegionForDisplay(store.region)}</span>
         </div>
         {store.palengke_name && (
           <div className="flex items-center gap-2 text-sm text-brand-600 mb-6 bg-brand-50 px-3 py-2 rounded-xl">
@@ -1176,7 +1182,7 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
         {store.description && <p className="text-gray-600 text-sm mt-3">{store.description}</p>}
         <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
           <MapPin size={16} />
-          <span>{[store.barangay, store.city, store.region].filter(Boolean).join(', ')}</span>
+          <span>{[store.barangay, store.city, formatRegionForDisplay(store.region)].filter(Boolean).join(', ')}</span>
         </div>
       </div>
 
@@ -2666,7 +2672,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <MapPin size={14} />
-            <span>{store.barangay}, {store.city}, {store.region}</span>
+            <span>{store.barangay}, {store.city}, {formatRegionForDisplay(store.region)}</span>
           </div>
           {store.palengke_name && (
             <div className="flex items-center gap-2 text-sm text-brand-600 mt-2">
@@ -2760,7 +2766,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
           <span className="font-semibold text-gray-800">Delivery Address</span>
         </div>
         <p className="text-sm text-gray-600">{currentOrder.delivery_address}</p>
-        <p className="text-sm text-gray-400">{currentOrder.delivery_barangay}, {currentOrder.delivery_city}, {currentOrder.delivery_region}</p>
+        <p className="text-sm text-gray-400">{currentOrder.delivery_barangay}, {currentOrder.delivery_city}, {formatRegionForDisplay(currentOrder.delivery_region)}</p>
       </div>
 
       {/* Sibling stores in the same delivery group */}
@@ -2944,7 +2950,7 @@ function RiderProfileModal({ riderId, riderName, riderAvatar, riderPhone, onClos
               </div>
               {(riderProfile.barangay || riderProfile.city) && (
                 <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                  <MapPin size={12} /> {riderProfile.barangay}, {riderProfile.city}, {riderProfile.region}
+                  <MapPin size={12} /> {riderProfile.barangay}, {riderProfile.city}, {formatRegionForDisplay(riderProfile.region)}
                 </p>
               )}
               {riderPhone && (
