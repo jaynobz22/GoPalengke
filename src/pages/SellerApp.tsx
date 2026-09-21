@@ -1942,9 +1942,9 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-800">{item.product_name}</p>
-              <p className="text-xs text-gray-400">{item.quantity} × ₱{item.price}</p>
+              <p className="text-xs text-gray-400">{item.unit === 'kilo' ? `${Number(item.quantity)} kg` : item.quantity} × ₱{item.price}</p>
             </div>
-            <p className="font-semibold text-sm text-gray-700">₱{(Number(item.price) * item.quantity).toFixed(0)}</p>
+            <p className="font-semibold text-sm text-gray-700">₱{(Number(item.price) * Number(item.quantity)).toFixed(0)}</p>
           </div>
         ))}
         <div className="pt-2 border-t border-gray-100 mt-2 space-y-1">

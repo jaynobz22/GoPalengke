@@ -917,9 +917,14 @@ function WheatIcon({ className }: { className?: string }) {
 function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { product: Product; store: Store; onBack: () => void; onAddToCart: () => void; onGoToStore: (store: Store, productId: string) => void }) {
   const { profile } = useAuth();
   const [quantity, setQuantity] = useState(1);
+  const [sizeMultiplier, setSizeMultiplier] = useState(1);
   const [adding, setAdding] = useState(false);
   const [showReminder, setShowReminder] = useState(false);
   const [reminderData, setReminderData] = useState<{ storeName: string; storeId: string; productId: string; productPrice: number } | null>(null);
+
+  const isKilo = product.unit === 'kilo';
+  const effectiveQty = isKilo ? quantity * sizeMultiplier : quantity;
+  const unitLabel = isKilo ? (sizeMultiplier === 1 ? 'kilo' : sizeMultiplier === 0.5 ? '1/2 kilo' : '1/4 kilo') : product.unit;
 
   async function addToCart() {
     if (!profile) return;
@@ -970,13 +975,13 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
       .maybeSingle();
 
     if (existing) {
-      await supabase.from('cart_items').update({ quantity: existing.quantity + quantity }).eq('id', existing.id);
+      await supabase.from('cart_items').update({ quantity: Number(existing.quantity) + effectiveQty }).eq('id', existing.id);
     } else {
       await supabase.from('cart_items').insert({
         buyer_id: profile.id,
         product_id: product.id,
         store_id: store.id,
-        quantity,
+        quantity: effectiveQty,
       });
     }
     setAdding(false);
@@ -996,8 +1001,8 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
         <p className="text-sm text-gray-400 mb-1">{store.name}</p>
         <h1 className="text-2xl font-bold text-gray-800 mb-2">{product.name}</h1>
         <div className="flex items-center gap-3 mb-4">
-          <p className="text-2xl font-bold text-brand-600">₱{product.price}</p>
-          <p className="text-sm text-gray-400">per {product.unit}</p>
+          <p className="text-2xl font-bold text-brand-600">₱{(Number(product.price) * (isKilo ? sizeMultiplier : 1)).toFixed(2)}</p>
+          <p className="text-sm text-gray-400">per {isKilo ? unitLabel : product.unit}</p>
           {store.is_open ? (
             <span className="ml-auto text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Store Open</span>
           ) : (
@@ -1041,6 +1046,26 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
 
         {product.stock > 0 ? (
           <div className="space-y-4">
+            {isKilo && (
+              <div>
+                <span className="font-medium text-gray-700 block mb-2">Laki</span>
+                <div className="flex gap-2">
+              {[
+                { label: '1/4 kilo', value: 0.25 },
+                { label: '1/2 kilo', value: 0.5 },
+                { label: '1 kilo', value: 1 },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setSizeMultiplier(opt.value)}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition ${sizeMultiplier === opt.value ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 text-gray-600'}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="font-medium text-gray-700">Bilang</span>
               <div className="flex items-center gap-3">
@@ -1064,7 +1089,7 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
               disabled={adding}
               className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50"
             >
-              {adding ? 'Nadadagdag...' : `Idagdag sa Cart · ₱${(Number(product.price) * quantity).toFixed(2)}`}
+              {adding ? 'Nadadagdag...' : `Idagdag sa Cart · ₱${(Number(product.price) * effectiveQty).toFixed(2)}`}
             </button>
           </div>
         ) : (
@@ -1285,7 +1310,7 @@ function CartView({ onCheckout, refreshKey }: { onCheckout: () => void; refreshK
     return acc;
   }, {} as Record<string, (CartItem & { product: Product; store: Store })[]>);
 
-  const total = cartItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const total = cartItems.reduce((sum, item) => sum + item.product.price * Number(item.quantity), 0);
 
   if (loading) return <div className="p-5"><div className="h-40 bg-gray-100 rounded-2xl animate-pulse" /></div>;
 
@@ -1327,11 +1352,11 @@ function CartView({ onCheckout, refreshKey }: { onCheckout: () => void; refreshK
                   <p className="font-semibold text-sm text-gray-800 line-clamp-1">{item.product.name}</p>
                   <p className="text-brand-600 font-bold">₱{item.product.price}<span className="text-xs text-gray-400 font-normal">/{item.product.unit}</span></p>
                   <div className="flex items-center gap-2 mt-1">
-                    <button onClick={() => updateQty(item.id, item.quantity - 1)} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center active:scale-90 transition">
+                    <button onClick={() => updateQty(item.id, Number(item.quantity) - (item.product.unit === 'kilo' ? 0.25 : 1))} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center active:scale-90 transition">
                       <Minus size={14} className="text-gray-600" />
                     </button>
-                    <span className="text-sm font-medium w-6 text-center">{item.quantity}</span>
-                    <button onClick={() => updateQty(item.id, item.quantity + 1)} className="w-7 h-7 rounded-full bg-brand-500 flex items-center justify-center active:scale-90 transition">
+                    <span className="text-sm font-medium w-12 text-center">{item.product.unit === 'kilo' ? `${Number(item.quantity)} kg` : item.quantity}</span>
+                    <button onClick={() => updateQty(item.id, Number(item.quantity) + (item.product.unit === 'kilo' ? 0.25 : 1))} className="w-7 h-7 rounded-full bg-brand-500 flex items-center justify-center active:scale-90 transition">
                       <Plus size={14} className="text-white" />
                     </button>
                     <button onClick={() => removeItem(item.id)} className="ml-auto text-gray-400">
@@ -1521,7 +1546,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
     for (const [storeId, items] of Object.entries(grouped)) {
       const store = items[0].store;
       const livestock = isLivestockOrder(items);
-      const total = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
+      const total = items.reduce((sum, i) => sum + i.product.price * Number(i.quantity), 0);
       const deliveryFee = livestock ? 0 : getFeeForStore(store).fee;
       const deliveryMethod = livestock ? (items[0].product.delivery_method || 'pickup') : null;
       const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, deliveryLocation.region]
@@ -1559,7 +1584,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
         product_name: i.product.name,
         product_image: i.product.image_url,
         price: i.product.price,
-        quantity: i.quantity,
+        quantity: Number(i.quantity),
         unit: i.product.unit,
       }));
 
@@ -1577,7 +1602,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   const grandTotal = Object.entries(grouped).reduce((sum, [_, items]) => {
     const livestock = isLivestockOrder(items);
     const fee = livestock ? 0 : getFeeForStore(items[0].store).fee;
-    return sum + items.reduce((s, i) => s + i.product.price * i.quantity, 0) + fee;
+    return sum + items.reduce((s, i) => s + i.product.price * Number(i.quantity), 0) + fee;
   }, 0);
 
   return (
@@ -1713,9 +1738,9 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-800">{item.product.name}</p>
-                  <p className="text-xs text-gray-400">{item.quantity} × ₱{item.product.price}</p>
+                  <p className="text-xs text-gray-400">{item.product.unit === 'kilo' ? `${Number(item.quantity)} kg` : item.quantity} × ₱{item.product.price}</p>
                 </div>
-                <p className="font-semibold text-sm text-gray-700">₱{(Number(item.product.price) * item.quantity).toFixed(0)}</p>
+                <p className="font-semibold text-sm text-gray-700">₱{(Number(item.product.price) * Number(item.quantity)).toFixed(0)}</p>
               </div>
             ))}
 
@@ -1879,7 +1904,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                 for (const [storeId, items] of Object.entries(grouped)) {
                   const store = items[0].store;
                   const livestock = isLivestockOrder(items);
-                  const total = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
+                  const total = items.reduce((sum, i) => sum + i.product.price * Number(i.quantity), 0);
                   const deliveryFee = livestock ? 0 : getFeeForStore(store).fee;
                   const deliveryMethod = livestock ? (items[0].product.delivery_method || 'pickup') : null;
                   const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, deliveryLocation.region].filter(Boolean).join(', ');
@@ -2701,9 +2726,9 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-800">{item.product_name}</p>
-              <p className="text-xs text-gray-400">{item.quantity} × ₱{item.price}</p>
+              <p className="text-xs text-gray-400">{item.unit === 'kilo' ? `${Number(item.quantity)} kg` : item.quantity} × ₱{item.price}</p>
             </div>
-            <p className="font-semibold text-sm text-gray-700">₱{(Number(item.price) * item.quantity).toFixed(0)}</p>
+            <p className="font-semibold text-sm text-gray-700">₱{(Number(item.price) * Number(item.quantity)).toFixed(0)}</p>
           </div>
         ))}
         <div className="pt-2 border-t border-gray-100 mt-2 space-y-1">
