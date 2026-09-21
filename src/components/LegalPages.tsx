@@ -940,7 +940,7 @@ function FaqContent() {
     },
     {
       q: 'How is the delivery fee computed?',
-      a: 'The delivery fee is based on the distance between the store and the buyer\'s delivery address. It is automatically computed by the platform when the buyer checks out.',
+      a: 'The delivery fee starts at ₱30 base fee plus ₱10 per kilometer of distance between the store and the buyer\'s delivery address. It is automatically computed by the platform when the buyer checks out.',
     },
     {
       q: 'How do I chat with the seller or rider?',

@@ -1,5 +1,5 @@
-export const BASE_DELIVERY_FEE = 50;
-export const PER_KM_RATE = 15;
+export const BASE_DELIVERY_FEE = 30;
+export const PER_KM_RATE = 10;
 
 export interface LocationInfo {
   barangay: string | null;
