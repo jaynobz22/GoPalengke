@@ -131,7 +131,7 @@ export function AffiliateDashboard() {
 
       {/* Tabs */}
       <div className="max-w-5xl mx-auto px-5">
-        <div className="grid grid-cols-4 sm:flex sm:justify-around gap-1 mt-4 bg-white rounded-2xl border border-gray-100 p-1 shadow-sm">
+        <div className="grid grid-cols-4 sm:flex sm:justify-around gap-2 mt-4 bg-white rounded-2xl border border-gray-100 p-1.5 shadow-sm">
           {[
             { id: 'overview' as const, label: 'Overview', icon: TrendingUp },
             { id: 'milestones' as const, label: 'Milestones', icon: Target },
