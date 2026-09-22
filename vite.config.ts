@@ -8,7 +8,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
 // Ensure dependencies are installed (deployment env may not run npm install)
-if (!existsSync(join(__dirname, 'node_modules', 'react'))) {
+const requiredDeps = ['react', 'react-image-crop'];
+const missingDep = requiredDeps.find(dep => !existsSync(join(__dirname, 'node_modules', dep)));
+if (missingDep) {
   try {
     execSync('npm install', { cwd: __dirname, stdio: 'ignore', timeout: 120000 });
   } catch {}
