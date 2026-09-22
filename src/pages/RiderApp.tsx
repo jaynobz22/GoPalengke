@@ -225,6 +225,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
   const [loading, setLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [accepting, setAccepting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!profile) return;
@@ -266,16 +267,18 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
 
   async function acceptOrder(order: Order) {
     if (!profile) return;
+    setAccepting(order.id);
+    const update = { rider_id: profile.id, status: 'ready_for_pickup' as const };
+    let error;
     if (order.delivery_group_id) {
-      await supabase.from('orders').update({
-        rider_id: profile.id,
-        status: 'ready_for_pickup',
-      }).eq('delivery_group_id', order.delivery_group_id);
+      ({ error } = await supabase.from('orders').update(update).eq('delivery_group_id', order.delivery_group_id));
     } else {
-      await supabase.from('orders').update({
-        rider_id: profile.id,
-        status: 'ready_for_pickup',
-      }).eq('id', order.id);
+      ({ error } = await supabase.from('orders').update(update).eq('id', order.id));
+    }
+    setAccepting(null);
+    if (error) {
+      alert('Hindi matanggap ang order. Subukan ulit.');
+      return;
     }
     load();
   }
@@ -451,9 +454,9 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
                         <p className="text-sm text-gray-400">Delivery fee</p>
                         <p className="font-bold text-blue-600">₱{totalFee.toFixed(0)}</p>
                       </div>
-                      <button onClick={() => acceptOrder(first)} disabled={!canAct}
+                      <button onClick={() => acceptOrder(first)} disabled={!canAct || accepting === first.id}
                         className="px-6 py-2.5 bg-brand-600 text-white rounded-xl font-semibold active:scale-95 transition disabled:opacity-50">
-                        Tanggapin
+                        {accepting === first.id ? 'Tinatanggap...' : 'Tanggapin'}
                       </button>
                     </div>
                   </div>
@@ -519,9 +522,9 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
                           <p className="text-sm text-gray-400">Delivery fee</p>
                           <p className="font-bold text-blue-600">₱{totalFee.toFixed(0)}</p>
                         </div>
-                        <button onClick={() => acceptOrder(first)} disabled={!canAct}
+                        <button onClick={() => acceptOrder(first)} disabled={!canAct || accepting === first.id}
                           className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-semibold active:scale-95 transition disabled:opacity-50">
-                          Tanggapin
+                          {accepting === first.id ? 'Tinatanggap...' : 'Tanggapin'}
                         </button>
                       </div>
                     </div>
