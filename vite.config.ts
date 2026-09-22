@@ -32,16 +32,14 @@ const config: any = {
   },
 };
 
-// Vite v8 with rolldown: explicit node_modules path for module resolution
-try {
-  config.build = {
-    rolldownOptions: {
-      resolve: {
-        modules: [join(__dirname, 'node_modules')],
-      },
+// Explicit node_modules path for module resolution (works with both rollup and rolldown)
+config.build = {
+  rollupOptions: {
+    resolve: {
+      modules: [join(__dirname, 'node_modules')],
     },
-  };
-} catch {}
+  },
+};
 
 // Also set resolve.modules for vite's own resolver
 config.resolve.modules = [join(__dirname, 'node_modules')];
