@@ -3,6 +3,7 @@ import { supabase, deleteStorageObject } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { navigate } from '@/lib/router';
 import { checkPriceAnomaly } from '@/lib/security';
+import { haversineKm } from '@/lib/deliveryFee';
 import type { Store, Product, Order, OrderItem, OrderStatus, Conversation, SellerFee, AdminConversation } from '@/lib/types';
 import { PAYMENT_THRESHOLD } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
@@ -1478,6 +1479,19 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   const [loadingRiders, setLoadingRiders] = useState(false);
   const [assigningRider, setAssigningRider] = useState<string | null>(null);
   const [riderAssigned, setRiderAssigned] = useState(false);
+  const [nearbyRiders, setNearbyRiders] = useState<{
+    rider_id: string;
+    rider_name: string;
+    rider_phone: string | null;
+    rider_avatar: string | null;
+    active_order_id: string;
+    active_store_name: string;
+    delivery_barangay: string | null;
+    delivery_city: string | null;
+    delivery_lat: number | null;
+    delivery_lng: number | null;
+    distance_km: number | null;
+  }[]>([]);
 
   useEffect(() => {
     supabase.from('order_items').select('*').eq('order_id', order.id).then(({ data }) => setItems(data || []));
@@ -1498,10 +1512,96 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
     return () => { supabase.removeChannel(sub); };
   }, [order.id]);
 
+  // Auto-load nearby riders when order is ready for pickup (for the hint banner)
+  useEffect(() => {
+    if (currentOrder.status === 'ready_for_pickup' && !currentOrder.rider_id && !currentOrder.delivery_method) {
+      loadAvailableRiders();
+    }
+  }, [currentOrder.status, currentOrder.rider_id]);
+
   async function loadAvailableRiders() {
     setLoadingRiders(true);
-    const { data } = await supabase.from('profiles').select('id, full_name, phone, avatar_url').eq('role', 'rider').eq('is_available', true).order('full_name', { ascending: true });
-    setAvailableRiders((data || []) as any);
+
+    const [ridersRes, activeOrdersRes] = await Promise.all([
+      supabase.from('profiles').select('id, full_name, phone, avatar_url').eq('role', 'rider').eq('is_available', true).order('full_name', { ascending: true }),
+      supabase.from('orders').select('id, rider_id, store:stores(name), delivery_barangay, delivery_city, delivery_lat, delivery_lng').eq('status', 'picked_up').not('rider_id', 'is', null),
+    ]);
+
+    setAvailableRiders((ridersRes.data || []) as any);
+
+    // Find riders already delivering to the same or nearby destination
+    const activeOrders = (activeOrdersRes.data || []) as any[];
+    const targetBarangay = currentOrder.delivery_barangay?.toLowerCase().trim() || '';
+    const targetCity = currentOrder.delivery_city?.toLowerCase().trim() || '';
+    const targetLat = currentOrder.delivery_lat;
+    const targetLng = currentOrder.delivery_lng;
+
+    const nearby: typeof nearbyRiders = [];
+    const seenRiders = new Set<string>();
+
+    for (const ao of activeOrders) {
+      if (!ao.rider_id || seenRiders.has(ao.rider_id)) continue;
+      if (ao.rider_id === currentOrder.rider_id) continue;
+
+      const aoBarangay = (ao.delivery_barangay || '').toLowerCase().trim();
+      const aoCity = (ao.delivery_city || '').toLowerCase().trim();
+
+      // Match: same barangay, or same city, or within 2km if coords available
+      let isNearby = false;
+      let distanceKm: number | null = null;
+
+      if (targetBarangay && aoBarangay && aoBarangay === targetBarangay) {
+        isNearby = true;
+      } else if (targetCity && aoCity && aoCity === targetCity) {
+        isNearby = true;
+        if (targetLat != null && targetLng != null && ao.delivery_lat != null && ao.delivery_lng != null) {
+          distanceKm = haversineKm(
+            { lat: targetLat, lng: targetLng },
+            { lat: ao.delivery_lat, lng: ao.delivery_lng },
+          );
+        }
+      } else if (targetLat != null && targetLng != null && ao.delivery_lat != null && ao.delivery_lng != null) {
+        distanceKm = haversineKm(
+          { lat: targetLat, lng: targetLng },
+          { lat: ao.delivery_lat, lng: ao.delivery_lng },
+        );
+        if (distanceKm <= 2) isNearby = true;
+      }
+
+      if (isNearby) {
+        seenRiders.add(ao.rider_id);
+        nearby.push({
+          rider_id: ao.rider_id,
+          rider_name: '',
+          rider_phone: null,
+          rider_avatar: null,
+          active_order_id: ao.id,
+          active_store_name: ao.store?.name || '',
+          delivery_barangay: ao.delivery_barangay,
+          delivery_city: ao.delivery_city,
+          delivery_lat: ao.delivery_lat,
+          delivery_lng: ao.delivery_lng,
+          distance_km: distanceKm,
+        });
+      }
+    }
+
+    // Fetch rider profiles for nearby riders
+    if (nearby.length > 0) {
+      const riderIds = nearby.map(n => n.rider_id);
+      const { data: riderProfiles } = await supabase.from('profiles').select('id, full_name, phone, avatar_url').in('id', riderIds);
+      const profileMap = new Map((riderProfiles || []).map((p: any) => [p.id, p]));
+      for (const n of nearby) {
+        const p = profileMap.get(n.rider_id);
+        if (p) {
+          n.rider_name = p.full_name;
+          n.rider_phone = p.phone;
+          n.rider_avatar = p.avatar_url;
+        }
+      }
+    }
+
+    setNearbyRiders(nearby);
     setLoadingRiders(false);
   }
 
@@ -1711,6 +1811,14 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             <p className="text-sm text-amber-700 font-medium">Naghihintay pa ng rider</p>
           </div>
           <p className="text-xs text-amber-600 mb-3">Pumili ka ng rider na kilala mo, o i-broadcast sa lahat ng available na riders.</p>
+          {nearbyRiders.length > 0 && (
+            <div className="mb-3 bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start gap-2">
+              <Bike size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700">
+                <strong>{nearbyRiders.length} rider{nearbyRiders.length > 1 ? 's' : ''}</strong> ang nasa parehong lugar na ng buyer mo — pwede isabay ang order! I-tap ang "Pumili ng Rider" sa baba.
+              </p>
+            </div>
+          )}
           <button
             onClick={() => { setShowRiderPicker(true); loadAvailableRiders(); }}
             className="w-full py-3 bg-white text-brand-700 border border-brand-200 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
@@ -1884,33 +1992,83 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={24} className="text-brand-500 animate-spin" />
               </div>
-            ) : availableRiders.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
-                <Bike size={40} className="mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Wala pang available na riders sa ngayon.</p>
-                <p className="text-xs mt-1">Subukan ulit mamaya o i-broadcast na lang ang order.</p>
-              </div>
             ) : (
-              <div className="space-y-2">
-                {availableRiders.map(r => (
-                  <button
-                    key={r.id}
-                    onClick={() => assignRider(r.id)}
-                    disabled={assigningRider !== null}
-                    className="w-full flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-2xl active:scale-[0.98] transition disabled:opacity-50 text-left"
-                  >
-                    <Avatar src={r.avatar_url} name={r.full_name} size={40} />
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-800 text-sm">{r.full_name}</p>
-                      {r.phone && <p className="text-xs text-gray-400">{r.phone}</p>}
+              <div className="space-y-4">
+                {/* Nearby riders — already delivering to same/nearby destination */}
+                {nearbyRiders.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2 px-1">
+                      <Bike size={16} className="text-blue-500" />
+                      <p className="text-xs font-semibold text-blue-700">Nasa parehong lugar na — pwede isabay</p>
                     </div>
-                    {assigningRider === r.id ? (
-                      <Loader2 size={18} className="text-brand-500 animate-spin" />
-                    ) : (
-                      <span className="text-xs text-brand-600 font-medium">I-assign →</span>
-                    )}
-                  </button>
-                ))}
+                    <p className="text-[11px] text-gray-400 mb-2 px-1">Mga rider na nagde-deliver na sa malapit sa destinasyon ng buyer mo. Pwede mo silang i-assign para isabay ang order.</p>
+                    <div className="space-y-2">
+                      {nearbyRiders.map(n => (
+                        <button
+                          key={n.rider_id}
+                          onClick={() => assignRider(n.rider_id)}
+                          disabled={assigningRider !== null}
+                          className="w-full flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-2xl active:scale-[0.98] transition disabled:opacity-50 text-left"
+                        >
+                          <Avatar src={n.rider_avatar} name={n.rider_name} size={40} />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-800 text-sm">{n.rider_name}</p>
+                            <p className="text-xs text-blue-600 truncate">
+                              {n.distance_km != null
+                                ? `${n.distance_km.toFixed(1)} km layo · `
+                                : ''}
+                              {n.delivery_barangay || n.delivery_city || 'Same area'}
+                            </p>
+                            {n.active_store_name && (
+                              <p className="text-[11px] text-gray-400 truncate">Galing: {n.active_store_name}</p>
+                            )}
+                          </div>
+                          {assigningRider === n.rider_id ? (
+                            <Loader2 size={18} className="text-brand-500 animate-spin" />
+                          ) : (
+                            <span className="text-xs text-blue-600 font-semibold whitespace-nowrap">Isabay →</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-400 py-2">
+                      <div className="flex-1 h-px bg-gray-100" />
+                      <span>Iba pang available na riders</span>
+                      <div className="flex-1 h-px bg-gray-100" />
+                    </div>
+                  </div>
+                )}
+
+                {/* All available riders */}
+                {availableRiders.length === 0 && nearbyRiders.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400">
+                    <Bike size={40} className="mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Wala pang available na riders sa ngayon.</p>
+                    <p className="text-xs mt-1">Subukan ulit mamaya o i-broadcast na lang ang order.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {availableRiders.map(r => (
+                      <button
+                        key={r.id}
+                        onClick={() => assignRider(r.id)}
+                        disabled={assigningRider !== null}
+                        className="w-full flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-2xl active:scale-[0.98] transition disabled:opacity-50 text-left"
+                      >
+                        <Avatar src={r.avatar_url} name={r.full_name} size={40} />
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-800 text-sm">{r.full_name}</p>
+                          {r.phone && <p className="text-xs text-gray-400">{r.phone}</p>}
+                        </div>
+                        {assigningRider === r.id ? (
+                          <Loader2 size={18} className="text-brand-500 animate-spin" />
+                        ) : (
+                          <span className="text-xs text-brand-600 font-medium">I-assign →</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
