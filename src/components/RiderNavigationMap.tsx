@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Navigation, MapPin, Store as StoreIcon, Clock, Loader2, AlertCircle, Route as RouteIcon, DollarSign } from 'lucide-react';
-import { haversineKm, computeTieredDeliveryFee, type Coords } from '@/lib/deliveryFee';
+import { haversineKm, type Coords } from '@/lib/deliveryFee';
 
 export type NavPhase = 'to_store' | 'to_buyer';
 
@@ -13,9 +13,9 @@ interface RiderNavigationMapProps {
   buyerCoords: Coords | null;
   buyerName: string;
   onPhaseChange: (phase: NavPhase) => void;
-  onEarningsUpdate?: (fee: number, distanceKm: number) => void;
   storeRegion?: string | null;
   storeCity?: string | null;
+  allStoreCoords?: { coords: Coords; name: string }[];
 }
 
 interface RouteData {
@@ -59,9 +59,9 @@ export function RiderNavigationMap({
   buyerCoords,
   buyerName,
   onPhaseChange,
-  onEarningsUpdate,
   storeRegion,
   storeCity,
+  allStoreCoords,
 }: RiderNavigationMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -77,9 +77,6 @@ export function RiderNavigationMap({
   const [routeError, setRouteError] = useState<string | null>(null);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'searching' | 'active' | 'error'>('idle');
   const [showInstructions, setShowInstructions] = useState(false);
-
-  const onEarningsUpdateRef = useRef(onEarningsUpdate);
-  onEarningsUpdateRef.current = onEarningsUpdate;
 
   const destination: Coords | null = phase === 'to_store' ? storeCoords : buyerCoords;
   const destLabel = phase === 'to_store' ? storeName : buyerName;
@@ -179,12 +176,6 @@ export function RiderNavigationMap({
         instructions,
       };
       setRouteData(routeResult);
-
-      // Update earnings — only when heading to buyer (after pickup), based on actual route distance
-      if (onEarningsUpdateRef.current && phase === 'to_buyer' && storeCoords && buyerCoords) {
-        const tiered = computeTieredDeliveryFee(routeResult.distanceKm, 0, storeRegion, storeCity);
-        onEarningsUpdateRef.current(tiered.total, routeResult.distanceKm);
-      }
     } catch (err) {
       // Fallback: straight-line distance with haversine
       const distKm = haversineKm(from, to);
@@ -200,10 +191,6 @@ export function RiderNavigationMap({
       };
       setRouteData(fallbackRoute);
       setRouteError('Hindi available ang turn-by-turn routing. Straight-line distance lang ang ipinapakita.');
-      if (onEarningsUpdateRef.current && phase === 'to_buyer' && storeCoords && buyerCoords) {
-        const tiered = computeTieredDeliveryFee(distKm, 0, storeRegion, storeCity);
-        onEarningsUpdateRef.current(tiered.total, Math.round(distKm * 100) / 100);
-      }
     } finally {
       setLoadingRoute(false);
     }
@@ -253,6 +240,30 @@ export function RiderNavigationMap({
 
   }, [riderPos, destination, destIcon, destLabel]);
 
+  // Show all store markers for multi-store pickup
+  const extraStoreMarkersRef = useRef<L.Marker[]>([]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    // Clear previous extra markers
+    extraStoreMarkersRef.current.forEach(m => m.remove());
+    extraStoreMarkersRef.current = [];
+    // Add markers for all stores except the primary one (already shown as destination)
+    if (allStoreCoords && phase === 'to_store') {
+      for (const s of allStoreCoords) {
+        if (storeCoords && s.coords.lat === storeCoords.lat && s.coords.lng === storeCoords.lng) continue;
+        const m = L.marker([s.coords.lat, s.coords.lng], { icon: storeIcon })
+          .addTo(map)
+          .bindPopup(s.name);
+        extraStoreMarkersRef.current.push(m);
+      }
+    }
+    return () => {
+      extraStoreMarkersRef.current.forEach(m => m.remove());
+      extraStoreMarkersRef.current = [];
+    };
+  }, [allStoreCoords, phase, storeCoords]);
+
   // Throttle route re-fetching: only re-fetch if rider moved significantly
   const lastFetchPosRef = useRef<Coords | null>(null);
   useEffect(() => {
@@ -299,10 +310,6 @@ export function RiderNavigationMap({
   }, [phase]);
 
   const liveDistanceKm = routeData?.distanceKm ?? 0;
-  // Fee only computed during to_buyer phase (after pickup), based on actual route distance
-  const liveFee = phase === 'to_buyer'
-    ? computeTieredDeliveryFee(liveDistanceKm, 0, storeRegion, storeCity).total
-    : 0;
 
   return (
     <div className="space-y-3">
@@ -367,11 +374,7 @@ export function RiderNavigationMap({
             <div className="bg-white rounded-xl border border-gray-100 p-3 text-center">
               <DollarSign size={16} className="text-green-600 mx-auto mb-1" />
               <p className="text-xs text-gray-400">Kita</p>
-              {phase === 'to_buyer' ? (
-                <p className="font-bold text-green-600 text-sm">₱{liveFee.toFixed(0)}</p>
-              ) : (
-                <p className="font-bold text-gray-300 text-sm">—</p>
-              )}
+              <p className="font-bold text-gray-300 text-sm">—</p>
             </div>
           </div>
 
