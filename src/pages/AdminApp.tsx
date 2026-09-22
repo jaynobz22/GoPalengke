@@ -2065,11 +2065,11 @@ function AnnouncementsTab() {
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Ilagay ang announcement message dito..."
             rows={3}
-            maxLength={200}
+            maxLength={500}
             className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition resize-none text-sm"
           />
           <div className="flex items-center justify-between mt-2">
-            <span className="text-xs text-gray-400">{newMessage.length}/200</span>
+            <span className="text-xs text-gray-400">{newMessage.length}/500</span>
             <button
               type="submit"
               disabled={saving || !newMessage.trim()}
