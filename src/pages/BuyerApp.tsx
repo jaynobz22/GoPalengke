@@ -1413,7 +1413,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   const [note, setNote] = useState('');
   const [deliveryPin, setDeliveryPin] = useState<Coords | null>(null);
   const [showMap, setShowMap] = useState(false);
-  const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'found' | 'denied' | 'unavailable'>('idle');
+  const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'found' | 'denied' | 'unavailable' | 'timeout'>('idle');
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleTime, setScheduleTime] = useState('');
@@ -1425,7 +1425,8 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   }, [profile]);
 
   // Auto-detect buyer's GPS location on checkout load
-  useEffect(() => {
+  // Two-stage approach: try low-accuracy (fast) first, then refine with high-accuracy
+  const detectLocation = useCallback((highAccuracy: boolean) => {
     if (!navigator.geolocation) { setGpsStatus('unavailable'); return; }
     setGpsStatus('locating');
     navigator.geolocation.getCurrentPosition(
@@ -1434,10 +1435,27 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
         setDeliveryPin({ lat: latitude, lng: longitude });
         setGpsStatus('found');
       },
-      () => { setGpsStatus('denied'); },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          setGpsStatus('denied');
+        } else if (err.code === err.TIMEOUT) {
+          if (highAccuracy) {
+            // High-accuracy timed out — fall back to low-accuracy
+            detectLocation(false);
+          } else {
+            setGpsStatus('timeout');
+          }
+        } else {
+          setGpsStatus('unavailable');
+        }
+      },
+      { enableHighAccuracy: highAccuracy, timeout: highAccuracy ? 12000 : 8000, maximumAge: 30000 }
     );
   }, []);
+
+  useEffect(() => {
+    detectLocation(true);
+  }, [detectLocation]);
 
   const grouped = cartItems.reduce((acc, item) => {
     if (!acc[item.store_id]) acc[item.store_id] = [];
@@ -1727,7 +1745,15 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
         {gpsStatus === 'denied' && (
           <div className="mt-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2">
             <MapPin size={14} className="text-amber-600 flex-shrink-0" />
-            Hindi ma-access ang lokasyon. I-drop ang pin sa mapa sa baba para sa eksaktong lokasyon.
+            <span className="flex-1">Hindi ma-access ang lokasyon. Pwede ring i-drop ang pin sa mapa sa baba.</span>
+            <button onClick={() => detectLocation(true)} className="font-semibold text-amber-700 underline flex-shrink-0">Subukang muli</button>
+          </div>
+        )}
+        {gpsStatus === 'timeout' && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2">
+            <MapPin size={14} className="text-amber-600 flex-shrink-0" />
+            <span className="flex-1">Matagal ang GPS. Subukan muli o i-drop ang pin sa mapa.</span>
+            <button onClick={() => detectLocation(true)} className="font-semibold text-amber-700 underline flex-shrink-0">Subukang muli</button>
           </div>
         )}
         {gpsStatus === 'unavailable' && (
