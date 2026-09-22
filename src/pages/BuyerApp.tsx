@@ -2529,8 +2529,16 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
   const isCancelled = currentOrder.status === 'cancelled';
   const isDelivered = currentOrder.status === 'delivered';
 
-  // Build buyer-side step list
-  const buyerSteps: StepInfo[] = [
+  const isCod = currentOrder.payment_method === 'cod';
+
+  // Build buyer-side step list — COD skips the "Nabayaran na" step (payment happens at delivery)
+  const buyerSteps: StepInfo[] = isCod ? [
+    { key: 'placed', label: 'Na-order na', description: 'Nai-submit na ang order mo. Naghihintay ng confirmation mula sa seller na available ang mga paninda.', status: 'completed' },
+    { key: 'confirmed', label: 'Na-confirm ng seller', description: 'Na-confirm na ng seller! Available ang mga paninda. Maghanda ka na ng cash para sa rider pagdating.', status: 'completed' },
+    { key: 'preparing', label: 'Inihahanda ng seller', description: 'Inihahanda na ng seller ang order mo. Hintayin lang ang rider na ma-assign at mag-pick up.', status: 'completed' },
+    { key: 'on_the_way', label: 'On the way na!', description: 'Nakuha na ng rider ang parcel at papunta na sa iyo. Makikita mo ang live location sa mapa sa baba.', status: 'completed' },
+    { key: 'delivered', label: 'Na-deliver na!', description: 'Na-deliver na ang order mo sa iyo. Magbayad sa rider ng ₱' + (Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2) + '. Salamat!', status: 'completed' },
+  ] : [
     { key: 'placed', label: 'Na-order na', description: 'Nai-submit na ang order mo. Naghihintay ng confirmation mula sa seller na available ang mga paninda.', status: 'completed' },
     { key: 'confirmed', label: 'Na-confirm ng seller', description: 'Na-confirm na ng seller! Available ang mga paninda. Pwede ka na magbayad.', status: 'completed' },
     { key: 'paid', label: 'Nabayaran na', description: 'Nabayaran na ang order! Inihahanda na ng seller ang mga paninda. Magko-contact na ng rider.', status: 'completed' },
@@ -2541,27 +2549,27 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
 
   // Map order status to step index
   let currentStepIndex = 0;
-  if (currentOrder.status === 'pending') currentStepIndex = 0;
-  else if (currentOrder.status === 'accepted') {
-    if (currentOrder.payment_method === 'cod') currentStepIndex = 1;
-    else if (currentOrder.payment_method === 'qr_code' && currentOrder.payment_status !== 'paid') currentStepIndex = 1;
-    else currentStepIndex = 2;
+  if (isCod) {
+    if (currentOrder.status === 'pending') currentStepIndex = 0;
+    else if (currentOrder.status === 'accepted') currentStepIndex = 1;
+    else if (currentOrder.status === 'preparing' || currentOrder.status === 'ready_for_pickup') currentStepIndex = 2;
+    else if (currentOrder.status === 'picked_up') currentStepIndex = 3;
+    else if (currentOrder.status === 'delivered') currentStepIndex = 4;
+  } else {
+    if (currentOrder.status === 'pending') currentStepIndex = 0;
+    else if (currentOrder.status === 'accepted') {
+      if (currentOrder.payment_status !== 'paid') currentStepIndex = 1;
+      else currentStepIndex = 2;
+    }
+    else if (currentOrder.status === 'preparing' || currentOrder.status === 'ready_for_pickup') currentStepIndex = 3;
+    else if (currentOrder.status === 'picked_up') currentStepIndex = 4;
+    else if (currentOrder.status === 'delivered') currentStepIndex = 5;
   }
-  else if (currentOrder.status === 'preparing') currentStepIndex = 3;
-  else if (currentOrder.status === 'ready_for_pickup') currentStepIndex = 3;
-  else if (currentOrder.status === 'picked_up') currentStepIndex = 4;
-  else if (currentOrder.status === 'delivered') currentStepIndex = 5;
 
   // Mark steps
   buyerSteps.forEach((s, i) => {
     s.status = i < currentStepIndex ? 'completed' : i === currentStepIndex ? 'active' : 'pending';
   });
-
-  // For COD, "Nabayaran na" should never show as completed — payment happens on delivery
-  if (currentOrder.payment_method === 'cod') {
-    const paidStep = buyerSteps.find(s => s.key === 'paid');
-    if (paidStep) paidStep.status = 'pending';
-  }
 
   return (
     <div className="px-5 py-4">

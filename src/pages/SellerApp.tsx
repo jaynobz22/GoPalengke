@@ -1660,22 +1660,19 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
     setUpdating(false);
   }
 
-  async function acceptCodPayment() {
-    setUpdating(true);
-    await supabase.from('orders').update({
-      cod_payment_accepted_at: new Date().toISOString(),
-      payment_status: 'paid',
-    }).eq('id', currentOrder.id);
-    setCurrentOrder(prev => ({ ...prev, cod_payment_accepted_at: new Date().toISOString(), payment_status: 'paid' }));
-    setUpdating(false);
-  }
-
   const isCancelled = currentOrder.status === 'cancelled';
   const isDelivered = currentOrder.status === 'delivered';
-  const isCodPaymentPending = currentOrder.payment_method === 'cod' && isDelivered && currentOrder.cod_payment_reference && !currentOrder.cod_payment_accepted_at;
+  const isCod = currentOrder.payment_method === 'cod';
 
-  // Build seller-side step list
-  const sellerSteps: StepInfo[] = [
+  // Build seller-side step list — COD skips "Nabayaran na" (payment at delivery)
+  const sellerSteps: StepInfo[] = isCod ? [
+    { key: 'new_order', label: 'Bagong Order', description: 'May bagong order! I-confirm muna para sure na available ang mga paninda.', status: 'completed' },
+    { key: 'confirmed', label: 'Na-confirm na', description: 'Na-confirm mo na ang order. Cash on Delivery — maghahanda ang buyer ng cash para sa rider. Ihanda na ang order.', status: 'completed' },
+    { key: 'preparing', label: 'Inihahanda ang order', description: 'Inihahanda mo na ang order. I-mark bilang ready for pickup kapag tapos na, para makapili ng rider.', status: 'completed' },
+    { key: 'ready', label: 'Ready for pickup', description: 'Handa na ang order! Pumili ng rider o i-broadcast sa lahat ng available na riders.', status: 'completed' },
+    { key: 'on_the_way', label: 'Nakuha na ng rider', description: 'Nakuha na ng rider ang parcel at on the way na sa buyer. Hintayin na ma-deliver.', status: 'completed' },
+    { key: 'delivered', label: 'Na-deliver na!', description: 'Na-deliver na ang order. Kolektahin ang bayad sa rider pagbalik niya. Tapos na ang transaction.', status: 'completed' },
+  ] : [
     { key: 'new_order', label: 'Bagong Order', description: 'May bagong order! I-confirm muna para sure na available ang mga paninda.', status: 'completed' },
     { key: 'confirmed', label: 'Na-confirm na', description: 'Na-confirm mo na ang order. Naghihintay na magbayad ang buyer.', status: 'completed' },
     { key: 'paid', label: 'Nabayaran na!', description: 'Nabayaran na ng buyer! Ihanda na ang order at i-mark bilang preparing.', status: 'completed' },
@@ -1686,26 +1683,28 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   ];
 
   let currentStepIndex = 0;
-  if (currentOrder.status === 'pending') currentStepIndex = 0;
-  else if (currentOrder.status === 'accepted') {
-    if (currentOrder.payment_method === 'cod') currentStepIndex = 1;
-    else if (currentOrder.payment_method === 'qr_code' && currentOrder.payment_status !== 'paid') currentStepIndex = 1;
-    else currentStepIndex = 2;
+  if (isCod) {
+    if (currentOrder.status === 'pending') currentStepIndex = 0;
+    else if (currentOrder.status === 'accepted') currentStepIndex = 1;
+    else if (currentOrder.status === 'preparing') currentStepIndex = 2;
+    else if (currentOrder.status === 'ready_for_pickup') currentStepIndex = 3;
+    else if (currentOrder.status === 'picked_up') currentStepIndex = 4;
+    else if (currentOrder.status === 'delivered') currentStepIndex = 5;
+  } else {
+    if (currentOrder.status === 'pending') currentStepIndex = 0;
+    else if (currentOrder.status === 'accepted') {
+      if (currentOrder.payment_status !== 'paid') currentStepIndex = 1;
+      else currentStepIndex = 2;
+    }
+    else if (currentOrder.status === 'preparing') currentStepIndex = 3;
+    else if (currentOrder.status === 'ready_for_pickup') currentStepIndex = 4;
+    else if (currentOrder.status === 'picked_up') currentStepIndex = 5;
+    else if (currentOrder.status === 'delivered') currentStepIndex = 6;
   }
-  else if (currentOrder.status === 'preparing') currentStepIndex = 3;
-  else if (currentOrder.status === 'ready_for_pickup') currentStepIndex = 4;
-  else if (currentOrder.status === 'picked_up') currentStepIndex = 5;
-  else if (currentOrder.status === 'delivered') currentStepIndex = 6;
 
   sellerSteps.forEach((s, i) => {
     s.status = i < currentStepIndex ? 'completed' : i === currentStepIndex ? 'active' : 'pending';
   });
-
-  // For COD, "Nabayaran na!" should never show as completed — payment happens on delivery
-  if (currentOrder.payment_method === 'cod') {
-    const paidStep = sellerSteps.find(s => s.key === 'paid');
-    if (paidStep) paidStep.status = 'pending';
-  }
 
   return (
     <div className="px-5 py-4">
@@ -1987,30 +1986,11 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         </div>
       )}
 
-      {/* COD payment pending — seller needs to accept */}
-      {isCodPaymentPending && (
-        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-3">
-          <div className="flex items-center gap-2 mb-3">
-            <DollarSign size={20} className="text-amber-600" />
-            <p className="font-semibold text-sm text-amber-800">COD Payment mula sa Rider</p>
-          </div>
-          <p className="text-xs text-amber-700 mb-2">Nai-submit na ng rider ang reference number para sa COD payment. I-verify at i-accept ang payment para matapos ang transaction.</p>
-          <div className="p-3 bg-white rounded-xl border border-amber-200 mb-3">
-            <p className="text-xs text-gray-400 mb-0.5">Reference Number mula sa Rider:</p>
-            <p className="text-sm font-mono font-bold text-gray-800 break-all">{currentOrder.cod_payment_reference}</p>
-          </div>
-          <button onClick={acceptCodPayment} disabled={updating}
-            className="w-full py-3 bg-green-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
-            {updating ? 'Nag-uupdate...' : 'Tanggapin ang Payment'}
-          </button>
-        </div>
-      )}
-
-      {/* COD payment accepted */}
-      {currentOrder.payment_method === 'cod' && isDelivered && currentOrder.cod_payment_accepted_at && (
+      {/* COD delivered — collect from rider */}
+      {isDelivered && isCod && (
         <div className="bg-green-50 border border-green-300 rounded-2xl p-4 mb-3 flex items-center gap-2">
           <Check size={18} className="text-green-600" />
-          <p className="text-sm text-green-700 font-medium">Na-tanggap na ang COD payment. Tapos na ang transaction!</p>
+          <p className="text-sm text-green-700 font-medium">Na-deliver na! Kolektahin ang ₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)} sa rider pagbalik niya.</p>
         </div>
       )}
 
