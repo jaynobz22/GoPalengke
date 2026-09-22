@@ -890,6 +890,8 @@ function CategoryIcon({ slug, active }: { slug: string; active: boolean }) {
     case 'household-items': return <span className={color} style={{ fontSize: 28 }}>🧴</span>;
     case 'general-merchandise': return <Package size={28} className={color} />;
     case 'livestock': return <span className={color} style={{ fontSize: 28 }}>🐔</span>;
+    case 'ulam': return <span className={color} style={{ fontSize: 28 }}>🍲</span>;
+    case 'kakanin': return <span className={color} style={{ fontSize: 28 }}>🍡</span>;
     default: return <Package size={28} className={color} />;
   }
 }

@@ -288,6 +288,8 @@ function CategoryEmoji({ slug }: { slug: string }) {
     case 'household-items': return <span>🧴</span>;
     case 'general-merchandise': return <span>📦</span>;
     case 'livestock': return <span>🐔</span>;
+    case 'ulam': return <span>🍲</span>;
+    case 'kakanin': return <span>🍡</span>;
     default: return <span>📦</span>;
   }
 }
