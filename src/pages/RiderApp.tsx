@@ -1269,6 +1269,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           bucket="profile-images"
           folder={`avatars/${profile?.id}`}
           aspectClass="h-32"
+          cropAspect={1}
           hint="Mag-upload ng larawan para makilala ka ng buyers at sellers."
           onChange={async (url) => {
             if (!profile) return;
@@ -1423,6 +1424,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           bucket="profile-images"
           folder={`valid-ids/${profile?.id}`}
           aspectClass="h-40"
+          cropAspect={4 / 3}
           hint="I-upload ang litrato ng valid ID mo. Makikita ito ng buyers sa profile mo para sa kanilang safety."
           onChange={async (url) => {
             if (!profile) return;
@@ -1443,6 +1445,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           bucket="profile-images"
           folder={`lto-orcr/${profile?.id}`}
           aspectClass="h-40"
+          cropAspect={4 / 3}
           hint="I-upload ang litrato ng LTO OR/CR ng iyong sasakyan. Required para sa verification."
           onChange={async (url) => {
             if (!profile) return;
@@ -1460,6 +1463,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           bucket="store-images"
           folder={`rider-qr/${profile?.id}`}
           aspectClass="h-48"
+          cropAspect={1}
           hint="Mag-upload ng GCash/Maya QR code mo. Makikita ito ng seller kapag kinukuha mo ang order, para mabayaran ka ng delivery fee kung hindi COD ang order."
           onChange={async (url) => {
             if (!profile) return;

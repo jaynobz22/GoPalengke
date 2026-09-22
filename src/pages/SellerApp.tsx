@@ -465,6 +465,7 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
             folder={`avatars/${profile?.id}`}
             aspectClass="h-32"
             icon={<Camera size={16} />}
+            cropAspect={1}
           />
           {avatarUploading && <p className="text-xs text-brand-500 mt-1">Nag-a-upload...</p>}
         </div>
@@ -475,6 +476,7 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
           folder="banners"
           aspectClass="h-40"
           icon={<StoreIcon size={16} />}
+          cropAspect={16 / 9}
         />
         <ImageUploadField
           label="QR Code (para sa GCash payment)"
@@ -484,6 +486,7 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
           aspectClass="h-48"
           icon={<QrCode size={16} />}
           hint="I-screenshot ang QR code mo sa GCash app, tapos i-upload dito. Makikita ito ng buyers pag nag-checkout sila."
+          cropAspect={1}
         />
         <div>
           <label className="text-sm font-medium text-gray-600 mb-1 block">Payment Method</label>
@@ -1307,6 +1310,7 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
             folder="banners"
             aspectClass="h-40"
             icon={<StoreIcon size={16} />}
+            cropAspect={16 / 9}
           />
           <ImageUploadField
             label="QR Code (para sa GCash payment)"
@@ -1316,6 +1320,7 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
             aspectClass="h-48"
             icon={<QrCode size={16} />}
             hint="I-screenshot ang QR code mo sa GCash app, tapos i-upload dito."
+            cropAspect={1}
           />
           <ImageUploadField
             label="Livestock Transport Permit (opsyonal)"
@@ -1325,6 +1330,7 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
             aspectClass="h-40"
             icon={<Shield size={16} />}
             hint="Kung nagbebenta ka ng buhay na hayop at malayo ang biyahe, kailangan ng permit mula sa awtoridad (DA/BAI). I-upload dito."
+            cropAspect={4 / 3}
           />
           <div>
             <label className="flex items-center gap-2 cursor-pointer">

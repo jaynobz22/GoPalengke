@@ -312,6 +312,7 @@ export function AdminMarketingMaterials() {
                   bucket="affiliate-marketing"
                   folder="marketing"
                   aspectClass="h-32"
+                  cropAspect={4 / 3}
                 />
               )}
 

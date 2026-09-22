@@ -13,6 +13,7 @@ interface ImageUploadFieldProps {
   aspectClass?: string;
   icon?: React.ReactNode;
   hint?: string;
+  cropAspect?: number;
 }
 
 export function ImageUploadField({
@@ -24,6 +25,7 @@ export function ImageUploadField({
   aspectClass = 'h-40',
   icon,
   hint = 'Pumili ng larawan mula sa gallery o camera, tapos i-crop ang mahalagang bahagi.',
+  cropAspect,
 }: ImageUploadFieldProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -99,6 +101,7 @@ export function ImageUploadField({
           imageSrc={cropSrc}
           onCancel={() => setCropSrc(null)}
           onConfirm={handleCropConfirm}
+          defaultAspect={cropAspect}
         />
       )}
     </div>

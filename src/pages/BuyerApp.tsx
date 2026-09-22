@@ -3489,6 +3489,7 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
           bucket="profile-images"
           folder={`avatars/${profile?.id}`}
           aspectClass="h-32"
+          cropAspect={1}
           hint="Mag-upload ng larawan para makilala ka ng seller at rider. Para sa transparency ng transaction."
           onChange={async (url) => {
             if (!profile) return;
@@ -3516,6 +3517,7 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
           bucket="profile-images"
           folder={`houses/${profile?.id}`}
           aspectClass="h-40"
+          cropAspect={4 / 3}
           hint="Kailangan makita ang pinto o gate ng bahay."
           onChange={async (url) => {
             if (!profile) return;

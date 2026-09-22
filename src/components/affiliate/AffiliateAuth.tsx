@@ -188,6 +188,7 @@ export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
                   bucket="profile-images"
                   folder="affiliate-qr"
                   aspectClass="h-48"
+                  cropAspect={1}
                   icon={<QrCode size={16} className="text-gray-500" />}
                   hint="Mag-upload ng QR code para sa pagtanggap ng payout (GCash, Maya, Bank transfer, atbp.)"
                 />

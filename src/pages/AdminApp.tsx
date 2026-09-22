@@ -2439,6 +2439,7 @@ function SettingsTab() {
                 bucket="store-images"
                 folder="admin-qr"
                 aspectClass="h-40"
+                cropAspect={1}
                 hint="PNG o JPG. Makikita ito ng mga seller sa billing page nila."
               />
               <button
