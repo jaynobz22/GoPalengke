@@ -1717,13 +1717,13 @@ function RiderBottomNav({ tab, setTab, riderId, unreadMessages }: { tab: Tab; se
   ];
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 px-2 py-1.5 safe-bottom z-50">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 px-1 py-1.5 safe-bottom z-50">
       <div className="flex items-center justify-around">
         {items.map(item => {
           const Icon = item.icon;
           const active = tab === item.id;
           return (
-            <button key={item.id} onClick={() => setTab(item.id)} className="flex flex-col items-center gap-0.5 py-1.5 px-3 relative">
+            <button key={item.id} onClick={() => setTab(item.id)} className="flex-1 flex flex-col items-center gap-0.5 py-1.5 px-0.5 min-w-0 relative">
               <div className="relative">
                 <Icon size={22} className={active ? 'text-blue-600' : 'text-gray-400'} />
                 {item.badge && item.badge > 0 ? (
@@ -1732,7 +1732,7 @@ function RiderBottomNav({ tab, setTab, riderId, unreadMessages }: { tab: Tab; se
                   </span>
                 ) : null}
               </div>
-              <span className={`text-xs ${active ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>{item.label}</span>
+              <span className={`text-[10px] ${active ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>{item.label}</span>
             </button>
           );
         })}

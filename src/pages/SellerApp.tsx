@@ -2436,7 +2436,7 @@ function SellerBottomNav({ tab, setTab, storeId, unreadMessages }: { tab: Tab; s
                 ) : null}
               </div>
               <span
-                className={`text-xs ${
+                className={`text-[10px] ${
                   isAlert
                     ? 'text-red-500 font-bold'
                     : active

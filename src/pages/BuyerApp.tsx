@@ -3668,7 +3668,7 @@ function BottomNav({ tab, setTab, unreadMessages, orderUpdates, cartCount }: { t
   ];
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 px-2 py-1.5 safe-bottom z-50">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 px-1 py-1.5 safe-bottom z-50">
       <div className="flex items-center justify-around">
         {items.map(item => {
           const Icon = item.icon;
@@ -3678,7 +3678,7 @@ function BottomNav({ tab, setTab, unreadMessages, orderUpdates, cartCount }: { t
             <button
               key={item.id}
               onClick={() => setTab(item.id)}
-              className="flex flex-col items-center gap-0.5 py-1.5 px-3 relative"
+              className="flex-1 flex flex-col items-center gap-0.5 py-1.5 px-0.5 min-w-0 relative"
             >
               <div className="relative">
                 <Icon
@@ -3702,7 +3702,7 @@ function BottomNav({ tab, setTab, unreadMessages, orderUpdates, cartCount }: { t
                 ) : null}
               </div>
               <span
-                className={`text-xs ${
+                className={`text-[10px] ${
                   isAlert
                     ? 'text-red-500 font-bold'
                     : active
