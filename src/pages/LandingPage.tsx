@@ -93,7 +93,10 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
         <div className="relative z-20 bg-amber-400/95 backdrop-blur-sm overflow-hidden flex items-center gap-2 px-4 py-2">
           <Megaphone size={14} className="text-amber-900 flex-shrink-0" />
           <div className="overflow-hidden flex-1">
-            <div className="animate-marquee whitespace-nowrap text-xs font-medium text-amber-900">
+            <div
+              className="whitespace-nowrap text-xs font-medium text-amber-900"
+              style={{ animation: `marquee ${Math.max(15, announcement.message.length * 0.35)}s linear infinite` }}
+            >
               {announcement.message}
             </div>
           </div>
