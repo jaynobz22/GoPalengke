@@ -158,7 +158,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch { /* best-effort */ }
     }
 
+    // Send welcome email (idempotent — only sends once per user)
+    if (p && p.role !== 'admin') {
+      sendWelcomeEmail(data.user.id);
+    }
+
     return { error: null };
+  }
+
+  async function sendWelcomeEmail(userId: string) {
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-welcome-email`;
+      await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      });
+    } catch { /* best-effort */ }
   }
 
   async function signOut() {
