@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import type { UserRole } from '@/lib/types';
-import { Store, Bike, ShoppingCart, ArrowLeft, Check, Mail, ShieldCheck, Eye, EyeOff, BookOpen, ArrowRight, X, Bike as Motorcycle } from 'lucide-react';
+import { Store, Bike, ShoppingCart, ArrowLeft, Check, Mail, ShieldCheck, Eye, EyeOff, BookOpen, ArrowRight, X, Bike as Motorcycle, PlayCircle } from 'lucide-react';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
 import { navigate } from '@/lib/router';
 import { supabase } from '@/lib/supabase';
@@ -32,6 +32,15 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
   const [showPassword, setShowPassword] = useState(false);
   const [affiliateCode, setAffiliateCode] = useState('');
   const [vehicleType, setVehicleType] = useState<VehicleType>('motorcycle');
+  const [showTutorialPopup, setShowTutorialPopup] = useState(false);
+
+  useEffect(() => {
+    const dismissed = sessionStorage.getItem('gopalengke_tutorial_popup_dismissed');
+    if (!dismissed) {
+      const timer = setTimeout(() => setShowTutorialPopup(true), 800);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   function startResendCooldown() {
     setResendCooldown(60);
@@ -473,6 +482,52 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
           <div className="mt-6 flex items-center justify-center gap-2 text-sm text-gray-400">
             <ShieldCheck size={18} />
             <span>Para sa seguridad ng iyong account</span>
+          </div>
+        </div>
+      )}
+
+      {/* Tutorial Popup */}
+      {showTutorialPopup && mode === 'welcome' && (
+        <div className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center px-5 animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-slide-up">
+            <button
+              onClick={() => {
+                setShowTutorialPopup(false);
+                sessionStorage.setItem('gopalengke_tutorial_popup_dismissed', '1');
+              }}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:scale-90 transition"
+            >
+              <X size={18} />
+            </button>
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-full bg-brand-50 flex items-center justify-center mb-4">
+                <PlayCircle size={36} className="text-brand-600" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Gusto mo bang manood muna ng mga tutorial?</h3>
+              <p className="text-sm text-gray-500 mb-5 leading-relaxed">
+                Bago ka mag-sign up, panoorin muna ang mga tutorial video para mas maintindihan kung paano gamitin ang GoPalengke.
+              </p>
+              <button
+                onClick={() => {
+                  setShowTutorialPopup(false);
+                  sessionStorage.setItem('gopalengke_tutorial_popup_dismissed', '1');
+                  navigate('/tutorial');
+                }}
+                className="w-full py-3.5 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-brand-600/20 active:scale-[0.98] transition flex items-center justify-center gap-2"
+              >
+                <PlayCircle size={20} />
+                Panoorin ang Tutorials
+              </button>
+              <button
+                onClick={() => {
+                  setShowTutorialPopup(false);
+                  sessionStorage.setItem('gopalengke_tutorial_popup_dismissed', '1');
+                }}
+                className="w-full py-3 mt-2 text-gray-500 font-medium text-sm active:scale-[0.98] transition"
+              >
+                Skip, direkta sa sign up
+              </button>
+            </div>
           </div>
         </div>
       )}
