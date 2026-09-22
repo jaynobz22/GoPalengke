@@ -2726,25 +2726,27 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         </div>
       )}
 
-      {/* Live ETA Timer — hidden for livestock (pickup/meetup) orders */}
-      {currentOrder.status === 'picked_up' && currentOrder.rider_lat != null && currentOrder.rider_lng != null && currentOrder.delivery_method !== 'pickup' && currentOrder.delivery_method !== 'meetup' && store && (
+      {/* Live ETA Timer — shown when rider is on the way (pickup or delivery); hidden for livestock */}
+      {(currentOrder.status === 'ready_for_pickup' || currentOrder.status === 'picked_up') && currentOrder.rider_lat != null && currentOrder.rider_lng != null && currentOrder.delivery_method !== 'pickup' && currentOrder.delivery_method !== 'meetup' && store && (
         <LiveETATimer
           riderCoords={{ lat: currentOrder.rider_lat, lng: currentOrder.rider_lng }}
-          buyerCoords={getDeliveryCoords({
-            lat: currentOrder.delivery_lat,
-            lng: currentOrder.delivery_lng,
-            barangay: currentOrder.delivery_barangay,
-            city: currentOrder.delivery_city,
-            region: currentOrder.delivery_region,
-          })}
+          buyerCoords={currentOrder.status === 'ready_for_pickup'
+            ? getStoreCoords(store)
+            : getDeliveryCoords({
+                lat: currentOrder.delivery_lat,
+                lng: currentOrder.delivery_lng,
+                barangay: currentOrder.delivery_barangay,
+                city: currentOrder.delivery_city,
+                region: currentOrder.delivery_region,
+              })}
           riderName={rider?.full_name || 'Rider'}
           variant="buyer"
           gpsActive
         />
       )}
 
-      {/* Live Tracking Map — shown when rider is on the way */}
-      {currentOrder.status === 'picked_up' && currentOrder.rider_lat != null && currentOrder.rider_lng != null && store && (
+      {/* Live Tracking Map — shown when rider is on the way (to store or to buyer) */}
+      {(currentOrder.status === 'ready_for_pickup' || currentOrder.status === 'picked_up') && currentOrder.rider_lat != null && currentOrder.rider_lng != null && store && (
         <BuyerLiveTrackingMap
           riderLat={currentOrder.rider_lat}
           riderLng={currentOrder.rider_lng}
@@ -2760,6 +2762,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
           deliveryAddress={currentOrder.delivery_address || `${currentOrder.delivery_barangay} ${currentOrder.delivery_city} ${currentOrder.delivery_region}`}
           pickedUpAt={currentOrder.picked_up_at}
           sameCity={store?.city === currentOrder.delivery_city}
+          phase={currentOrder.status === 'ready_for_pickup' ? 'to_store' : 'to_buyer'}
         />
       )}
       {currentOrder.status === 'picked_up' && (currentOrder.rider_lat == null || currentOrder.rider_lng == null) && (
@@ -2771,6 +2774,19 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
             <div>
               <p className="text-sm font-semibold text-blue-800">Paparating na ang rider!</p>
               <p className="text-xs text-blue-600">Nasa daan na ang rider papunta sa iyo. Makikita ang live location dito pag nagsimula na ang rider.</p>
+            </div>
+          </div>
+        </div>
+      )}
+      {currentOrder.status === 'ready_for_pickup' && currentOrder.rider_id && (currentOrder.rider_lat == null || currentOrder.rider_lng == null) && (
+        <div className="bg-blue-50 rounded-2xl border border-blue-200 p-4 mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+              <Bike size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-blue-800">Nasa daan na ang rider papunta sa store!</p>
+              <p className="text-xs text-blue-600">Tinuloy na ng rider ang pagpunta sa store para kunin ang order mo. Makikita ang live location dito pag nagsimula na ang rider.</p>
             </div>
           </div>
         </div>

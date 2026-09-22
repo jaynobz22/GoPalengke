@@ -13,6 +13,7 @@ interface BuyerLiveTrackingMapProps {
   deliveryAddress: string;
   pickedUpAt: string | null;
   sameCity: boolean;
+  phase?: 'to_store' | 'to_buyer';
 }
 
 const riderIcon = L.divIcon({
@@ -29,6 +30,13 @@ const homeIcon = L.divIcon({
   iconAnchor: [14, 28],
 });
 
+const storeMarkerIcon = L.divIcon({
+  className: 'custom-marker',
+  html: '<div style="background:#16a34a;width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;"><span style="transform:rotate(45deg);font-size:14px;">🏪</span></div>',
+  iconSize: [28, 28],
+  iconAnchor: [14, 28],
+});
+
 export function BuyerLiveTrackingMap({
   riderLat,
   riderLng,
@@ -38,7 +46,12 @@ export function BuyerLiveTrackingMap({
   deliveryAddress,
   pickedUpAt,
   sameCity,
+  phase = 'to_buyer',
 }: BuyerLiveTrackingMapProps) {
+  const isToStore = phase === 'to_store';
+  const destination = isToStore ? storeCoords : deliveryCoords;
+  const destLabel = isToStore ? 'Store (pickup)' : 'Drop-off location';
+  const destIcon = isToStore ? storeMarkerIcon : homeIcon;
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const riderMarkerRef = useRef<L.Marker | null>(null);
@@ -51,7 +64,6 @@ export function BuyerLiveTrackingMap({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const riderPos: Coords = { lat: riderLat, lng: riderLng };
-  const destination = deliveryCoords;
 
   // Timer for elapsed time
   useEffect(() => {
@@ -135,9 +147,9 @@ export function BuyerLiveTrackingMap({
       if (destMarkerRef.current) {
         destMarkerRef.current.setLatLng([destination.lat, destination.lng]);
       } else {
-        destMarkerRef.current = L.marker([destination.lat, destination.lng], { icon: homeIcon })
+        destMarkerRef.current = L.marker([destination.lat, destination.lng], { icon: destIcon })
           .addTo(map)
-          .bindPopup('Drop-off location');
+          .bindPopup(destLabel);
       }
     }
   }, [riderLat, riderLng, destination?.lat, destination?.lng]);
@@ -177,7 +189,7 @@ export function BuyerLiveTrackingMap({
   return (
     <div className="bg-white rounded-2xl border border-blue-200 p-4 mb-3">
       <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-        <Navigation size={18} className="text-blue-600" /> Live Location ng Rider
+        <Navigation size={18} className="text-blue-600" /> {isToStore ? 'Rider papunta sa Store' : 'Live Location ng Rider'}
       </h3>
 
       {/* Leaflet Map */}
@@ -238,7 +250,7 @@ export function BuyerLiveTrackingMap({
           <span className="text-sm text-gray-600">{riderName}</span>
         </div>
         <div className="flex items-center gap-1 text-xs text-gray-400">
-          <MapPin size={12} /> {deliveryAddress}
+          <MapPin size={12} /> {isToStore ? 'Store (pickup)' : deliveryAddress}
         </div>
       </div>
     </div>

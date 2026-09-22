@@ -582,7 +582,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   }, [order.id, order.delivery_group_id]);
 
   useEffect(() => {
-    if (currentOrder.status !== 'picked_up' || !profile) return;
+    if ((currentOrder.status !== 'ready_for_pickup' && currentOrder.status !== 'picked_up') || !profile) return;
 
     function startGps() {
       if (!navigator.geolocation) return;
@@ -816,8 +816,8 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         </div>
       )}
 
-      {/* Live ETA Timer — hidden for livestock (pickup/meetup) orders */}
-      {currentOrder.status === 'picked_up' && currentOrder.picked_up_at && currentOrder.delivery_method !== 'pickup' && currentOrder.delivery_method !== 'meetup' && store && (() => {
+      {/* Live ETA Timer — shown from pickup phase; hidden for livestock (pickup/meetup) orders */}
+      {(currentOrder.status === 'ready_for_pickup' || currentOrder.status === 'picked_up') && currentOrder.delivery_method !== 'pickup' && currentOrder.delivery_method !== 'meetup' && store && (() => {
         const bCoords = getDeliveryCoords({
           lat: currentOrder.delivery_lat,
           lng: currentOrder.delivery_lng,
@@ -836,8 +836,8 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         );
       })()}
 
-      {/* In-App Navigation Map */}
-      {currentOrder.status === 'picked_up' && store && (() => {
+      {/* In-App Navigation Map — shown from pickup phase */}
+      {(currentOrder.status === 'ready_for_pickup' || currentOrder.status === 'picked_up') && store && (() => {
         const sCoords = getStoreCoords(store);
         const bCoords = getDeliveryCoords({
           lat: currentOrder.delivery_lat,
