@@ -235,7 +235,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
       supabase.from('orders').select('*, store:stores(*), buyer:profiles!orders_buyer_id_fkey(full_name)')
         .eq('rider_id', profile.id).eq('status', 'ready_for_pickup').order('created_at', { ascending: true }),
       supabase.from('orders').select('*, store:stores(*), buyer:profiles!orders_buyer_id_fkey(full_name)')
-        .eq('rider_id', profile.id).in('status', ['ready_for_pickup', 'picked_up']).order('created_at', { ascending: false }),
+        .eq('rider_id', profile.id).eq('status', 'picked_up').order('created_at', { ascending: false }),
     ]);
     setAvailableOrders((available || []) as any);
     setAssignedOrders((assigned || []) as any);
@@ -268,7 +268,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
   async function acceptOrder(order: Order) {
     if (!profile) return;
     setAccepting(order.id);
-    const update = { rider_id: profile.id, status: 'ready_for_pickup' as const };
+    const update = { rider_id: profile.id, status: 'picked_up' as const };
     let error;
     if (order.delivery_group_id) {
       ({ error } = await supabase.from('orders').update(update).eq('delivery_group_id', order.delivery_group_id));
