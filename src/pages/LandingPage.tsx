@@ -4,7 +4,7 @@ import { navigate } from '@/lib/router';
 import type { Store, Product, Category, Announcement, Review } from '@/lib/types';
 import {
   MapPin, Star, Plus, ArrowRight, ShoppingBag, Bike, Store as StoreIcon,
-  Truck, Shield, Clock, ChevronRight, Sparkles, TrendingUp, Megaphone,
+  Truck, Shield, Clock, ChevronRight, Sparkles, TrendingUp, Megaphone, X,
 } from 'lucide-react';
 
 export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
@@ -47,6 +47,7 @@ export function LandingPage({ onGetStarted }: { onGetStarted?: () => void }) {
 // ============= HERO =============
 function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
   const slides = [
     { src: '/images/Copilot_20260906_113445.png', alt: 'Tindera ng sariwang seafood sa palengke' },
@@ -90,17 +91,62 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
 
       {/* Announcement bar — top of page, full width */}
       {announcement && (
-        <div className="relative z-20 bg-amber-400/95 backdrop-blur-sm overflow-hidden flex items-center gap-2 px-4 py-2">
-          <Megaphone size={14} className="text-amber-900 flex-shrink-0" />
-          <div className="overflow-hidden flex-1">
-            <div
-              className="whitespace-nowrap text-xs font-medium text-amber-900"
-              style={{ animation: `marquee ${Math.max(6, announcement.message.length * 0.08)}s linear infinite` }}
-            >
-              {announcement.message}
+        <>
+          <button
+            type="button"
+            onClick={() => setShowAnnouncementModal(true)}
+            className="relative z-20 bg-amber-400/95 backdrop-blur-sm overflow-hidden flex items-center gap-2 px-4 py-2 w-full text-left active:bg-amber-500/95 transition"
+          >
+            <Megaphone size={14} className="text-amber-900 flex-shrink-0" />
+            <div className="overflow-hidden flex-1">
+              <div
+                className="whitespace-nowrap text-xs font-medium text-amber-900"
+                style={{ animation: `marquee ${Math.max(6, announcement.message.length * 0.08)}s linear infinite` }}
+              >
+                {announcement.message}
+              </div>
             </div>
-          </div>
-        </div>
+            <span className="text-[10px] text-amber-900/70 flex-shrink-0 hidden sm:inline">I-tap para basahin</span>
+          </button>
+
+          {showAnnouncementModal && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+              onClick={() => setShowAnnouncementModal(false)}
+            >
+              <div
+                className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-5 animate-scale-pop"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                      <Megaphone size={16} className="text-amber-600" />
+                    </div>
+                    <h3 className="font-bold text-gray-800 text-sm">Announcement</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAnnouncementModal(false)}
+                    className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:scale-90 transition"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
+                  {announcement.message}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowAnnouncementModal(false)}
+                  className="w-full mt-4 py-2.5 bg-brand-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition"
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Desktop nav bar */}
