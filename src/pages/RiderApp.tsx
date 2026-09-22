@@ -23,7 +23,7 @@ import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
   Share2, Copy, ExternalLink, Power, Star, LogOut, Shield,
-  QrCode, Download, DollarSign, Clock, X, Info, Trash2, Wallet, FileText,
+  QrCode, Download, DollarSign, X, Info, Trash2, Wallet, FileText, UserCheck,
 } from 'lucide-react';
 import { VEHICLE_TIERS, type VehicleTier } from '@/lib/deliveryFee';
 import { formatRegionForDisplay } from '@/lib/philippineLocations';
