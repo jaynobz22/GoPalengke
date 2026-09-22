@@ -26,6 +26,7 @@ import {
   QrCode, Download, DollarSign, X, Info, Trash2, Wallet, FileText,
 } from 'lucide-react';
 import { VEHICLE_TIERS, type VehicleTier } from '@/lib/deliveryFee';
+import { formatRegionForDisplay } from '@/lib/philippineLocations';
 
 type Tab = 'deliveries' | 'messages' | 'history' | 'billing' | 'profile';
 
@@ -889,7 +890,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
                 <div className="flex-1">
                   <p className="text-xs text-gray-400 font-medium">PICKUP {allStores.length > 1 ? `${idx + 1} ng ${allStores.length}` : ''}</p>
                   <p className="font-semibold text-sm text-gray-800">{storeData.name}</p>
-                  <p className="text-sm text-gray-500">{storeData.barangay}, {storeData.city}, {storeData.region}</p>
+                  <p className="text-sm text-gray-500">{storeData.barangay}, {storeData.city}, {formatRegionForDisplay(storeData.region)}</p>
                   {currentOrder.status === 'picked_up' && !isPickedUp && (
                     <button
                       onClick={() => {
@@ -917,12 +918,12 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
             {currentOrder.delivery_address ? (
               <>
                 <p className="text-sm text-gray-500">{currentOrder.delivery_address}</p>
-                <p className="text-sm text-gray-500">{currentOrder.delivery_barangay}, {currentOrder.delivery_city}, {currentOrder.delivery_region}</p>
+                <p className="text-sm text-gray-500">{currentOrder.delivery_barangay}, {currentOrder.delivery_city}, {formatRegionForDisplay(currentOrder.delivery_region)}</p>
               </>
             ) : (
               <>
                 {buyer?.complete_address && <p className="text-sm text-gray-500">{buyer.complete_address}</p>}
-                <p className="text-sm text-gray-500">{buyer?.barangay}, {buyer?.city}, {buyer?.region}</p>
+                <p className="text-sm text-gray-500">{buyer?.barangay}, {buyer?.city}, {formatRegionForDisplay(buyer?.region)}</p>
               </>
             )}
             {buyer?.house_photo_url && (
@@ -1220,7 +1221,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
   }
 
   return (
-    <div className="px-5 py-4 pb-28">
+    <div className="px-5 py-4 pb-40">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Profile ko</h2>
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
         <div className="flex items-center gap-3 mb-4">
@@ -1473,7 +1474,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           <Phone size={16} /><span>{profile?.phone || 'Wala pang numero'}</span>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-600">
-          <MapPin size={16} /><span>{profile?.barangay}, {profile?.city}, {profile?.region}</span>
+          <MapPin size={16} /><span>{profile?.barangay}, {profile?.city}, {formatRegionForDisplay(profile?.region)}</span>
         </div>
       </div>
 

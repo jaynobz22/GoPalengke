@@ -7,7 +7,7 @@ import { haversineKm, VEHICLE_TIERS, type VehicleTier } from '@/lib/deliveryFee'
 import type { Store, Product, Order, OrderItem, OrderStatus, Conversation, SellerFee, AdminConversation } from '@/lib/types';
 import { PAYMENT_THRESHOLD } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
-import { getCityMarkets } from '@/lib/philippineLocations';
+import { getCityMarkets, formatRegionForDisplay } from '@/lib/philippineLocations';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
 import { compressImage } from '@/lib/imageCompress';
 import { ImageUploadField } from '@/components/ImageUploadField';

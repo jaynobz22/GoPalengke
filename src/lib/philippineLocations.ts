@@ -236,6 +236,31 @@ export const REGIONS_LIST: RegionInfo[] = [
   { code: '1900000000', name: 'Bangsamoro Autonomous Region In Muslim Mindanao (BARMM)' },
 ];
 
+// Format a region code (PSGC 10-digit or old name) for compact display.
+// Returns the region number (e.g. "11" for Davao) or the short name (e.g. "NCR").
+export function formatRegionForDisplay(region: string | null | undefined): string {
+  if (!region) return '';
+  // PSGC 10-digit code → extract region number
+  if (/^\d{10}$/.test(region)) {
+    const num = String(Number(region.slice(0, 2)));
+    // Special cases: NCR=13, CAR=14, BARMM=19, Region XIII=16
+    if (region.startsWith('13')) return 'NCR';
+    if (region.startsWith('14')) return 'CAR';
+    if (region.startsWith('19')) return 'BARMM';
+    if (region.startsWith('16')) return '13';
+    return num;
+  }
+  // Old-style region names → extract number
+  const m = region.match(/Region\s+([IVX]+)/i);
+  if (m) {
+    const roman = m[1].toUpperCase();
+    const map: Record<string, string> = { 'I': '1', 'II': '2', 'III': '3', 'IV': '4', 'V': '5', 'VI': '6', 'VII': '7', 'VIII': '8', 'IX': '9', 'X': '10', 'XI': '11', 'XII': '12', 'XIII': '13' };
+    return map[roman] || region;
+  }
+  // Already short names like "NCR", "CAR", "BARMM"
+  return region;
+}
+
 // Synchronous stubs — return empty arrays. Use async versions instead.
 export function getRegionCities(_regionCode: string): CityInfo[] {
   return [];

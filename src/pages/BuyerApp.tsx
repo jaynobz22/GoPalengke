@@ -14,7 +14,7 @@ import {
   BASE_DELIVERY_FEE, PER_KM_RATE, computeFleetDeliveryFee, getRequiredTier, getZoneRates, computeDistanceCharge, computeWeightSurcharge, FREE_WEIGHT_KG, type ZoneRates, type VehicleTier,
   type Coords, type RouteResult,
 } from '@/lib/deliveryFee';
-import { fetchBarangaysByCity, fetchCitiesByRegion, fetchCitiesByProvince, fetchProvincesByRegion } from '@/lib/philippineLocations';
+import { fetchBarangaysByCity, fetchCitiesByRegion, fetchCitiesByProvince, fetchProvincesByRegion, formatRegionForDisplay as sharedFormatRegion } from '@/lib/philippineLocations';
 
 const OLD_REGION_MAP: Record<string, string> = {
   'NCR': '1300000000', 'CAR': '1400000000',
@@ -26,9 +26,7 @@ const OLD_REGION_MAP: Record<string, string> = {
 };
 
 function formatRegionForDisplay(region: string | null | undefined): string {
-  if (!region) return '';
-  if (/^\d{10}$/.test(region)) return String(Number(region.slice(0, 2)));
-  return region.replace(/^Region /, '').replace(/^XI$/, '11');
+  return sharedFormatRegion(region);
 }
 import { BuyerLiveTrackingMap } from '@/components/BuyerLiveTrackingMap';
 import { LiveETATimer } from '@/components/LiveETATimer';
@@ -3462,7 +3460,7 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
   }
 
   return (
-    <div className="px-5 py-4 pb-28">
+    <div className="px-5 py-4 pb-40">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Profile ko</h2>
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
         <div className="flex items-center gap-3 mb-4">
@@ -3477,7 +3475,7 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
           {profile?.phone && (
             <div className="flex items-center gap-2 text-gray-600"><Phone size={16} /><span>{profile.phone}</span></div>
           )}
-          <div className="flex items-center gap-2 text-gray-600"><MapPin size={16} /><span>{profile?.barangay}, {profile?.city}, {profile?.region}</span></div>
+          <div className="flex items-center gap-2 text-gray-600"><MapPin size={16} /><span>{profile?.barangay}, {profile?.city}, {formatRegionForDisplay(profile?.region)}</span></div>
         </div>
       </div>
 
