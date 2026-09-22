@@ -38,7 +38,7 @@ export function LegalPages({ type, onBack }: { type: LegalPageType; onBack: () =
             {type === 'antiscam' && <ShieldCheck size={28} className="text-white" />}
             <h1 className="text-2xl font-bold">{titles[type]}</h1>
           </div>
-          <p className="text-brand-100 text-sm mt-2">Last updated: September 17, 2026</p>
+          <p className="text-brand-100 text-sm mt-2">Last updated: September 22, 2026</p>
         </div>
       </div>
 
@@ -83,6 +83,7 @@ function TermsContent() {
           <li><strong>Seller</strong> — Can set up a store, post products, and receive orders. Required to pay a 3% commission on each sale. Once total sales reach ₱5,000, a monthly rent of ₱700 is automatically activated and added to the running balance.</li>
           <li><strong>Rider</strong> — Can accept delivery assignments, update order status, and deliver orders to buyers. Required to submit identity verification (valid ID, plate number, motor model, etc.). A 3% platform fee is deducted from each delivery earning. Once accumulated fees reach ₱500, the rider must pay via the Billing tab to continue accepting new deliveries.</li>
           <li><strong>Admin</strong> — Manages platform approvals, announcements, commission, and moderation.</li>
+          <li><strong>Affiliate</strong> — Earns commission by referring new sellers and riders to the platform. A 2-tier system gives direct commission (Tier 1) for your own referrals and an override commission (Tier 2) for referrals made by affiliates you invited. Commissions are credited when a referral hits their milestone (₱1,000 admin-collected for sellers, ₱500 for riders). Payouts require a minimum wallet balance of ₱1,000.</li>
         </ul>
       </Section>
 
@@ -170,9 +171,37 @@ function TermsContent() {
           seller, and buyer and rider. All conversations are based on a specific order. There is also
           admin messaging and video call for support and user verification.
         </p>
+        <p className="mt-2">
+          Video calls require credits. Each user starts with a limited number of free video call credits.
+          Additional credits can be purchased in the Profile tab by uploading a screenshot of payment
+          (GCash/Maya) to the admin's QR code. Credits are reviewed and approved by the admin before
+          being added to your account.
+        </p>
       </Section>
 
-      <Section title="12. Prohibited Activities">
+      <Section title="12. Scheduled Delivery">
+        <p>
+          Buyers may choose a scheduled delivery date and time during checkout, in addition to the
+          standard immediate delivery option. The seller and rider will see the selected schedule and
+          must fulfill the order within the chosen time window. Scheduled deliveries are still subject
+          to the same cancellation and payment policies as immediate deliveries.
+        </p>
+      </Section>
+
+      <Section title="13. Affiliate Program">
+        <p>
+          The GoPalengke Affiliate Program allows users to earn commission by referring new sellers and
+          riders. Affiliates receive a unique referral link and code. When a referred seller accumulates
+          ₱1,000 in admin-collected fees, the affiliate earns ₱150 (Tier 1). When a referred rider
+          accumulates ₱500 in admin-collected fees, the affiliate earns ₱35 (Tier 1). If you invite
+          other affiliates, you also earn a Tier 2 override commission (₱50 per seller milestone, ₱15
+          per rider milestone) from their referrals. Commissions are credited to your wallet and can be
+          withdrawn via payout request once your balance reaches ₱1,000. Affiliate accounts are
+          separate from buyer/seller/rider accounts and have their own dashboard.
+        </p>
+      </Section>
+
+      <Section title="14. Prohibited Activities">
         <ul className="list-disc pl-5 space-y-2">
           <li>Do not post fake or misleading products.</li>
           <li>Do not sell contraband, expired, or prohibited products.</li>
@@ -184,7 +213,7 @@ function TermsContent() {
         </ul>
       </Section>
 
-      <Section title="13. Account Suspension and Termination">
+      <Section title="15. Account Suspension and Termination">
         <p>
           The admin may suspend, freeze, or delete any account that violates these terms. A seller freeze
           is automatic when fees are not paid within the grace period. Any account suspended for selling
@@ -192,7 +221,7 @@ function TermsContent() {
         </p>
       </Section>
 
-      <Section title="14. Limitation of Liability">
+      <Section title="16. Limitation of Liability">
         <p>
           GoPalengke is a platform that connects buyers, sellers, and riders. We are not responsible for
           the quality, freshness, or safety of products sold by sellers. We are also not responsible for
@@ -201,7 +230,7 @@ function TermsContent() {
         </p>
       </Section>
 
-      <Section title="15. Changes to Terms">
+      <Section title="17. Changes to Terms">
         <p>
           GoPalengke may change these Terms and Conditions at any time. Changes take effect immediately
           after being posted on the platform. Continued use of the platform after changes means you agree
@@ -209,7 +238,7 @@ function TermsContent() {
         </p>
       </Section>
 
-      <Section title="16. Contact">
+      <Section title="18. Contact">
         <p>
           For questions about these Terms, you may contact the admin using the admin messaging feature
           on the platform.
@@ -335,6 +364,9 @@ function PrivacyContent() {
           <li><strong>Location data</strong> — live GPS coordinates of the rider during active delivery, and store coordinates of the seller</li>
           <li><strong>Order and payment details</strong> — order history, payment method, reference numbers</li>
           <li><strong>Chat messages and video call records</strong> — for buyer-seller, buyer-rider, and admin-user conversations</li>
+          <li><strong>Video call credit purchase screenshots</strong> — payment proof for credit top-ups</li>
+          <li><strong>Affiliate account details</strong> — referral code, wallet balance, payout QR code, and transaction history (affiliates only)</li>
+          <li><strong>Push notification subscription</strong> — browser/device push token for sending order updates and announcements</li>
         </ul>
       </Section>
 
@@ -352,6 +384,8 @@ function PrivacyContent() {
           <li>Reviews and ratings system</li>
           <li>Customer support and dispute resolution</li>
           <li>Platform security and fraud prevention</li>
+          <li>Sending push notifications for order updates, messages, and announcements</li>
+          <li>Processing affiliate referrals, commission tracking, and payout requests</li>
         </ul>
       </Section>
 
@@ -699,6 +733,21 @@ function AntiscamContent() {
               </p>
             </div>
           </div>
+
+          {/* Affiliate fraud */}
+          <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-3">
+            <UserX size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-red-700 text-sm">Affiliate Referral Fraud</p>
+              <p className="text-red-600 text-xs mt-1">
+                Creating fake seller or rider accounts using your own affiliate referral link to
+                artificially trigger milestone commissions, or self-referring through alternate
+                accounts, is strictly prohibited. Affiliates found manipulating the referral system
+                will have their commissions voided, wallet balance forfeited, and affiliate account
+                permanently banned.
+              </p>
+            </div>
+          </div>
         </div>
       </Section>
 
@@ -985,6 +1034,30 @@ function FaqContent() {
     {
       q: 'Why can\'t livestock be delivered by a rider?',
       a: 'Due to local quarantine checkpoints, health regulations, and animal welfare, standard motorcycle riders and platform couriers are strictly prohibited from transporting live animals. When your cart contains a livestock item, the rider delivery option is automatically disabled. The system forces the transaction to "Store Pick-Up" or "Local Meet-Up" mode, and the delivery fee is set to exactly ₱0.00. You and the seller must coordinate the pick-up or meet-up location and time through the platform\'s chat feature.',
+    },
+    {
+      q: 'How do video call credits work?',
+      a: 'Video calls on GoPalengke require credits. Each user starts with a limited number of free credits. When you run out, you can buy more in the Profile tab by uploading a screenshot of your GCash/Maya payment to the admin\'s QR code. The admin will review and approve your purchase, and the credits will be added to your account. Credits are shared across all your video calls — buyer-seller, buyer-rider, and admin support calls.',
+    },
+    {
+      q: 'Can I schedule a delivery for a later time?',
+      a: 'Yes. During checkout, you can choose between immediate delivery (ASAP) or scheduled delivery. For scheduled delivery, select your preferred date and time. The seller and rider will see the schedule and must fulfill the order within that time window. The same cancellation and payment policies apply to scheduled deliveries.',
+    },
+    {
+      q: 'What is the Affiliate Program?',
+      a: 'The Affiliate Program lets you earn commission by referring new sellers and riders to GoPalengke. You get a unique referral link and code. When a referred seller reaches ₱1,000 in admin-collected fees, you earn ₱150 (Tier 1). When a referred rider reaches ₱500 in admin-collected fees, you earn ₱35 (Tier 1). If you invite other affiliates, you also earn a Tier 2 override (₱50 per seller milestone, ₱15 per rider milestone) from their referrals. You can request a payout once your wallet balance reaches ₱1,000. Affiliate accounts are separate from buyer/seller/rider accounts and have their own dashboard at /affiliate/dashboard.',
+    },
+    {
+      q: 'How do push notifications work?',
+      a: 'GoPalengke can send push notifications to your device for important updates like new orders, messages, delivery status changes, and admin announcements. You will be asked for permission to enable push notifications. You can manage or disable them anytime through your browser or device settings.',
+    },
+    {
+      q: 'What is the Rider Billing system?',
+      a: 'A 3% platform fee is deducted from each delivery earning. Once your accumulated platform fees reach ₱500, you will need to pay through the Billing tab. While your account is frozen due to unpaid fees, you can still log in and view your dashboard, but you cannot accept new deliveries. After your payment is approved by the admin, your account is reactivated and the 3% fee starts accumulating again. You can upload a payment receipt (QR code screenshot) in the Billing tab for admin approval.',
+    },
+    {
+      q: 'Can I order products by weight (per kilo)?',
+      a: 'Yes. Some products are sold per kilo and allow fractional quantities. For example, you can order 0.5 kilo of fish or 1.25 kilos of meat. The system will compute the total price based on the exact weight you choose. Products that are sold per piece still require whole-number quantities.',
     },
   ];
 
