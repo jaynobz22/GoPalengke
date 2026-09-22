@@ -551,7 +551,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const [pickedUpStores, setPickedUpStores] = useState<Set<string>>(new Set());
   const [codRef, setCodRef] = useState(order.cod_payment_reference || '');
   const [showCodPayment, setShowCodPayment] = useState(false);
-  const [navPhase, setNavPhase] = useState<NavPhase>('to_store');
+  const [navPhase, setNavPhase] = useState<NavPhase>(order.status === 'picked_up' ? 'to_buyer' : 'to_store');
   const [liveEarnings, setLiveEarnings] = useState<{ fee: number; distanceKm: number } | null>(null);
   const handleEarningsUpdate = useCallback((fee: number, distanceKm: number) => {
     setLiveEarnings(prev => {
@@ -957,8 +957,8 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         </div>
         <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-around">
           <div className="text-center">
-            <p className="text-xs text-gray-400">{liveEarnings ? 'Store→Buyer Distance' : 'Estimated Distance'}</p>
-            <p className="font-bold text-gray-800">{liveEarnings ? `${liveEarnings.distanceKm} km` : `~${estimatedKm} km`}
+            <p className="text-xs text-gray-400">{currentOrder.status === 'picked_up' && liveEarnings ? 'Store→Buyer Distance' : 'Estimated Distance'}</p>
+            <p className="font-bold text-gray-800">{currentOrder.status === 'picked_up' && liveEarnings ? `${liveEarnings.distanceKm} km` : `~${estimatedKm} km`}
             </p>
           </div>
           <div className="text-center">
@@ -1030,9 +1030,9 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           </div>
           <div className="flex justify-between text-sm text-blue-600 mt-1">
             <span>Iyong kita (delivery fee)</span>
-            <span>₱{liveEarnings ? liveEarnings.fee.toFixed(2) : totalFee.toFixed(2)}</span>
+            <span>₱{currentOrder.status === 'picked_up' && liveEarnings ? liveEarnings.fee.toFixed(2) : totalFee.toFixed(2)}</span>
           </div>
-          {liveEarnings && (
+          {currentOrder.status === 'picked_up' && liveEarnings && (
             <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
               <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
               Live na na-update base sa aktwal na ruta

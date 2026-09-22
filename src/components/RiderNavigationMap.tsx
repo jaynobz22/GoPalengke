@@ -180,11 +180,10 @@ export function RiderNavigationMap({
       };
       setRouteData(routeResult);
 
-      // Update earnings — always based on store-to-buyer distance, not rider-to-destination
-      if (onEarningsUpdateRef.current && storeCoords && buyerCoords) {
-        const storeToBuyerKm = haversineKm(storeCoords, buyerCoords);
-        const tiered = computeTieredDeliveryFee(storeToBuyerKm, 0, storeRegion, storeCity);
-        onEarningsUpdateRef.current(tiered.total, Math.round(storeToBuyerKm * 100) / 100);
+      // Update earnings — only when heading to buyer (after pickup), based on actual route distance
+      if (onEarningsUpdateRef.current && phase === 'to_buyer' && storeCoords && buyerCoords) {
+        const tiered = computeTieredDeliveryFee(routeResult.distanceKm, 0, storeRegion, storeCity);
+        onEarningsUpdateRef.current(tiered.total, routeResult.distanceKm);
       }
     } catch (err) {
       // Fallback: straight-line distance with haversine
@@ -201,10 +200,9 @@ export function RiderNavigationMap({
       };
       setRouteData(fallbackRoute);
       setRouteError('Hindi available ang turn-by-turn routing. Straight-line distance lang ang ipinapakita.');
-      if (onEarningsUpdateRef.current && storeCoords && buyerCoords) {
-        const storeToBuyerKm = haversineKm(storeCoords, buyerCoords);
-        const tiered = computeTieredDeliveryFee(storeToBuyerKm, 0, storeRegion, storeCity);
-        onEarningsUpdateRef.current(tiered.total, Math.round(storeToBuyerKm * 100) / 100);
+      if (onEarningsUpdateRef.current && phase === 'to_buyer' && storeCoords && buyerCoords) {
+        const tiered = computeTieredDeliveryFee(distKm, 0, storeRegion, storeCity);
+        onEarningsUpdateRef.current(tiered.total, Math.round(distKm * 100) / 100);
       }
     } finally {
       setLoadingRoute(false);
@@ -301,9 +299,10 @@ export function RiderNavigationMap({
   }, [phase]);
 
   const liveDistanceKm = routeData?.distanceKm ?? 0;
-  // Fee is always based on store-to-buyer distance, not rider-to-destination
-  const storeToBuyerKm = (storeCoords && buyerCoords) ? Math.round(haversineKm(storeCoords, buyerCoords) * 100) / 100 : 0;
-  const liveFee = computeTieredDeliveryFee(storeToBuyerKm, 0, storeRegion, storeCity).total;
+  // Fee only computed during to_buyer phase (after pickup), based on actual route distance
+  const liveFee = phase === 'to_buyer'
+    ? computeTieredDeliveryFee(liveDistanceKm, 0, storeRegion, storeCity).total
+    : 0;
 
   return (
     <div className="space-y-3">
@@ -367,8 +366,12 @@ export function RiderNavigationMap({
             </div>
             <div className="bg-white rounded-xl border border-gray-100 p-3 text-center">
               <DollarSign size={16} className="text-green-600 mx-auto mb-1" />
-              <p className="text-xs text-gray-400">Kita (store→buyer)</p>
-              <p className="font-bold text-green-600 text-sm">₱{liveFee.toFixed(0)}</p>
+              <p className="text-xs text-gray-400">Kita</p>
+              {phase === 'to_buyer' ? (
+                <p className="font-bold text-green-600 text-sm">₱{liveFee.toFixed(0)}</p>
+              ) : (
+                <p className="font-bold text-gray-300 text-sm">—</p>
+              )}
             </div>
           </div>
 
