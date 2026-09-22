@@ -1532,9 +1532,12 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
 
     if (sCoords && deliveryCoords && deliveryPin) {
       const road = roadDistanceCache[store.id];
-      const distKm = road ? road.distanceKm : haversineKm(sCoords, deliveryCoords);
+      if (!road) {
+        return { fee: 0, distanceKm: 0, isEstimated: true, distanceCharge: 0, weightSurcharge: 0, totalWeightKg, isNcr: isNcrRegion(store.region, store.city), tier, riderNet: 0, commission: 0 };
+      }
+      const distKm = road.distanceKm;
       const fleet = computeFleetDeliveryFee(distKm, totalWeightKg, store.region, store.city, tier);
-      return { fee: fleet.total, distanceKm: Math.round(distKm * 100) / 100, isEstimated: !road, distanceCharge: fleet.distanceCharge, weightSurcharge: fleet.weightSurcharge, totalWeightKg, isNcr: fleet.isNcr, tier: fleet.tier, riderNet: fleet.riderNet, commission: fleet.commission };
+      return { fee: fleet.total, distanceKm: Math.round(distKm * 100) / 100, isEstimated: false, distanceCharge: fleet.distanceCharge, weightSurcharge: fleet.weightSurcharge, totalWeightKg, isNcr: fleet.isNcr, tier: fleet.tier, riderNet: fleet.riderNet, commission: fleet.commission };
     }
     const km = estimateDistanceKm(
       { barangay: store.barangay, city: store.city, region: store.region },
@@ -1550,6 +1553,26 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
       alert('Kailangan mag-upload ng larawan ng bahay mo sa Profile bago mag-order. Para makilala ng rider kung aling bahay ang pupuntahan.');
       return;
     }
+
+    // Require road distance for all stores before placing order — no straight-line fallback
+    if (deliveryPin) {
+      const allStores = Object.values(grouped).map(items => items[0].store);
+      const missing = allStores.filter(s => !roadDistanceCache[s.id]);
+      if (missing.length > 0) {
+        setPlacing(true);
+        const updates: Record<string, { distanceKm: number; durationMin: number }> = {};
+        for (const store of missing) {
+          const sCoords = getStoreCoords(store);
+          if (sCoords && deliveryPin) {
+            const result = await fetchRoadDistance(sCoords, deliveryPin);
+            updates[store.id] = result;
+          }
+        }
+        setRoadDistanceCache(prev => ({ ...prev, ...updates }));
+        setPlacing(false);
+      }
+    }
+
     setPlacing(true);
 
     // Security: Order flooding check — max 4 distinct stores in 2 min
@@ -1861,6 +1884,13 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                   </div>
                 )}
               </div>
+            ) : fee === 0 && deliveryPin && !roadDistanceCache[store.id] ? (
+              <div className="mt-3 pt-3 border-t border-gray-50">
+                <div className="flex items-center gap-2 text-xs text-brand-600 bg-brand-50 rounded-xl px-3 py-2.5">
+                  <span className="w-4 h-4 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
+                  Kinukuha ang road distance para sa eksaktong delivery fee...
+                </div>
+              </div>
             ) : (
               <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
@@ -1955,10 +1985,10 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
 
       <button
         onClick={placeOrder}
-        disabled={placing || !canAct || !profile?.house_photo_url}
+        disabled={placing || !canAct || !profile?.house_photo_url || (!!deliveryPin && Object.values(grouped).some(([_, items]) => !roadDistanceCache[items[0].store.id]))}
         className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50"
       >
-        {placing ? 'Nagpapadala...' : `Mag-order Na · ₱${grandTotal.toFixed(2)}`}
+        {placing ? 'Nagpapadala...' : !!deliveryPin && Object.values(grouped).some(([_, items]) => !roadDistanceCache[items[0].store.id]) ? 'Kinukuha ang road distance...' : `Mag-order Na · ₱${grandTotal.toFixed(2)}`}
       </button>
 
       {/* IP / Delivery Mismatch Verification Modal */}
@@ -2015,13 +2045,30 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                 setMockOtp('');
                 // Re-run placeOrder after verification
                 setPlacing(true);
+                // Ensure road distances are loaded before computing fees
+                if (deliveryPin) {
+                  const allStores = Object.values(grouped).map(items => items[0].store);
+                  const missing = allStores.filter(s => !roadDistanceCache[s.id]);
+                  if (missing.length > 0) {
+                    const updates: Record<string, { distanceKm: number; durationMin: number }> = {};
+                    for (const store of missing) {
+                      const sCoords = getStoreCoords(store);
+                      if (sCoords && deliveryPin) {
+                        const result = await fetchRoadDistance(sCoords, deliveryPin);
+                        updates[store.id] = result;
+                      }
+                    }
+                    setRoadDistanceCache(prev => ({ ...prev, ...updates }));
+                  }
+                }
                 const groupId = crypto.randomUUID();
                 const createdOrders: Order[] = [];
                 for (const [storeId, items] of Object.entries(grouped)) {
                   const store = items[0].store;
                   const livestock = isLivestockOrder(items);
                   const total = items.reduce((sum, i) => sum + i.product.price * Number(i.quantity), 0);
-                  const deliveryFee = livestock ? 0 : getFeeForStore(store, items).fee;
+                  const feeBreakdown = livestock ? null : getFeeForStore(store, items);
+                  const deliveryFee = livestock ? 0 : (feeBreakdown?.fee || 0);
                   const deliveryMethod = livestock ? (items[0].product.delivery_method || 'pickup') : null;
                   const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, deliveryLocation.region].filter(Boolean).join(', ');
                   const commissionAmount = Math.round(total * COMMISSION_RATE * 100) / 100;
@@ -2031,6 +2078,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                     delivery_city: deliveryLocation.city || null, delivery_region: deliveryLocation.region || null, delivery_address: fullAddress,
                     delivery_lat: deliveryPin?.lat ?? null, delivery_lng: deliveryPin?.lng ?? null, buyer_note: note || null,
                     commission_amount: commissionAmount, delivery_group_id: groupId,
+                    distance_km: feeBreakdown?.distanceKm || 0, vehicle_type: feeBreakdown?.tier || null,
                   }).select('*').single();
                   if (error) { setPlacing(false); return; }
                   createdOrders.push(order as Order);

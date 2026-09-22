@@ -470,65 +470,76 @@ export interface RouteResult {
   instructions: { text: string; distance: string; step: number }[];
 }
 
+const OSRM_ENDPOINTS = [
+  'https://router.project-osrm.org/route/v1/driving',
+  'https://routing.openstreetmap.de/routed-car/route/v1/driving',
+];
+
+async function tryOsrm(from: Coords, to: Coords, baseUrl: string): Promise<RouteResult> {
+  const res = await fetch(
+    `${baseUrl}/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson&steps=true`,
+  );
+  if (!res.ok) throw new Error('Route request failed');
+  const data = await res.json();
+  if (!data.routes || data.routes.length === 0) throw new Error('No route found');
+
+  const route = data.routes[0];
+  const coordinates: [number, number][] = route.geometry.coordinates.map(
+    (c: [number, number]) => [c[1], c[0]],
+  );
+
+  const instructions: { text: string; distance: string; step: number }[] = [];
+  if (route.legs && route.legs[0]?.steps) {
+    let stepNum = 1;
+    for (const step of route.legs[0].steps) {
+      const maneuver = step.maneuver;
+      if (!maneuver || maneuver.type === 'depart' || maneuver.type === 'arrive') continue;
+      const text = maneuver.modifier
+        ? `${capitalize(maneuver.modifier)} sa ${step.name || 'next street'}`
+        : maneuver.type === 'turn'
+          ? `Mag-turn sa ${step.name || 'next street'}`
+          : `I-tuloy sa ${step.name || 'next street'}`;
+      instructions.push({
+        text,
+        distance: step.distance < 1000 ? `${Math.round(step.distance)}m` : `${(step.distance / 1000).toFixed(1)}km`,
+        step: stepNum++,
+      });
+    }
+  }
+
+  return {
+    coordinates,
+    distanceKm: Math.round((route.distance / 1000) * 100) / 100,
+    durationMin: Math.round(route.duration / 60),
+    instructions,
+  };
+}
+
 /**
  * Fetch a driving route from OSRM. Returns road distance, ETA, polyline
- * coordinates, and turn-by-turn instructions. Falls back to haversine
- * straight-line if OSRM is unreachable.
+ * coordinates, and turn-by-turn instructions. Tries multiple OSRM servers
+ * before falling back to haversine straight-line as a last resort.
  */
 export async function fetchRoute(from: Coords, to: Coords): Promise<RouteResult> {
-  try {
-    const res = await fetch(
-      `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson&steps=true`,
-    );
-    if (!res.ok) throw new Error('Route request failed');
-    const data = await res.json();
-    if (!data.routes || data.routes.length === 0) throw new Error('No route found');
-
-    const route = data.routes[0];
-    const coordinates: [number, number][] = route.geometry.coordinates.map(
-      (c: [number, number]) => [c[1], c[0]],
-    );
-
-    const instructions: { text: string; distance: string; step: number }[] = [];
-    if (route.legs && route.legs[0]?.steps) {
-      let stepNum = 1;
-      for (const step of route.legs[0].steps) {
-        const maneuver = step.maneuver;
-        if (!maneuver || maneuver.type === 'depart' || maneuver.type === 'arrive') continue;
-        const text = maneuver.modifier
-          ? `${capitalize(maneuver.modifier)} sa ${step.name || 'next street'}`
-          : maneuver.type === 'turn'
-            ? `Mag-turn sa ${step.name || 'next street'}`
-            : `I-tuloy sa ${step.name || 'next street'}`;
-        instructions.push({
-          text,
-          distance: step.distance < 1000 ? `${Math.round(step.distance)}m` : `${(step.distance / 1000).toFixed(1)}km`,
-          step: stepNum++,
-        });
-      }
-    }
-
-    return {
-      coordinates,
-      distanceKm: Math.round((route.distance / 1000) * 100) / 100,
-      durationMin: Math.round(route.duration / 60),
-      instructions,
-    };
-  } catch {
-    // Fallback: straight-line distance
-    const distKm = haversineKm(from, to);
-    return {
-      coordinates: [[from.lat, from.lng], [to.lat, to.lng]],
-      distanceKm: Math.round(distKm * 100) / 100,
-      durationMin: Math.round((distKm / 30) * 60),
-      instructions: [],
-    };
+  for (const baseUrl of OSRM_ENDPOINTS) {
+    try {
+      return await tryOsrm(from, to, baseUrl);
+    } catch { /* try next server */ }
   }
+  // Last resort: straight-line distance
+  const distKm = haversineKm(from, to);
+  return {
+    coordinates: [[from.lat, from.lng], [to.lat, to.lng]],
+    distanceKm: Math.round(distKm * 100) / 100,
+    durationMin: Math.round((distKm / 30) * 60),
+    instructions: [],
+  };
 }
 
 /**
  * Fetch road distance only (for checkout fee calculation without needing
- * the full route geometry). Falls back to haversine.
+ * the full route geometry). Tries multiple OSRM servers; falls back to
+ * haversine only if all servers are unreachable.
  */
 export async function fetchRoadDistance(from: Coords, to: Coords): Promise<{ distanceKm: number; durationMin: number }> {
   const route = await fetchRoute(from, to);
