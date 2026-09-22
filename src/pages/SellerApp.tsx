@@ -3,7 +3,7 @@ import { supabase, deleteStorageObject } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { navigate } from '@/lib/router';
 import { checkPriceAnomaly } from '@/lib/security';
-import { haversineKm, VEHICLE_TIERS, type VehicleTier } from '@/lib/deliveryFee';
+import { haversineKm, VEHICLE_TIERS, PALENGKE_COORDS, type VehicleTier } from '@/lib/deliveryFee';
 import type { Store, Product, Order, OrderItem, OrderStatus, Conversation, SellerFee, AdminConversation } from '@/lib/types';
 import { PAYMENT_THRESHOLD } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
@@ -354,10 +354,13 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
     if (avatarUrl && avatarUrl !== profile.avatar_url) {
       await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', profile.id);
     }
+    const palengkeCoords = finalPalengkeName ? PALENGKE_COORDS[finalPalengkeName] : null;
     const { error } = await supabase.from('stores').insert({
       seller_id: profile.id,
       name, description,
       barangay: location.barangay, district: location.district, city: location.city, region: location.region,
+      latitude: palengkeCoords?.lat ?? null,
+      longitude: palengkeCoords?.lng ?? null,
       banner_url: bannerUrl || null,
       qr_code_url: qrCodeUrl || null,
       payment_method: paymentMethod,
@@ -1209,8 +1212,11 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
+    const palengkeCoords = finalPalengkeName ? PALENGKE_COORDS[finalPalengkeName] : null;
     const { error } = await supabase.from('stores').update({
       name, description, barangay: location.barangay, district: location.district, city: location.city, region: location.region,
+      latitude: palengkeCoords?.lat ?? null,
+      longitude: palengkeCoords?.lng ?? null,
       banner_url: bannerUrl || null,
       qr_code_url: qrCodeUrl || null, is_open: isOpen,
       palengke_name: sellerType === 'palengke' ? (finalPalengkeName || null) : null,

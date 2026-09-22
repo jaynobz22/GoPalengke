@@ -180,7 +180,7 @@ export interface Coords {
 
 // Known Philippine public market GPS coordinates
 // Verified via OpenStreetMap Nominatim geocoding — do not approximate
-const PALENGKE_COORDS: Record<string, Coords> = {
+export const PALENGKE_COORDS: Record<string, Coords> = {
   // Davao City
   'Agdao Public Market': { lat: 7.0818, lng: 125.6233 },
   'Bankerohan Public Market': { lat: 7.0760, lng: 125.6050 },
