@@ -164,7 +164,7 @@ function PublicStorePage({ slug }: { slug: string }) {
   const fullUrl = `${window.location.origin}/s/${store.slug}`;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 max-w-md mx-auto relative">
       {/* Banner */}
       <div className="relative h-44 bg-gradient-to-br from-brand-500 to-brand-700">
         {store.banner_url && (
@@ -337,7 +337,7 @@ function PublicUserPage({ slug }: { slug: string }) {
   const RoleIcon = roleIcon;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 max-w-md mx-auto relative">
       {/* Header */}
       <div className="relative bg-gradient-to-br from-brand-600 to-brand-700 px-5 pt-12 pb-6 text-white">
         <div className="absolute top-3 left-3">
