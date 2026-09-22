@@ -95,7 +95,7 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
           <div className="overflow-hidden flex-1">
             <div
               className="whitespace-nowrap text-xs font-medium text-amber-900"
-              style={{ animation: `marquee ${Math.max(10, announcement.message.length * 0.15)}s linear infinite` }}
+              style={{ animation: `marquee ${Math.max(6, announcement.message.length * 0.08)}s linear infinite` }}
             >
               {announcement.message}
             </div>
