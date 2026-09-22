@@ -64,6 +64,31 @@ export function SellerApp() {
 
   useEffect(() => { loadStore(); }, [loadStore]);
 
+  // Update store coordinates from seller's live phone GPS so delivery fees use
+  // the seller's actual current location instead of a static palengke/city center.
+  useEffect(() => {
+    if (!store) return;
+    if (!navigator.geolocation) return;
+    let cancelled = false;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (cancelled) return;
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const curLat = store.latitude;
+        const curLng = store.longitude;
+        const moved = curLat == null || curLng == null ||
+          Math.abs(curLat - lat) > 0.001 || Math.abs(curLng - lng) > 0.001;
+        if (moved) {
+          supabase.from('stores').update({ latitude: lat, longitude: lng }).eq('id', store.id);
+        }
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+    return () => { cancelled = true; };
+  }, [store?.id]);
+
   // Realtime: reload store when it changes (e.g. admin verifies the store)
   useEffect(() => {
     if (!profile) return;
