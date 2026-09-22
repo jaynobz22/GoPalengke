@@ -147,6 +147,7 @@ export interface Order {
   cod_payment_reference: string | null;
   cod_payment_accepted_at: string | null;
   delivery_method: string | null;
+  scheduled_delivery_at: string | null;
   created_at: string;
   updated_at: string;
   store?: Store;

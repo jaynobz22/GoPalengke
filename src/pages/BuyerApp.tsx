@@ -50,7 +50,7 @@ import {
   MapPin, Star, Fish, ArrowLeft, Check, ChevronRight, ChevronDown, Bike, Store as StoreIcon,
   QrCode, Clock, Phone, Navigation, Filter, ShoppingBag, MessageCircle, Send,
   Share2, Copy, ExternalLink, Download, ImageOff, Bell, Timer, CheckCircle, LogOut,
-  Shield, Info, ShieldAlert, Lock, AlertTriangle, Facebook, Loader2,
+  Shield, Info, ShieldAlert, Lock, AlertTriangle, Facebook, Loader2, CalendarClock,
 } from 'lucide-react';
 
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
@@ -1414,6 +1414,9 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   const [deliveryPin, setDeliveryPin] = useState<Coords | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'found' | 'denied' | 'unavailable'>('idle');
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('');
 
   useEffect(() => {
     if (!profile) return;
@@ -1586,6 +1589,9 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
         buyer_note: note || null,
         commission_amount: commissionAmount,
         delivery_group_id: groupId,
+        scheduled_delivery_at: scheduleEnabled && scheduleDate && scheduleTime
+          ? new Date(`${scheduleDate}T${scheduleTime}`).toISOString()
+          : null,
       }).select('*').single();
 
       if (error) { setPlacing(false); return; }
@@ -1625,6 +1631,59 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
           <ArrowLeft size={20} className="text-gray-600" />
         </button>
         <h2 className="text-xl font-bold text-gray-800">Checkout</h2>
+      </div>
+
+      {/* Schedule Delivery */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+        <div className="flex items-center gap-2 mb-3">
+          <CalendarClock size={18} className="text-brand-600" />
+          <h3 className="font-semibold text-gray-800">Oras ng Pag-deliver</h3>
+        </div>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <button
+            type="button"
+            onClick={() => setScheduleEnabled(!scheduleEnabled)}
+            className={`relative w-12 h-6 rounded-full transition ${scheduleEnabled ? 'bg-brand-500' : 'bg-gray-200'}`}
+          >
+            <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${scheduleEnabled ? 'left-6' : 'left-0.5'}`} />
+          </button>
+          <span className="text-sm text-gray-700">Mag-book ng advance order (pwede bukas o sa susunod na araw)</span>
+        </label>
+        {scheduleEnabled && (
+          <div className="mt-3 space-y-3">
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Petsa ng Pag-deliver</label>
+              <input
+                type="date"
+                value={scheduleDate}
+                min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                max={new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]}
+                onChange={(e) => setScheduleDate(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">Oras ng Pag-deliver</label>
+              <input
+                type="time"
+                value={scheduleTime}
+                min="06:00"
+                max="20:00"
+                onChange={(e) => setScheduleTime(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition text-sm"
+              />
+              <p className="text-xs text-gray-400 mt-1">6:00 AM hanggang 8:00 PM lang ang available na oras.</p>
+            </div>
+            {scheduleDate && scheduleTime && (
+              <div className="bg-brand-50 rounded-xl px-3 py-2.5 text-xs text-brand-700">
+                <strong>Advance Order:</strong> Ipapa-deliver sa {new Date(`${scheduleDate}T${scheduleTime}`).toLocaleString('en-PH', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}. May time ang seller para maghanda ng order mo.
+              </div>
+            )}
+          </div>
+        )}
+        {!scheduleEnabled && (
+          <p className="text-xs text-gray-400 mt-1">Ipapa-deliver agad pagkatapos ma-confirm ng seller at magbayad ka.</p>
+        )}
       </div>
 
       {/* Delivery Address */}
@@ -2491,6 +2550,21 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         </div>
         <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString('en-PH')}</p>
       </div>
+
+      {/* Scheduled delivery banner */}
+      {currentOrder.scheduled_delivery_at && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-3">
+          <div className="flex items-start gap-2">
+            <CalendarClock size={18} className="text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-blue-700">
+              <p className="font-semibold">Advance Order — Scheduled Delivery</p>
+              <p className="text-xs mt-1">
+                Ipapa-deliver sa {new Date(currentOrder.scheduled_delivery_at).toLocaleString('en-PH', { weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Livestock delivery info */}
       {(currentOrder.delivery_method === 'pickup' || currentOrder.delivery_method === 'meetup') && (

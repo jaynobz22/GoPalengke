@@ -27,7 +27,7 @@ import {
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
   TrendingUp, DollarSign, Bell, Camera, Loader2, MessageCircle,
   Share2, Copy, ExternalLink, Search, ImageIcon, Wallet, Lock, AlertTriangle,
-  LogOut, Eye, EyeOff, Users, Radio, Shield, Sprout, Info,
+  LogOut, Eye, EyeOff, Users, Radio, Shield, Sprout, Info, CalendarClock,
 } from 'lucide-react';
 
 type Tab = 'dashboard' | 'products' | 'orders' | 'messages' | 'billing';
@@ -1416,6 +1416,9 @@ function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o:
                     {order.status === 'pending' && (
                       <span className="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded-full">BAGO</span>
                     )}
+                    {order.scheduled_delivery_at && (
+                      <span className="text-[10px] font-bold text-white bg-blue-500 px-2 py-0.5 rounded-full">SCHEDULED</span>
+                    )}
                     {order.payment_status === 'paid' && (
                       <span className="text-[10px] font-bold text-white bg-green-500 px-2 py-0.5 rounded-full">PAID</span>
                     )}
@@ -1585,6 +1588,21 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         </div>
         <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString('en-PH')}</p>
       </div>
+
+      {/* Scheduled delivery banner */}
+      {currentOrder.scheduled_delivery_at && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-3">
+          <div className="flex items-start gap-2">
+            <CalendarClock size={18} className="text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-blue-700">
+              <p className="font-semibold">Advance Order — Scheduled Delivery</p>
+              <p className="text-xs mt-1">
+                Gusto ng buyer na ma-deliver sa {new Date(currentOrder.scheduled_delivery_at).toLocaleString('en-PH', { weekday: 'long', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}. May time ka para maghanda ng order.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Livestock delivery info */}
       {(currentOrder.delivery_method === 'pickup' || currentOrder.delivery_method === 'meetup') && (
