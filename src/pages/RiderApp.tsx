@@ -861,6 +861,8 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
               buyerName={buyer?.full_name || 'Buyer'}
               onPhaseChange={(p) => setNavPhase(p)}
               onEarningsUpdate={handleEarningsUpdate}
+              storeRegion={store.region}
+              storeCity={store.city}
             />
           </div>
         );

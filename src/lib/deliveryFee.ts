@@ -1,5 +1,97 @@
-export const BASE_DELIVERY_FEE = 30;
-export const PER_KM_RATE = 10;
+// === Tiered delivery fee model ===
+// Two pricing zones: NCR (Metro Manila) and Provinces (Davao + all others).
+// Each zone has a base distance fee for the first 2 km, a per-km rate beyond that,
+// and a weight surcharge rate for cargo exceeding the 5 kg free allowance.
+
+export const FREE_WEIGHT_KG = 5.0;
+
+export interface ZoneRates {
+  baseFee: number;       // flat fee for first 2 km
+  perKmRate: number;     // per km beyond 2 km
+  weightSurchargeRate: number; // per excess kg beyond 5 kg
+}
+
+export const NCR_RATES: ZoneRates = { baseFee: 60, perKmRate: 12, weightSurchargeRate: 2.0 };
+export const PROVINCE_RATES: ZoneRates = { baseFee: 50, perKmRate: 10, weightSurchargeRate: 1.5 };
+
+// NCR PSGC region code starts with "13"
+const NCR_PREFIX = '13';
+
+// Cities that are part of Metro Manila / NCR (for legacy text-based region matching)
+const NCR_CITIES = new Set([
+  'Quezon City', 'Manila', 'Makati', 'Makati City', 'Taguig', 'Taguig City',
+  'Pasig', 'Pasig City', 'Caloocan', 'Las Piñas', 'Mandaluyong', 'Marikina',
+  'Muntinlupa', 'Parañaque', 'Valenzuela', 'Malabon', 'Navotas', 'Pateros',
+  'San Juan',
+]);
+
+/**
+ * Determine whether a store/location falls in the NCR pricing zone.
+ * Checks the PSGC region code first (starts with "13"), then falls back
+ * to city-name matching for legacy data.
+ */
+export function isNcrRegion(region: string | null | undefined, city: string | null | undefined): boolean {
+  if (region) {
+    // PSGC codes are 10-digit; NCR = 1300000000
+    if (/^\d{10}$/.test(region) && region.startsWith(NCR_PREFIX)) return true;
+    // Legacy text-based region names
+    const r = region.toLowerCase();
+    if (r === 'ncr' || r.includes('national capital') || r.includes('metro manila')) return true;
+  }
+  if (city && NCR_CITIES.has(city)) return true;
+  return false;
+}
+
+/** Get the zone-specific rates for a store location. */
+export function getZoneRates(region: string | null | undefined, city: string | null | undefined): ZoneRates {
+  return isNcrRegion(region, city) ? NCR_RATES : PROVINCE_RATES;
+}
+
+/**
+ * Compute the distance charge component of the delivery fee.
+ * First 2 km are included in the base fee; beyond that the per-km rate applies.
+ */
+export function computeDistanceCharge(distanceKm: number, rates: ZoneRates): number {
+  if (distanceKm <= 2.0) return rates.baseFee;
+  return rates.baseFee + (distanceKm - 2.0) * rates.perKmRate;
+}
+
+/**
+ * Compute the weight surcharge for cargo exceeding the free weight allowance.
+ * Returns 0 if total weight is within the 5 kg allowance.
+ */
+export function computeWeightSurcharge(totalWeightKg: number, rates: ZoneRates): number {
+  if (totalWeightKg <= FREE_WEIGHT_KG) return 0;
+  return (totalWeightKg - FREE_WEIGHT_KG) * rates.weightSurchargeRate;
+}
+
+/** Round to 2 decimal places. */
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * Full tiered delivery fee computation.
+ * Returns the distance charge, weight surcharge, and total — all rounded to 2 dp.
+ */
+export function computeTieredDeliveryFee(
+  distanceKm: number,
+  totalWeightKg: number,
+  region: string | null | undefined,
+  city: string | null | undefined,
+): { distanceCharge: number; weightSurcharge: number; total: number; isNcr: boolean } {
+  const rates = getZoneRates(region, city);
+  const isNcr = isNcrRegion(region, city);
+  const distanceCharge = round2(computeDistanceCharge(distanceKm, rates));
+  const weightSurcharge = round2(computeWeightSurcharge(totalWeightKg, rates));
+  return { distanceCharge, weightSurcharge, total: round2(distanceCharge + weightSurcharge), isNcr };
+}
+
+// Legacy constants kept for backward compatibility with callers that haven't been
+// updated yet (e.g. RiderNavigationMap live estimate). These are now derived from
+// the province rates as a reasonable default.
+export const BASE_DELIVERY_FEE = PROVINCE_RATES.baseFee;
+export const PER_KM_RATE = PROVINCE_RATES.perKmRate;
 
 export interface LocationInfo {
   barangay: string | null;
@@ -235,10 +327,20 @@ export function hasExactDeliveryCoords(delivery: {
 export function computeDeliveryFeeFromCoords(
   storeCoords: Coords,
   deliveryCoords: Coords,
-): { fee: number; distanceKm: number } {
+  region?: string | null,
+  city?: string | null,
+  totalWeightKg?: number,
+): { fee: number; distanceKm: number; distanceCharge: number; weightSurcharge: number } {
   const distanceKm = haversineKm(storeCoords, deliveryCoords);
-  const fee = BASE_DELIVERY_FEE + PER_KM_RATE * distanceKm;
-  return { fee: Math.round(fee * 100) / 100, distanceKm: Math.round(distanceKm * 100) / 100 };
+  const rates = getZoneRates(region, city);
+  const distanceCharge = round2(computeDistanceCharge(distanceKm, rates));
+  const weightSurcharge = round2(computeWeightSurcharge(totalWeightKg || 0, rates));
+  return {
+    fee: round2(distanceCharge + weightSurcharge),
+    distanceKm: round2(distanceKm),
+    distanceCharge,
+    weightSurcharge,
+  };
 }
 
 /**
@@ -276,9 +378,13 @@ export function estimateDistanceKm(
 export function computeDeliveryFee(
   store: LocationInfo | null,
   delivery: LocationInfo | null,
+  totalWeightKg?: number,
 ): number {
   const km = estimateDistanceKm(store, delivery);
-  return BASE_DELIVERY_FEE + PER_KM_RATE * km;
+  const rates = getZoneRates(store?.region, store?.city);
+  const distanceCharge = computeDistanceCharge(km, rates);
+  const weightSurcharge = computeWeightSurcharge(totalWeightKg || 0, rates);
+  return round2(distanceCharge + weightSurcharge);
 }
 
 export interface RouteResult {

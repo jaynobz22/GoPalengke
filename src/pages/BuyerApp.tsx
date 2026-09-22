@@ -11,7 +11,7 @@ import {
   computeDeliveryFee, estimateDistanceKm,
   haversineKm, getStoreCoords, getDeliveryCoords,
   computeDeliveryFeeFromCoords, fetchRoadDistance,
-  BASE_DELIVERY_FEE, PER_KM_RATE,
+  BASE_DELIVERY_FEE, PER_KM_RATE, computeTieredDeliveryFee, getZoneRates, computeDistanceCharge, computeWeightSurcharge, FREE_WEIGHT_KG, type ZoneRates,
   type Coords, type RouteResult,
 } from '@/lib/deliveryFee';
 import { fetchBarangaysByCity, fetchCitiesByRegion, fetchCitiesByProvince, fetchProvincesByRegion } from '@/lib/philippineLocations';
@@ -1485,29 +1485,42 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
     return items.some(i => i.product.delivery_method === 'pickup' || i.product.delivery_method === 'meetup');
   }
 
-  // Calculate fee per store using road distance when available
-  function getFeeForStore(store: Store): { fee: number; distanceKm: number; isEstimated: boolean } {
-    const sCoords = getStoreCoords(store);
+  // Estimate cargo weight in kg for a set of cart items based on unit type
+  function estimateWeightKg(items: (CartItem & { product: Product; store: Store })[]): number {
+    return items.reduce((sum, i) => {
+      const qty = Number(i.quantity);
+      const unit = i.product.unit?.toLowerCase() || '';
+      if (unit === 'kilo' || unit === 'kg' || unit === 'kilogram') return sum + qty;
+      if (unit === 'gram' || unit === 'g') return sum + qty / 1000;
+      if (unit === 'pack' || unit === 'sachet') return sum + qty * 0.5;
+      if (unit === 'bundle' || unit === 'bugkos') return sum + qty * 2;
+      if (unit === 'tray' || unit === 'itlog') return sum + qty * 1;
+      if (unit === 'piece' || unit === 'pc' || unit === 'piraso') return sum + qty * 0.3;
+      if (unit === 'dozen' || unit === 'dosen') return sum + qty * 1.5;
+      if (unit === 'sack' || unit === 'sako') return sum + qty * 25;
+      if (unit === 'liter' || unit === 'litro' || unit === 'l') return sum + qty;
+      return sum + qty * 0.5;
+    }, 0);
+  }
 
-    // Only use coordinate-based calculation when we have an exact delivery pin.
-    // Without a pin, deliveryCoords falls back to city center which can be
-    // far from the store (e.g. Mintal Market is 23.5km from Davao City center),
-    // producing absurd fees like ₱400+ for a same-city delivery.
+  // Calculate tiered fee per store: distance charge + weight surcharge
+  function getFeeForStore(store: Store, items?: (CartItem & { product: Product; store: Store })[]): { fee: number; distanceKm: number; isEstimated: boolean; distanceCharge: number; weightSurcharge: number; totalWeightKg: number; isNcr: boolean } {
+    const sCoords = getStoreCoords(store);
+    const totalWeightKg = items ? estimateWeightKg(items) : 0;
+
     if (sCoords && deliveryCoords && deliveryPin) {
       const road = roadDistanceCache[store.id];
-      if (road) {
-        return { fee: BASE_DELIVERY_FEE + PER_KM_RATE * road.distanceKm, distanceKm: road.distanceKm, isEstimated: false };
-      }
-      // Fallback to haversine while road distance loads
-      const result = computeDeliveryFeeFromCoords(sCoords, deliveryCoords);
-      return { ...result, isEstimated: false };
+      const distKm = road ? road.distanceKm : haversineKm(sCoords, deliveryCoords);
+      const tiered = computeTieredDeliveryFee(distKm, totalWeightKg, store.region, store.city);
+      return { fee: tiered.total, distanceKm: Math.round(distKm * 100) / 100, isEstimated: !road, distanceCharge: tiered.distanceCharge, weightSurcharge: tiered.weightSurcharge, totalWeightKg, isNcr: tiered.isNcr };
     }
     // Fallback to text-based estimation (same barangay=1km, same city=2km, etc.)
     const km = estimateDistanceKm(
       { barangay: store.barangay, city: store.city, region: store.region },
       { barangay: deliveryLocation.barangay, city: deliveryLocation.city, region: deliveryLocation.region },
     );
-    return { fee: BASE_DELIVERY_FEE + PER_KM_RATE * km, distanceKm: km, isEstimated: true };
+    const tiered = computeTieredDeliveryFee(km, totalWeightKg, store.region, store.city);
+    return { fee: tiered.total, distanceKm: km, isEstimated: true, distanceCharge: tiered.distanceCharge, weightSurcharge: tiered.weightSurcharge, totalWeightKg, isNcr: tiered.isNcr };
   }
 
   async function placeOrder() {
@@ -1547,7 +1560,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
       const store = items[0].store;
       const livestock = isLivestockOrder(items);
       const total = items.reduce((sum, i) => sum + i.product.price * Number(i.quantity), 0);
-      const deliveryFee = livestock ? 0 : getFeeForStore(store).fee;
+      const deliveryFee = livestock ? 0 : getFeeForStore(store, items).fee;
       const deliveryMethod = livestock ? (items[0].product.delivery_method || 'pickup') : null;
       const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, deliveryLocation.region]
         .filter(Boolean).join(', ');
@@ -1601,7 +1614,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
 
   const grandTotal = Object.entries(grouped).reduce((sum, [_, items]) => {
     const livestock = isLivestockOrder(items);
-    const fee = livestock ? 0 : getFeeForStore(items[0].store).fee;
+    const fee = livestock ? 0 : getFeeForStore(items[0].store, items).fee;
     return sum + items.reduce((s, i) => s + i.product.price * Number(i.quantity), 0) + fee;
   }, 0);
 
@@ -1716,8 +1729,8 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
       {Object.entries(grouped).map(([storeId, items]) => {
         const store = items[0].store;
         const livestock = isLivestockOrder(items);
-        const { fee, distanceKm, isEstimated } = getFeeForStore(store);
-        const distanceFee = fee - BASE_DELIVERY_FEE;
+        const { fee, distanceKm, isEstimated, distanceCharge, weightSurcharge, totalWeightKg, isNcr } = getFeeForStore(store, items);
+        const rates = getZoneRates(store.region, store.city);
 
         return (
           <div key={storeId} className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
@@ -1762,18 +1775,30 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
               </div>
             ) : (
               <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5">
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>Base Delivery Fee</span>
-                  <span>₱{BASE_DELIVERY_FEE.toFixed(2)}</span>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-400">Zone</span>
+                  <span className={`font-medium px-2 py-0.5 rounded-full ${isNcr ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
+                    {isNcr ? 'NCR / Metro Manila' : 'Province'}
+                  </span>
                 </div>
                 <div className="flex justify-between text-xs text-gray-500">
-                  <span>Calculated Distance {isEstimated && <span className="text-amber-500">(estimated)</span>}</span>
+                  <span>Distance {isEstimated && <span className="text-amber-500">(estimated)</span>}</span>
                   <span>{distanceKm.toFixed(2)} km</span>
                 </div>
                 <div className="flex justify-between text-xs text-gray-500">
-                  <span>Distance Fee ({distanceKm.toFixed(2)} km × ₱{PER_KM_RATE})</span>
-                  <span>₱{distanceFee.toFixed(2)}</span>
+                  <span>Distance Charge {distanceKm <= 2 ? '(base, first 2 km)' : `(base + ${(distanceKm - 2).toFixed(2)} km × ₱${rates.perKmRate})`}</span>
+                  <span>₱{distanceCharge.toFixed(2)}</span>
                 </div>
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Cargo Weight</span>
+                  <span>{totalWeightKg.toFixed(2)} kg {totalWeightKg <= FREE_WEIGHT_KG ? `(free ≤ ${FREE_WEIGHT_KG} kg)` : `(${(totalWeightKg - FREE_WEIGHT_KG).toFixed(2)} kg excess)`}</span>
+                </div>
+                {weightSurcharge > 0 && (
+                  <div className="flex justify-between text-xs text-orange-600">
+                    <span>Weight Surcharge ({(totalWeightKg - FREE_WEIGHT_KG).toFixed(2)} kg × ₱{rates.weightSurchargeRate})</span>
+                    <span>₱{weightSurcharge.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm font-semibold text-gray-700 pt-1.5 border-t border-gray-50">
                   <span>Total Delivery Fee (Rider Payout)</span>
                   <span>₱{fee.toFixed(2)}</span>
@@ -1905,7 +1930,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                   const store = items[0].store;
                   const livestock = isLivestockOrder(items);
                   const total = items.reduce((sum, i) => sum + i.product.price * Number(i.quantity), 0);
-                  const deliveryFee = livestock ? 0 : getFeeForStore(store).fee;
+                  const deliveryFee = livestock ? 0 : getFeeForStore(store, items).fee;
                   const deliveryMethod = livestock ? (items[0].product.delivery_method || 'pickup') : null;
                   const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, deliveryLocation.region].filter(Boolean).join(', ');
                   const commissionAmount = Math.round(total * COMMISSION_RATE * 100) / 100;

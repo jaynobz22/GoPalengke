@@ -940,7 +940,7 @@ function FaqContent() {
     },
     {
       q: 'How is the delivery fee computed?',
-      a: 'The delivery fee starts at ₱30 base fee plus ₱10 per kilometer of distance between the store and the buyer\'s delivery address. It is automatically computed by the platform when the buyer checks out.',
+      a: 'The delivery fee uses a tiered model based on the seller\'s location zone. For NCR / Metro Manila: ₱60 base fee for the first 2 km, then ₱12 per km beyond that, plus ₱2 per excess kilogram over the 5 kg free weight allowance. For Davao and all other provinces: ₱50 base fee for the first 2 km, then ₱10 per km beyond that, plus ₱1.50 per excess kilogram over the 5 kg free weight allowance. The total delivery fee = Distance Charge + Weight Surcharge, automatically computed at checkout.',
     },
     {
       q: 'How do I chat with the seller or rider?',

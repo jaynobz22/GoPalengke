@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Navigation, MapPin, Store as StoreIcon, Clock, Loader2, AlertCircle, Route as RouteIcon, DollarSign } from 'lucide-react';
-import { haversineKm, BASE_DELIVERY_FEE, PER_KM_RATE, type Coords } from '@/lib/deliveryFee';
+import { haversineKm, computeTieredDeliveryFee, type Coords } from '@/lib/deliveryFee';
 
 export type NavPhase = 'to_store' | 'to_buyer';
 
@@ -14,6 +14,8 @@ interface RiderNavigationMapProps {
   buyerName: string;
   onPhaseChange: (phase: NavPhase) => void;
   onEarningsUpdate?: (fee: number, distanceKm: number) => void;
+  storeRegion?: string | null;
+  storeCity?: string | null;
 }
 
 interface RouteData {
@@ -58,6 +60,8 @@ export function RiderNavigationMap({
   buyerName,
   onPhaseChange,
   onEarningsUpdate,
+  storeRegion,
+  storeCity,
 }: RiderNavigationMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -178,8 +182,8 @@ export function RiderNavigationMap({
 
       // Update earnings
       if (onEarningsUpdateRef.current) {
-        const fee = BASE_DELIVERY_FEE + PER_KM_RATE * routeResult.distanceKm;
-        onEarningsUpdateRef.current(Math.round(fee * 100) / 100, routeResult.distanceKm);
+        const tiered = computeTieredDeliveryFee(routeResult.distanceKm, 0, storeRegion, storeCity);
+        onEarningsUpdateRef.current(tiered.total, routeResult.distanceKm);
       }
     } catch (err) {
       // Fallback: straight-line distance with haversine
@@ -197,8 +201,8 @@ export function RiderNavigationMap({
       setRouteData(fallbackRoute);
       setRouteError('Hindi available ang turn-by-turn routing. Straight-line distance lang ang ipinapakita.');
       if (onEarningsUpdateRef.current) {
-        const fee = BASE_DELIVERY_FEE + PER_KM_RATE * distKm;
-        onEarningsUpdateRef.current(Math.round(fee * 100) / 100, Math.round(distKm * 100) / 100);
+        const tiered = computeTieredDeliveryFee(distKm, 0, storeRegion, storeCity);
+        onEarningsUpdateRef.current(tiered.total, Math.round(distKm * 100) / 100);
       }
     } finally {
       setLoadingRoute(false);
@@ -295,7 +299,7 @@ export function RiderNavigationMap({
   }, [phase]);
 
   const liveDistanceKm = routeData?.distanceKm ?? 0;
-  const liveFee = BASE_DELIVERY_FEE + PER_KM_RATE * liveDistanceKm;
+  const liveFee = computeTieredDeliveryFee(liveDistanceKm, 0, storeRegion, storeCity).total;
 
   return (
     <div className="space-y-3">
