@@ -1660,9 +1660,20 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
     setUpdating(false);
   }
 
+  async function acceptCodPayment() {
+    setUpdating(true);
+    await supabase.from('orders').update({
+      cod_payment_accepted_at: new Date().toISOString(),
+      payment_status: 'paid',
+    }).eq('id', currentOrder.id);
+    setCurrentOrder(prev => ({ ...prev, cod_payment_accepted_at: new Date().toISOString(), payment_status: 'paid' }));
+    setUpdating(false);
+  }
+
   const isCancelled = currentOrder.status === 'cancelled';
   const isDelivered = currentOrder.status === 'delivered';
   const isCod = currentOrder.payment_method === 'cod';
+  const isCodPaymentPending = isCod && isDelivered && !!currentOrder.cod_payment_reference && !currentOrder.cod_payment_accepted_at;
 
   // Build seller-side step list — COD skips "Nabayaran na" (payment at delivery)
   const sellerSteps: StepInfo[] = isCod ? [
@@ -1987,10 +1998,37 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       )}
 
       {/* COD delivered — collect from rider */}
-      {isDelivered && isCod && (
+      {isDelivered && isCod && !currentOrder.cod_payment_reference && (
         <div className="bg-green-50 border border-green-300 rounded-2xl p-4 mb-3 flex items-center gap-2">
           <Check size={18} className="text-green-600" />
           <p className="text-sm text-green-700 font-medium">Na-deliver na! Kolektahin ang ₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)} sa rider pagbalik niya.</p>
+        </div>
+      )}
+
+      {/* COD payment pending — seller needs to accept */}
+      {isCodPaymentPending && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-3">
+          <div className="flex items-center gap-2 mb-3">
+            <DollarSign size={20} className="text-amber-600" />
+            <p className="font-semibold text-sm text-amber-800">COD Payment mula sa Rider</p>
+          </div>
+          <p className="text-xs text-amber-700 mb-2">Nai-submit na ng rider ang reference number para sa COD payment. I-verify at i-accept ang payment para matapos ang transaction at lumabas ang review sa buyer.</p>
+          <div className="p-3 bg-white rounded-xl border border-amber-200 mb-3">
+            <p className="text-xs text-gray-400 mb-0.5">Reference Number mula sa Rider:</p>
+            <p className="text-sm font-mono font-bold text-gray-800 break-all">{currentOrder.cod_payment_reference}</p>
+          </div>
+          <button onClick={acceptCodPayment} disabled={updating}
+            className="w-full py-3 bg-green-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
+            {updating ? 'Nag-uupdate...' : 'Tanggapin ang Payment'}
+          </button>
+        </div>
+      )}
+
+      {/* COD payment accepted */}
+      {isDelivered && isCod && currentOrder.cod_payment_accepted_at && (
+        <div className="bg-green-50 border border-green-300 rounded-2xl p-4 mb-3 flex items-center gap-2">
+          <Check size={18} className="text-green-600" />
+          <p className="text-sm text-green-700 font-medium">Na-tanggap na ang COD payment. Tapos na ang transaction!</p>
         </div>
       )}
 

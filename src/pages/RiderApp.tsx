@@ -23,7 +23,7 @@ import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
   Share2, Copy, ExternalLink, Power, Star, UserCheck, LogOut, Shield,
-  X, Info, Trash2, Wallet, FileText,
+  QrCode, Download, DollarSign, Clock, X, Info, Trash2, Wallet, FileText,
 } from 'lucide-react';
 import { VEHICLE_TIERS, type VehicleTier } from '@/lib/deliveryFee';
 import { formatRegionForDisplay } from '@/lib/philippineLocations';
@@ -549,6 +549,8 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const watchIdRef = useRef<number | null>(null);
   const [siblingOrders, setSiblingOrders] = useState<(Order & { store: Store })[]>([]);
   const [pickedUpStores, setPickedUpStores] = useState<Set<string>>(new Set());
+  const [codRef, setCodRef] = useState(order.cod_payment_reference || '');
+  const [showCodPayment, setShowCodPayment] = useState(false);
   const [navPhase, setNavPhase] = useState<NavPhase>(order.status === 'picked_up' ? 'to_buyer' : 'to_store');
 
   useEffect(() => {
@@ -614,9 +616,22 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
     setCurrentOrder(prev => ({ ...prev, status: 'delivered' }));
   }
 
+  async function submitCodPayment() {
+    if (!codRef.trim()) return;
+    setUpdating(true);
+    await supabase.from('orders').update({
+      cod_payment_reference: codRef.trim(),
+    }).eq('id', currentOrder.id);
+    setCurrentOrder(prev => ({ ...prev, cod_payment_reference: codRef.trim() }));
+    setUpdating(false);
+    setShowCodPayment(false);
+  }
+
   const isCancelled = currentOrder.status === 'cancelled';
   const isDelivered = currentOrder.status === 'delivered';
   const isCod = currentOrder.payment_method === 'cod';
+  const codSubmitted = !!currentOrder.cod_payment_reference;
+  const codAccepted = !!currentOrder.cod_payment_accepted_at;
 
   const allStores: { order: Order & { store: Store } }[] = [
     { order: { ...currentOrder, store: store! } },
@@ -645,6 +660,22 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   riderSteps.forEach((s, i) => {
     s.status = i < currentStepIndex ? 'completed' : i === currentStepIndex ? 'active' : 'pending';
   });
+
+  // Add COD payment step if COD
+  if (isCod) {
+    riderSteps.push({
+      key: 'cod_payment',
+      label: 'Ipadala ang Bayad sa Seller',
+      description: codAccepted
+        ? 'Na-tanggap na ng seller ang COD payment. Tapos na ang transaction!'
+        : codSubmitted
+          ? 'Nai-submit na ang reference number. Naghihintay ng confirmation ng seller.'
+          : 'Kolektahin ang cash sa buyer, i-scan ang QR code ng seller, ipadala ang bayad, at i-submit ang reference number.',
+      status: codAccepted ? 'completed' : codSubmitted ? 'active' : 'pending',
+    });
+    if (codAccepted) currentStepIndex = 4;
+    else if (codSubmitted) currentStepIndex = 4;
+  }
 
   const sameCity = store?.city === currentOrder.delivery_city;
   const estimatedKm = (() => {
@@ -697,11 +728,81 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         </div>
       )}
 
-      {/* COD Payment Section — collect from buyer at delivery */}
-      {isDelivered && isCod && (
+      {/* COD Payment Section — rider sends payment to seller after delivery */}
+      {isDelivered && isCod && !codAccepted && (
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-3">
+          <div className="flex items-center gap-2 mb-3">
+            <DollarSign size={20} className="text-amber-600" />
+            <p className="font-semibold text-sm text-amber-800">COD Payment — Ipadala sa Seller</p>
+          </div>
+          {codSubmitted ? (
+            <div className="flex items-center gap-2">
+              <Clock size={16} className="text-amber-500 flex-shrink-0" />
+              <p className="text-sm text-amber-700">Nai-submit na ang reference number. Naghihintay ng confirmation ng seller.</p>
+            </div>
+          ) : showCodPayment && store?.qr_code_url ? (
+            <div>
+              <p className="text-xs text-amber-700 mb-3">Kolektahin ang cash sa buyer, i-scan ang QR code ng seller sa GCash/Maya, ipadala ang <strong>₱{totalAmount.toFixed(2)}</strong>, at i-submit ang reference number.</p>
+              <div className="bg-gray-50 rounded-xl p-4 flex justify-center mb-3">
+                <img src={store.qr_code_url} alt="QR Code ng Seller" loading="lazy" decoding="async" className="w-48 h-48 rounded-xl object-contain" />
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch(store.qr_code_url!);
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `qr-code-${store.name.replace(/\s+/g, '-').toLowerCase()}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  } catch {
+                    window.open(store.qr_code_url!, '_blank');
+                  }
+                }}
+                className="w-full mb-3 py-2.5 bg-brand-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
+              >
+                <Download size={16} /> I-download ang QR Code
+              </button>
+              <label className="text-sm font-medium text-gray-700 mb-1.5 block">Reference Number</label>
+              <input
+                type="text"
+                value={codRef}
+                onChange={(e) => setCodRef(e.target.value)}
+                placeholder="Hal. 1234567890 o Gcash Ref#"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 transition mb-3"
+              />
+              <button
+                onClick={submitCodPayment}
+                disabled={updating || !codRef.trim()}
+                className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50"
+              >
+                <Check size={18} /> {updating ? 'Nagse-send...' : 'I-submit ang Reference'}
+              </button>
+            </div>
+          ) : !showCodPayment ? (
+            <button
+              onClick={() => setShowCodPayment(true)}
+              className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
+            >
+              <QrCode size={18} /> Magbayad sa Seller
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-amber-700">
+              <p>Hindi nag-upload ang seller ng QR code. Makipag-ugnayan sa seller.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* COD accepted confirmation */}
+      {isDelivered && isCod && codAccepted && (
         <div className="bg-green-50 border border-green-300 rounded-2xl p-4 mb-3 flex items-center gap-2">
           <Check size={18} className="text-green-600" />
-          <p className="text-sm text-green-700 font-medium">Na-deliver na! Kolektahin ang ₱{totalAmount.toFixed(2)} sa buyer.</p>
+          <p className="text-sm text-green-700 font-medium">Na-tanggap na ng seller ang COD payment. Tapos na ang transaction!</p>
         </div>
       )}
 
@@ -940,7 +1041,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           {currentOrder.payment_method === 'qr_code' ? 'QR Code (GCash/Maya) — Paid by buyer' : 'Cash on Delivery'}
         </p>
         {isCod && (
-          <p className="text-xs text-amber-600 mt-1">Cash on Delivery — kolektahin ang ₱{totalAmount.toFixed(2)} sa buyer pagdating sa bahay.</p>
+          <p className="text-xs text-amber-600 mt-1">Cash on Delivery — kolektahin ang ₱{totalAmount.toFixed(2)} sa buyer, ipadala sa seller via QR code.</p>
         )}
       </div>
 

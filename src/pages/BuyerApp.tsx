@@ -2992,8 +2992,8 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         </div>
       )}
 
-      {/* Leave a Review - only for delivered orders */}
-      {isBuyer && isDelivered && (
+      {/* Leave a Review - only for delivered orders; for COD, only after seller accepts payment */}
+      {isBuyer && isDelivered && (!isCod || !!currentOrder.cod_payment_accepted_at) && (
         <ReviewSectionForOrder
           orderId={currentOrder.id}
           store={store}
@@ -3001,6 +3001,14 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
           riderId={currentOrder.rider_id}
           sellerId={store?.seller_id || null}
         />
+      )}
+
+      {/* COD: waiting for seller to confirm payment before review */}
+      {isBuyer && isDelivered && isCod && !currentOrder.cod_payment_accepted_at && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3 flex items-center gap-2">
+          <Clock size={18} className="text-amber-500 flex-shrink-0" />
+          <p className="text-sm text-amber-700">Naghihintay na tanggapin ng seller ang COD payment mula sa rider bago makapag-review.</p>
+        </div>
       )}
 
       {/* Cancel button if pending */}
