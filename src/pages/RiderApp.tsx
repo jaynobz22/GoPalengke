@@ -22,7 +22,7 @@ import { useAdminConversations } from '@/lib/useAdminChat';
 import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
-  Share2, Copy, ExternalLink, Power, Star, UserCheck, LogOut, Shield,
+  Share2, Copy, ExternalLink, Power, Star, LogOut, Shield,
   QrCode, Download, DollarSign, Clock, X, Info, Trash2, Wallet, FileText,
 } from 'lucide-react';
 import { VEHICLE_TIERS, type VehicleTier } from '@/lib/deliveryFee';
@@ -220,7 +220,6 @@ function RiderReminderBanner() {
 function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o: Order) => void; canAct: boolean; onSignOut: () => void }) {
   const { profile } = useAuth();
   const [availableOrders, setAvailableOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
-  const [assignedOrders, setAssignedOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
   const [myOrders, setMyOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
@@ -229,16 +228,13 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
 
   const load = useCallback(async () => {
     if (!profile) return;
-    const [{ data: available }, { data: assigned }, { data: mine }] = await Promise.all([
+    const [{ data: available }, { data: mine }] = await Promise.all([
       supabase.from('orders').select('*, store:stores(*), buyer:profiles!orders_buyer_id_fkey(full_name)')
         .in('status', ['ready_for_pickup']).is('rider_id', null).order('created_at', { ascending: true }),
       supabase.from('orders').select('*, store:stores(*), buyer:profiles!orders_buyer_id_fkey(full_name)')
-        .eq('rider_id', profile.id).eq('status', 'ready_for_pickup').order('created_at', { ascending: true }),
-      supabase.from('orders').select('*, store:stores(*), buyer:profiles!orders_buyer_id_fkey(full_name)')
-        .eq('rider_id', profile.id).eq('status', 'picked_up').order('created_at', { ascending: false }),
+        .eq('rider_id', profile.id).in('status', ['ready_for_pickup', 'picked_up']).order('created_at', { ascending: false }),
     ]);
     setAvailableOrders((available || []) as any);
-    setAssignedOrders((assigned || []) as any);
     setMyOrders((mine || []) as any);
     setLoading(false);
   }, [profile]);
@@ -268,7 +264,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
   async function acceptOrder(order: Order) {
     if (!profile) return;
     setAccepting(order.id);
-    const update = { rider_id: profile.id, status: 'picked_up' as const };
+    const update = { rider_id: profile.id, status: 'ready_for_pickup' as const };
     let error;
     if (order.delivery_group_id) {
       ({ error } = await supabase.from('orders').update(update).eq('delivery_group_id', order.delivery_group_id));
@@ -353,8 +349,9 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
                 const isMulti = group.orders.length > 1;
                 const first = group.orders[0];
                 const totalFee = group.orders.reduce((s, o) => s + o.delivery_fee, 0);
+                const isForPickup = first.status === 'ready_for_pickup';
                 return (
-                  <button key={group.key} onClick={() => onOrderClick(first)}
+                  <button key={group.key} onClick={() => !isForPickup && onOrderClick(first)} disabled={isForPickup}
                     className="w-full bg-white rounded-2xl border border-blue-200 p-4 text-left active:scale-[0.98] transition">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -390,7 +387,14 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
                     </div>
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-sm text-gray-400">₱{totalFee.toFixed(0)} ang fee</span>
-                      <span className="text-xs text-blue-600 font-medium">Tignan ang details →</span>
+                      {isForPickup ? (
+                        <button onClick={(e) => { e.stopPropagation(); acceptOrder(first); }} disabled={!canAct || accepting === first.id}
+                          className="px-6 py-2.5 bg-brand-600 text-white rounded-xl font-semibold active:scale-95 transition disabled:opacity-50">
+                          {accepting === first.id ? 'Tinatanggap...' : 'Tanggapin'}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-blue-600 font-medium">Tignan ang details →</span>
+                      )}
                     </div>
                   </button>
                 );
@@ -399,73 +403,6 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
           </div>
         )}
       </div>
-
-      {/* Seller-Assigned Orders — orders the seller specifically assigned to this rider */}
-      {assignedOrders.length > 0 && (
-        <div className="px-5 pb-4">
-          <h2 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <UserCheck size={18} className="text-brand-600" />
-            Para Sa'yo (Ini-assign ng Seller)
-          </h2>
-          <div className="space-y-2">
-            {(() => {
-              const groups = groupOrders(assignedOrders);
-              return groups.map(group => {
-                const isMulti = group.orders.length > 1;
-                const first = group.orders[0];
-                const totalFee = group.orders.reduce((s, o) => s + o.delivery_fee, 0);
-                return (
-                  <div key={group.key} className="bg-white rounded-2xl border-2 border-brand-300 p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-gray-800">{first.buyer?.full_name || 'Buyer'}</p>
-                        {isMulti && (
-                          <span className="text-[10px] font-bold text-white bg-brand-500 px-2 py-0.5 rounded-full">MULTI-PICKUP</span>
-                        )}
-                      </div>
-                      <span className="text-xs text-gray-400">{new Date(first.created_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}</span>
-                    </div>
-                    {isMulti ? (
-                      <>
-                        <div className="flex flex-wrap gap-1 mb-1">
-                          {group.orders.map((o, i) => (
-                            <span key={o.id} className="text-xs text-gray-600 font-medium">
-                              {o.store.name}{i < group.orders.length - 1 ? ',' : ''}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                          <MapPin size={14} /><span>{first.store.barangay}, {first.store.city}</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                          <StoreIcon size={14} /><span>{first.store.name}</span>
-                          <MapPin size={14} /><span>{first.store.barangay}, {first.store.city}</span>
-                        </div>
-                      </>
-                    )}
-                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-                      <Navigation size={14} /><span>Deliver to: {first.delivery_barangay}, {first.delivery_city}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-400">Delivery fee</p>
-                        <p className="font-bold text-blue-600">₱{totalFee.toFixed(0)}</p>
-                      </div>
-                      <button onClick={() => acceptOrder(first)} disabled={!canAct || accepting === first.id}
-                        className="px-6 py-2.5 bg-brand-600 text-white rounded-xl font-semibold active:scale-95 transition disabled:opacity-50">
-                        {accepting === first.id ? 'Tinatanggap...' : 'Tanggapin'}
-                      </button>
-                    </div>
-                  </div>
-                );
-              });
-            })()}
-          </div>
-        </div>
-      )}
 
       {/* Available Orders — only shown when rider is available */}
       {isAvailable && (
