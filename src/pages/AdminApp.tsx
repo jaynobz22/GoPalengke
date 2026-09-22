@@ -2777,7 +2777,7 @@ function VideoCreditsTab() {
                 <div className="mb-3">
                   <button
                     onClick={() => setLightboxUrl(p.screenshot_url!)}
-                    className="block w-full rounded-xl overflow-hidden border border-gray-200 active:scale-[0.98] transition relative group"
+                    className="block max-w-md w-full rounded-xl overflow-hidden border border-gray-200 active:scale-[0.98] transition relative group"
                   >
                     <img
                       src={p.screenshot_url}

@@ -195,7 +195,7 @@ export function AdminMarketingMaterials() {
 
               {/* Preview */}
               {mat.type === 'video' && mat.youtube_url ? (
-                <div className="mb-2 rounded-xl overflow-hidden bg-gray-100">
+                <div className="mb-2 rounded-xl overflow-hidden bg-gray-100 max-w-md">
                   <img
                     src={getYouTubeThumb(mat.youtube_url) || ''}
                     alt={mat.title}
@@ -217,7 +217,7 @@ export function AdminMarketingMaterials() {
                 <img
                   src={mat.media_url}
                   alt={mat.title}
-                  className="w-full h-32 object-cover rounded-xl mb-2"
+                  className="max-w-md w-full h-32 object-cover rounded-xl mb-2"
                 />
               ) : mat.caption ? (
                 <div className="bg-gray-50 rounded-xl p-3 mb-2">
