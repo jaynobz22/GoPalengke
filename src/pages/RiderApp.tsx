@@ -957,7 +957,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         </div>
         <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-around">
           <div className="text-center">
-            <p className="text-xs text-gray-400">{liveEarnings ? 'Live Distance' : 'Estimated Distance'}</p>
+            <p className="text-xs text-gray-400">{liveEarnings ? 'Store→Buyer Distance' : 'Estimated Distance'}</p>
             <p className="font-bold text-gray-800">{liveEarnings ? `${liveEarnings.distanceKm} km` : `~${estimatedKm} km`}
             </p>
           </div>
