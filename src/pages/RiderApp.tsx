@@ -491,7 +491,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
     supabase.from('profiles').select('full_name, phone, avatar_url, house_photo_url, complete_address, barangay, city, region').eq('id', order.buyer_id).maybeSingle().then(({ data }) => setBuyer(data as any));
 
     if (order.delivery_group_id) {
-      supabase.from('orders').select('*, store:stores(*)').eq('delivery_group_id', order.delivery_group_id)
+      supabase.from('orders').select('*, store:stores(*)').eq('delivery_group_id', order.delivery_group_id).neq('id', order.id)
         .then(({ data }) => { setSiblingOrders((data || []) as any); });
     }
 
@@ -978,7 +978,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
       </div>
 
       {/* Non-COD: Rider shows QR code to seller to collect delivery fee at pickup */}
-      {currentOrder.status === 'picked_up' && !isCod && (
+      {currentOrder.status === 'ready_for_pickup' && !isCod && (
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-3 flex items-start gap-3">
           <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
             <Info size={20} className="text-white" />
