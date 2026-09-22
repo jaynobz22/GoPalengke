@@ -234,7 +234,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
       supabase.from('orders').select('*, store:stores(*), buyer:profiles!orders_buyer_id_fkey(full_name)')
         .eq('rider_id', profile.id).eq('status', 'ready_for_pickup').order('created_at', { ascending: true }),
       supabase.from('orders').select('*, store:stores(*), buyer:profiles!orders_buyer_id_fkey(full_name)')
-        .eq('rider_id', profile.id).in('status', ['picked_up']).order('created_at', { ascending: false }),
+        .eq('rider_id', profile.id).in('status', ['ready_for_pickup', 'picked_up']).order('created_at', { ascending: false }),
     ]);
     setAvailableOrders((available || []) as any);
     setAssignedOrders((assigned || []) as any);
@@ -266,18 +266,15 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
 
   async function acceptOrder(order: Order) {
     if (!profile) return;
-    // If this order is part of a delivery group, accept all sibling orders too
     if (order.delivery_group_id) {
       await supabase.from('orders').update({
         rider_id: profile.id,
-        status: 'picked_up',
-        picked_up_at: new Date().toISOString(),
+        status: 'ready_for_pickup',
       }).eq('delivery_group_id', order.delivery_group_id);
     } else {
       await supabase.from('orders').update({
         rider_id: profile.id,
-        status: 'picked_up',
-        picked_up_at: new Date().toISOString(),
+        status: 'ready_for_pickup',
       }).eq('id', order.id);
     }
     load();
@@ -654,16 +651,16 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
 
   // Build rider-side step list
   const riderSteps: StepInfo[] = [
-    { key: 'accept', label: 'Tanggapin ang Delivery', description: 'Tanggapin ang delivery order at pumunta sa pickup point (store) para kunin ang parcel.', status: 'completed' },
+    { key: 'accept', label: 'Tanggapin ang Delivery', description: 'Tinanggap mo na ang delivery order. Pumunta sa pickup point (store) para kunin ang parcel.', status: 'completed' },
     { key: 'pickup', label: 'Pickup sa Store', description: 'Pumunta sa store at kunin ang order. Kumpirmahin ang pickup sa bawat store.', status: 'completed' },
-    { key: 'on_the_way', label: 'On the Way sa Buyer', description: 'Nasa daan ka na papunta sa buyer. Ang GPS location mo ay live na nakikita ng buyer sa mapa.', status: 'completed' },
+    { key: 'on_the_way', label: 'On the Way sa Buyer', description: 'Nakuha mo na ang order. Nasa daan ka na papunta sa buyer. Ang GPS location mo ay live na nakikita ng buyer sa mapa.', status: 'completed' },
     { key: 'delivered', label: 'Na-deliver na!', description: 'Na-deliver mo na ang parcel sa buyer. Tapusin ang delivery.', status: 'completed' },
   ];
 
   let currentStepIndex = 0;
-  if (currentOrder.status === 'ready_for_pickup') currentStepIndex = 0;
+  if (currentOrder.status === 'ready_for_pickup') currentStepIndex = 1;
   else if (currentOrder.status === 'picked_up') {
-    currentStepIndex = allPickedUp ? 2 : 1;
+    currentStepIndex = 2;
   }
   else if (currentOrder.status === 'delivered') currentStepIndex = 3;
 
@@ -818,18 +815,20 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
 
       {/* Live ETA Timer — shown from pickup phase; hidden for livestock (pickup/meetup) orders */}
       {(currentOrder.status === 'ready_for_pickup' || currentOrder.status === 'picked_up') && currentOrder.delivery_method !== 'pickup' && currentOrder.delivery_method !== 'meetup' && store && (() => {
-        const bCoords = getDeliveryCoords({
-          lat: currentOrder.delivery_lat,
-          lng: currentOrder.delivery_lng,
-          barangay: currentOrder.delivery_barangay,
-          city: currentOrder.delivery_city,
-          region: currentOrder.delivery_region,
-        });
-        if (!bCoords) return null;
+        const destCoords = currentOrder.status === 'ready_for_pickup'
+          ? getStoreCoords(store)
+          : getDeliveryCoords({
+              lat: currentOrder.delivery_lat,
+              lng: currentOrder.delivery_lng,
+              barangay: currentOrder.delivery_barangay,
+              city: currentOrder.delivery_city,
+              region: currentOrder.delivery_region,
+            });
+        if (!destCoords) return null;
         return (
           <LiveETATimer
             riderCoords={liveRiderCoords || (currentOrder.rider_lat != null && currentOrder.rider_lng != null ? { lat: currentOrder.rider_lat, lng: currentOrder.rider_lng } : null)}
-            buyerCoords={bCoords}
+            buyerCoords={destCoords}
             variant="rider"
             gpsActive={gpsActive}
           />
@@ -891,14 +890,30 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
                   <p className="text-xs text-gray-400 font-medium">PICKUP {allStores.length > 1 ? `${idx + 1} ng ${allStores.length}` : ''}</p>
                   <p className="font-semibold text-sm text-gray-800">{storeData.name}</p>
                   <p className="text-sm text-gray-500">{storeData.barangay}, {storeData.city}, {formatRegionForDisplay(storeData.region)}</p>
-                  {currentOrder.status === 'picked_up' && !isPickedUp && (
+                  {currentOrder.status === 'ready_for_pickup' && !isPickedUp && (
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         setPickedUpStores(prev => new Set(prev).add(s.order.store_id));
+                        if (allPickupStoreIds.every(id => pickedUpStores.has(id) || id === s.order.store_id)) {
+                          setUpdating(true);
+                          if (currentOrder.delivery_group_id) {
+                            await supabase.from('orders').update({
+                              status: 'picked_up',
+                              picked_up_at: new Date().toISOString(),
+                            }).eq('delivery_group_id', currentOrder.delivery_group_id);
+                          } else {
+                            await supabase.from('orders').update({
+                              status: 'picked_up',
+                              picked_up_at: new Date().toISOString(),
+                            }).eq('id', currentOrder.id);
+                          }
+                          setUpdating(false);
+                        }
                       }}
-                      className="mt-2 px-4 py-2 bg-brand-600 text-white rounded-lg text-xs font-semibold active:scale-95 transition"
+                      disabled={updating}
+                      className="mt-2 px-4 py-2 bg-brand-600 text-white rounded-lg text-xs font-semibold active:scale-95 transition disabled:opacity-50"
                     >
-                      Nakuha ko na dito
+                      {updating ? 'Nag-uupdate...' : 'Nakuha ko na dito'}
                     </button>
                   )}
                 </div>
@@ -1062,16 +1077,10 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
 
       {/* Mark as Delivered button */}
       {currentOrder.status === 'picked_up' && (
-        allPickedUp ? (
-          <button onClick={markDelivered} disabled={updating}
-            className="w-full py-4 bg-blue-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-blue-600/20 active:scale-[0.98] transition disabled:opacity-50 mb-3">
-            {updating ? 'Nag-uupdate...' : 'Mark as Delivered'}
-          </button>
-        ) : (
-          <div className="w-full py-4 bg-gray-100 text-gray-400 rounded-2xl font-semibold text-lg text-center mb-3">
-            Kumpirmahin muna lahat ng pickup ({pickedUpStores.size}/{allPickupStoreIds.length})
-          </div>
-        )
+        <button onClick={markDelivered} disabled={updating}
+          className="w-full py-4 bg-blue-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-blue-600/20 active:scale-[0.98] transition disabled:opacity-50 mb-3">
+          {updating ? 'Nag-uupdate...' : 'Mark as Delivered'}
+        </button>
       )}
     </div>
   );
