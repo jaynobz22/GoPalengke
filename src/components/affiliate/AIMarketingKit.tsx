@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { Affiliate } from '@/lib/affiliateAuth';
 import {
   Store, ShoppingBag, Bike, Users, Sparkles, Loader2, Copy,
@@ -55,14 +55,12 @@ const INVITE_CONFIGS: Record<InviteType, InviteConfig> = {
   },
 };
 
-function generatePostText(type: InviteType, referralLink: string, affiliateName: string): string {
-  const name = affiliateName.split(' ')[0] || 'Kaibigan';
+// ============ TEXT TEMPLATES (5+ per category) ============
 
-  switch (type) {
-    case 'seller':
-      return `🛒🔥 MGA SUKI, GUSTO MO BANG LUMAKI ANG BENTA KAHIT NASA BAHAY LANG? 🔥🛒
+const SELLER_TEMPLATES: string[] = [
+  `🛒🔥 MGA SUKI, GUSTO MO BANG LUMAKI ANG BENTA KAHIT NASA BAHAY LANG? 🔥🛒
 
-Kumusta mga ka-seller! 📈 Naisip mo na ba kung paano makarating ang mga produkto mo sa mas maraming tao kahit nasa bahay ka lang? 
+Kumusta mga ka-seller! 📈 Naisip mo na ba kung paano makarating ang mga produkto mo sa mas maraming tao kahit nasa bahay ka lang?
 
 Ang GoPalengke ay ang sagot! 🎯✨
 
@@ -77,16 +75,116 @@ Ito ang mga benepisyo kapag naging seller ka:
 Huwag nang magtiis sa mabagal na benta sa palengke. Mag-online na at dumami ang customers mo! 📱💪
 
 📌 Klik ang link para mag-sign up ngayon:
-${referralLink}
+__LINK__
 
 Sali na at simulan ang paglago ng negosyo mo! 🚀🛍️
 
-#GoPalengke #OnlinePalengke #SellerInvite #PalengkeOnline #NegosyoOnline #DagdagKita`;
+#GoPalengke #OnlinePalengke #SellerInvite #PalengkeOnline #NegosyoOnline #DagdagKita`,
 
-    case 'buyer':
-      return `🥬🥩 GUSTO MO BA NG SARIWANG REKADO PERO TAMAD LUMABAS? SAGOT KA NG GOPALENGKE! 🍅🍗
+  `💰 NAWAWALA ANG MGA SUKI DAHIL SA PANDEMIA? HINDI NA KAILANGAN MAGTIIS! 💰
 
-Mga kaibigan! 🏠 Gusto mo bang makakuha ng sariwang gulay, karne, at prutas nang hindi mo na kailangan pang pumunta sa palengke? 
+Kuwento ko lang sa inyo — kilala ko si Aling Nena, vendor sa palengke ng 15 taon. Laging kapos ang benta, laging masikip ang palengke. Hanggang sumali siya sa GoPalengke. 🌟
+
+Ito ang nangyari:
+📊 Tumindi ang benta ng 300% sa loob ng 2 buwan!
+📱 Lahat ng order pumapasok sa phone niya
+🚚 May rider na nagdedeliver — hindi na siya nag-aabala!
+💵 Cashless payments, walang nangungupit!
+
+Ito ang mga benepisyo:
+✅ Walang puhunan, libreng registration
+✅ I-set up ang tindahan sa 5 minuto
+✅ Tumanggap ng order kahit natutulog ka!
+✅ Makarating sa buyers sa buong barangay
+
+Huwag nang magtiis sa lumang paraan. Mag-GO Palengke na! 📲💪
+
+📌 Mag-sign up bilang seller dito:
+__LINK__
+
+#GoPalengke #NegosyoOnline #SellerStory #PalengkeOnline #OnlineBusiness`,
+
+  `🏪 GUSTO MO BANG MAGING "DIGITAL SELLER" NGUNIT WALANG KAPITAL? 📱🏪
+
+Oo, tama ka nga! Libreng sumali sa GoPalengke! 💯
+
+Kung ikaw ay:
+🥬 Nagbebenta ng gulay sa palengke
+🥩 May karinderya o meat shop
+🐟 Fish vendor
+🍌 Prutas vendor
+🍳 Ulam o kakanin maker
+
+Ito ang mangyayari kapag sumali ka:
+1️⃣ Mag-set up ka ng online store — LIBRE!
+2️⃣ Lalabas ang products mo sa app
+3️⃣ Mag-order ang buyers sa phone nila
+4️⃣ May rider na magdedeliver
+5️⃣ Tatanggapin mo ang payment — cash o cashless! 💵
+
+Walang rental, walang abono, walang hassle! 🎉
+
+Kumita ng malaki habang nasa bahay ka lang. Ito na ang bagong palengke — digital na! 🚀
+
+📌 Sali na bilang seller:
+__LINK__
+
+#GoPalengke #DigitalSeller #FreeOnlineStore #PalengkeOnline #KumitaOnline #WalangPuhunan`,
+
+  `🚀 BAKIT NAGIGING "SMART SELLER" ANG MGA VENDOR SA GOPALENGKE? 🚀
+
+Mga ka-seller, alam niyo ba na mas maraming tao ang nag-o-online shopping ngayon kaysa sa pumupunta sa palengke? 📊
+
+Kaya naman ang GoPalengke ay ginawa para sa inyo! 💡
+
+Ano ang pagkakaiba ng GoPalengke sa tradisyonal na palengke?
+❌ Tradisyonal: Mahirap, maalikabok, limited na oras
+✅ GoPalengke: Online 24/7, walang sakit, walang oras na limitado!
+
+❌ Tradisyonal: Kailangan pumunta ang buyer sa palengke
+✅ GoPalengke: Hatid mo ang produkto sa pinto nila!
+
+❌ Tradisyonal: Cash lang, may risk ng nakawan
+✅ GoPalengke: Cashless o COD, safe at secure!
+
+❌ Tradisyonal: Limited sa barangay lang ang customers
+✅ GoPalengke: Buong komunidad ang market mo!
+
+Huwag nang mahirap. Mag-GO Palengke na at maging "Smart Seller"! 📱✨
+
+📌 Klik para mag-sign up:
+__LINK__
+
+#GoPalengke #SmartSeller #OnlinePalengke #DigitalPalengke #NegosyoTech #SellerUpgrade`,
+
+  `⏰ ORAS MO NA PARA UMASALTO ANG NEGOSYO MO! ⏰
+
+Mga vendor, ang oras na ito ay para sa inyo! 📣
+
+Bakit? Dahil ang GoPalengke ay nagbibigay ng:
+🎯 Libreng online storefront — walang rental, walang abono
+🎯 Real-time order management — alam mo kung kailan may order
+🎯 Built-in delivery system — may rider na nagdedeliver para sa'yo
+🎯 Cashless payments — safe at walang issue
+🎯 Analytics dashboard — alam mo kung anong products ang bumenta
+
+Ito ang mga success stories ng mga vendor na sumali:
+📊 Si Mang Tonyo — 200% increase sa benta ng isda
+📊 Si Aling Carmen — 150% increase sa benta ng gulay
+📊 Si Boyet — may 50+ orders kada araw sa ulam niya
+
+Kaya naman, huwag nang magtiis sa mabagal na benta. Mag-GO Palengke na! 🚀💪
+
+📌 Klik ang link para maging seller:
+__LINK__
+
+#GoPalengke #SellerSuccess #OnlineStore #PalengkeOnline #NegosyoGrowth #DigitalVendor`,
+];
+
+const BUYER_TEMPLATES: string[] = [
+  `🥬🥩 GUSTO MO BA NG SARIWANG REKADO PERO TAMAD LUMABAS? SAGOT KA NG GOPALENGKE! 🍅🍗
+
+Mga kaibigan! 🏠 Gusto mo bang makakuha ng sariwang gulay, karne, at prutas nang hindi mo na kailangan pang pumunta sa palengke?
 
 Ang GoPalengke ay dito na! 🛵✨
 
@@ -101,14 +199,112 @@ Bakit mo subukan?
 Huwag na mahirap sa pagbili ng pagkain. Sa GoPalengke, lahat ng sariwa ay isang tapik lang! 👆📲
 
 📌 Klik ang link para mag-sign up at makapag-order na:
-${referralLink}
+__LINK__
 
 Sali na at tamasahin ang convenience! 🎉🛒
 
-#GoPalengke #PalengkeDelivery #FreshVeggies #SariwangRekado #IwasTraffic #OnlinePalengke #HomeDelivery`;
+#GoPalengke #PalengkeDelivery #FreshVeggies #SariwangRekado #IwasTraffic #OnlinePalengke #HomeDelivery`,
 
-    case 'rider':
-      return `🏍️💨 MAY MOTOR KA BA AT GUSTONG KUMITA NANG MALAKI ARAW-ARAW? 💰🏍️
+  `🚦 INIWAN MO NA BA ANG PALENGKE DAHIL SA TRAFFIC? HINDI MO NA KAILANGAN! 🚦
+
+Alam ko ang feeling — gumising ka ng maaga, mag-commute, magtiis sa traffic, mag-alikabok sa palengke, tapos uwi ka pa ng pagod. 😤
+
+Pero ngayon, may mas madaling paraan! 🎉
+
+Sa GoPalengke, ganito ka-simple:
+1️⃣ Buksan ang app sa phone mo 📱
+2️⃣ Piliin ang mga produkto — gulay, karne, prutas, ulam! 🥬🥩
+3️⃣ I-checkout at maghintay sa bahay 🛋️
+4️⃣ Hatid na sa pinto mo ng rider! 🛵
+
+Walang traffic, walang pagod, walang alikabok! ✨
+
+At ang presyo? Presyong palengke! Walang dagdag! 💰
+
+Kaya naman, huwag nang magtiis. Mag-GO Palengke na! 📲
+
+📌 Mag-sign up at makapag-order na:
+__LINK__
+
+#GoPalengke #IwasTraffic #FreshDelivery #PalengkeOnline #TamadLumabas #HomeDeliveryPH`,
+
+  `🍳 GUSTO MO BANG MAGLUTO NG MASARAP PERO WALANG KANG REKADO? 🍳
+
+Mga kaibigan, nangyari na ba sa inyo — gusto mong magluto ng masarap na ulam, pero wala kang sariwang rekado? 🤔
+
+Huwag mag-alala! Ang GoPalengke ay dito na! 🛵✨
+
+Pumili ka lang ng:
+🥬 Sariwang gulay — petsay, repolyo, talong, kamatis
+🥩 Preskong karne — baboy, baka, manok
+🐟 Isda — bangus, tilapia, galunggong
+🍌 Prutas — saging, mangga, papaya
+🍳 Ulam — adobo, sinigang, kare-kare
+
+Lahat ng ito ay direkta sa palengke, hatid sa pinto mo! 🚪
+
+At ang pinakamaganda? Mura pa! Presyong palengke! 💰
+
+Kaya naman, huwag nang magtiis sa "wala akong rekado" na excuse. Mag-GO Palengke na! 📲
+
+📌 Klik para mag-sign up at makapag-order:
+__LINK__
+
+#GoPalengke #FreshIngredients #LutoKangSariwa #PalengkeOnline #SariwangRekado #HomeCooking`,
+
+  `📱 ANG PALENGKE AY NASA BULSA MO NA! 📱
+
+Mga kaibigan, alam niyo ba na hindi na kailangan pumunta sa palengke para makabili ng sariwang pagkain? 🎉
+
+Ang GoPalengke ay ang unang app sa Pilipinas na nagdadala ng palengke direkta sa bahay mo! 🏠✨
+
+Ganito ka-simple:
+📱 Buksan ang app
+🛒 Piliin ang mga produkto
+💳 Mag-checkout (cash o cashless!)
+🛵 Hintayin ang delivery
+
+Ito ang mga benepisyo:
+✅ Sariwang produkto direkta sa palengke
+✅ Walang traffic, walang pagod
+✅ Presyong palengke, walang dagdag
+✅ Mabilis na delivery
+✅ Cashless o COD — ikaw ang pipili
+
+Huwag nang mahirap. Ang palengke ay nasa phone mo na! 📲
+
+📌 Klik para mag-sign up:
+__LINK__
+
+#GoPalengke #PalengkeSaPhone #OnlinePalengke #FreshDelivery #IwasTraffic #DigitalPalengke`,
+
+  `🌧️ UMUULAN AT AYAW MO LUMABAS? GOSYONG GOPALENGKE NA! 🌧️
+
+Mga kaibigan, nangyari na ba sa inyo — umuulan, gusto mong magluto, pero wala kang sariwang rekado? 🌧️
+
+Huwag mag-alala! Ang GoPalengke ay dito na! 🛵✨
+
+Kahit umuulan, kahit mainit, kahit tamad ka — pwede mong ma-order ang:
+🥬 Sariwang gulay
+🥩 Preskong karne
+🐟 Isda
+🍌 Prutas
+🍳 Ulam at kakanin
+
+Direkta sa palengke, hatid sa pinto mo! 🚪
+
+At ang presyo? Presyong palengke! Walang dagdag! 💰
+
+Kaya naman, huwag nang magtiis sa gutom. Mag-GO Palengke na! 📲
+
+📌 Klik para mag-sign up at makapag-order:
+__LINK__
+
+#GoPalengke #UlanPeroMayPagkain #PalengkeOnline #FreshDelivery #IwasTraffic #HomeDelivery`,
+];
+
+const RIDER_TEMPLATES: string[] = [
+  `🏍️💨 MAY MOTOR KA BA AT GUSTONG KUMITA NANG MALAKI ARAW-ARAW? 💰🏍️
 
 Mga rider! 🙋‍♂️ Gusto mo bang kumita nang malaki gamit ang motor mo habang tumutulong sa komunidad?
 
@@ -125,14 +321,121 @@ Bakit sali ka na?
 Huwag nang maghanap ng ibang trabaho. Dito sa GoPalengke, ang motor mo ay pera! 💵🏍️
 
 📌 Klik ang link para mag-sign up bilang rider:
-${referralLink}
+__LINK__
 
 Sali na at simulang kumita ngayon! 🙌💪
 
-#GoPalengke #RiderJobs #DeliveryRider #MotorKita #TrabahoOnline #KumitaSaMotor #GoPalengkeRider`;
+#GoPalengke #RiderJobs #DeliveryRider #MotorKita #TrabahoOnline #KumitaSaMotor #GoPalengkeRider`,
 
-    case 'affiliate':
-      return `💸📱 GUSTO MO BANG KUMITA GAMIT ANG FACEBOOK MO HABANG NASA BAHAY LANG? SALI NA BILANG GOPALENGKE AFFILIATE! 🏠💰
+  `🛵 NAGIGING "HERO" ANG MGA RIDER SA GOPALENGKE! 🛵
+
+Mga kaibigan, alam niyo ba na ang pagiging rider ay hindi lang trabaho — ito ay pagiging "HERO" sa komunidad? 🦸‍♂️
+
+Bakit? Dahil ang GoPalengke riders ay:
+🏆 Naghahatid ng sariwang pagkain sa pamilya
+🏆 Tumutulong sa mga vendor na lumago ang negosyo
+🏆 Binibigyan ng convenience ang mga buyers
+
+At ang pinakamaganda? Kumikita ka pa! 💰
+
+Ito ang mga benepisyo:
+✅ Kumita ng ₱500-₱1000+ kada araw
+✅ Flexible na oras — part-time o full-time
+✅ Gamitin ang sarili mong motor
+✅ Walang puhunan, libreng registration
+✅ Mabilis na payout, walang antay
+
+Kaya naman, huwag nang magtiis sa walang trabaho. Maging "GoPalengke Rider Hero" na! 🚀
+
+📌 Klik para mag-sign up bilang rider:
+__LINK__
+
+#GoPalengke #RiderHero #DeliveryJob #MotorKita #TrabahoOnline #CommunityHero`,
+
+  `📈 GUSTO MO BANG KUMITA HABANG NATUTULOG? 📈
+
+Mga rider, alam niyo ba na pwede kayong kumita sa GoPalengke kahit part-time lang? 🤔
+
+Ganito ka-simple:
+1️⃣ Mag-sign up bilang rider 📱
+2️⃣ Buksan ang app kung kailan mo gusto
+3️⃣ Tanggapin ang orders na gusto mo
+4️⃣ I-deliver at kumita! 💰
+
+Walang quota, walang minimum hours. Ikaw ang boss! 🎯
+
+Ito ang mga benepisyo:
+✅ ₱50-₱150 kada delivery
+✅ 10-20 deliveries kada araw = ₱500-₱3000!
+✅ Cashless payments, safe at secure
+✅ Real-time na order tracking
+✅ Flexible na oras — araw, gabi, o weekend!
+
+Kaya naman, huwag nang maghanap ng ibang trabaho. Mag-GO Palengke Rider na! 🚀🏍️
+
+📌 Klik para mag-sign up:
+__LINK__
+
+#GoPalengke #RiderJobs #PartTimeJob #MotorKita #KumitaOnline #FlexibleWork`,
+
+  `🏍️ ANG MOTOR MO AY PERA! 🏍️
+
+Mga kaibigan, naisip mo na ba kung gaano karaming pera ang nawawala sa'yo dahil nakatayo lang ang motor mo sa garaje? 🤔
+
+Kung ikaw ay:
+✅ May sariling motor
+✅ May driver's license
+✅ Gustong kumita ng extra income
+✅ 18+ years old
+
+Ang GoPalengke Rider Program ay para sa'yo! 🎯
+
+Ito ang mangyayari:
+📱 Mag-sign up sa app
+🛵 Tanggapin ang orders
+💰 Kumita kada delivery!
+
+At ang pinakamaganda?
+✅ Walang puhunan
+✅ Walang monthly fee
+✅ Flexible na oras
+✅ Maraming order araw-araw
+
+Huwag nang paghintay. Ang motor mo ay pera! 💵🏍️
+
+📌 Klik para mag-sign up bilang rider:
+__LINK__
+
+#GoPalengke #MotorPera #RiderJobs #KumitaSaMotor #DeliveryRider #ExtraIncome`,
+
+  `🚀 BAKIT NAGIGING "TOP EARNER" ANG MGA RIDER SA GOPALENGKE? 🚀
+
+Mga rider, alam niyo ba na ang mga riders sa GoPalengke ay kumikita ng higit sa ₱10,000 kada buwan? 💰
+
+Paano? Dahil ang GoPalengke ay:
+✅ Maraming orders araw-araw
+✅ Mataas na rate kada delivery
+✅ Bonus at incentives para sa top riders
+✅ Real-time na order dispatch
+✅ Cashless payments — walang issue sa pera
+
+Ito ang mga benepisyo:
+📊 ₱500-₱1000+ kada araw
+📊 Flexible na oras — ikaw ang pipili
+📊 Gamitin ang sarili mong motor
+📊 Walang puhunan, libreng registration
+📊 Maging bayani sa komunidad
+
+Kaya naman, huwag nang magtiis sa mababang kita. Maging "Top Earner" sa GoPalengke! 📈🏍️
+
+📌 Klik para mag-sign up:
+__LINK__
+
+#GoPalengke #TopEarner #RiderJobs #HighIncome #MotorKita #DeliveryJobPH`,
+];
+
+const AFFILIATE_TEMPLATES: string[] = [
+  `💸📱 GUSTO MO BANG KUMITA GAMIT ANG FACEBOOK MO HABANG NASA BAHAY LANG? SALI NA BILANG GOPALENGKE AFFILIATE! 🏠💰
 
 Mga kaibigan! 🤝 Naisip mo na ba kung paano kumita ng passive income gamit lang ang cellphone at Facebook mo?
 
@@ -149,19 +452,144 @@ Paano ito gumagana?
 Ito ang pinakamadaling paraan para kumita online sa Pilipinas! 🇵🇭💵
 
 📌 Klik ang link para maging affiliate ngayon:
-${referralLink}
+__LINK__
 
 Sali na at simulan ang pag-build ng passive income mo! 🚀💸
 
-#GoPalengke #AffiliateProgram #PassiveIncome #KumitaOnline #WorkFromHome #DagdagKita #OnlineBusiness`;
+#GoPalengke #AffiliateProgram #PassiveIncome #KumitaOnline #WorkFromHome #DagdagKita #OnlineBusiness`,
 
-    default:
-      return '';
-  }
+  `🤔 NAPAPANSIN MO BA NA MARAMI KA NANG FACEBOOK FRIENDS PERO WALA KANG KITA MULA SA KANILA? 🤔
+
+Mga kaibigan, alam niyo ba na pwede mong gawing pera ang Facebook mo? 💰
+
+Ang GoPalengke Affiliate Program ay ang sagot! 🎯
+
+Ganito ka-simple:
+1️⃣ Mag-sign up bilang affiliate — LIBRE! 🆓
+2️⃣ Kumuha ng referral link mo 📎
+3️⃣ I-share sa Facebook, TikTok, o kahit saan 📱
+4️⃣ Kapag may nag-sign up... KUMITA KA! 💸
+
+Ito ang kita mo:
+💰 ₱150 kada seller na maabot ang milestone
+💰 ₱35 kada rider na maabot ang milestone
+💰 Tier 2 override — kumita ka rin sa mga na-refer ng mga na-refer mo!
+
+Walang limit! Habang lumalago ang network mo, lumalago ang kita! 📈
+
+Kaya naman, huwag nang magtiis sa walang pera. Mag-GO Palengke Affiliate na! 🚀
+
+📌 Klik para mag-sign up:
+__LINK__
+
+#GoPalengke #Affiliate #FacebookPera #PassiveIncome #KumitaOnline #WorkFromHome`,
+
+  `🔥 ANG PINAKAMADALING PARAAN PARA KUMITA ONLINE SA PILIPINAS! 🔥
+
+Mga kaibigan, kung naghahanap ka ng "passive income" na totoo at legit, ito na! 💯
+
+Ang GoPalengke Affiliate Program ay:
+✅ 100% LIBRE — walang puhunan, walang fee
+✅ 2-TIER SYSTEM — kumita ka sa sarili mo at sa mga downline mo
+✅ FLEXIBLE — gawin mo sa sarili mong oras
+✅ UNLIMITED — walang limit sa kikita
+✅ LEGIT — totoong komisyon, totoong pera
+
+Paano?
+📱 I-share ang link mo sa Facebook
+👥 Kapag may nag-sign up bilang seller/rider
+💸 Makakakuha ka ng komisyon sa bawat milestone!
+
+Ito ang halimbawa:
+📊 10 sellers × ₱150 = ₱1,500
+📊 10 riders × ₱35 = ₱350
+📊 Tier 2: 50 referrals × ₱50 = ₱2,500
+TOTAL: ₱4,350+ kada buwan! 💰
+
+Huwag nang magtiis sa walang pera. Sali na! 🚀
+
+📌 Klik para maging affiliate:
+__LINK__
+
+#GoPalengke #AffiliateProgram #PassiveIncomePH #KumitaOnline #LegitOnlineJob #WorkFromHomePH`,
+
+  `📱 KUNG GUSTO MO BANG KUMITA GAMIT LANG ANG CELLPHONE MO, ITO ANG SAGOT! 📱
+
+Mga kaibigan, alam niyo ba na pwede kayong kumita ng libo-libo kada buwan gamit lang ang Facebook at cellphone niyo? 🤔
+
+Ang GoPalengke Affiliate Program ay ang sagot! 💡
+
+Heto ang mga benepisyo:
+🆓 Libreng registration — walang puhunan
+📋 Madali lang — i-share ang link mo
+💸 Komisyon sa bawat milestone ng referrals
+🔥 2-Tier system — kumita ka rin sa mga downline mo
+📈 Unlimited na kita — habang lumalago ang network, lumalago ang pera
+⏰ Walang oras na limitado — gawin mo sa sarili mong pace
+
+Ito ang magandang halimbawa:
+Kung makapag-refer ka ng 20 sellers at 20 riders...
+💰 20 sellers × ₱150 = ₱3,000
+💰 20 riders × ₱35 = ₱700
+💰 Tier 2 bonuses = ₱1,000+
+TOTAL: ₱4,700+ kada buwan! 💵
+
+At pwede pa itong lumaki! 📈
+
+Kaya naman, huwag nang magtiis. Sali na! 🚀
+
+📌 Klik para mag-sign up:
+__LINK__
+
+#GoPalengke #Affiliate #CellphonePera #KumitaSaFacebook #PassiveIncome #OnlineJobPH`,
+
+  `🚀 GUSTO MO BANG MAGKAROON NG "PASSIVE INCOME" NA TOTOO AT LEGIT? 🚀
+
+Mga kaibigan, ang "passive income" ay hindi lang pang-dream. Ito ay totoo sa GoPalengke! 💯
+
+Ang GoPalengke Affiliate Program ay ang pinakamadaling paraan para kumita online sa Pilipinas! 🇵🇭
+
+Paano ito gumagana?
+1️⃣ Mag-sign up bilang affiliate — LIBRE! 🆓
+2️⃣ Kumuha ng referral link mo 📎
+3️⃣ I-share sa Facebook, TikTok, o kahit saan 📱
+4️⃣ Kapag may nag-sign up... KUMITA KA! 💸
+
+Ito ang kita mo:
+💰 ₱150 kada seller na maabot ang milestone
+💰 ₱35 kada rider na maabot ang milestone
+💰 Tier 2 override — kumita ka rin sa mga na-refer ng mga na-refer mo!
+
+Walang limit! Habang lumalago ang network mo, lumalago ang kita! 📈
+
+Kaya naman, huwag nang magtiis sa walang pera. Mag-GO Palengke Affiliate na! 🚀
+
+📌 Klik para mag-sign up:
+__LINK__
+
+#GoPalengke #AffiliateProgram #PassiveIncome #KumitaOnline #WorkFromHome #DagdagKita #OnlineBusiness`,
+];
+
+const TEMPLATE_MAP: Record<InviteType, string[]> = {
+  seller: SELLER_TEMPLATES,
+  buyer: BUYER_TEMPLATES,
+  rider: RIDER_TEMPLATES,
+  affiliate: AFFILIATE_TEMPLATES,
+};
+
+function randomSeed(): string {
+  return Math.random().toString(36).substring(2, 10);
 }
 
-function buildPollinationsUrl(prompt: string): string {
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`;
+function pickRandomTemplate(type: InviteType, link: string, affiliateName: string): string {
+  const templates = TEMPLATE_MAP[type];
+  const template = templates[Math.floor(Math.random() * templates.length)];
+  return template.replace(/__LINK__/g, link);
+}
+
+function buildPollinationsUrl(prompt: string, seed: string): string {
+  const separator = prompt.includes('?') ? '&' : '?';
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}${separator}seed=${seed}`;
 }
 
 export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
@@ -172,6 +600,8 @@ export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
   const [textLoading, setTextLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [genCount, setGenCount] = useState(0);
+  const imgLoaderRef = useRef<HTMLImageElement | null>(null);
 
   const referralLink = `${window.location.origin}/?ref=${affiliate.referral_code}`;
   const affiliateLink = `${window.location.origin}/affiliate?aff_ref=${affiliate.referral_code}`;
@@ -191,25 +621,39 @@ export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
       setTextLoading(true);
 
       const link = type === 'affiliate' ? affiliateLink : referralLink;
-      const fullText = generatePostText(type, link, affiliate.full_name);
+      const fullText = pickRandomTemplate(type, link, affiliate.full_name);
 
       // Simulate text generation delay for UX
       setTimeout(() => {
         setText(fullText);
         setTextLoading(false);
-      }, 800);
+      }, 600);
 
-      // Generate image via Pollinations.ai
-      const url = buildPollinationsUrl(config.imagePrompt);
+      // Generate image via Pollinations.ai with random seed
+      const seed = randomSeed();
+      const url = buildPollinationsUrl(config.imagePrompt, seed);
+
+      // Cancel previous image loader if any
+      if (imgLoaderRef.current) {
+        imgLoaderRef.current.src = '';
+      }
+
       const img = new Image();
+      imgLoaderRef.current = img;
       img.onload = () => {
-        setImageUrl(url);
-        setImageLoading(false);
+        if (imgLoaderRef.current === img) {
+          setImageUrl(url);
+          setImageLoading(false);
+        }
       };
       img.onerror = () => {
-        setImageLoading(false);
+        if (imgLoaderRef.current === img) {
+          setImageLoading(false);
+        }
       };
       img.src = url;
+
+      setGenCount((c) => c + 1);
     },
     [referralLink, affiliateLink, affiliate.full_name],
   );
@@ -242,7 +686,7 @@ export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = blobUrl;
-      a.download = `gopalengke_${activeType}_poster.jpg`;
+      a.download = `gopalengke_${activeType}_poster_${Date.now()}.jpg`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -270,10 +714,15 @@ export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
             <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
               <Sparkles size={20} className="text-white" />
             </div>
-            <div>
+            <div className="flex-1">
               <h2 className="font-bold text-white text-base">AI Marketing Kit Generator</h2>
-              <p className="text-green-100 text-xs">Gumawa ng promotional post at poster sa isang click</p>
+              <p className="text-green-100 text-xs">Bawat click = panibagong post at poster! Infinite generator.</p>
             </div>
+            {genCount > 0 && (
+              <span className="text-[10px] bg-white/20 text-white px-2 py-1 rounded-full font-medium">
+                {genCount} generated
+              </span>
+            )}
           </div>
         </div>
 
@@ -295,19 +744,22 @@ export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
                       : 'bg-gray-50 border-gray-100 text-gray-600 hover:bg-gray-100'
                   }`}
                 >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                    isActive ? 'bg-white' : 'bg-white'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-white`}>
                     <Icon size={18} className={isActive ? config.color : 'text-gray-400'} />
                   </div>
                   <span className="text-left flex-1">{config.label}</span>
                   {isActive && !imageLoading && !textLoading && (
-                    <CheckCheck size={16} className={config.color} />
+                    <Sparkles size={16} className={config.color} />
                   )}
                 </button>
               );
             })}
           </div>
+          {activeType && !imageLoading && !textLoading && (
+            <p className="text-center text-xs text-gray-400">
+              Pindutin ulit ang parehong button para sa panibagong post at poster!
+            </p>
+          )}
         </div>
 
         {/* Results: Two-Column Layout */}
@@ -325,7 +777,7 @@ export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
                   {imageLoading ? (
                     <div className="flex flex-col items-center gap-2 text-gray-400">
                       <Loader2 size={28} className="animate-spin" />
-                      <p className="text-xs">Gumagawa ng larawan...</p>
+                      <p className="text-xs">Gumagawa ng bagong larawan...</p>
                     </div>
                   ) : imageUrl ? (
                     <img
