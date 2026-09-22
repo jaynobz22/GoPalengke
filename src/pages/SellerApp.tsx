@@ -1645,7 +1645,11 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
 
   async function assignRider(riderId: string) {
     setAssigningRider(riderId);
-    await supabase.from('orders').update({ rider_id: riderId, vehicle_type: fleetTier }).eq('id', currentOrder.id);
+    if (currentOrder.delivery_group_id) {
+      await supabase.from('orders').update({ rider_id: riderId, vehicle_type: fleetTier }).eq('delivery_group_id', currentOrder.delivery_group_id);
+    } else {
+      await supabase.from('orders').update({ rider_id: riderId, vehicle_type: fleetTier }).eq('id', currentOrder.id);
+    }
     setCurrentOrder(prev => ({ ...prev, rider_id: riderId }));
     setRiderAssigned(true);
     setAssigningRider(null);

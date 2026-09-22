@@ -349,9 +349,8 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
                 const isMulti = group.orders.length > 1;
                 const first = group.orders[0];
                 const totalFee = group.orders.reduce((s, o) => s + o.delivery_fee, 0);
-                const isForPickup = first.status === 'ready_for_pickup';
                 return (
-                  <button key={group.key} onClick={() => !isForPickup && onOrderClick(first)} disabled={isForPickup}
+                  <button key={group.key} onClick={() => onOrderClick(first)}
                     className="w-full bg-white rounded-2xl border border-blue-200 p-4 text-left active:scale-[0.98] transition">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
@@ -387,14 +386,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
                     </div>
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-sm text-gray-400">₱{totalFee.toFixed(0)} ang fee</span>
-                      {isForPickup ? (
-                        <button onClick={(e) => { e.stopPropagation(); acceptOrder(first); }} disabled={!canAct || accepting === first.id}
-                          className="px-6 py-2.5 bg-brand-600 text-white rounded-xl font-semibold active:scale-95 transition disabled:opacity-50">
-                          {accepting === first.id ? 'Tinatanggap...' : 'Tanggapin'}
-                        </button>
-                      ) : (
-                        <span className="text-xs text-blue-600 font-medium">Tignan ang details →</span>
-                      )}
+                      <span className="text-xs text-blue-600 font-medium">Tignan ang details →</span>
                     </div>
                   </button>
                 );
