@@ -14,6 +14,8 @@ import { PublicPages } from './components/PublicPages';
 import { LegalPages, type LegalPageType } from './components/LegalPages';
 import { TutorialPage } from './components/TutorialPage';
 import { AffiliateApp } from './pages/AffiliateApp';
+import { NotificationPermissionPrompt } from './components/NotificationPermissionPrompt';
+import { getRegistration, initPushNotifications } from './lib/pushNotifications';
 
 function AppContent() {
   const { session, profile, loading, pendingVerification } = useAuth();
@@ -41,6 +43,18 @@ function AppContent() {
       window.history.replaceState({}, '', url.pathname);
     }
   }, []);
+
+  // Register service worker early (before login) so push can work in background
+  useEffect(() => {
+    getRegistration();
+  }, []);
+
+  // Auto-subscribe to push when user is logged in and permission already granted
+  useEffect(() => {
+    if (session?.user && profile && 'Notification' in window && Notification.permission === 'granted') {
+      initPushNotifications(session.user.id, profile.role);
+    }
+  }, [session?.user?.id, profile?.id]);
 
   // Affiliate sub-system — fully isolated, takes priority
   if (affiliateRoute.isAffiliate) {
@@ -110,9 +124,9 @@ function AppContent() {
     );
   }
 
-  if (profile.role === 'buyer') return <BuyerApp />;
-  if (profile.role === 'seller') return <SellerApp />;
-  if (profile.role === 'rider') return <RiderApp />;
+  if (profile.role === 'buyer') return <><BuyerApp /><NotificationPermissionPrompt /></>;
+  if (profile.role === 'seller') return <><SellerApp /><NotificationPermissionPrompt /></>;
+  if (profile.role === 'rider') return <><RiderApp /><NotificationPermissionPrompt /></>;
   if (profile.role === 'admin') return <ErrorBoundary><AdminApp /></ErrorBoundary>;
 
   return <LandingPage onGetStarted={() => setShowAuth(true)} />;
