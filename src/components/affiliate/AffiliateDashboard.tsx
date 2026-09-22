@@ -3,6 +3,7 @@ import { useAffiliateAuth, type Affiliate } from '@/lib/affiliateAuth';
 import { navigate } from '@/lib/router';
 import { supabase } from '@/lib/supabase';
 import { AffiliateMarketingTools } from '@/components/affiliate/AffiliateMarketingTools';
+import { AIMarketingKit } from '@/components/affiliate/AIMarketingKit';
 import {
   Wallet, TrendingUp, Store, Bike, Copy, CheckCheck, LogOut, ArrowLeft,
   Link as LinkIcon, Loader2, Receipt, Target, Users, RefreshCw, Download,
@@ -516,7 +517,10 @@ export function AffiliateDashboard() {
 
             {/* MARKETING TAB */}
             {activeTab === 'marketing' && (
-              <AffiliateMarketingTools affiliate={affiliate} />
+              <div className="space-y-4">
+                <AIMarketingKit affiliate={affiliate} />
+                <AffiliateMarketingTools affiliate={affiliate} />
+              </div>
             )}
           </>
         )}
