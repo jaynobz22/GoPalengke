@@ -3,7 +3,7 @@ import { supabase, deleteStorageObject } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import { navigate } from '@/lib/router';
 import { checkPriceAnomaly } from '@/lib/security';
-import { haversineKm } from '@/lib/deliveryFee';
+import { haversineKm, VEHICLE_TIERS, type VehicleTier } from '@/lib/deliveryFee';
 import type { Store, Product, Order, OrderItem, OrderStatus, Conversation, SellerFee, AdminConversation } from '@/lib/types';
 import { PAYMENT_THRESHOLD } from '@/lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/lib/types';
@@ -1478,6 +1478,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   const [availableRiders, setAvailableRiders] = useState<{ id: string; full_name: string; phone: string | null; avatar_url: string | null }[]>([]);
   const [loadingRiders, setLoadingRiders] = useState(false);
   const [assigningRider, setAssigningRider] = useState<string | null>(null);
+  const [fleetTier, setFleetTier] = useState<VehicleTier>((order.vehicle_type as VehicleTier) || 'motorcycle');
   const [riderAssigned, setRiderAssigned] = useState(false);
   const [nearbyRiders, setNearbyRiders] = useState<{
     rider_id: string;
@@ -1607,7 +1608,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
 
   async function assignRider(riderId: string) {
     setAssigningRider(riderId);
-    await supabase.from('orders').update({ rider_id: riderId }).eq('id', currentOrder.id);
+    await supabase.from('orders').update({ rider_id: riderId, vehicle_type: fleetTier }).eq('id', currentOrder.id);
     setCurrentOrder(prev => ({ ...prev, rider_id: riderId }));
     setRiderAssigned(true);
     setAssigningRider(null);
@@ -1994,6 +1995,24 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
               </div>
             ) : (
               <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3">
+                  <label className="text-xs font-semibold text-blue-800 block mb-2">Vehicle tier para sa order</label>
+                  <select
+                    value={fleetTier}
+                    onChange={e => {
+                      const nextTier = e.target.value as VehicleTier;
+                      setFleetTier(nextTier);
+                      supabase.from('orders').update({ vehicle_type: nextTier }).eq('id', currentOrder.id);
+                      setCurrentOrder(prev => ({ ...prev, vehicle_type: nextTier }));
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl border border-blue-200 bg-white text-sm text-gray-700 outline-none"
+                  >
+                    {VEHICLE_TIERS.map(vt => (
+                      <option key={vt.id} value={vt.id}>{vt.label} — max {vt.maxLoadKg}kg</option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-blue-700 mt-2">Ang napiling tier ang gagamitin para i-filter ang compatible riders.</p>
+                </div>
                 {/* Nearby riders — already delivering to same/nearby destination */}
                 {nearbyRiders.length > 0 && (
                   <div>

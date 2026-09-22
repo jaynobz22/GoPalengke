@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import type { UserRole } from '@/lib/types';
-import { Store, Bike, ShoppingCart, ArrowLeft, Check, Mail, ShieldCheck, Eye, EyeOff, BookOpen, ArrowRight, X } from 'lucide-react';
+import { Store, Bike, ShoppingCart, ArrowLeft, Check, Mail, ShieldCheck, Eye, EyeOff, BookOpen, ArrowRight, X, Bike as Motorcycle } from 'lucide-react';
 import { LocationSelector, type LocationData } from '@/components/LocationSelector';
 import { navigate } from '@/lib/router';
 import { supabase } from '@/lib/supabase';
+import type { VehicleType } from '@/lib/types';
+import { VEHICLE_TIERS } from '@/lib/deliveryFee';
 
 const ROLES = [
   { id: 'buyer' as UserRole, name: 'Mamimili', desc: 'Bumili ng sariwang paninda online', icon: ShoppingCart, color: 'bg-brand-500' },
@@ -29,6 +31,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
   const [resendCooldown, setResendCooldown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [affiliateCode, setAffiliateCode] = useState('');
+  const [vehicleType, setVehicleType] = useState<VehicleType>('motorcycle');
 
   function startResendCooldown() {
     setResendCooldown(60);
@@ -63,7 +66,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
     setError(null);
     setInfo(null);
     setSubmitting(true);
-    const result = await signUp(email, password, fullName, selectedRole, { barangay: location.barangay, district: location.district, city: location.city, region: location.region, phone });
+    const result = await signUp(email, password, fullName, selectedRole, { barangay: location.barangay, district: location.district, city: location.city, region: location.region, phone }, vehicleType);
     setSubmitting(false);
     if (result.error) {
       setError(result.error);
@@ -368,6 +371,36 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
                 <p className="text-xs text-gray-400 mt-1">
                   Kung may nag-invite sa'yo, ilagay ang affiliate code nila dito.
                 </p>
+              </div>
+            )}
+
+            {selectedRole === 'rider' && (
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">Klase ng Sasakyan</label>
+                <p className="text-xs text-gray-400 mb-2">Piliin ang sasakyan na gagamitin mo para sa pag-deliver.</p>
+                <div className="space-y-2">
+                  {VEHICLE_TIERS.map(vt => {
+                    const Icon = vt.id === 'motorcycle' ? Motorcycle : vt.id === 'tricycle' ? Bike : Store;
+                    const selected = vehicleType === vt.id;
+                    return (
+                      <button
+                        key={vt.id}
+                        type="button"
+                        onClick={() => setVehicleType(vt.id)}
+                        className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition ${selected ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white'}`}
+                      >
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${selected ? 'bg-brand-500' : 'bg-gray-100'}`}>
+                          <Icon size={20} className={selected ? 'text-white' : 'text-gray-500'} />
+                        </div>
+                        <div className="text-left flex-1">
+                          <p className="text-sm font-semibold text-gray-800">{vt.label}</p>
+                          <p className="text-xs text-gray-500">Max Load: {vt.maxLoadKg}kg</p>
+                        </div>
+                        {selected && <Check size={20} className="text-brand-600" />}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

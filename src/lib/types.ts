@@ -2,6 +2,8 @@ import type { AccountStatus } from './security';
 
 export type UserRole = 'buyer' | 'seller' | 'rider' | 'admin';
 
+export type VehicleType = 'motorcycle' | 'tricycle' | 'minivan';
+
 export interface Profile {
   id: string;
   email: string;
@@ -34,6 +36,8 @@ export interface Profile {
   rider_plate_number: string | null;
   rider_motor_model: string | null;
   rider_qr_code_url: string | null;
+  vehicle_type: VehicleType | null;
+  rider_lto_or_cr_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -147,6 +151,8 @@ export interface Order {
   cod_payment_reference: string | null;
   cod_payment_accepted_at: string | null;
   delivery_method: string | null;
+  distance_km: number | null;
+  vehicle_type: string | null;
   scheduled_delivery_at: string | null;
   created_at: string;
   updated_at: string;

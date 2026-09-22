@@ -23,8 +23,9 @@ import {
   Bike, Package, User, ArrowLeft, MapPin, Phone, Navigation,
   Store as StoreIcon, Clock, Check, Navigation as NavIcon, MapPinned, MessageCircle,
   Share2, Copy, ExternalLink, Power, Star, UserCheck, LogOut, Shield,
-  QrCode, Download, DollarSign, X, Info, Trash2, Wallet,
+  QrCode, Download, DollarSign, X, Info, Trash2, Wallet, FileText,
 } from 'lucide-react';
+import { VEHICLE_TIERS, type VehicleTier } from '@/lib/deliveryFee';
 
 type Tab = 'deliveries' | 'messages' | 'history' | 'billing' | 'profile';
 
@@ -1162,6 +1163,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
     rider_residence_address: '',
     rider_plate_number: '',
     rider_motor_model: '',
+    vehicle_type: 'motorcycle' as VehicleTier,
   });
 
   useEffect(() => {
@@ -1172,6 +1174,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
       rider_residence_address: profile.rider_residence_address || '',
       rider_plate_number: profile.rider_plate_number || '',
       rider_motor_model: profile.rider_motor_model || '',
+      vehicle_type: (profile.vehicle_type as VehicleTier) || 'motorcycle',
     });
   }, [profile]);
 
@@ -1188,12 +1191,14 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
   }, [profile]);
 
   const verificationFields = [
+    { key: 'vehicle_type', label: 'Klase ng Sasakyan', value: profile?.vehicle_type ? VEHICLE_TIERS.find(v => v.id === profile.vehicle_type)?.label || profile.vehicle_type : null },
     { key: 'rider_age', label: 'Edad', value: profile?.rider_age },
     { key: 'rider_family_status', label: 'Pamilya', value: profile?.rider_family_status },
     { key: 'rider_residence_address', label: 'Totoong Address', value: profile?.rider_residence_address },
     { key: 'rider_plate_number', label: 'Plate Number', value: profile?.rider_plate_number },
-    { key: 'rider_motor_model', label: 'Model ng Motor', value: profile?.rider_motor_model },
-    { key: 'rider_valid_id_url', label: 'Valid ID', value: profile?.rider_valid_id_url },
+    { key: 'rider_motor_model', label: 'Model ng Sasakyan', value: profile?.rider_motor_model },
+    { key: 'rider_valid_id_url', label: "Driver's License", value: profile?.rider_valid_id_url },
+    { key: 'rider_lto_or_cr_url', label: 'LTO OR/CR', value: profile?.rider_lto_or_cr_url },
   ];
   const filledCount = verificationFields.filter(f => f.value).length;
   const isVerified = filledCount === verificationFields.length;
@@ -1207,6 +1212,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
       rider_residence_address: formData.rider_residence_address || null,
       rider_plate_number: formData.rider_plate_number || null,
       rider_motor_model: formData.rider_motor_model || null,
+      vehicle_type: formData.vehicle_type,
     }).eq('id', profile.id);
     await refreshProfile();
     setSaving(false);
@@ -1328,6 +1334,18 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
         ) : (
           <div className="space-y-3">
             <div>
+              <label className="text-xs text-gray-500 font-medium">Klase ng Sasakyan</label>
+              <select
+                value={formData.vehicle_type}
+                onChange={e => setFormData({ ...formData, vehicle_type: e.target.value as VehicleTier })}
+                className="w-full mt-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400"
+              >
+                {VEHICLE_TIERS.map(vt => (
+                  <option key={vt.id} value={vt.id}>{vt.label} (Max {vt.maxLoadKg}kg)</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className="text-xs text-gray-500 font-medium">Edad</label>
               <input
                 type="number"
@@ -1414,6 +1432,23 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           }}
         />
         {idUploading && <p className="text-xs text-blue-500 mt-1">Nag-a-upload...</p>}
+      </div>
+
+      {/* LTO OR/CR Upload */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+        <ImageUploadField
+          label="LTO OR/CR (Vehicle Registration)"
+          value={profile?.rider_lto_or_cr_url || ''}
+          bucket="profile-images"
+          folder={`lto-orcr/${profile?.id}`}
+          aspectClass="h-40"
+          hint="I-upload ang litrato ng LTO OR/CR ng iyong sasakyan. Required para sa verification."
+          onChange={async (url) => {
+            if (!profile) return;
+            await supabase.from('profiles').update({ rider_lto_or_cr_url: url || null }).eq('id', profile.id);
+            await refreshProfile();
+          }}
+        />
       </div>
 
       {/* Rider QR Code for receiving delivery fee from seller */}

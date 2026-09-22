@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import type { Profile, UserRole } from './types';
+import type { Profile, UserRole, VehicleType } from './types';
 import { isAccountBanned, isAccountSuspended, getAccountStatusLabel, checkDeviceFingerprint } from './security';
 
 interface AuthContextValue {
@@ -82,7 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     fullName: string,
     role: UserRole,
-    location: { barangay: string; district: string; city: string; region: string; phone: string }
+    location: { barangay: string; district: string; city: string; region: string; phone: string },
+    vehicleType?: VehicleType,
   ): Promise<{ error: string | null; userId?: string }> {
     setPendingVerif(true);
     const { data, error } = await supabase.auth.signUp({ email, password });
@@ -102,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email_verified: false,
       phone_verified: true,
       is_approved: role !== 'admin',
+      vehicle_type: role === 'rider' ? (vehicleType || 'motorcycle') : null,
     });
 
     if (profileError) { setPendingVerif(false); return { error: profileError.message }; }

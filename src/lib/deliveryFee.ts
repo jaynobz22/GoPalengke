@@ -1,18 +1,40 @@
-// === Tiered delivery fee model ===
+// === Multi-tier fleet delivery fee model ===
+// Three vehicle classes: motorcycle (≤20kg), tricycle/bao-bao (≤150kg), minivan (≤500kg).
 // Two pricing zones: NCR (Metro Manila) and Provinces (Davao + all others).
-// Each zone has a base distance fee for the first 2 km, a per-km rate beyond that,
-// and a weight surcharge rate for cargo exceeding the 5 kg free allowance.
+// Platform commission: fixed 3% deduction from rider earnings.
 
 export const FREE_WEIGHT_KG = 5.0;
+export const PLATFORM_COMMISSION_RATE = 0.03;
+
+export type VehicleTier = 'motorcycle' | 'tricycle' | 'minivan';
+
+export const VEHICLE_TIERS: {
+  id: VehicleTier;
+  label: string;
+  maxLoadKg: number;
+  minLoadKg: number;
+}[] = [
+  { id: 'motorcycle', label: 'Single Motorcycle', maxLoadKg: 20, minLoadKg: 0 },
+  { id: 'tricycle', label: 'Tricycle / Bao-Bao', maxLoadKg: 150, minLoadKg: 21 },
+  { id: 'minivan', label: 'Minivan', maxLoadKg: 500, minLoadKg: 151 },
+];
 
 export interface ZoneRates {
-  baseFee: number;       // flat fee for first 2 km
-  perKmRate: number;     // per km beyond 2 km
-  weightSurchargeRate: number; // per excess kg beyond 5 kg
+  baseFee: number;
+  perKmRate: number;
+  weightSurchargeRate: number;
 }
 
 export const NCR_RATES: ZoneRates = { baseFee: 60, perKmRate: 12, weightSurchargeRate: 2.0 };
 export const PROVINCE_RATES: ZoneRates = { baseFee: 50, perKmRate: 10, weightSurchargeRate: 1.5 };
+
+// Tricycle tier rates (flat weight package, no excess surcharge)
+export const NCR_RATES_TRICYCLE: ZoneRates = { baseFee: 100, perKmRate: 18, weightSurchargeRate: 0 };
+export const PROVINCE_RATES_TRICYCLE: ZoneRates = { baseFee: 80, perKmRate: 15, weightSurchargeRate: 0 };
+
+// Minivan tier rates (flat weight package, no excess surcharge)
+export const NCR_RATES_MINIVAN: ZoneRates = { baseFee: 300, perKmRate: 30, weightSurchargeRate: 0 };
+export const PROVINCE_RATES_MINIVAN: ZoneRates = { baseFee: 250, perKmRate: 25, weightSurchargeRate: 0 };
 
 // NCR PSGC region code starts with "13"
 const NCR_PREFIX = '13';
@@ -42,9 +64,16 @@ export function isNcrRegion(region: string | null | undefined, city: string | nu
   return false;
 }
 
-/** Get the zone-specific rates for a store location. */
-export function getZoneRates(region: string | null | undefined, city: string | null | undefined): ZoneRates {
-  return isNcrRegion(region, city) ? NCR_RATES : PROVINCE_RATES;
+/** Get the zone-specific rates for a store location, by vehicle tier. */
+export function getZoneRates(
+  region: string | null | undefined,
+  city: string | null | undefined,
+  tier: VehicleTier = 'motorcycle',
+): ZoneRates {
+  const isNcr = isNcrRegion(region, city);
+  if (tier === 'tricycle') return isNcr ? NCR_RATES_TRICYCLE : PROVINCE_RATES_TRICYCLE;
+  if (tier === 'minivan') return isNcr ? NCR_RATES_MINIVAN : PROVINCE_RATES_MINIVAN;
+  return isNcr ? NCR_RATES : PROVINCE_RATES;
 }
 
 /**
@@ -71,7 +100,52 @@ function round2(n: number): number {
 }
 
 /**
- * Full tiered delivery fee computation.
+ * Determine the required vehicle tier based on cargo weight.
+ * ≤20kg → motorcycle, 21-150kg → tricycle, 151-500kg → minivan.
+ */
+export function getRequiredTier(totalWeightKg: number): VehicleTier {
+  if (totalWeightKg <= 20) return 'motorcycle';
+  if (totalWeightKg <= 150) return 'tricycle';
+  return 'minivan';
+}
+
+/**
+ * Multi-tier fleet delivery fee computation.
+ * Selects the pricing matrix based on vehicle tier and zone (NCR vs Province).
+ * Returns distance charge, weight surcharge (motorcycle only), total, rider net,
+ * and platform commission.
+ */
+export function computeFleetDeliveryFee(
+  distanceKm: number,
+  totalWeightKg: number,
+  region: string | null | undefined,
+  city: string | null | undefined,
+  tier?: VehicleTier,
+): {
+  distanceCharge: number;
+  weightSurcharge: number;
+  total: number;
+  riderNet: number;
+  commission: number;
+  isNcr: boolean;
+  tier: VehicleTier;
+  rates: ZoneRates;
+} {
+  const vehicleTier = tier || getRequiredTier(totalWeightKg);
+  const rates = getZoneRates(region, city, vehicleTier);
+  const isNcr = isNcrRegion(region, city);
+  const distanceCharge = round2(computeDistanceCharge(distanceKm, rates));
+  const weightSurcharge = vehicleTier === 'motorcycle'
+    ? round2(computeWeightSurcharge(totalWeightKg, rates))
+    : 0;
+  const total = round2(distanceCharge + weightSurcharge);
+  const commission = round2(total * PLATFORM_COMMISSION_RATE);
+  const riderNet = round2(total - commission);
+  return { distanceCharge, weightSurcharge, total, riderNet, commission, isNcr, tier: vehicleTier, rates };
+}
+
+/**
+ * Full tiered delivery fee computation (legacy — motorcycle tier only).
  * Returns the distance charge, weight surcharge, and total — all rounded to 2 dp.
  */
 export function computeTieredDeliveryFee(
@@ -330,16 +404,18 @@ export function computeDeliveryFeeFromCoords(
   region?: string | null,
   city?: string | null,
   totalWeightKg?: number,
-): { fee: number; distanceKm: number; distanceCharge: number; weightSurcharge: number } {
+  tier?: VehicleTier,
+): { fee: number; distanceKm: number; distanceCharge: number; weightSurcharge: number; riderNet: number; commission: number; tier: VehicleTier } {
   const distanceKm = haversineKm(storeCoords, deliveryCoords);
-  const rates = getZoneRates(region, city);
-  const distanceCharge = round2(computeDistanceCharge(distanceKm, rates));
-  const weightSurcharge = round2(computeWeightSurcharge(totalWeightKg || 0, rates));
+  const result = computeFleetDeliveryFee(distanceKm, totalWeightKg || 0, region, city, tier);
   return {
-    fee: round2(distanceCharge + weightSurcharge),
+    fee: result.total,
     distanceKm: round2(distanceKm),
-    distanceCharge,
-    weightSurcharge,
+    distanceCharge: result.distanceCharge,
+    weightSurcharge: result.weightSurcharge,
+    riderNet: result.riderNet,
+    commission: result.commission,
+    tier: result.tier,
   };
 }
 
