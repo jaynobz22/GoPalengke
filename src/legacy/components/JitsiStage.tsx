@@ -89,6 +89,8 @@ export function JitsiStage({ roomId, displayName, onJoined, onOtherJoined, onOth
         everJoined = true;
         // Tile view: makikita ang sarili at ang kausap nang sabay sa phone.
         try { api.executeCommand('setTileView', true); } catch {}
+        cbs.current.onJoined?.();
+      });
       api.addListener('participantJoined', () => { others += 1; try { api.executeCommand('setTileView', true); } catch {} cbs.current.onOtherJoined?.(); });
       api.addListener('participantLeft', () => {
         others = Math.max(0, others - 1);
