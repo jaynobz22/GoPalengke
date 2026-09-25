@@ -31,4 +31,4 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 - [x] Make public seller storefronts adapt without stretching or breaking images
 - [x] Preserve the existing phone layouts
 - [x] Verify desktop and mobile layouts and build
-- [ ] Push responsive dashboard update to GitHub
+- [x] Push responsive dashboard update to GitHub
