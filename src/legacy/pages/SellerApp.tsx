@@ -2125,7 +2125,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
                       <Bike size={16} className="text-blue-500" />
                       <p className="text-xs font-semibold text-blue-700">Nasa parehong lugar na — pwede isabay</p>
                     </div>
-                    <p className="text-[11px] text-gray-400 mb-2 px-1">Mga rider na nagde-deliver na sa malapit sa destinasyon ng buyer mo. Pwede mo silang i-assign para isabay ang order.</p>
+                    <p className="text-[11px] text-gray-400 mb-2 px-1">May rider na kukuha rin ng order sa malapit na tindahan papunta sa lugar ng buyer mo (hanggang 1 km, max 20 kg). Opsyonal lang ito: pwede mo siyang i-assign para isabay, o pumili ng ibang rider sa ibaba.</p>
                     <div className="space-y-2">
                       {nearbyRiders.map(n => (
                         <button
