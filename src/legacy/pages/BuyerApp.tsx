@@ -1290,6 +1290,41 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
 }
 
 // ============= CART VIEW =============
+function cartWeightKg(items: any[]): number {
+  return items.reduce((sum, i) => {
+    const qty = Number(i.quantity);
+    if (!Number.isFinite(qty) || qty <= 0) return sum;
+    const u = i.product?.unit?.toLowerCase() || '';
+    if (['kilo','kg','kilogram','liter','litro','l'].includes(u)) return sum + qty;
+    if (u === 'gram' || u === 'g') return sum + qty / 1000;
+    if (u === 'bundle' || u === 'bugkos') return sum + qty * 2;
+    if (u === 'tray' || u === 'itlog') return sum + qty;
+    if (['piece','pc','piraso'].includes(u)) return sum + qty * 0.3;
+    if (u === 'dozen' || u === 'dosen') return sum + qty * 1.5;
+    if (u === 'sack' || u === 'sako') return sum + qty * 25;
+    return sum + qty * 0.5;
+  }, 0);
+}
+
+function MultiStoreWeightNotice({ items, storeCount }: { items: any[]; storeCount: number }) {
+  if (storeCount < 2) return null;
+  const kg = cartWeightKg(items);
+  if (kg > 25) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4 text-sm text-red-800">
+        <p className="font-bold mb-1">⚠️ Mabigat na: {kg.toFixed(1)} kg mula sa {storeCount} tindahan</p>
+        <p className="text-xs leading-relaxed">Lagpas na sa 25 kg na kaya ng isang motor. Maaaring <b>2 rider</b> na ang kailangan mo, o mag-<b>Bao-Bao / Tricycle</b> ka na para sa mabigat na karga. Pwede ring bawasan o i-checkout muna ang isang tindahan.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4 text-sm text-amber-800">
+      <p className="font-bold mb-1">Paalala: namili ka sa {storeCount} tindahan ({kg.toFixed(1)} kg)</p>
+      <p className="text-xs leading-relaxed">Hanggang <b>20 kg</b> lang ang kaya ng isang rider na naka-motor (may palugit hanggang 25 kg). Kapag lumagpas, maaaring 2 rider o Bao-Bao na ang kailangan.</p>
+    </div>
+  );
+}
+
 function CartView({ onCheckout, refreshKey }: { onCheckout: () => void; refreshKey: number }) {
   const { profile } = useAuth();
   const [cartItems, setCartItems] = useState<(CartItem & { product: Product; store: Store })[]>([]);
@@ -1345,6 +1380,7 @@ function CartView({ onCheckout, refreshKey }: { onCheckout: () => void; refreshK
   return (
     <div className="px-5 py-4">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Cart ko</h2>
+      <MultiStoreWeightNotice items={cartItems} storeCount={Object.keys(grouped).length} />
       {Object.entries(grouped).map(([storeId, items]) => (
         <div key={storeId} className="mb-4">
           <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
@@ -1878,6 +1914,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
         </div>
       )}
 
+      <MultiStoreWeightNotice items={Object.values(grouped).flat()} storeCount={Object.keys(grouped).length} />
       {/* Order Items by Store with Delivery Fee Breakdown */}
       {Object.entries(grouped).map(([storeId, items]) => {
         const store = items[0].store;
