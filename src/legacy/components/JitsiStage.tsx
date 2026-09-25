@@ -73,11 +73,13 @@ export function JitsiStage({ roomId, displayName, onJoined, onOtherJoined, onOth
           MOBILE_APP_PROMO: false,
           SHOW_JITSI_WATERMARK: false,
           TOOLBAR_BUTTONS: ['microphone', 'camera', 'toggle-camera', 'hangup'],
-          // Messenger-style: malaki ang kausap, maliit na sariling camera sa ibaba.
-          FILM_STRIP_MAX_HEIGHT: 110,
+          // Messenger-style: maliit na self-view na laging kita sa phone.
+          FILM_STRIP_MAX_HEIGHT: 64,
+          LOCAL_THUMBNAIL_RATIO: 0.5625,
           VERTICAL_FILMSTRIP: false,
           TILE_VIEW_MAX_COLUMNS: 1,
           DISABLE_VIDEO_BACKGROUND: true,
+          TOOLBAR_ALWAYS_VISIBLE: true,
         },
 
       });
@@ -116,6 +118,6 @@ export function JitsiStage({ roomId, displayName, onJoined, onOtherJoined, onOth
     };
   }, [roomId]);
 
-
-  return <div ref={el} className="absolute inset-0 bg-black" />;
+  // May puwang sa ibaba para hindi matago sa mobile browser controls ang self-view.
+  return <div ref={el} className="absolute inset-x-0 top-0 bottom-16 overflow-hidden bg-black sm:bottom-0" />;
 }
