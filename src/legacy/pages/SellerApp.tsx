@@ -392,7 +392,7 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const cityMarkets = getCityMarkets(location.city);
+  const cityMarkets = getCityMarkets(profile?.city || location.city);
   const finalPalengkeName = palengkeName === '__custom__' ? palengkeCustom.trim() : palengkeName;
 
   async function create(e: React.FormEvent) {
@@ -406,7 +406,9 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
     const { error } = await supabase.from('stores').insert({
       seller_id: profile.id,
       name, description,
-      barangay: location.barangay, district: location.district, city: location.city, region: location.region,
+      ...(profile.city && profile.barangay
+        ? { barangay: profile.barangay, district: profile.district || '', city: profile.city, region: profile.region || location.region }
+        : { barangay: location.barangay, district: location.district, city: location.city, region: location.region }),
       latitude: palengkeCoords?.lat ?? null,
       longitude: palengkeCoords?.lng ?? null,
       banner_url: bannerUrl || null,
@@ -439,14 +441,24 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
           <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Sariwang isda mula sa Navotas..." rows={2}
             className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition resize-none" />
         </div>
-        <div>
-          <LocationSelector
-            value={location}
-            onChange={setLocation}
-            label="Location ng tindahan"
-            compact
-          />
-        </div>
+        {profile?.city && profile?.barangay ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+            <p className="text-sm font-medium text-gray-600">Location ng tindahan</p>
+            <p className="text-sm text-gray-800 mt-1">
+              {[profile.barangay, profile.city, profile.district, profile.region].filter(Boolean).join(', ')}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">Galing sa address na inilagay mo noong nag-register.</p>
+          </div>
+        ) : (
+          <div>
+            <LocationSelector
+              value={location}
+              onChange={setLocation}
+              label="Location ng tindahan"
+              compact
+            />
+          </div>
+        )}
         <div>
           <label className="text-sm font-medium text-gray-600 mb-1 block">Saan ka nagbebenta?</label>
           <p className="text-xs text-gray-400 mb-2">May pwesto ka ba sa palengke, o nagbebenta mula sa bahay na may farm/fishpond?</p>
