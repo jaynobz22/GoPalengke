@@ -2536,7 +2536,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
         <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2">
           <Star size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-amber-700">
-            May <strong>{pendingReviewCount}</strong> na-deliver na order na wala pang review. Mag-iwan ng review sa tindahan at rider para matapos at mailipat ito sa History.
+            May <strong>{pendingReviewCount}</strong> na-deliver na order na wala pang review. Kumusta ang iyong experience sa tindahan at rider? Mag-iwan ng review para matapos at mailipat ito sa History.
           </p>
         </div>
       )}
@@ -2592,7 +2592,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
                         )}
                         {groupNeedsReview && (
                           <span className="text-[10px] font-bold text-white bg-amber-500 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <Star size={10} className="fill-white" /> KAILANGAN NG REVIEW
+                            <Star size={10} className="fill-white" /> KUMUSTA ANG EXPERIENCE MO? MAG-IWAN NG REVIEW
                           </span>
                         )}
                         <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
@@ -2663,7 +2663,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
                       )}
                       {groupNeedsReview && (
                         <span className="text-[10px] font-bold text-white bg-amber-500 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Star size={10} className="fill-white" /> KAILANGAN NG REVIEW
+                          <Star size={10} className="fill-white" /> KUMUSTA ANG EXPERIENCE MO? MAG-IWAN NG REVIEW
                         </span>
                       )}
                       <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[displayStatus]}`}>
