@@ -144,10 +144,10 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
   }
 
   return (
-    <div className="fixed inset-0 z-[70] bg-gray-50 flex flex-col max-w-md mx-auto">
+    <div className="fixed inset-x-0 top-0 z-[70] mx-auto flex h-[100dvh] w-full max-w-md min-w-0 flex-col overflow-hidden bg-gray-50">
       {/* Header */}
-      <div className={`px-4 py-3 flex items-center gap-3 shadow-sm ${isAdmin ? 'bg-gray-900' : 'bg-blue-600'}`}>
-        <button onClick={onBack} className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition">
+      <div className={`safe-top flex w-full min-w-0 shrink-0 items-center gap-2 px-3 py-2.5 shadow-sm ${isAdmin ? 'bg-gray-900' : 'bg-blue-600'}`}>
+        <button onClick={onBack} className="w-9 h-9 shrink-0 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition">
           <ArrowLeft size={20} className="text-white" />
         </button>
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -178,7 +178,7 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+      <div ref={scrollRef} className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-4 space-y-2">
         {messages.length === 0 && (
           <div className="text-center py-12">
             <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-3">
@@ -284,7 +284,7 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
       )}
 
       {/* Input */}
-      <form onSubmit={send} className="px-4 py-3 bg-white border-t border-gray-200 flex items-center gap-2">
+      <form onSubmit={send} className="chat-composer grid w-full min-w-0 shrink-0 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 border-t border-gray-200 bg-white px-3 pt-3">
         <input
           ref={fileInputRef}
           type="file"
@@ -305,7 +305,7 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder="Mag-type ng mensahe..."
-          className="flex-1 px-4 py-2.5 rounded-full bg-gray-100 border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none text-sm transition"
+          className="h-11 w-full min-w-0 px-4 py-2.5 rounded-full bg-gray-100 border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none text-sm transition"
         />
         <button
           type="submit"

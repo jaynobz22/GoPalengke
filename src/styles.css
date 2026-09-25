@@ -99,6 +99,7 @@ body {
 
 .safe-top { padding-top: var(--safe-top); }
 .safe-bottom { padding-bottom: var(--safe-bottom); }
+.chat-composer { padding-bottom: max(0.75rem, var(--safe-bottom)); }
 
 @keyframes slideUp {
   from { transform: translateY(100%); opacity: 0; }

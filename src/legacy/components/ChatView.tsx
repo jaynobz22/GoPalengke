@@ -667,10 +667,10 @@ export function ChatView({
   }
 
   return (
-    <div className="flex flex-col h-dvh max-w-md mx-auto bg-gray-50">
+    <div className="fixed inset-x-0 top-0 z-[60] mx-auto flex h-[100dvh] w-full max-w-md min-w-0 flex-col overflow-hidden bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
-        <button onClick={onBack} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center active:scale-95 transition">
+      <div className="safe-top z-10 flex w-full min-w-0 shrink-0 items-center gap-2 border-b border-gray-100 bg-white px-3 py-2.5">
+        <button onClick={onBack} className="w-10 h-10 shrink-0 rounded-full bg-gray-100 flex items-center justify-center active:scale-95 transition">
           <ArrowLeft size={20} className="text-gray-600" />
         </button>
         <Avatar src={otherAvatar} name={otherName} size={40} />
@@ -695,7 +695,7 @@ export function ChatView({
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+      <div ref={scrollRef} className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-4 space-y-2">
         {loading && (
           <div className="flex items-center justify-center py-8">
             <div className="w-8 h-8 border-2 border-gray-200 border-t-brand-500 rounded-full animate-spin" />
@@ -907,7 +907,7 @@ export function ChatView({
       )}
 
       {/* Input */}
-      <form onSubmit={handleSend} className="bg-blue-50 border-t border-blue-100 px-4 py-3 flex items-center gap-2 safe-bottom">
+      <form onSubmit={handleSend} className="chat-composer grid w-full min-w-0 shrink-0 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 border-t border-blue-100 bg-blue-50 px-3 pt-3">
         <input
           ref={fileInputRef}
           type="file"
@@ -932,7 +932,7 @@ export function ChatView({
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder="Mag-type ng mensahe..."
-          className="flex-1 px-4 py-2.5 rounded-full bg-white text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-200 transition shadow-sm"
+          className="h-11 w-full min-w-0 px-4 py-2.5 rounded-full bg-white text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-200 transition shadow-sm"
         />
         <button
           type="submit"
