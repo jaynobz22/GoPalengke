@@ -50,9 +50,6 @@ export function TargetedMarketingPages({ affiliate }: { affiliate: Affiliate }) 
   const [copied, setCopied] = useState<string | null>(null);
 
   function getLink(page) {
-    if (page.id === 'affiliate') {
-      return `${window.location.origin}/affiliate?aff_ref=${encodeURIComponent(affiliate.referral_code)}`;
-    }
     return `${window.location.origin}${page.path}?ref=${encodeURIComponent(affiliate.referral_code)}`;
   }
 
