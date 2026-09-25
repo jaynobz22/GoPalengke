@@ -628,16 +628,16 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
               <button
                 key={store.id}
                 onClick={() => onStoreClick(store)}
-                className="flex-shrink-0 w-40 bg-white rounded-2xl border border-gray-100 active:scale-[0.98] transition overflow-hidden"
+                className="flex-shrink-0 w-44 sm:w-52 lg:w-60 text-left bg-white rounded-2xl border border-gray-100 active:scale-[0.98] transition overflow-hidden"
               >
-                <div className="h-16 bg-gray-100 relative">
+                <div className="aspect-[16/9] bg-gray-100 relative overflow-hidden">
                   {store.banner_url && <img src={store.banner_url} alt={store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                   {store.city.toLowerCase() === (locationFilter.city || '').toLowerCase() && (
                     <span className="absolute top-1 right-1 bg-green-500 text-white text-[10px] px-2 py-0.5 rounded-full">Near You</span>
                   )}
                 </div>
                 <div className="px-2.5 pb-2.5">
-                  <div className="flex items-center gap-2 -mt-5 mb-1">
+                  <div className="relative z-10 flex items-center gap-2 -mt-5 mb-1">
                     <div className="w-10 h-10 rounded-full bg-white border-2 border-white shadow-md overflow-hidden flex-shrink-0">
                       {(store as any).seller?.avatar_url ? (
                         <img src={(store as any).seller.avatar_url} alt={(store as any).seller.full_name || store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />
@@ -653,17 +653,17 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
                     <p className="text-xs text-gray-400 line-clamp-1">{(store as any).seller.full_name}</p>
                   )}
                   {store.palengke_name && (
-                    <p className="text-xs text-brand-600 line-clamp-1 flex items-center gap-0.5 mt-0.5">
-                      <MapPin size={10} />
-                      {store.palengke_name}
+                    <p className="text-xs text-brand-600 flex items-center gap-0.5 mt-0.5 min-w-0">
+                      <MapPin size={10} className="shrink-0" />
+                      <span className="truncate">{store.palengke_name}</span>
                     </p>
                   )}
-                  <div className="flex items-center gap-1 mt-1">
-                    <Star size={12} className="fill-amber-400 text-amber-400" />
+                  <div className="flex items-center gap-1 mt-1 min-w-0">
+                    <Star size={12} className="shrink-0 fill-amber-400 text-amber-400" />
                     <span className="text-xs text-gray-500">{store.rating}</span>
                     <span className="text-xs text-gray-300">·</span>
                     <MapPin size={12} className="text-gray-400" />
-                    <span className="text-xs text-gray-500 line-clamp-1">{store.city}</span>
+                    <span className="text-xs text-gray-500 truncate">{store.city}</span>
                   </div>
                 </div>
               </button>
