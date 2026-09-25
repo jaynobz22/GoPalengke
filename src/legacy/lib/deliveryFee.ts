@@ -54,14 +54,15 @@ const NCR_CITIES = new Set([
  * to city-name matching for legacy data.
  */
 export function isNcrRegion(region: string | null | undefined, city: string | null | undefined): boolean {
-  if (region) {
+  if (region != null && region !== '') {
+    const regionText = String(region);
     // PSGC codes are 10-digit; NCR = 1300000000
-    if (/^\d{10}$/.test(region) && region.startsWith(NCR_PREFIX)) return true;
+    if (/^\d{10}$/.test(regionText) && regionText.startsWith(NCR_PREFIX)) return true;
     // Legacy text-based region names
-    const r = region.toLowerCase();
+    const r = regionText.toLowerCase();
     if (r === 'ncr' || r.includes('national capital') || r.includes('metro manila')) return true;
   }
-  if (city && NCR_CITIES.has(city)) return true;
+  if (city != null && NCR_CITIES.has(String(city))) return true;
   return false;
 }
 
@@ -132,12 +133,14 @@ export function computeFleetDeliveryFee(
   tier: VehicleTier;
   rates: ZoneRates;
 } {
-  const vehicleTier = tier || getRequiredTier(totalWeightKg);
+  const safeDistanceKm = Number.isFinite(Number(distanceKm)) ? Math.max(0, Number(distanceKm)) : 0;
+  const safeWeightKg = Number.isFinite(Number(totalWeightKg)) ? Math.max(0, Number(totalWeightKg)) : 0;
+  const vehicleTier = tier || getRequiredTier(safeWeightKg);
   const rates = getZoneRates(region, city, vehicleTier);
   const isNcr = isNcrRegion(region, city);
-  const distanceCharge = round2(computeDistanceCharge(distanceKm, rates));
+  const distanceCharge = round2(computeDistanceCharge(safeDistanceKm, rates));
   const weightSurcharge = vehicleTier === 'motorcycle'
-    ? round2(computeWeightSurcharge(totalWeightKg, rates))
+    ? round2(computeWeightSurcharge(safeWeightKg, rates))
     : 0;
   const total = round2(distanceCharge + weightSurcharge);
   const commission = round2(total * PLATFORM_COMMISSION_RATE);
@@ -337,7 +340,11 @@ export function getStoreCoords(store: {
 }): Coords | null {
   // Prefer explicit store coordinates from the database
   if (store.latitude != null && store.longitude != null) {
-    return { lat: store.latitude, lng: store.longitude };
+    const lat = Number(store.latitude);
+    const lng = Number(store.longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { lat, lng };
+    }
   }
 
   // Try palengke name lookup
@@ -371,7 +378,9 @@ export function getDeliveryCoords(delivery: {
 }): Coords | null {
   // Prefer explicit pin coordinates
   if (delivery.lat != null && delivery.lng != null) {
-    return { lat: delivery.lat, lng: delivery.lng };
+    const lat = Number(delivery.lat);
+    const lng = Number(delivery.lng);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
   }
 
   // Fall back to city center — callers should prefer text-based estimation
@@ -544,7 +553,16 @@ export async function fetchRoute(from: Coords, to: Coords): Promise<RouteResult>
  */
 export async function fetchRoadDistance(from: Coords, to: Coords): Promise<{ distanceKm: number; durationMin: number }> {
   const route = await fetchRoute(from, to);
-  return { distanceKm: route.distanceKm, durationMin: route.durationMin };
+  const distanceKm = Number(route.distanceKm);
+  const durationMin = Number(route.durationMin);
+  if (!Number.isFinite(distanceKm) || !Number.isFinite(durationMin)) {
+    const fallbackKm = haversineKm(from, to);
+    return {
+      distanceKm: Math.round(fallbackKm * 100) / 100,
+      durationMin: Math.round((fallbackKm / 30) * 60),
+    };
+  }
+  return { distanceKm, durationMin };
 }
 
 /**

@@ -2,8 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Video, PhoneOff, Phone, AlertCircle } from 'lucide-react';
-import { useWebRTCCall } from '../lib/webrtc';
-import { RtcVideoStage } from './RtcVideoStage';
+import { JitsiStage } from './JitsiStage';
 
 type CallPhase = 'outgoing' | 'incoming' | 'connected' | 'ended';
 
@@ -18,19 +17,13 @@ interface AdminVideoCallProps {
 export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: AdminVideoCallProps) {
   const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'incoming');
   const [joined, setJoined] = useState(isCaller);
+  const [error, setError] = useState<string | null>(null);
+  const apiRef = useRef<any>(null);
 
   const updateCallStatus = async (status: string) => {
     if (!callId) return;
     await supabase.from('admin_calls').update({ status }).eq('id', callId);
   };
-
-  const call = useWebRTCCall({ roomId, isCaller, enabled: joined, onRemoteHangup: () => updateCallStatus('ended') });
-  const error = call.error;
-
-  useEffect(() => {
-    if (call.phase === 'connected' || call.phase === 'reconnecting') setPhase('connected');
-    else if (call.phase === 'ended' || call.phase === 'failed') setPhase('ended');
-  }, [call.phase]);
 
   async function acceptCall() {
     setJoined(true);
@@ -43,16 +36,26 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
   }
 
   async function endCall() {
-    call.hangup();
-    await updateCallStatus('ended');
+    try { apiRef.current?.executeCommand('hangup'); } catch {}
+    setJoined(false);
     setPhase('ended');
+    await updateCallStatus('ended');
   }
 
-  // Single return — container always in DOM, overlays layered on top
   return (
     <div className="fixed inset-0 z-[80] bg-gray-900 max-w-md mx-auto overflow-hidden">
 
-      {phase === 'connected' && <RtcVideoStage call={{ ...call, hangup: endCall }} statusText={isCaller ? otherName : 'Admin'} />}
+      {joined && phase !== 'ended' && (
+        <JitsiStage
+          roomId={roomId}
+          apiRef={apiRef}
+          displayName={isCaller ? 'Admin' : undefined}
+          onOtherJoined={() => setPhase('connected')}
+          onOtherLeft={() => endCall()}
+          onLeft={() => endCall()}
+          onError={(m) => setError(m)}
+        />
+      )}
 
       {/* ── CALL ENDED ── */}
       {phase === 'ended' && (

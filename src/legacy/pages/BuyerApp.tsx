@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { navigate } from '../lib/router';
@@ -12,8 +12,8 @@ import {
   computeDeliveryFee, estimateDistanceKm,
   haversineKm, getStoreCoords, getDeliveryCoords,
   computeDeliveryFeeFromCoords, fetchRoadDistance,
-  BASE_DELIVERY_FEE, PER_KM_RATE, computeFleetDeliveryFee, getRequiredTier, getZoneRates, computeDistanceCharge, computeWeightSurcharge, FREE_WEIGHT_KG, isNcrRegion,
-  type ZoneRates, type VehicleTier, type Coords, type RouteResult,
+  BASE_DELIVERY_FEE, PER_KM_RATE, computeFleetDeliveryFee, getRequiredTier, getZoneRates, computeDistanceCharge, computeWeightSurcharge, FREE_WEIGHT_KG, isNcrRegion, type ZoneRates, type VehicleTier,
+  type Coords, type RouteResult,
 } from '../lib/deliveryFee';
 import { fetchBarangaysByCity, fetchCitiesByRegion, fetchCitiesByProvince, fetchProvincesByRegion, formatRegionForDisplay as sharedFormatRegion } from '../lib/philippineLocations';
 
@@ -42,6 +42,7 @@ import { VideoCreditStore } from '../components/VideoCreditStore';
 import { AdminVideoCall } from '../components/AdminVideoCall';
 import { AdminChat } from '../components/AdminChat';
 import { LoginReminderPopup } from '../components/LoginReminderPopup';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useIncomingAdminCall } from '../lib/useAdminCall';
 import { useAdminConversations } from '../lib/useAdminChat';
 import {
@@ -54,6 +55,11 @@ import {
 
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
 type View = 'browse' | 'product' | 'store' | 'checkout' | 'order_detail' | 'chat' | 'payment_summary';
+
+function createCheckoutGroupId(): string {
+  if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+}
 
 export function BuyerApp() {
   const { profile, signOut } = useAuth();
@@ -212,15 +218,26 @@ export function BuyerApp() {
           <StoreView store={selectedStore} highlightProductId={highlightProductId} onProductClick={(p) => navigateToProductDetail(p)} onBack={backToBrowse} />
         )}
         {tab === 'home' && view === 'checkout' && (
-          <CheckoutView onBack={backToBrowse} onOrderPlaced={(orders) => {
-            if (orders.length > 1) {
-              setPaymentGroupOrders(orders);
-              setView('payment_summary');
-            } else {
-              setTab('orders');
-              setView('browse');
-            }
-          }} canAct={canAct} />
+          <ErrorBoundary fallback={
+            <div className="px-5 pt-20 text-center">
+              <AlertTriangle size={48} className="mx-auto text-amber-500 mb-3" />
+              <h2 className="text-lg font-bold text-gray-800 mb-2">Hindi mabuksan ang Checkout</h2>
+              <p className="text-sm text-gray-500 mb-5">May item sa cart na kulang o hindi na available. Bumalik sa cart at alisin ito bago subukan ulit.</p>
+              <button onClick={() => { setTab('cart'); setView('browse'); }} className="px-5 py-3 bg-brand-600 text-white rounded-xl font-semibold">
+                Bumalik sa Cart
+              </button>
+            </div>
+          }>
+            <CheckoutView onBack={backToBrowse} onOrderPlaced={(orders) => {
+              if (orders.length > 1) {
+                setPaymentGroupOrders(orders);
+                setView('payment_summary');
+              } else {
+                setTab('orders');
+                setView('browse');
+              }
+            }} canAct={canAct} />
+          </ErrorBoundary>
         )}
         {tab === 'home' && view === 'payment_summary' && (
           <PaymentSummaryView orders={paymentGroupOrders} onDone={() => { setTab('orders'); setView('browse'); }} onBack={backToBrowse} />
@@ -1285,7 +1302,7 @@ function CartView({ onCheckout, refreshKey }: { onCheckout: () => void; refreshK
       .select('*, product:products(*), store:stores(*)')
       .eq('buyer_id', profile.id)
       .order('created_at', { ascending: false });
-    setCartItems((data || []) as any);
+    setCartItems(((data || []) as any[]).filter((item) => item?.store_id && item?.product && item?.store?.id));
     setLoading(false);
   }, [profile]);
 
@@ -1404,12 +1421,13 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   const [simulateSms, setSimulateSms] = useState(false);
   const [mockOtp, setMockOtp] = useState('');
   const [deliveryLocation, setDeliveryLocation] = useState<LocationData>({
-    barangay: profile?.barangay || '',
-    district: profile?.district || '',
-    city: profile?.city || '',
-    region: profile?.region || 'NCR',
+    barangay: profile?.barangay == null ? '' : String(profile.barangay),
+    district: profile?.district == null ? '' : String(profile.district),
+    city: profile?.city == null ? '' : String(profile.city),
+    region: profile?.region == null || profile.region === '' ? 'NCR' : String(profile.region),
+    province: profile?.province == null ? '' : String(profile.province),
   });
-  const [addressDetails, setAddressDetails] = useState(profile?.complete_address || '');
+  const [addressDetails, setAddressDetails] = useState(profile?.complete_address == null ? '' : String(profile.complete_address));
   const [paymentMethod, setPaymentMethod] = useState<'qr_code' | 'cod'>('qr_code');
   const [note, setNote] = useState('');
   const [deliveryPin, setDeliveryPin] = useState<Coords | null>(null);
@@ -1422,7 +1440,21 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   useEffect(() => {
     if (!profile) return;
     supabase.from('cart_items').select('*, product:products(*), store:stores(*)').eq('buyer_id', profile.id)
-      .then(({ data }) => { setCartItems((data || []) as any); setLoading(false); });
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('Hindi ma-load ang checkout cart:', error);
+          setCartItems([]);
+          setLoading(false);
+          return;
+        }
+        setCartItems(((data || []) as any[]).filter((i) => i?.store_id && i?.product && i?.store?.id));
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error('Hindi ma-load ang checkout cart:', error);
+        setCartItems([]);
+        setLoading(false);
+      });
   }, [profile]);
 
   // Auto-detect buyer's GPS location on checkout load
@@ -1458,11 +1490,16 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
     detectLocation(true);
   }, [detectLocation]);
 
-  const grouped = cartItems.reduce((acc, item) => {
+  const grouped = useMemo(() => cartItems.reduce((acc, item) => {
+    if (!item?.store_id || !item?.product || !item?.store?.id) return acc;
     if (!acc[item.store_id]) acc[item.store_id] = [];
     acc[item.store_id].push(item);
     return acc;
-  }, {} as Record<string, (CartItem & { product: Product; store: Store })[]>);
+  }, {} as Record<string, (CartItem & { product: Product; store: Store })[]>), [cartItems]);
+
+  const groupedStores = useMemo(() => Object.values(grouped)
+    .map(items => items[0]?.store)
+    .filter((store): store is Store => Boolean(store?.id)), [grouped]);
 
   // Get store coordinates for the first store (for map centering)
   const firstStore = Object.values(grouped)[0]?.[0]?.store;
@@ -1477,7 +1514,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   // Fetch road distance for each store when delivery coords are available
   useEffect(() => {
     if (!deliveryCoords || !deliveryPin) return;
-    const stores = Object.values(grouped).map(items => items[0].store);
+    const stores = groupedStores;
     const storeIds = stores.map(s => s.id);
     const missing = storeIds.filter(id => !roadDistanceCache[id]);
     if (missing.length === 0) return;
@@ -1489,8 +1526,12 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
         if (roadDistanceCache[store.id]) continue;
         const sCoords = getStoreCoords(store);
         if (sCoords && deliveryCoords) {
-          const result = await fetchRoadDistance(sCoords, deliveryCoords);
-          if (!cancelled) updates[store.id] = result;
+          try {
+            const result = await fetchRoadDistance(sCoords, deliveryCoords);
+            if (!cancelled) updates[store.id] = result;
+          } catch (error) {
+            console.warn('Hindi makuha ang road distance para sa store:', store.id, error);
+          }
         }
       }
       if (!cancelled && Object.keys(updates).length > 0) {
@@ -1499,8 +1540,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
     })();
 
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deliveryCoords]);
+  }, [deliveryCoords, groupedStores, roadDistanceCache]);
 
   // Check if any item in a store group is a livestock product (pickup/meetup only)
   function isLivestockOrder(items: (CartItem & { product: Product; store: Store })[]): boolean {
@@ -1511,6 +1551,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   function estimateWeightKg(items: (CartItem & { product: Product; store: Store })[]): number {
     return items.reduce((sum, i) => {
       const qty = Number(i.quantity);
+      if (!Number.isFinite(qty) || qty <= 0) return sum;
       const unit = i.product.unit?.toLowerCase() || '';
       if (unit === 'kilo' || unit === 'kg' || unit === 'kilogram') return sum + qty;
       if (unit === 'gram' || unit === 'g') return sum + qty / 1000;
@@ -1536,7 +1577,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
       if (!road) {
         return { fee: 0, distanceKm: 0, isEstimated: true, distanceCharge: 0, weightSurcharge: 0, totalWeightKg, isNcr: isNcrRegion(store.region, store.city), tier, riderNet: 0, commission: 0 };
       }
-      const distKm = road.distanceKm;
+      const distKm = Number.isFinite(Number(road.distanceKm)) ? Math.max(0, Number(road.distanceKm)) : 0;
       const fleet = computeFleetDeliveryFee(distKm, totalWeightKg, store.region, store.city, tier);
       return { fee: fleet.total, distanceKm: Math.round(distKm * 100) / 100, isEstimated: false, distanceCharge: fleet.distanceCharge, weightSurcharge: fleet.weightSurcharge, totalWeightKg, isNcr: fleet.isNcr, tier: fleet.tier, riderNet: fleet.riderNet, commission: fleet.commission };
     }
@@ -1557,7 +1598,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
 
     // Require road distance for all stores before placing order — no straight-line fallback
     if (deliveryPin) {
-      const allStores = Object.values(grouped).map(items => items[0].store);
+      const allStores = groupedStores;
       const missing = allStores.filter(s => !roadDistanceCache[s.id]);
       if (missing.length > 0) {
         setPlacing(true);
@@ -1598,7 +1639,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
       }
     }
 
-    const groupId = crypto.randomUUID();
+    const groupId = createCheckoutGroupId();
     const createdOrders: Order[] = [];
 
     for (const [storeId, items] of Object.entries(grouped)) {
@@ -1986,10 +2027,16 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
 
       <button
         onClick={placeOrder}
-        disabled={placing || !canAct || !profile?.house_photo_url || (!!deliveryPin && Object.values(grouped).some(([_, items]) => !roadDistanceCache[items[0].store.id]))}
+        disabled={placing || !canAct || !profile?.house_photo_url || (!!deliveryPin && Object.values(grouped).some(items => {
+          const storeId = items[0]?.store?.id;
+          return Boolean(storeId && !roadDistanceCache[storeId]);
+        }))}
         className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50"
       >
-        {placing ? 'Nagpapadala...' : !!deliveryPin && Object.values(grouped).some(([_, items]) => !roadDistanceCache[items[0].store.id]) ? 'Kinukuha ang road distance...' : `Mag-order Na · ₱${grandTotal.toFixed(2)}`}
+        {placing ? 'Nagpapadala...' : !!deliveryPin && Object.values(grouped).some(items => {
+          const storeId = items[0]?.store?.id;
+          return Boolean(storeId && !roadDistanceCache[storeId]);
+        }) ? 'Kinukuha ang road distance...' : `Mag-order Na · ₱${grandTotal.toFixed(2)}`}
       </button>
 
       {/* IP / Delivery Mismatch Verification Modal */}
@@ -2048,7 +2095,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                 setPlacing(true);
                 // Ensure road distances are loaded before computing fees
                 if (deliveryPin) {
-                  const allStores = Object.values(grouped).map(items => items[0].store);
+                  const allStores = groupedStores;
                   const missing = allStores.filter(s => !roadDistanceCache[s.id]);
                   if (missing.length > 0) {
                     const updates: Record<string, { distanceKm: number; durationMin: number }> = {};
@@ -2062,7 +2109,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                     setRoadDistanceCache(prev => ({ ...prev, ...updates }));
                   }
                 }
-                const groupId = crypto.randomUUID();
+                const groupId = createCheckoutGroupId();
                 const createdOrders: Order[] = [];
                 for (const [storeId, items] of Object.entries(grouped)) {
                   const store = items[0].store;

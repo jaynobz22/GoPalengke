@@ -56,9 +56,12 @@ export function DeliveryMap({ storeCoords, deliveryCoords, onPinDrop, storeName 
     mapRef.current = map;
 
     // Fix tile rendering after mount
-    setTimeout(() => map.invalidateSize(), 100);
+    const resizeTimer = window.setTimeout(() => {
+      if (mapRef.current === map) map.invalidateSize();
+    }, 100);
 
     return () => {
+      window.clearTimeout(resizeTimer);
       map.remove();
       mapRef.current = null;
     };

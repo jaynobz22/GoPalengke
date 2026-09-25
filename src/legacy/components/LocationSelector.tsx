@@ -32,10 +32,11 @@ const OLD_REGION_MAP: Record<string, string> = {
   'BARMM': '1900000000',
 };
 
-function normalizeRegionCode(code: string): string {
-  if (!code) return '';
-  if (/^\d{10}$/.test(code)) return code; // already PSGC format
-  return OLD_REGION_MAP[code] || '';
+export function normalizeRegionCode(code: unknown): string {
+  if (code == null || code === '') return '';
+  const text = String(code).trim();
+  if (/^\d{10}$/.test(text)) return text; // already PSGC format
+  return OLD_REGION_MAP[text] || '';
 }
 
 export interface LocationData {
@@ -63,10 +64,12 @@ export function LocationSelector({ value, onChange, label, compact }: Props) {
   const [loadingBarangays, setLoadingBarangays] = useState(false);
   const [useCustomBrgy, setUseCustomBrgy] = useState(false);
 
-  const rawRegionCode = value.region || '';
+  const rawRegionCode = value?.region || '';
   const regionCode = normalizeRegionCode(rawRegionCode);
-  const provinceCode = value.province || '';
-  const cityCode = cities.find(c => c.name === value.city)?.code || '';
+  const provinceCode = value?.province ? String(value.province) : '';
+  const cityName = value?.city ? String(value.city) : '';
+  const barangayName = value?.barangay ? String(value.barangay) : '';
+  const cityCode = cities.find(c => c.name === cityName)?.code || '';
   const isNCR = regionCode.startsWith('13');
 
   // Load provinces when region changes
@@ -107,7 +110,7 @@ export function LocationSelector({ value, onChange, label, compact }: Props) {
 
   // Load barangays when city changes
   useEffect(() => {
-    if (!value.city || !cityCode) { setBarangays([]); return; }
+    if (!cityName || !cityCode) { setBarangays([]); return; }
     setLoadingBarangays(true);
     setBarangays([]);
     fetchBarangaysByCity(cityCode)
@@ -117,7 +120,7 @@ export function LocationSelector({ value, onChange, label, compact }: Props) {
       })
       .catch(() => setBarangays([]))
       .finally(() => setLoadingBarangays(false));
-  }, [value.city, cityCode]);
+  }, [cityName, cityCode]);
 
   function handleRegionChange(code: string) {
     onChange({ ...value, region: code, province: '', city: '', barangay: '' });
@@ -188,7 +191,7 @@ export function LocationSelector({ value, onChange, label, compact }: Props) {
         <div className="col-span-2">
           <label className={labelClass}>City / Municipality</label>
           <select
-            value={value.city}
+            value={cityName}
             onChange={(e) => handleCityChange(e.target.value)}
             className={inputClass}
             disabled={loadingCities || (!isNCR && !provinceCode)}
@@ -207,7 +210,7 @@ export function LocationSelector({ value, onChange, label, compact }: Props) {
           <label className={labelClass}>Barangay</label>
           {hasBrgyList && !useCustomBrgy ? (
             <select
-              value={value.barangay}
+              value={barangayName}
               onChange={(e) => handleBarangayChange(e.target.value)}
               className={inputClass}
             >
@@ -219,7 +222,7 @@ export function LocationSelector({ value, onChange, label, compact }: Props) {
           ) : (
             <input
               type="text"
-              value={value.barangay}
+              value={barangayName}
               onChange={(e) => handleBarangayChange(e.target.value)}
               placeholder={loadingBarangays ? 'Naglo-load...' : 'I-type ang barangay'}
               required
