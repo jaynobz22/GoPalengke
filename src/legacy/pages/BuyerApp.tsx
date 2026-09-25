@@ -1178,14 +1178,20 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
 
   return (
     <div>
-      <div className="relative h-48 sm:h-64 md:h-[26rem] lg:h-[30rem] bg-gray-900 overflow-hidden md:rounded-b-3xl">
-        {store.banner_url && <img src={store.banner_url} alt={store.name} decoding="async" className="w-full h-full object-cover object-center" fetchPriority="high" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent md:bg-gradient-to-r md:from-gray-950 md:via-gray-950/80 md:to-gray-950/10" />
-        <div className="absolute bottom-0 left-0 right-0 hidden md:block md:inset-0 md:flex md:items-center p-8 lg:p-12 text-white">
-          <div className="max-w-2xl">
-            {store.palengke_name && <p className="text-sm font-semibold uppercase tracking-wider text-green-300">{store.palengke_name}</p>}
-            <h2 className="font-display text-4xl lg:text-6xl font-extrabold leading-tight drop-shadow-lg mt-1">{store.name}</h2>
-            {store.description && <p className="mt-3 max-w-xl text-base leading-6 text-gray-200 line-clamp-2">{store.description}</p>}
+      <div className="relative bg-gradient-to-br from-brand-500 to-brand-700 overflow-hidden md:rounded-b-3xl">
+        {/* Phone: ipakita ang banner eksakto kung ano ang inupload ng seller */}
+        <div className="h-48 sm:h-64 bg-brand-100 md:hidden">
+          {store.banner_url && <img src={store.banner_url} alt={store.name} decoding="async" className="w-full h-full object-cover object-center" fetchPriority="high" />}
+        </div>
+        {/* Laptop: hero split — teksto sa gradient, banner sa kanan na hindi binabago */}
+        <div className="hidden md:flex md:h-[26rem] lg:h-[30rem]">
+          <div className="flex-1 flex flex-col justify-center p-10 lg:p-14 text-white min-w-0">
+            {store.palengke_name && <p className="text-sm font-semibold uppercase tracking-wider text-green-100">{store.palengke_name}</p>}
+            <h2 className="font-display text-4xl lg:text-6xl font-extrabold leading-tight mt-1">{store.name}</h2>
+            {store.description && <p className="mt-3 max-w-xl text-base leading-6 text-green-50 line-clamp-2">{store.description}</p>}
+          </div>
+          <div className="w-1/2 lg:w-[45%] flex-shrink-0 bg-brand-100">
+            {store.banner_url && <img src={store.banner_url} alt="" decoding="async" className="w-full h-full object-cover object-center" fetchPriority="high" />}
           </div>
         </div>
         <button onClick={onBack} aria-label="Bumalik" className="absolute top-12 left-4 z-10 w-10 h-10 rounded-full bg-white/90 shadow-md flex items-center justify-center">

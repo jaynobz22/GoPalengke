@@ -624,18 +624,12 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
 
   return (
     <div>
-      <div className="relative overflow-hidden bg-gray-900 px-5 pt-12 pb-6 text-white md:rounded-b-3xl md:px-8 md:pt-16 md:pb-10 md:min-h-[22rem] lg:min-h-[26rem] md:flex md:flex-col md:justify-center">
-        {store.banner_url && (
-          <>
-            <img src={store.banner_url} alt="" className="absolute inset-0 w-full h-full object-cover object-center" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/30 md:bg-gradient-to-r md:from-gray-950 md:via-gray-950/80 md:to-gray-950/15" />
-          </>
-        )}
-        <div className="relative max-w-2xl">
+      <div className="bg-gradient-to-br from-brand-600 to-brand-700 px-5 pt-12 pb-6 text-white md:rounded-b-3xl md:px-8 md:pt-16 md:pb-10">
+        <div className="max-w-2xl">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 min-w-0">
             <StoreIcon size={20} className="shrink-0" />
-            <span className="font-display text-lg font-extrabold truncate md:text-5xl lg:text-6xl md:leading-tight md:drop-shadow-lg">{store.name}</span>
+            <span className="font-display text-lg font-extrabold truncate md:text-4xl lg:text-5xl md:leading-tight">{store.name}</span>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={onOpenMessages} className="relative w-10 h-10 rounded-full bg-white/20 flex items-center justify-center active:scale-90 transition">
@@ -658,7 +652,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
           </p>
         )}
         <p className="text-brand-100 text-sm">Kumusta, {profile?.full_name?.split(' ')[0]}! Narito ang status ng tindahan mo.</p>
-        <div className="flex items-center gap-2 mt-3">
+        <div className="flex items-center gap-2 mt-3 flex-wrap">
           <button onClick={onEditStore} className="text-xs bg-white/20 px-3 py-1.5 rounded-full flex items-center gap-1">
             <Edit size={14} /> I-edit ang tindahan
           </button>
@@ -684,6 +678,12 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
         </div>
         </div>
       </div>
+      {/* Banner: eksakto kung ano ang inupload ng seller, walang overlay */}
+      {store.banner_url && (
+        <div className="h-40 sm:h-56 md:h-64 lg:h-80 bg-brand-100 overflow-hidden md:rounded-b-3xl">
+          <img src={store.banner_url} alt="" className="w-full h-full object-cover object-center" />
+        </div>
+      )}
 
       {/* Payment Received Alert Banner */}
       {stats.paidOrders > 0 && (
