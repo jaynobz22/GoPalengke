@@ -26,8 +26,32 @@ type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fee
 export function AdminApp() {
   const { profile, signOut } = useAuth();
   const [tab, setTab] = useState<Tab>('overview');
+  const [pendingCreditCount, setPendingCreditCount] = useState(0);
   const [activeCall, setActiveCall] = useState<{ roomId: string; isCaller: boolean; callId: string; otherName: string } | null>(null);
   const [activeChat, setActiveChat] = useState<{ conversationId: string; otherName: string; userId: string } | null>(null);
+
+  const loadPendingCreditCount = useCallback(async () => {
+    const { count, error } = await supabase
+      .from('video_credit_purchases')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending');
+
+    if (!error) setPendingCreditCount(count ?? 0);
+  }, []);
+
+  useEffect(() => {
+    loadPendingCreditCount();
+    const channel = supabase
+      .channel('admin-credit-pending-count')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'video_credit_purchases' },
+        () => loadPendingCreditCount(),
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [loadPendingCreditCount]);
 
   function startAdminCall(user: Profile) {
     const roomId = `admin-call-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -113,7 +137,17 @@ export function AdminApp() {
                 active ? 'text-brand-600 border-b-2 border-brand-600' : 'text-gray-400'
               }`}
             >
-              <Icon size={18} />
+              <span className="relative inline-flex">
+                <Icon size={18} />
+                {t.id === 'video_credits' && pendingCreditCount > 0 && (
+                  <span
+                    className="absolute -right-3 -top-3 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1 text-[10px] font-bold leading-none text-white"
+                    aria-label={`${pendingCreditCount} pending credit approvals`}
+                  >
+                    {pendingCreditCount > 99 ? '99+' : pendingCreditCount}
+                  </span>
+                )}
+              </span>
               {t.label}
             </button>
           );
@@ -129,7 +163,7 @@ export function AdminApp() {
       {tab === 'rider_fees' && <ErrorBoundary><RiderFeesTab /></ErrorBoundary>}
       {tab === 'announcements' && <ErrorBoundary><AnnouncementsTab /></ErrorBoundary>}
       {tab === 'security' && <ErrorBoundary><SecurityDashboardTab /></ErrorBoundary>}
-      {tab === 'video_credits' && <ErrorBoundary><VideoCreditsTab /></ErrorBoundary>}
+      {tab === 'video_credits' && <ErrorBoundary><VideoCreditsTab onPendingCountChange={setPendingCreditCount} /></ErrorBoundary>}
       {tab === 'tutorials' && <ErrorBoundary><TutorialsTab /></ErrorBoundary>}
       {tab === 'analytics' && <ErrorBoundary><AnalyticsDashboard /></ErrorBoundary>}
       {tab === 'settings' && <ErrorBoundary><SettingsTab /></ErrorBoundary>}
@@ -2580,7 +2614,7 @@ function AdminMessagesTab({ onOpenChat }: { onOpenChat: (conversationId: string,
 }
 
 // ============= VIDEO CREDITS APPROVAL =============
-function VideoCreditsTab() {
+function VideoCreditsTab({ onPendingCountChange }: { onPendingCountChange: (count: number) => void }) {
   const [purchases, setPurchases] = useState<(VideoCreditPurchase & { user: { full_name: string; email: string } | null })[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
@@ -2605,7 +2639,9 @@ function VideoCreditsTab() {
       if (error) {
         showToast('Error loading purchases: ' + error.message, 'error');
       }
-      setPurchases((data || []) as any[]);
+      const loadedPurchases = (data || []) as any[];
+      setPurchases(loadedPurchases);
+      onPendingCountChange(loadedPurchases.filter(p => p.status === 'pending').length);
     } catch (err: any) {
       showToast('Error loading purchases: ' + (err?.message || 'Hindi ma-load.'), 'error');
     }
@@ -2618,7 +2654,7 @@ function VideoCreditsTab() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'video_credit_purchases' }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(sub); };
-  }, []);
+  }, [onPendingCountChange]);
 
   async function approve(id: string) {
     try {
