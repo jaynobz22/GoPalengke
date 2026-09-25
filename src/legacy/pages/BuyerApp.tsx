@@ -1178,9 +1178,14 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
 
   return (
     <div>
-      <div className="relative h-40 sm:h-56 md:h-72 lg:h-96 bg-gray-200 overflow-hidden">
-        {store.banner_url && <img src={store.banner_url} alt={store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+      <div className="relative h-48 sm:h-64 md:h-[26rem] lg:h-[30rem] bg-gradient-to-br from-brand-500 to-brand-700 overflow-hidden md:rounded-b-3xl">
+        {store.banner_url && <img src={store.banner_url} alt={store.name} decoding="async" className="w-full h-full object-cover" />}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 hidden md:block p-8 lg:p-10 text-white">
+          {store.palengke_name && <p className="text-sm font-semibold uppercase tracking-wider opacity-90">{store.palengke_name}</p>}
+          <h2 className="text-4xl lg:text-5xl font-extrabold drop-shadow-lg mt-1">{store.name}</h2>
+          {store.description && <p className="mt-2 max-w-2xl text-base opacity-90 line-clamp-2">{store.description}</p>}
+        </div>
         <button onClick={onBack} className="absolute top-12 left-4 w-10 h-10 rounded-full bg-white/90 shadow-md flex items-center justify-center">
           <ArrowLeft size={20} className="text-gray-700" />
         </button>

@@ -167,11 +167,15 @@ function PublicStorePage({ slug }: { slug: string }) {
   return (
     <div className="min-h-screen bg-gray-50 w-full max-w-6xl mx-auto relative">
       {/* Banner */}
-      <div className="relative h-44 bg-gradient-to-br from-brand-500 to-brand-700 md:h-72">
+      <div className="relative h-48 sm:h-64 bg-gradient-to-br from-brand-500 to-brand-700 md:h-[26rem] lg:h-[30rem] overflow-hidden md:rounded-b-3xl">
         {store.banner_url && (
           <img src={store.banner_url} alt="" className="w-full h-full object-cover" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        <div className="absolute bottom-16 left-0 right-0 hidden md:block px-8 lg:px-10 text-white">
+          {store.palengke_name && <p className="text-sm font-semibold uppercase tracking-wider opacity-90">{store.palengke_name}</p>}
+          <h2 className="text-4xl lg:text-5xl font-extrabold drop-shadow-lg mt-1">{store.name}</h2>
+        </div>
         <div className="absolute top-3 left-3">
           <button onClick={() => navigate('/')} className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center active:scale-95 transition">
             <ArrowLeft size={20} className="text-white" />
