@@ -66,14 +66,14 @@ export function SellerApp() {
 
   // Update store coordinates from seller's live phone GPS so delivery fees use
   // the seller's actual current location instead of a static palengke/city center.
-  // Delayed so it doesn't collide with the login reminder popup and notification
-  // permission prompt that appear on login — the browser geolocation dialog
-  // would stack on top of those modals and cause a confusing UX.
+  // Waits until the login reminder popup is dismissed before requesting
+  // geolocation so the browser permission dialog doesn't overlap with it.
   useEffect(() => {
     if (!store) return;
     if (!navigator.geolocation) return;
     let cancelled = false;
-    const timer = setTimeout(() => {
+
+    function requestGps() {
       if (cancelled) return;
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -91,8 +91,23 @@ export function SellerApp() {
         () => {},
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
       );
-    }, 4000);
-    return () => { cancelled = true; clearTimeout(timer); };
+    }
+
+    const reminderKey = 'seller_login_reminder';
+    if (sessionStorage.getItem(reminderKey) === 'dismissed') {
+      requestGps();
+    } else {
+      const interval = setInterval(() => {
+        if (cancelled) return;
+        if (sessionStorage.getItem(reminderKey) === 'dismissed') {
+          clearInterval(interval);
+          requestGps();
+        }
+      }, 500);
+      return () => { cancelled = true; clearInterval(interval); };
+    }
+
+    return () => { cancelled = true; };
   }, [store?.id]);
 
   // Realtime: reload store when it changes (e.g. admin verifies the store)
