@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, deleteStorageObject } from '../lib/supabase';
+import { checkRiderBatch } from '../lib/riderBatch';
 import { useAuth } from '../lib/auth';
 import { navigate } from '../lib/router';
 import { checkPriceAnomaly } from '../lib/security';
@@ -1638,7 +1639,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           { lat: targetLat, lng: targetLng },
           { lat: ao.delivery_lat, lng: ao.delivery_lng },
         );
-        if (distanceKm <= 2) isNearby = true;
+        if (distanceKm <= 1) isNearby = true;
       }
 
       if (isNearby) {
@@ -1680,6 +1681,12 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
 
   async function assignRider(riderId: string) {
     setAssigningRider(riderId);
+    const batch = await checkRiderBatch(riderId, currentOrder);
+    if (!batch.ok) {
+      setAssigningRider(null);
+      alert(batch.reason);
+      return;
+    }
     if (currentOrder.delivery_group_id) {
       await supabase.from('orders').update({ rider_id: riderId, vehicle_type: fleetTier }).eq('delivery_group_id', currentOrder.delivery_group_id);
     } else {

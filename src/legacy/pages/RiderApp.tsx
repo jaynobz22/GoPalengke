@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { checkRiderBatch } from '../lib/riderBatch';
 import { useAuth } from '../lib/auth';
 import { navigate } from '../lib/router';
 import type { Order, OrderItem, Store, Conversation, AdminConversation } from '../lib/types';
@@ -265,6 +266,12 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
   async function acceptOrder(order: Order) {
     if (!profile) return;
     setAccepting(order.id);
+    const batch = await checkRiderBatch(profile.id, order);
+    if (!batch.ok) {
+      setAccepting(null);
+      alert(batch.reason);
+      return;
+    }
     const update = { rider_id: profile.id, status: 'ready_for_pickup' as const };
     let error;
     if (order.delivery_group_id) {
