@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { MarketingAudiencePage } from "../legacy/components/MarketingAudiencePage";
 
-const title = "Kumita sa Pag-promote ng GoPalengke — Para sa Affiliates";
+const title = "Kumita sa Pag-promote ng GoPalengke";
 const description = "Lifetime 2-tier commission: ₱150 kada seller milestone, ₱35 kada rider milestone, at ₱50/₱15 override mula sa mga kapwa affiliate na naimbitahan mo. Walang limit.";
 const image = "https://www.gopalengke.net/images/gopalengke-affiliate-marketing.jpg";
 

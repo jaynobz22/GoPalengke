@@ -207,7 +207,6 @@ export function MarketingAudiencePage({ audience }: { audience: Audience }) {
         <div className="absolute inset-0 bg-gradient-to-r from-gray-950 via-gray-950/80 to-gray-950/15" />
         <div className="relative mx-auto flex min-h-[86svh] max-w-6xl items-end px-5 pb-14 pt-28 sm:items-center sm:px-6 sm:pb-16">
           <div className="max-w-2xl">
-            <p className="mb-3 text-sm font-bold uppercase text-amber-300">{config.eyebrow}</p>
             <h1 className="font-display text-4xl font-extrabold leading-tight text-white sm:text-6xl">{config.title}</h1>
             <p className="mt-3 text-lg font-semibold text-green-300">{config.accent}</p>
             <p className="mt-4 max-w-xl text-sm leading-6 text-gray-200 sm:text-base">{config.summary}</p>
