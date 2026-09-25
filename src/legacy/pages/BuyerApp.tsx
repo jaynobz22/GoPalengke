@@ -2420,13 +2420,28 @@ function PaymentSummaryView({ orders, onDone, onBack }: { orders: Order[]; onDon
 function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
   const { profile } = useAuth();
   const [orders, setOrders] = useState<(Order & { store: Store })[]>([]);
+  const [reviewMap, setReviewMap] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [subTab, setSubTab] = useState<'active' | 'history'>('active');
 
   const loadOrders = useCallback(async () => {
     if (!profile) return;
     const { data } = await supabase.from('orders').select('*, store:stores(*)').eq('buyer_id', profile.id).is('hidden_by_buyer_at', null).order('created_at', { ascending: false });
-    setOrders((data || []) as any);
+    const list = (data || []) as any as (Order & { store: Store })[];
+    setOrders(list);
+
+    const deliveredIds = list.filter(o => o.status === 'delivered').map(o => o.id);
+    if (deliveredIds.length > 0) {
+      const { data: revs } = await supabase.from('reviews').select('order_id, review_type').in('order_id', deliveredIds);
+      const map: Record<string, string[]> = {};
+      for (const r of (revs || []) as { order_id: string; review_type: string }[]) {
+        if (!map[r.order_id]) map[r.order_id] = [];
+        map[r.order_id].push(r.review_type);
+      }
+      setReviewMap(map);
+    } else {
+      setReviewMap({});
+    }
     setLoading(false);
   }, [profile]);
 
@@ -2436,15 +2451,27 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
     const sub = supabase.channel('buyer-orders-list')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `buyer_id=eq.${profile.id}` }, () => loadOrders())
       .subscribe();
-    return () => { supabase.removeChannel(sub); };
+    const revSub = supabase.channel('buyer-orders-reviews')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, () => loadOrders())
+      .subscribe();
+    return () => { supabase.removeChannel(sub); supabase.removeChannel(revSub); };
   }, [loadOrders, profile]);
 
   const activeStatuses: OrderStatus[] = ['pending', 'accepted', 'preparing', 'ready_for_pickup', 'picked_up'];
-  const historyStatuses: OrderStatus[] = ['delivered', 'cancelled'];
 
-  const activeOrders = orders.filter(o => activeStatuses.includes(o.status));
-  const historyOrders = orders.filter(o => historyStatuses.includes(o.status));
+  // Ang delivered na order ay nananatili sa "Aktibo" hangga't hindi pa nakakapag-iwan ng review ang buyer
+  const needsReview = useCallback((o: Order) => {
+    if (o.status !== 'delivered') return false;
+    const types = reviewMap[o.id] || [];
+    if (!types.includes('seller')) return true;
+    if (o.rider_id && !types.includes('rider')) return true;
+    return false;
+  }, [reviewMap]);
+
+  const activeOrders = orders.filter(o => activeStatuses.includes(o.status) || needsReview(o));
+  const historyOrders = orders.filter(o => !activeStatuses.includes(o.status) && !needsReview(o));
   const activeCount = activeOrders.length;
+  const pendingReviewCount = orders.filter(needsReview).length;
 
   if (loading) return <div className="p-5"><div className="h-32 bg-gray-100 rounded-2xl animate-pulse" /></div>;
 
@@ -2505,6 +2532,15 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
         </div>
       )}
 
+      {subTab === 'active' && pendingReviewCount > 0 && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2">
+          <Star size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-700">
+            May <strong>{pendingReviewCount}</strong> na-deliver na order na wala pang review. Mag-iwan ng review sa tindahan at rider para matapos at mailipat ito sa History.
+          </p>
+        </div>
+      )}
+
       {displayed.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           {subTab === 'active' ? (
@@ -2524,6 +2560,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
           {grouped.map(group => {
             const isMulti = group.orders.length > 1;
             const firstOrder = group.orders[0];
+            const groupNeedsReview = group.orders.some(needsReview);
             const isActive = activeStatuses.includes(firstOrder.status);
             const totalAmount = group.orders.reduce((sum, o) => sum + Number(o.total) + Number(o.delivery_fee), 0);
             const allSameStatus = group.orders.every(o => o.status === firstOrder.status);
@@ -2532,12 +2569,12 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
 
             if (!isMulti) {
               const order = firstOrder;
-              const canDelete = !isActive;
+              const canDelete = !isActive && !groupNeedsReview;
               return (
                 <div
                   key={group.key}
                   className={`w-full rounded-2xl border p-4 ${
-                    isActive ? 'bg-red-50 border-red-300 shadow-sm' : 'bg-white border-gray-100'
+                    isActive ? 'bg-red-50 border-red-300 shadow-sm' : groupNeedsReview ? 'bg-amber-50 border-amber-300 shadow-sm' : 'bg-white border-gray-100'
                   }`}
                 >
                   <button
@@ -2549,9 +2586,14 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
                         <p className="font-semibold text-gray-800">{order.store.name}</p>
                         <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
                         {isActive && order.status === 'pending' && (
                           <span className="text-[10px] font-bold text-white bg-amber-500 px-2 py-0.5 rounded-full">BAGO</span>
+                        )}
+                        {groupNeedsReview && (
+                          <span className="text-[10px] font-bold text-white bg-amber-500 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <Star size={10} className="fill-white" /> KAILANGAN NG REVIEW
+                          </span>
                         )}
                         <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[order.status]}`}>
                           {ORDER_STATUS_LABELS[order.status]}
@@ -2588,12 +2630,12 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
             }
 
             // Multi-store grouped card
-            const canDeleteMulti = !isActive;
+            const canDeleteMulti = !isActive && !groupNeedsReview;
             return (
               <div
                 key={group.key}
                 className={`w-full rounded-2xl border p-4 ${
-                  isActive ? 'bg-red-50 border-red-300 shadow-sm' : 'bg-white border-gray-100'
+                  isActive ? 'bg-red-50 border-red-300 shadow-sm' : groupNeedsReview ? 'bg-amber-50 border-amber-300 shadow-sm' : 'bg-white border-gray-100'
                 }`}
               >
                 <button
@@ -2615,9 +2657,14 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
                       </div>
                       <p className="text-xs text-gray-400 mt-1">{new Date(firstOrder.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
                       {isActive && displayStatus === 'pending' && (
                         <span className="text-[10px] font-bold text-white bg-amber-500 px-2 py-0.5 rounded-full">BAGO</span>
+                      )}
+                      {groupNeedsReview && (
+                        <span className="text-[10px] font-bold text-white bg-amber-500 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Star size={10} className="fill-white" /> KAILANGAN NG REVIEW
+                        </span>
                       )}
                       <span className={`text-xs px-2 py-1 rounded-full border ${ORDER_STATUS_COLORS[displayStatus]}`}>
                         {ORDER_STATUS_LABELS[displayStatus]}
@@ -3197,7 +3244,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
 function ShareStoreCard({ storeName, storeSlug }: { storeName: string; storeSlug: string }) {
   const [copied, setCopied] = useState(false);
   const shareUrl = `${window.location.origin}/s/${storeSlug}`;
-  const shareText = `Napakagandang experience ko sa ${storeName} sa Pamalengke Online! Subukan nyo din!`;
+  const shareText = `Maganda ang experience ko sa ${storeName} dito sa GoPalengke! Sariwa ang paninda at mabilis ang delivery — diretso sa bahay galing palengke. Suportahan natin ang lokal na tindera at tindero. Subukan mo rin: ${shareUrl}`;
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedText = encodeURIComponent(shareText);
 
@@ -3210,11 +3257,16 @@ function ShareStoreCard({ storeName, storeSlug }: { storeName: string; storeSlug
 
   return (
     <div className="bg-gradient-to-br from-brand-50 to-amber-50 rounded-2xl border border-brand-200 p-4 mb-3">
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-2">
         <Share2 size={18} className="text-brand-600" />
-        <p className="font-bold text-sm text-gray-800">I-share ang tindahang ito!</p>
+        <p className="font-bold text-sm text-gray-800">Naging maganda ba ang pamimili mo?</p>
       </div>
-      <p className="text-xs text-gray-500 mb-3">I-share sa Facebook o Messenger bilang pasalamat sa magandang experience mo.</p>
+      <p className="text-xs text-gray-600 mb-3 leading-relaxed">
+        Opsyonal lang ito — pero malaking tulong kay <strong>{storeName}</strong> kung i-share mo sa Facebook o Messenger. Mas maraming makakakita, mas dumadami ang suki ng ating lokal na palengke.
+      </p>
+      <div className="bg-white/70 border border-brand-100 rounded-xl p-3 mb-3">
+        <p className="text-[11px] text-gray-500 italic leading-relaxed">"{shareText}"</p>
+      </div>
       <div className="grid grid-cols-3 gap-2">
         <a
           href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`}
