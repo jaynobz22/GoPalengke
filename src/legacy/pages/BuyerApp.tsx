@@ -3764,7 +3764,7 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
           value={profile?.avatar_url || ''}
           bucket="profile-images"
           folder={`avatars/${profile?.id}`}
-          aspectClass="h-32"
+          aspectClass="aspect-square w-full max-w-40"
           cropAspect={1}
           hint="Mag-upload ng larawan para makilala ka ng seller at rider. Para sa transparency ng transaction."
           onChange={async (url) => {
@@ -3792,7 +3792,7 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
           value={profile?.house_photo_url || ''}
           bucket="profile-images"
           folder={`houses/${profile?.id}`}
-          aspectClass="h-40"
+          aspectClass="aspect-[4/3] w-full max-w-md"
           cropAspect={4 / 3}
           hint="Kailangan makita ang pinto o gate ng bahay."
           onChange={async (url) => {

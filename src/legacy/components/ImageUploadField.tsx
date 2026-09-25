@@ -73,11 +73,11 @@ export function ImageUploadField({
       </label>
       <input ref={fileRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
       {value ? (
-        <div className="relative">
+        <div className={`relative w-full ${aspectClass}`}>
           <img
             src={value}
             alt="Preview"
-            className={`w-full ${aspectClass} rounded-xl ${objectFit === 'contain' ? 'object-contain bg-gray-50' : 'object-cover'}`}
+            className={`w-full h-full rounded-xl ${objectFit === 'contain' ? 'object-contain bg-gray-50' : 'object-cover'}`}
           />
           <div className="absolute bottom-2 right-2 flex gap-1.5">
             <button type="button" onClick={() => fileRef.current?.click()}
