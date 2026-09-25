@@ -1602,8 +1602,22 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
     }, 0);
   }
 
+  // Multi-store checkout: only the FIRST deliverable store (Store A) carries the base fee
+  // and distance charge. Other stores (B, C...) have ₱0 delivery fee — their cargo weight
+  // is added to Store A's weight surcharge. Store A receives the rider's fee (non-COD).
+  function getFeeForStore(store: Store, items?: (CartItem & { product: Product; store: Store })[]): ReturnType<typeof getBaseFeeForStore> & { isPrimary: boolean; primaryStoreName: string | null; combinedStores: number } {
+    const deliverable = Object.values(grouped).filter(its => !isLivestockOrder(its));
+    if (deliverable.length <= 1) return { ...getBaseFeeForStore(store, items), isPrimary: true, primaryStoreName: null, combinedStores: 1 };
+    const primaryStore = deliverable[0][0].store;
+    if (store.id === primaryStore.id) {
+      return { ...getBaseFeeForStore(store, deliverable.flat()), isPrimary: true, primaryStoreName: null, combinedStores: deliverable.length };
+    }
+    const own = items ? estimateWeightKg(items) : 0;
+    return { fee: 0, distanceKm: 0, isEstimated: false, distanceCharge: 0, weightSurcharge: 0, totalWeightKg: own, isNcr: isNcrRegion(store.region, store.city), tier: getRequiredTier(own), riderNet: 0, commission: 0, isPrimary: false, primaryStoreName: primaryStore.name, combinedStores: deliverable.length };
+  }
+
   // Calculate tiered fee per store: distance charge + weight surcharge
-  function getFeeForStore(store: Store, items?: (CartItem & { product: Product; store: Store })[]): { fee: number; distanceKm: number; isEstimated: boolean; distanceCharge: number; weightSurcharge: number; totalWeightKg: number; isNcr: boolean; tier: VehicleTier; riderNet: number; commission: number } {
+  function getBaseFeeForStore(store: Store, items?: (CartItem & { product: Product; store: Store })[]): { fee: number; distanceKm: number; isEstimated: boolean; distanceCharge: number; weightSurcharge: number; totalWeightKg: number; isNcr: boolean; tier: VehicleTier; riderNet: number; commission: number } {
     const sCoords = getStoreCoords(store);
     const totalWeightKg = items ? estimateWeightKg(items) : 0;
     const tier = getRequiredTier(totalWeightKg);
@@ -1919,8 +1933,8 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
       {Object.entries(grouped).map(([storeId, items]) => {
         const store = items[0].store;
         const livestock = isLivestockOrder(items);
-        const { fee, distanceKm, isEstimated, distanceCharge, weightSurcharge, totalWeightKg, isNcr, tier } = getFeeForStore(store, items);
-        const rates = getZoneRates(store.region, store.city);
+        const { fee, distanceKm, isEstimated, distanceCharge, weightSurcharge, totalWeightKg, isNcr, tier, isPrimary, primaryStoreName, combinedStores } = getFeeForStore(store, items);
+        const rates = getZoneRates(store.region, store.city, tier);
 
         return (
           <div key={storeId} className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
@@ -1963,6 +1977,20 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                   </div>
                 )}
               </div>
+            ) : !isPrimary ? (
+              <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5">
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Cargo Weight</span>
+                  <span>{totalWeightKg.toFixed(2)} kg</span>
+                </div>
+                <div className="flex justify-between text-sm font-semibold text-gray-700 pt-1.5 border-t border-gray-50">
+                  <span>Delivery Fee</span>
+                  <span>₱0.00</span>
+                </div>
+                <p className="text-xs text-brand-700 bg-brand-50 rounded-lg p-2">
+                  Walang base fee at distance charge dito. Idinagdag na ang bigat ng karga sa delivery fee ng <strong>{primaryStoreName}</strong>. Wala kang babayaran sa rider para sa tindahang ito.
+                </p>
+              </div>
             ) : fee === 0 && deliveryPin && !roadDistanceCache[store.id] ? (
               <div className="mt-3 pt-3 border-t border-gray-50">
                 <div className="flex items-center gap-2 text-xs text-brand-600 bg-brand-50 rounded-xl px-3 py-2.5">
@@ -1972,6 +2000,11 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
               </div>
             ) : (
               <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5">
+                {combinedStores > 1 && (
+                  <p className="text-xs text-brand-700 bg-brand-50 rounded-lg p-2">
+                    Isang delivery fee lang para sa {combinedStores} tindahan. Kasama na rito ang pinagsamang bigat ng karga. {paymentMethod !== 'cod' && 'Ang tindahang ito ang tatanggap ng bayad para sa rider.'}
+                  </p>
+                )}
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-400">Zone</span>
                   <span className={`font-medium px-2 py-0.5 rounded-full ${isNcr ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
