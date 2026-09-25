@@ -43,7 +43,7 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
   }
 
   return (
-    <div className="fixed inset-0 z-[80] h-[100dvh] max-h-[100dvh] bg-gray-900 max-w-md mx-auto overflow-hidden overscroll-none">
+    <div className="fixed inset-0 z-[80] h-[100dvh] max-h-[100dvh] bg-gray-900 w-full max-w-5xl mx-auto overflow-hidden overscroll-none">
 
       {joined && phase !== 'ended' && (
         <JitsiStage

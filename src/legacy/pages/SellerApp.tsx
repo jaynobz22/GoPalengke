@@ -237,7 +237,7 @@ export function SellerApp() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
+    <div className="min-h-screen bg-gray-50 flex flex-col w-full max-w-7xl mx-auto relative">
       {!canAct && !isFeeFrozen && <InactiveBanner />}
       {!store.is_verified && (
         <div className="bg-amber-50 border-b border-amber-200 px-5 py-3 flex items-center gap-2">
@@ -276,7 +276,7 @@ export function SellerApp() {
         )}
 
         {showChat && activeConversationId && (
-          <div className="fixed inset-0 z-[60] bg-gray-50 max-w-md mx-auto">
+          <div className="fixed inset-0 z-[60] bg-gray-50 w-full max-w-4xl mx-auto">
             <ChatView
               conversationId={activeConversationId}
               otherName={chatPartnerName}
@@ -711,7 +711,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
       )}
 
       {/* Stats */}
-      <div className="px-5 py-4 grid grid-cols-2 gap-3">
+      <div className="px-5 py-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         <div className="bg-white rounded-2xl border border-gray-100 p-4">
           <div className="flex items-center gap-2 mb-1">
             <ShoppingBag size={18} className="text-brand-600" />
@@ -844,7 +844,7 @@ function SellerProducts({ store, onAdd, onEdit }: { store: Store; onAdd: () => v
           </button>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           {products.map(p => (
             <div key={p.id} className={`bg-white rounded-2xl border p-3 flex items-center gap-3 transition ${p.is_available ? 'border-gray-100' : 'border-gray-200 opacity-60'}`}>
               <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
@@ -2488,7 +2488,7 @@ function SellerBottomNav({ tab, setTab, storeId, unreadMessages }: { tab: Tab; s
   ];
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 px-1 py-1.5 safe-bottom z-50 overflow-x-auto scrollbar-hide">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-7xl bg-white border-t border-gray-100 px-1 py-1.5 safe-bottom z-50 overflow-x-auto scrollbar-hide md:px-6">
       <div className="flex items-center justify-around min-w-full">
         {items.map(item => {
           const Icon = item.icon;

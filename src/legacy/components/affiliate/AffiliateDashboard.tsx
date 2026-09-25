@@ -108,7 +108,7 @@ export function AffiliateDashboard() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-gradient-to-br from-green-600 via-emerald-600 to-teal-700 text-white">
-        <div className="max-w-5xl mx-auto px-5 pt-5 pb-6">
+        <div className="max-w-7xl mx-auto px-5 pt-5 pb-6 md:px-8">
           <div className="flex items-center justify-between mb-4">
             <button onClick={() => navigate('/affiliate')} className="flex items-center gap-2 text-white/80 text-sm hover:text-white transition">
               <ArrowLeft size={18} /> Affiliate Home
@@ -133,7 +133,7 @@ export function AffiliateDashboard() {
       </div>
 
       {/* Tabs */}
-      <div className="max-w-5xl mx-auto px-5">
+      <div className="max-w-7xl mx-auto px-5 md:px-8">
         <div className="grid grid-cols-4 sm:flex sm:justify-around gap-2 mt-4 bg-white rounded-2xl border border-gray-100 p-1.5 shadow-sm">
           {[
             { id: 'overview' as const, label: 'Overview', icon: TrendingUp },
@@ -157,7 +157,7 @@ export function AffiliateDashboard() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-5 py-5">
+      <div className="max-w-7xl mx-auto px-5 py-5 md:px-8 md:py-7">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 size={28} className="animate-spin text-brand-500" />

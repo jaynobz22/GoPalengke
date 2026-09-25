@@ -165,9 +165,9 @@ function PublicStorePage({ slug }: { slug: string }) {
   const fullUrl = `${window.location.origin}/s/${store.slug}`;
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-md mx-auto relative">
+    <div className="min-h-screen bg-gray-50 w-full max-w-6xl mx-auto relative">
       {/* Banner */}
-      <div className="relative h-44 bg-gradient-to-br from-brand-500 to-brand-700">
+      <div className="relative h-44 bg-gradient-to-br from-brand-500 to-brand-700 md:h-72">
         {store.banner_url && (
           <img src={store.banner_url} alt="" className="w-full h-full object-cover" />
         )}
@@ -183,7 +183,7 @@ function PublicStorePage({ slug }: { slug: string }) {
       </div>
 
       {/* Store Info */}
-      <div className="px-5 -mt-12 relative z-10">
+      <div className="px-5 -mt-12 relative z-10 md:px-8">
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5">
           <div className="flex items-start gap-3">
             <div className="w-16 h-16 rounded-2xl overflow-hidden bg-brand-100 flex-shrink-0">
@@ -226,7 +226,7 @@ function PublicStorePage({ slug }: { slug: string }) {
       </div>
 
       {/* Products */}
-      <div className="px-5 py-4">
+      <div className="px-5 py-4 md:px-8 md:py-6">
         <div className="flex items-center gap-2 mb-3">
           <Package size={18} className="text-brand-600" />
           <h2 className="font-bold text-gray-800">Mga Paninda ({store.is_open ? products.length : 0})</h2>
@@ -243,13 +243,13 @@ function PublicStorePage({ slug }: { slug: string }) {
             <p className="text-sm">Wala pang available na paninda.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 md:gap-5">
             {products.map(p => {
               const productUrl = `${window.location.origin}/s/${store.slug}`;
               const shareText = `${p.name} - ₱${p.price}/${p.unit} at ${store.name} | GoPalengke`;
               return (
               <div key={p.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                <div className="h-28 bg-gray-100 relative">
+                <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                   {p.image_url ? (
                     <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
                   ) : (
@@ -338,7 +338,7 @@ function PublicUserPage({ slug }: { slug: string }) {
   const RoleIcon = roleIcon;
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-md mx-auto relative">
+    <div className="min-h-screen bg-gray-50 w-full max-w-4xl mx-auto relative">
       {/* Header */}
       <div className="relative bg-gradient-to-br from-brand-600 to-brand-700 px-5 pt-12 pb-6 text-white">
         <div className="absolute top-3 left-3">

@@ -591,7 +591,7 @@ export function ChatView({
   if (incomingCall && !activeCall) {
     if (!videoCallSupported) {
       return (
-        <div className="fixed inset-0 z-[80] bg-gradient-to-b from-blue-900 to-gray-900 flex flex-col items-center justify-center max-w-md mx-auto px-5">
+        <div className="fixed inset-0 z-[80] bg-gradient-to-b from-blue-900 to-gray-900 flex flex-col items-center justify-center w-full max-w-4xl mx-auto px-5">
           <div className="text-center">
             <div className="w-28 h-28 rounded-full bg-amber-600 flex items-center justify-center mx-auto mb-6">
               <AlertCircle size={48} className="text-white" />
@@ -618,7 +618,7 @@ export function ChatView({
       );
     }
     return (
-      <div className="fixed inset-0 z-[80] bg-gradient-to-b from-blue-900 to-gray-900 flex flex-col items-center justify-center max-w-md mx-auto">
+      <div className="fixed inset-0 z-[80] bg-gradient-to-b from-blue-900 to-gray-900 flex flex-col items-center justify-center w-full max-w-4xl mx-auto">
         <div className="text-center">
           <div className="w-28 h-28 rounded-full bg-blue-700 flex items-center justify-center mx-auto mb-6 ring-4 ring-blue-400/50 animate-pulse">
             <Video size={48} className="text-white" />
@@ -647,7 +647,7 @@ export function ChatView({
   if (activeCall) {
     return (
       <ErrorBoundary fallback={
-        <div className="fixed inset-0 z-[80] bg-gray-900 flex flex-col items-center justify-center max-w-md mx-auto px-5">
+        <div className="fixed inset-0 z-[80] bg-gray-900 flex flex-col items-center justify-center w-full max-w-4xl mx-auto px-5">
           <div className="text-center">
             <div className="w-20 h-20 rounded-full bg-red-500 flex items-center justify-center mx-auto mb-4">
               <AlertCircle size={36} className="text-white" />
@@ -673,7 +673,7 @@ export function ChatView({
   }
 
   return (
-    <div className="fixed inset-x-0 top-0 z-[60] mx-auto flex h-[100dvh] w-full max-w-md min-w-0 flex-col overflow-hidden bg-gray-50">
+    <div className="fixed inset-x-0 top-0 z-[60] mx-auto flex h-[100dvh] w-full max-w-4xl min-w-0 flex-col overflow-hidden bg-gray-50">
       {/* Header */}
       <div className="safe-top z-10 flex w-full min-w-0 shrink-0 items-center gap-2 border-b border-gray-100 bg-white px-3 py-2.5">
         <button onClick={onBack} className="w-10 h-10 shrink-0 rounded-full bg-gray-100 flex items-center justify-center active:scale-95 transition">

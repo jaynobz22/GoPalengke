@@ -204,7 +204,7 @@ export function BuyerApp() {
   const canAct = profile?.is_active ?? true;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
+    <div className="min-h-screen bg-gray-50 flex flex-col w-full max-w-7xl mx-auto relative">
       {!canAct && <InactiveBanner />}
       {/* Content */}
       <div className="flex-1 pb-24 overflow-y-auto">
@@ -678,7 +678,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
           {activeCategory ? `${categories.find(c => c.id === activeCategory)?.name_fil}` : 'Sariwang Paninda'}
         </h3>
         {loading ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
             {[1,2,3,4].map(i => <div key={i} className="h-56 bg-gray-100 rounded-2xl animate-pulse" />)}
           </div>
         ) : sortedProducts.length === 0 ? (
@@ -694,7 +694,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
                   <div className="w-2 h-2 rounded-full bg-green-500" />
                   <p className="text-sm font-semibold text-green-600">Malapit sa iyo ({nearYouProducts.length})</p>
                 </div>
-                <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="grid grid-cols-2 gap-3 mb-4 md:grid-cols-3 lg:grid-cols-4">
                   {nearYouProducts.map(p => (
                     <button
                       key={p.id}
@@ -736,7 +736,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
                     <p className="text-sm font-semibold text-gray-500">Iba pang lugar ({otherProducts.length})</p>
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
                   {otherProducts.map(p => (
                     <button
                       key={p.id}
@@ -1247,9 +1247,9 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
             <p className="text-xs mt-1">Balikan mo mamaya para makita ang paninda!</p>
           </div>
         ) : loading ? (
-          <div className="grid grid-cols-2 gap-3">{[1,2,3,4].map(i => <div key={i} className="h-44 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{[1,2,3,4].map(i => <div key={i} className="h-44 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
             {products.map(p => {
               const isHighlighted = highlightProductId === p.id;
               return (
@@ -3826,7 +3826,7 @@ function BottomNav({ tab, setTab, unreadMessages, orderUpdates, cartCount }: { t
   ];
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 px-1 py-1.5 safe-bottom z-50">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-7xl bg-white border-t border-gray-100 px-1 py-1.5 safe-bottom z-50 md:px-6">
       <div className="flex items-center justify-around">
         {items.map(item => {
           const Icon = item.icon;

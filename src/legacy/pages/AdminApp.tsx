@@ -106,9 +106,9 @@ export function AdminApp() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 w-full max-w-7xl mx-auto">
       {/* Header */}
-      <div className="bg-gray-900 text-white px-5 py-4 flex items-center justify-between">
+      <div className="bg-gray-900 text-white px-5 py-4 flex items-center justify-between md:px-8">
         <div className="flex items-center gap-3">
           <img src="/images/Copilot_20260907_183703.jpg" alt="GoPalengke" className="w-10 h-10 rounded-xl object-cover" />
           <div>
@@ -125,7 +125,7 @@ export function AdminApp() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 bg-white sticky top-0 z-10 overflow-x-auto">
+      <div className="flex border-b border-gray-200 bg-white sticky top-0 z-10 overflow-x-auto md:px-4">
         {tabs.map(t => {
           const Icon = t.icon;
           const active = tab === t.id;

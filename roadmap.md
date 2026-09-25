@@ -25,3 +25,10 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 - [x] Add targeted links, thumbnails, copy, and Facebook share to affiliate dashboard
 - [x] Verify mobile/desktop, social metadata, build, and referral flow
 - [x] Push completed work to jaynobz22/GoPalengke
+
+## Current: Responsive user dashboards
+- [x] Make buyer, seller, rider, and admin dashboards adapt to laptop/desktop widths
+- [x] Make public seller storefronts adapt without stretching or breaking images
+- [x] Preserve the existing phone layouts
+- [x] Verify desktop and mobile layouts and build
+- [ ] Push responsive dashboard update to GitHub

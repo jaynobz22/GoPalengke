@@ -103,7 +103,7 @@ export function RiderApp() {
   }, [profile, canAct]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col max-w-md mx-auto relative">
+    <div className="min-h-screen bg-gray-50 flex flex-col w-full max-w-7xl mx-auto relative">
       {!canAct && <InactiveBanner reason={freezeReason || undefined} />}
       <div className="flex-1 pb-24 overflow-y-auto">
         {tab === 'deliveries' && (
@@ -129,7 +129,7 @@ export function RiderApp() {
         {tab === 'profile' && <RiderProfile onSignOut={signOut} />}
 
         {showChat && activeConversationId && (
-          <div className="fixed inset-0 z-[60] bg-gray-50 max-w-md mx-auto">
+          <div className="fixed inset-0 z-[60] bg-gray-50 w-full max-w-4xl mx-auto">
             <ChatView
               conversationId={activeConversationId}
               otherName={chatPartnerName}
@@ -1174,7 +1174,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
+        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100 md:grid-cols-4">
           <div className="text-center">
             <p className="text-2xl font-bold text-gray-800">{stats.totalDeliveries}</p>
             <p className="text-xs text-gray-400">Deliveries</p>
@@ -1656,7 +1656,7 @@ function RiderBottomNav({ tab, setTab, riderId, unreadMessages }: { tab: Tab; se
   ];
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 px-1 py-1.5 safe-bottom z-50">
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-7xl bg-white border-t border-gray-100 px-1 py-1.5 safe-bottom z-50 md:px-6">
       <div className="flex items-center justify-around">
         {items.map(item => {
           const Icon = item.icon;
