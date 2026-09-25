@@ -1178,15 +1178,17 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
 
   return (
     <div>
-      <div className="relative h-48 sm:h-64 md:h-[26rem] lg:h-[30rem] bg-gradient-to-br from-brand-500 to-brand-700 overflow-hidden md:rounded-b-3xl">
-        {store.banner_url && <img src={store.banner_url} alt={store.name} decoding="async" className="w-full h-full object-cover" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 hidden md:block p-8 lg:p-10 text-white">
-          {store.palengke_name && <p className="text-sm font-semibold uppercase tracking-wider opacity-90">{store.palengke_name}</p>}
-          <h2 className="text-4xl lg:text-5xl font-extrabold drop-shadow-lg mt-1">{store.name}</h2>
-          {store.description && <p className="mt-2 max-w-2xl text-base opacity-90 line-clamp-2">{store.description}</p>}
+      <div className="relative h-48 sm:h-64 md:h-[26rem] lg:h-[30rem] bg-gray-900 overflow-hidden md:rounded-b-3xl">
+        {store.banner_url && <img src={store.banner_url} alt={store.name} decoding="async" className="w-full h-full object-cover object-center" fetchPriority="high" />}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent md:bg-gradient-to-r md:from-gray-950 md:via-gray-950/80 md:to-gray-950/10" />
+        <div className="absolute bottom-0 left-0 right-0 hidden md:block md:inset-0 md:flex md:items-center p-8 lg:p-12 text-white">
+          <div className="max-w-2xl">
+            {store.palengke_name && <p className="text-sm font-semibold uppercase tracking-wider text-green-300">{store.palengke_name}</p>}
+            <h2 className="font-display text-4xl lg:text-6xl font-extrabold leading-tight drop-shadow-lg mt-1">{store.name}</h2>
+            {store.description && <p className="mt-3 max-w-xl text-base leading-6 text-gray-200 line-clamp-2">{store.description}</p>}
+          </div>
         </div>
-        <button onClick={onBack} className="absolute top-12 left-4 w-10 h-10 rounded-full bg-white/90 shadow-md flex items-center justify-center">
+        <button onClick={onBack} aria-label="Bumalik" className="absolute top-12 left-4 z-10 w-10 h-10 rounded-full bg-white/90 shadow-md flex items-center justify-center">
           <ArrowLeft size={20} className="text-gray-700" />
         </button>
       </div>
