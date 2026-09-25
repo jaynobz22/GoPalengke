@@ -125,9 +125,13 @@ const CONFIGS: Record<Audience, PageConfig> = {
   },
 };
 
+// Default to the admin affiliate account's code when the link has no ?ref=
+// (e.g. https://www.gopalengke.net/para-sa-seller) so the admin still gets credit.
+const DEFAULT_ADMIN_REFERRAL_CODE = '5F7249C1';
+
 function getReferralCode() {
-  if (typeof window === 'undefined') return '';
-  return new URLSearchParams(window.location.search).get('ref')?.trim() || '';
+  if (typeof window === 'undefined') return DEFAULT_ADMIN_REFERRAL_CODE;
+  return new URLSearchParams(window.location.search).get('ref')?.trim() || DEFAULT_ADMIN_REFERRAL_CODE;
 }
 
 export function MarketingAudiencePage({ audience }: { audience: Audience }) {
