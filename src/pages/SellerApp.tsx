@@ -75,6 +75,7 @@ export function SellerApp() {
 
     function requestGps() {
       if (cancelled) return;
+      sessionStorage.setItem('gopalengke_gps_fired_at', Date.now().toString());
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           if (cancelled) return;

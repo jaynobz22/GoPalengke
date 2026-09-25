@@ -23,10 +23,37 @@ export function NotificationPermissionPrompt() {
     const dismissed = localStorage.getItem(DISMISSAL_KEY);
     if (dismissed === 'true') return;
 
-    // Delay so it doesn't collide with the LoginReminderPopup (which appears
-    // at ~600ms) or the geolocation request. Wait for those to be dismissed.
-    const timer = setTimeout(() => setVisible(true), 5000);
-    return () => clearTimeout(timer);
+    // Wait until the geolocation request fires, then wait 10 more seconds
+    // before showing the notification prompt so the seller isn't bombarded
+    // with multiple popups at once.
+    const gpsKey = 'gopalengke_gps_fired_at';
+    const gpsFired = sessionStorage.getItem(gpsKey);
+
+    function schedulePrompt(delay: number) {
+      return setTimeout(() => setVisible(true), delay);
+    }
+
+    if (gpsFired) {
+      const elapsed = Date.now() - parseInt(gpsFired, 10);
+      const remaining = Math.max(0, 10000 - elapsed);
+      const timer = schedulePrompt(remaining);
+      return () => clearTimeout(timer);
+    }
+
+    // GPS hasn't fired yet — poll until it does, then wait 10 seconds
+    let cleanupTimer: ReturnType<typeof setTimeout> | undefined;
+    const interval = setInterval(() => {
+      const fired = sessionStorage.getItem(gpsKey);
+      if (fired) {
+        clearInterval(interval);
+        cleanupTimer = schedulePrompt(10000);
+      }
+    }, 500);
+
+    return () => {
+      clearInterval(interval);
+      if (cleanupTimer) clearTimeout(cleanupTimer);
+    };
   }, [profile]);
 
   async function handleEnable() {
