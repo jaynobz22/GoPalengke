@@ -11,6 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
+import { Route as ParaSaBuyerRouteImport } from './routes/para-sa-buyer'
+import { Route as ParaSaRiderRouteImport } from './routes/para-sa-rider'
+import { Route as ParaSaSellerRouteImport } from './routes/para-sa-seller'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +25,65 @@ const SplatRoute = SplatRouteImport.update({
   path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ParaSaBuyerRoute = ParaSaBuyerRouteImport.update({
+  id: '/para-sa-buyer',
+  path: '/para-sa-buyer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParaSaRiderRoute = ParaSaRiderRouteImport.update({
+  id: '/para-sa-rider',
+  path: '/para-sa-rider',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParaSaSellerRoute = ParaSaSellerRouteImport.update({
+  id: '/para-sa-seller',
+  path: '/para-sa-seller',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/para-sa-buyer': typeof ParaSaBuyerRoute
+  '/para-sa-rider': typeof ParaSaRiderRoute
+  '/para-sa-seller': typeof ParaSaSellerRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/para-sa-buyer': typeof ParaSaBuyerRoute
+  '/para-sa-rider': typeof ParaSaRiderRoute
+  '/para-sa-seller': typeof ParaSaSellerRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/para-sa-buyer': typeof ParaSaBuyerRoute
+  '/para-sa-rider': typeof ParaSaRiderRoute
+  '/para-sa-seller': typeof ParaSaSellerRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/$'
+  fullPaths:
+    '/' | '/$' | '/para-sa-buyer' | '/para-sa-rider' | '/para-sa-seller'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$'
-  id: '__root__' | '/' | '/$'
+  to: '/' | '/$' | '/para-sa-buyer' | '/para-sa-rider' | '/para-sa-seller'
+  id:
+    | '__root__'
+    | '/'
+    | '/$'
+    | '/para-sa-buyer'
+    | '/para-sa-rider'
+    | '/para-sa-seller'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  ParaSaBuyerRoute: typeof ParaSaBuyerRoute
+  ParaSaRiderRoute: typeof ParaSaRiderRoute
+  ParaSaSellerRoute: typeof ParaSaSellerRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +102,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/para-sa-buyer': {
+      id: '/para-sa-buyer'
+      path: '/para-sa-buyer'
+      fullPath: '/para-sa-buyer'
+      preLoaderRoute: typeof ParaSaBuyerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/para-sa-rider': {
+      id: '/para-sa-rider'
+      path: '/para-sa-rider'
+      fullPath: '/para-sa-rider'
+      preLoaderRoute: typeof ParaSaRiderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/para-sa-seller': {
+      id: '/para-sa-seller'
+      path: '/para-sa-seller'
+      fullPath: '/para-sa-seller'
+      preLoaderRoute: typeof ParaSaSellerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  ParaSaBuyerRoute: ParaSaBuyerRoute,
+  ParaSaRiderRoute: ParaSaRiderRoute,
+  ParaSaSellerRoute: ParaSaSellerRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

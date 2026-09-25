@@ -17,8 +17,10 @@ const ROLES = [
 
 export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: boolean; onBack?: () => void }) {
   const { signIn, signUp, sendEmailOtp, verifyEmailOtp } = useAuth();
-  const [mode, setMode] = useState<'welcome' | 'signin' | 'signup-role' | 'signup-form' | 'verify-email'>(needsProfile ? 'signup-role' : 'welcome');
-  const [selectedRole, setSelectedRole] = useState<UserRole>('buyer');
+  const requestedRole = new URLSearchParams(window.location.search).get('signup');
+  const targetedRole: UserRole | null = requestedRole === 'seller' || requestedRole === 'rider' || requestedRole === 'buyer' ? requestedRole : null;
+  const [mode, setMode] = useState<'welcome' | 'signin' | 'signup-role' | 'signup-form' | 'verify-email'>(needsProfile ? 'signup-role' : targetedRole ? 'signup-form' : 'welcome');
+  const [selectedRole, setSelectedRole] = useState<UserRole>(targetedRole || 'buyer');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');

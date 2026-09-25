@@ -20,7 +20,7 @@ import { getRegistration, initPushNotifications } from './lib/pushNotifications'
 
 function AppContent() {
   const { session, profile, loading, pendingVerification } = useAuth();
-  const [showAuth, setShowAuth] = useState(false);
+  const [showAuth, setShowAuth] = useState(() => new URLSearchParams(window.location.search).has('signup'));
   const publicRoute = useRoute();
   const legalRoute = useLegalRoute();
   const tutorialRoute = useTutorialRoute();
@@ -41,7 +41,7 @@ function AppContent() {
       const url = new URL(window.location.href);
       url.searchParams.delete('ref');
       url.searchParams.delete('aff_ref');
-      window.history.replaceState({}, '', url.pathname);
+      window.history.replaceState({}, '', `${url.pathname}${url.search}`);
     }
   }, []);
 

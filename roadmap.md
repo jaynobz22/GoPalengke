@@ -18,3 +18,10 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 ## Pending (needs user)
 - [ ] Data import: CSV/JSON exports of products, stores, orders, users from their Supabase dashboard (after preview)
 - [ ] Secrets: VAPID keys (push), Zego credentials (video calls) — request via secure form when needed for verification
+
+## Current: Targeted affiliate marketing pages
+- [x] Build separate seller, rider, and buyer marketing pages
+- [x] Preserve affiliate referral code through targeted signup
+- [x] Add targeted links, thumbnails, copy, and Facebook share to affiliate dashboard
+- [x] Verify mobile/desktop, social metadata, build, and referral flow
+- [ ] Push completed work to jaynobz22/GoPalengke
