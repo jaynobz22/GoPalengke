@@ -82,7 +82,7 @@ export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-center gap-2">
-          <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-10 h-10 rounded-xl object-cover" />
+          <img src="/images/Copilot_20260907_183703.jpg" alt="GoPalengke" className="w-10 h-10 rounded-xl object-cover" />
           <div>
             <span className="text-xl font-bold text-gray-800">GoPalengke</span>
             <span className="text-xs text-brand-600 font-medium ml-1">Affiliate</span>

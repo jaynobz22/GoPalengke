@@ -193,7 +193,7 @@ export function MarketingAudiencePage({ audience }: { audience: Audience }) {
       <header className="absolute inset-x-0 top-0 z-20 safe-top">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <button type="button" onClick={() => navigate('/')} className="flex items-center gap-2 text-white">
-            <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="h-10 w-10 rounded-xl object-cover" />
+            <img src="/images/Copilot_20260907_183703.jpg" alt="GoPalengke" className="h-10 w-10 rounded-xl object-cover" />
             <span className="font-bold">GoPalengke</span>
           </button>
           <button type="button" onClick={startSignup} className="rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-brand-700 shadow-lg active:scale-95">

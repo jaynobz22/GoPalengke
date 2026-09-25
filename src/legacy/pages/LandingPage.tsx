@@ -51,11 +51,11 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
   const slides = [
-    { src: '/images/Copilot_20260906_113445.png', alt: 'Tindera ng sariwang seafood sa palengke' },
-    { src: '/images/Copilot_20260906_114051.png', alt: 'Tindero ng sariwang isda sa palengke' },
-    { src: '/images/Copilot_20260906_115019.png', alt: 'Tindero ng sariwang karne sa palengke' },
-    { src: '/images/Copilot_20260906_115256.png', alt: 'Tindera ng sariwang gulay at karne sa palengke' },
-    { src: '/images/Copilot_20260906_115828.png', alt: 'Tindera ng sariwang prutas at grocery products sa palengke' },
+    { src: '/images/Copilot_20260906_113445.jpg', alt: 'Tindera ng sariwang seafood sa palengke' },
+    { src: '/images/Copilot_20260906_114051.jpg', alt: 'Tindero ng sariwang isda sa palengke' },
+    { src: '/images/Copilot_20260906_115019.jpg', alt: 'Tindero ng sariwang karne sa palengke' },
+    { src: '/images/Copilot_20260906_115256.jpg', alt: 'Tindera ng sariwang gulay at karne sa palengke' },
+    { src: '/images/Copilot_20260906_115828.jpg', alt: 'Tindera ng sariwang prutas at grocery products sa palengke' },
   ];
 
   useEffect(() => {
@@ -153,7 +153,7 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
       {/* Desktop nav bar */}
       <nav className="hidden md:flex relative max-w-6xl mx-auto px-6 pt-6 pb-2 items-center justify-between gap-4">
         <div className="flex items-center gap-2 flex-shrink-0">
-          <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-10 h-10 rounded-xl object-cover" />
+          <img src="/images/Copilot_20260907_183703.jpg" alt="GoPalengke" className="w-10 h-10 rounded-xl object-cover" />
           <span className="text-xl font-bold text-white tracking-tight">GoPalengke</span>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
@@ -168,7 +168,7 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
 
       {/* Mobile logo */}
       <div className="md:hidden relative px-5 pt-14 pb-2 flex items-center gap-2 animate-slide-in-left">
-        <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-11 h-11 rounded-2xl object-cover flex-shrink-0" />
+        <img src="/images/Copilot_20260907_183703.jpg" alt="GoPalengke" className="w-11 h-11 rounded-2xl object-cover flex-shrink-0" />
         <span className="text-2xl font-bold text-white tracking-tight flex-shrink-0">GoPalengke</span>
       </div>
 
@@ -665,7 +665,7 @@ function Footer() {
     <footer className="bg-gray-900 text-gray-400 px-5 py-8 md:py-12">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-center gap-2 mb-4">
-          <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-7 h-7 rounded-lg object-cover" />
+          <img src="/images/Copilot_20260907_183703.jpg" alt="GoPalengke" className="w-7 h-7 rounded-lg object-cover" />
           <span className="text-lg font-bold text-white">GoPalengke</span>
         </div>
         <p className="text-sm text-center mb-5">The First Online Wet Market in the Philippines</p>

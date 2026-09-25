@@ -9,7 +9,7 @@ export function AffiliateTerms() {
       <nav className="bg-white border-b border-gray-100 sticky top-0 z-20">
         <div className="max-w-4xl mx-auto px-5 py-3 flex items-center justify-between">
           <button onClick={() => navigate('/affiliate')} className="flex items-center gap-2">
-            <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-9 h-9 rounded-xl object-cover" />
+            <img src="/images/Copilot_20260907_183703.jpg" alt="GoPalengke" className="w-9 h-9 rounded-xl object-cover" />
             <div>
               <span className="text-lg font-bold text-gray-800">GoPalengke</span>
               <span className="text-xs text-brand-600 font-medium ml-1">Affiliate</span>
@@ -301,7 +301,7 @@ export function AffiliateTerms() {
       <footer className="bg-gray-900 text-gray-400 px-5 py-8 mt-6">
         <div className="max-w-4xl mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
-            <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-7 h-7 rounded-lg object-cover" />
+            <img src="/images/Copilot_20260907_183703.jpg" alt="GoPalengke" className="w-7 h-7 rounded-lg object-cover" />
             <span className="text-lg font-bold text-white">GoPalengke</span>
           </div>
           <p className="text-xs mb-2">© 2026 GoPalengke Affiliate Program. All rights reserved.</p>

@@ -488,7 +488,7 @@ function PublicUserPage({ slug }: { slug: string }) {
         {/* CTA */}
         {!session && (
           <div className="mt-4 bg-gradient-to-br from-brand-600 to-brand-700 rounded-2xl p-5 text-center">
-            <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-12 h-12 rounded-xl object-cover mx-auto mb-2" />
+            <img src="/images/Copilot_20260907_183703.jpg" alt="GoPalengke" className="w-12 h-12 rounded-xl object-cover mx-auto mb-2" />
             <p className="text-white font-bold">Sali na ang GoPalengke!</p>
             <p className="text-brand-100 text-sm mt-1">Mag-sign up para makapag-order o magtinda.</p>
             <button

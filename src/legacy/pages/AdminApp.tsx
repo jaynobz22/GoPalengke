@@ -110,7 +110,7 @@ export function AdminApp() {
       {/* Header */}
       <div className="bg-gray-900 text-white px-5 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-10 h-10 rounded-xl object-cover" />
+          <img src="/images/Copilot_20260907_183703.jpg" alt="GoPalengke" className="w-10 h-10 rounded-xl object-cover" />
           <div>
             <p className="font-bold text-lg leading-tight">GoPalengke Admin</p>
             <p className="text-xs text-gray-400">{profile?.email}</p>

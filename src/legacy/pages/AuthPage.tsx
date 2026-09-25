@@ -166,7 +166,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
           </button>
         )}
         <div className="flex items-center gap-2">
-          <img src="/images/Copilot_20260907_183703.png" alt="GoPalengke" className="w-10 h-10 rounded-xl object-cover" />
+          <img src="/images/Copilot_20260907_183703.jpg" alt="GoPalengke" className="w-10 h-10 rounded-xl object-cover" />
           <span className="text-xl font-bold text-gray-800">GoPalengke</span>
         </div>
       </div>
