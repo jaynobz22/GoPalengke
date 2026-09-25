@@ -1145,7 +1145,7 @@ function ProductFormModal({ store, product, onClose, onSaved }: { store: Store; 
 
             {imageUrl ? (
               <div className="relative">
-                <img src={imageUrl} alt="Preview" loading="lazy" decoding="async" className="w-full h-40 rounded-xl object-cover" />
+                <img src={imageUrl} alt="Preview" loading="lazy" decoding="async" className="w-full aspect-[4/3] max-w-md rounded-xl object-cover" />
                 <div className="absolute bottom-2 right-2 flex gap-1.5">
                   <button type="button" onClick={() => setShowImagePicker(true)}
                     className="bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-1">

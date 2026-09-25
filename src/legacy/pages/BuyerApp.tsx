@@ -701,7 +701,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
                       onClick={() => onProductClick(p, p.store)}
                       className="bg-white rounded-2xl overflow-hidden border border-green-200 text-left active:scale-[0.98] transition"
                     >
-                      <div className="h-32 bg-gray-100 relative">
+                      <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                         {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                         {p.stock <= 5 && p.stock > 0 && (
                           <span className="absolute top-2 left-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">Lang {p.stock} na</span>
@@ -743,7 +743,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
                       onClick={() => onProductClick(p, p.store)}
                       className="bg-white rounded-2xl overflow-hidden border border-gray-100 text-left active:scale-[0.98] transition"
                     >
-                      <div className="h-32 bg-gray-100 relative">
+                      <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                         {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                         {p.stock <= 5 && p.stock > 0 && (
                           <span className="absolute top-2 left-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">Lang {p.stock} na</span>
@@ -1178,7 +1178,7 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
 
   return (
     <div>
-      <div className="relative h-40 bg-gray-200">
+      <div className="relative h-40 sm:h-56 md:h-72 lg:h-96 bg-gray-200 overflow-hidden">
         {store.banner_url && <img src={store.banner_url} alt={store.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <button onClick={onBack} className="absolute top-12 left-4 w-10 h-10 rounded-full bg-white/90 shadow-md flex items-center justify-center">
@@ -1261,7 +1261,7 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
                     {isHighlighted && (
                       <span className="absolute top-2 left-2 z-10 bg-brand-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">Pinili mo</span>
                     )}
-                    <div className="h-32 bg-gray-100">
+                    <div className="aspect-[4/3] bg-gray-100 overflow-hidden">
                       {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
                     </div>
                     <div className="p-2.5">
