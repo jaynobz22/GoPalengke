@@ -12,8 +12,8 @@ import {
   computeDeliveryFee, estimateDistanceKm,
   haversineKm, getStoreCoords, getDeliveryCoords,
   computeDeliveryFeeFromCoords, fetchRoadDistance,
-  BASE_DELIVERY_FEE, PER_KM_RATE, computeFleetDeliveryFee, getRequiredTier, getZoneRates, computeDistanceCharge, computeWeightSurcharge, FREE_WEIGHT_KG, type ZoneRates, type VehicleTier,
-  type Coords, type RouteResult,
+  BASE_DELIVERY_FEE, PER_KM_RATE, computeFleetDeliveryFee, getRequiredTier, getZoneRates, computeDistanceCharge, computeWeightSurcharge, FREE_WEIGHT_KG, isNcrRegion,
+  type ZoneRates, type VehicleTier, type Coords, type RouteResult,
 } from '../lib/deliveryFee';
 import { fetchBarangaysByCity, fetchCitiesByRegion, fetchCitiesByProvince, fetchProvincesByRegion, formatRegionForDisplay as sharedFormatRegion } from '../lib/philippineLocations';
 
