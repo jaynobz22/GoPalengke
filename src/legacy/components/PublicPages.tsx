@@ -176,16 +176,14 @@ function PublicStorePage({ slug }: { slug: string }) {
         </div>
         {/* Laptop: hero split — teksto sa gradient, banner sa kanan na hindi binabago */}
         <div className="hidden md:flex md:h-[26rem] lg:h-[30rem]">
-          <div className="flex-1 flex flex-col justify-center px-8 lg:px-10 text-white min-w-0">
+          <div className="flex-1 flex flex-col justify-center px-8 lg:px-10 text-white min-w-0 relative z-[1]">
             {store.palengke_name && <p className="text-sm font-semibold uppercase tracking-wider text-green-100">{store.palengke_name}</p>}
             <h2 className="font-display text-4xl lg:text-5xl font-extrabold mt-1">{store.name}</h2>
           </div>
-          <div className="w-1/2 lg:w-[45%] flex-shrink-0 bg-brand-100 relative">
+          <div className="w-[55%] lg:w-1/2 flex-shrink-0 relative -ml-24 lg:-ml-32">
             {store.banner_url && (
               <>
-                <img src={store.banner_url} alt="" className="w-full h-full object-cover object-center" />
-                {/* Blend: unti-unting green papunta sa banner para walang matigas na putol */}
-                <div aria-hidden className="absolute inset-y-0 left-0 w-24 lg:w-40 bg-gradient-to-r from-brand-600 to-transparent pointer-events-none" />
+                <img src={store.banner_url} alt="" className="w-full h-full object-cover object-center [mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.35)_18%,rgba(0,0,0,0.8)_35%,black_50%)]" />
               </>
             )}
           </div>
