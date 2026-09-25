@@ -16,6 +16,7 @@ import { LegalPages, type LegalPageType } from './components/LegalPages';
 import { TutorialPage } from './components/TutorialPage';
 import { AffiliateApp } from './pages/AffiliateApp';
 import { NotificationPermissionPrompt } from './components/NotificationPermissionPrompt';
+import { GlobalIncomingCall } from './components/GlobalIncomingCall';
 import { getRegistration, initPushNotifications } from './lib/pushNotifications';
 
 function AppContent() {
@@ -125,9 +126,9 @@ function AppContent() {
     );
   }
 
-  if (profile.role === 'buyer') return <><BuyerApp /><NotificationPermissionPrompt /></>;
-  if (profile.role === 'seller') return <><SellerApp /><NotificationPermissionPrompt /></>;
-  if (profile.role === 'rider') return <><RiderApp /><NotificationPermissionPrompt /></>;
+  if (profile.role === 'buyer') return <><BuyerApp /><GlobalIncomingCall /><NotificationPermissionPrompt /></>;
+  if (profile.role === 'seller') return <><SellerApp /><GlobalIncomingCall /><NotificationPermissionPrompt /></>;
+  if (profile.role === 'rider') return <><RiderApp /><GlobalIncomingCall /><NotificationPermissionPrompt /></>;
   if (profile.role === 'admin') return <ErrorBoundary><AdminApp /></ErrorBoundary>;
 
   return <LandingPage onGetStarted={() => setShowAuth(true)} />;

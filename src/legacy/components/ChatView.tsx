@@ -10,7 +10,7 @@ import { VideoCall } from '../components/VideoCall';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { compressImage } from '../lib/imageCompress';
 
-function useRingtone() {
+export function useRingtone() {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const vibrateRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -392,6 +392,12 @@ export function ChatView({
   const videoCallSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices && !!navigator.mediaDevices.getUserMedia;
   const { start: startRing, stop: stopRing } = useRingtone();
   const preWarmStreamRef = useRef<MediaStream | null>(null);
+
+  // Ipaalam sa global call listener na bukas ang chat na ito (dito na magri-ring)
+  useEffect(() => {
+    (window as any).__gpOpenChatConv = conversationId;
+    return () => { if ((window as any).__gpOpenChatConv === conversationId) (window as any).__gpOpenChatConv = null; };
+  }, [conversationId]);
 
   useEffect(() => {
     async function loadAvatars() {
