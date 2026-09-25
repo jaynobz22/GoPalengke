@@ -1,14 +1,9 @@
 // @ts-nocheck
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../lib/auth';
 import { Video, PhoneOff, Phone, AlertCircle } from 'lucide-react';
-import { loadZegoSDK } from '../lib/zego';
-
-const ZEGO_APP_ID = 859723970;
-const ZEGO_SERVER_SECRET = 'b09d6611fd4974338195c5e40cb94eb8';
-
-const TEST_ROOM_ID = 'gopalengke_global_test_room';
+import { useWebRTCCall } from '../lib/webrtc';
+import { RtcVideoStage } from './RtcVideoStage';
 
 type CallPhase = 'outgoing' | 'incoming' | 'connected' | 'ended';
 
@@ -21,138 +16,34 @@ interface AdminVideoCallProps {
 }
 
 export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: AdminVideoCallProps) {
-  const { profile } = useAuth();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const zpRef = useRef<any>(null);
-
   const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'incoming');
-  const [error, setError] = useState<string | null>(null);
+  const [joined, setJoined] = useState(isCaller);
 
   const updateCallStatus = async (status: string) => {
     if (!callId) return;
     await supabase.from('admin_calls').update({ status }).eq('id', callId);
   };
 
+  const call = useWebRTCCall({ roomId, isCaller, enabled: joined, onRemoteHangup: () => updateCallStatus('ended') });
+  const error = call.error;
+
   useEffect(() => {
-    if (!profile?.id) return;
-
-    // Callee (incoming) waits for explicit acceptCall() — don't auto-join
-    if (!isCaller) return;
-
-    // Block double-init via window property
-    if ((window as any).zegoInitialized) return;
-    (window as any).zegoInitialized = true;
-
-    const effectiveRoomId = TEST_ROOM_ID;
-    let asyncCancelled = false;
-
-    const initZego = async () => {
-      try {
-        const ZegoUIKitPrebuilt = await loadZegoSDK();
-        if (asyncCancelled) return;
-
-        const appIdNum = Number(ZEGO_APP_ID);
-        const serverSecretStr = String(ZEGO_SERVER_SECRET);
-        if (!appIdNum || isNaN(appIdNum)) throw new Error('Invalid ZEGO AppID');
-        if (!serverSecretStr || serverSecretStr.length < 10) throw new Error('Invalid ZEGO ServerSecret');
-
-        let container = containerRef.current;
-        let retries = 0;
-        while (!container && retries < 30 && !asyncCancelled) {
-          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
-          container = containerRef.current;
-          retries++;
-        }
-        if (asyncCancelled || !container) { (window as any).zegoInitialized = false; return; }
-
-        await new Promise<void>(resolve => setTimeout(resolve, 200));
-        if (asyncCancelled) { (window as any).zegoInitialized = false; return; }
-
-        const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
-          appIdNum, serverSecretStr, effectiveRoomId, profile.id,
-          profile.full_name || 'Admin',
-        );
-
-        const zp = ZegoUIKitPrebuilt.create(kitToken);
-        zpRef.current = zp;
-
-        zp.joinRoom({
-          container,
-          scenario: { mode: ZegoUIKitPrebuilt.OneONoneCall },
-          showScreenSharingButton: false,
-          showMyCameraToggleButton: false,
-          showMyMicrophoneToggleButton: false,
-          showTextChat: false,
-          showUserList: false,
-          turnOnCameraWhenJoining: true,
-          turnOnMicrophoneWhenJoining: true,
-          onJoinRoom: () => { setPhase('connected'); setError(null); },
-          onLeaveRoom: () => { setPhase('ended'); updateCallStatus('ended'); },
-        });
-      } catch (err: any) {
-        console.error('ZEGO_INIT_FAILED:', err);
-        (window as any).zegoInitialized = false;
-        setError(`Hindi ma-start ang video call: ${err?.message || String(err)}`);
-      }
-    };
-
-    initZego();
-
-    return () => {
-      asyncCancelled = true;
-      // No destroy — keep session alive across re-renders
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomId, profile?.id]);
+    if (call.phase === 'connected' || call.phase === 'reconnecting') setPhase('connected');
+    else if (call.phase === 'ended' || call.phase === 'failed') setPhase('ended');
+  }, [call.phase]);
 
   async function acceptCall() {
-    if (!containerRef.current || !profile) return;
-    try {
-      const ZegoUIKitPrebuilt = await loadZegoSDK();
-      const effectiveRoomId = TEST_ROOM_ID;
-
-      const kitToken = ZegoUIKitPrebuilt.generateKitTokenForTest(
-        Number(ZEGO_APP_ID), String(ZEGO_SERVER_SECRET),
-        effectiveRoomId, profile.id, profile.full_name || otherName,
-      );
-
-      const zp = ZegoUIKitPrebuilt.create(kitToken);
-      zpRef.current = zp;
-      (window as any).zegoInitialized = true;
-
-      zp.joinRoom({
-        container: containerRef.current,
-        scenario: { mode: ZegoUIKitPrebuilt.OneONoneCall },
-        showScreenSharingButton: false,
-        showMyCameraToggleButton: false,
-        showMyMicrophoneToggleButton: false,
-        showTextChat: false,
-        showUserList: false,
-        turnOnCameraWhenJoining: true,
-        turnOnMicrophoneWhenJoining: true,
-        onJoinRoom: () => { setPhase('connected'); setError(null); },
-        onLeaveRoom: () => { setPhase('ended'); updateCallStatus('ended'); },
-      });
-
-      await updateCallStatus('accepted');
-    } catch (err: any) {
-      console.error('ZEGO_ACCEPT_FAILED:', err);
-      setError(`Hindi ma-access ang camera o microphone: ${err?.message || String(err)}`);
-    }
+    setJoined(true);
+    await updateCallStatus('accepted');
   }
 
   async function declineCall() {
     await updateCallStatus('declined');
-    try { zpRef.current?.destroy(); } catch { /* ignore */ }
-    zpRef.current = null;
-    (window as any).zegoInitialized = false;
     onEnd();
   }
 
   async function endCall() {
-    try { zpRef.current?.destroy(); } catch { /* ignore */ }
-    zpRef.current = null;
-    (window as any).zegoInitialized = false;
+    call.hangup();
     await updateCallStatus('ended');
     setPhase('ended');
   }
@@ -161,19 +52,7 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
   return (
     <div className="fixed inset-0 z-[80] bg-gray-900 max-w-md mx-auto overflow-hidden">
 
-      {/* ZEGO injects here — always in DOM, visibility toggled */}
-      <div
-        ref={containerRef}
-        id="zego-admin-container"
-        style={{
-          width: '100%',
-          height: '100%',
-          position: 'absolute',
-          inset: 0,
-          visibility: phase === 'connected' ? 'visible' : 'hidden',
-          zIndex: phase === 'connected' ? 5 : 0,
-        }}
-      />
+      {phase === 'connected' && <RtcVideoStage call={{ ...call, hangup: endCall }} statusText={isCaller ? otherName : 'Admin'} />}
 
       {/* ── CALL ENDED ── */}
       {phase === 'ended' && (
@@ -249,14 +128,6 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
         </div>
       )}
 
-      {/* ── END CALL BUTTON (when connected) ── */}
-      {phase === 'connected' && (
-        <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center" style={{ zIndex: 25 }}>
-          <button onClick={endCall} className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center active:scale-90 transition shadow-lg">
-            <PhoneOff size={28} className="text-white" />
-          </button>
-        </div>
-      )}
     </div>
   );
 }
