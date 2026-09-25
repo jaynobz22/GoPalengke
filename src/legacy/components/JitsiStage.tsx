@@ -67,19 +67,26 @@ export function JitsiStage({ roomId, displayName, onJoined, onOtherJoined, onOth
           disableTileView: true,
           startWithVideoMuted: false,
           disableFilmstripAutohiding: true,
-          filmstrip: { disabled: false, disableResizable: true, disableStageFilmstrip: true },
+          // Messenger layout: remote video ang main screen; ang local preview ay
+          // maliit at portrait sa gilid, hindi full-width strip sa ibaba.
+          filmstrip: {
+            disabled: false,
+            disableResizable: true,
+            disableStageFilmstrip: true,
+            tileAspectRatio: 0.5625,
+          },
         },
         interfaceConfigOverwrite: {
           MOBILE_APP_PROMO: false,
           SHOW_JITSI_WATERMARK: false,
           TOOLBAR_BUTTONS: ['microphone', 'camera', 'toggle-camera', 'hangup'],
-          // Messenger-style: maliit na self-view na laging kita sa phone.
-          FILM_STRIP_MAX_HEIGHT: 64,
+          // Vertical filmstrip keeps the self-view floating at the side on phones.
+          FILM_STRIP_MAX_HEIGHT: 56,
           LOCAL_THUMBNAIL_RATIO: 0.5625,
-          VERTICAL_FILMSTRIP: false,
+          VERTICAL_FILMSTRIP: true,
           TILE_VIEW_MAX_COLUMNS: 1,
           DISABLE_VIDEO_BACKGROUND: true,
-          TOOLBAR_ALWAYS_VISIBLE: true,
+          TOOLBAR_ALWAYS_VISIBLE: false,
         },
 
       });
@@ -94,8 +101,9 @@ export function JitsiStage({ roomId, displayName, onJoined, onOtherJoined, onOth
       if (apiRef) apiRef.current = api;
       api.addListener('videoConferenceJoined', () => {
         everJoined = true;
-        // Messenger-style: full screen ang kausap, maliit na self-view sa ibaba.
+        // Messenger-style: full screen ang kausap, maliit na portrait self-view sa gilid.
         try { api.executeCommand('setTileView', false); } catch {}
+        try { api.executeCommand('toggleFilmStrip', true); } catch {}
         try { api.executeCommand('setVideoQuality', 720); } catch {}
         setTimeout(() => { try { api.executeCommand('setTileView', false); } catch {} }, 1500);
         cbs.current.onJoined?.();
@@ -118,6 +126,5 @@ export function JitsiStage({ roomId, displayName, onJoined, onOtherJoined, onOth
     };
   }, [roomId]);
 
-  // May puwang sa ibaba para hindi matago sa mobile browser controls ang self-view.
-  return <div ref={el} className="absolute inset-x-0 top-0 bottom-16 overflow-hidden bg-black sm:bottom-0" />;
+  return <div ref={el} className="absolute inset-0 h-[100dvh] max-h-[100dvh] overflow-hidden overscroll-none bg-black touch-none" />;
 }

@@ -68,7 +68,7 @@ export function VideoCall({ roomId, isCaller, otherName, preWarmedStream, onEnd 
   const live = phase === 'waiting' || phase === 'connected';
 
   return (
-    <div className="fixed inset-0 bg-gray-900" style={{ zIndex: 999 }}>
+    <div className="fixed inset-0 h-[100dvh] max-h-[100dvh] overflow-hidden overscroll-none bg-gray-900" style={{ zIndex: 999 }}>
       {live && !showNoCreditsAlert && (
         <>
           <JitsiStage
