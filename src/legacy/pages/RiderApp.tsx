@@ -1156,7 +1156,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
   }
 
   return (
-    <div className="px-5 py-4 pb-40">
+    <div className="px-5 py-4 pb-40 md:px-8">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Profile ko</h2>
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
         <div className="flex items-center gap-3 mb-4">
@@ -1203,7 +1203,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           value={profile?.avatar_url || ''}
           bucket="profile-images"
           folder={`avatars/${profile?.id}`}
-          aspectClass="h-32"
+          aspectClass="aspect-square max-w-40 mx-auto"
           cropAspect={1}
           hint="Mag-upload ng larawan para makilala ka ng buyers at sellers."
           onChange={async (url) => {
@@ -1358,7 +1358,8 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           value={profile?.rider_valid_id_url || ''}
           bucket="profile-images"
           folder={`valid-ids/${profile?.id}`}
-          aspectClass="h-40"
+          aspectClass="aspect-[4/3] max-w-2xl max-h-[28rem] mx-auto"
+          objectFit="contain"
           cropAspect={4 / 3}
           hint="I-upload ang litrato ng valid ID mo. Makikita ito ng buyers sa profile mo para sa kanilang safety."
           onChange={async (url) => {
@@ -1379,7 +1380,8 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           value={profile?.rider_lto_or_cr_url || ''}
           bucket="profile-images"
           folder={`lto-orcr/${profile?.id}`}
-          aspectClass="h-40"
+          aspectClass="aspect-[4/3] max-w-2xl max-h-[28rem] mx-auto"
+          objectFit="contain"
           cropAspect={4 / 3}
           hint="I-upload ang litrato ng LTO OR/CR ng iyong sasakyan. Required para sa verification."
           onChange={async (url) => {
@@ -1397,7 +1399,8 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
           value={profile?.rider_qr_code_url || ''}
           bucket="store-images"
           folder={`rider-qr/${profile?.id}`}
-          aspectClass="h-48"
+          aspectClass="aspect-square max-w-80 mx-auto"
+          objectFit="contain"
           cropAspect={1}
           hint="Mag-upload ng GCash/Maya QR code mo. Makikita ito ng seller kapag kinukuha mo ang order, para mabayaran ka ng delivery fee kung hindi COD ang order."
           onChange={async (url) => {

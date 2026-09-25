@@ -15,6 +15,7 @@ interface ImageUploadFieldProps {
   icon?: React.ReactNode;
   hint?: string;
   cropAspect?: number;
+  objectFit?: 'cover' | 'contain';
 }
 
 export function ImageUploadField({
@@ -27,6 +28,7 @@ export function ImageUploadField({
   icon,
   hint = 'Pumili ng larawan mula sa gallery o camera, tapos i-crop ang mahalagang bahagi.',
   cropAspect,
+  objectFit = 'cover',
 }: ImageUploadFieldProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -72,7 +74,11 @@ export function ImageUploadField({
       <input ref={fileRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
       {value ? (
         <div className="relative">
-          <img src={value} alt="Preview" className={`w-full ${aspectClass} rounded-xl object-cover`} />
+          <img
+            src={value}
+            alt="Preview"
+            className={`w-full ${aspectClass} rounded-xl ${objectFit === 'contain' ? 'object-contain bg-gray-50' : 'object-cover'}`}
+          />
           <div className="absolute bottom-2 right-2 flex gap-1.5">
             <button type="button" onClick={() => fileRef.current?.click()}
               className="bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-1">

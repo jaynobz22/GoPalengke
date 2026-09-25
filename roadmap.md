@@ -32,3 +32,8 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 - [x] Preserve the existing phone layouts
 - [x] Verify desktop and mobile layouts and build
 - [x] Push responsive dashboard update to GitHub
+
+## Current: Rider profile images
+- [x] Preserve the natural proportions of profile, valid ID, OR/CR, and QR images
+- [x] Verify responsive image sizing and build
+- [x] Push rider profile image fix to GitHub
