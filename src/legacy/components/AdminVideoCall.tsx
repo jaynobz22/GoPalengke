@@ -51,7 +51,7 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
           apiRef={apiRef}
           displayName={isCaller ? 'Admin' : undefined}
           onOtherJoined={() => setPhase('connected')}
-          onOtherLeft={() => endCall()}
+          onOtherLeft={() => { if (phase === 'connected') endCall(); }}
           onLeft={() => endCall()}
           onError={(m) => setError(m)}
         />

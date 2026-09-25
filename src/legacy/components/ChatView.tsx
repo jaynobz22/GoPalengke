@@ -438,27 +438,16 @@ export function ChatView({
     return () => stopRing();
   }, [incomingCall, activeCall, videoCallSupported, startRing, stopRing]);
 
-  // Pre-warm camera/mic the moment the incoming call modal appears
-  // so tracks are ready before the user taps Accept
+  // Huwag nang hawakan ang camera habang nagri-ring — naiiwang naka-lock ito sa mobile
+  // at hindi na makuha ng video call. Linisin na lang ang natitirang stream.
   useEffect(() => {
-    if (incomingCall && !activeCall && videoCallSupported && !preWarmStreamRef.current) {
-      navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-        audio: { echoCancellation: true, noiseSuppression: true },
-      }).then(stream => {
-        preWarmStreamRef.current = stream;
-        setPreWarmedStream(stream);
-      }).catch(() => {
-        // Pre-warm failed — VideoCall will retry with full fallback logic
-      });
-    }
-    // Clean up pre-warmed stream if call is dismissed without accepting
     if (!incomingCall && !activeCall && preWarmStreamRef.current) {
       preWarmStreamRef.current.getTracks().forEach(t => t.stop());
       preWarmStreamRef.current = null;
       setPreWarmedStream(null);
     }
   }, [incomingCall, activeCall, videoCallSupported]);
+
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -504,22 +493,26 @@ export function ChatView({
       alert('Ubos na ang iyong video credits. Mag-top up upang makatawag muli.');
       return;
     }
-    // Pre-warm camera for caller immediately
-    if (!preWarmStreamRef.current) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: { echoCancellation: true, noiseSuppression: true },
-        });
-        preWarmStreamRef.current = stream;
-        setPreWarmedStream(stream);
-      } catch {
-        // Will retry in VideoCall
-      }
+    // Hingin ang camera permission sa loob ng tap, pero pakawalan agad
+    // para malaya itong makuha ng Jitsi (kung hindi, naka-lock ang camera sa mobile).
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: true,
+      });
+      stream.getTracks().forEach(t => t.stop());
+    } catch {
+      // Ituloy pa rin — hihingi ulit ang Jitsi
+    }
+    if (preWarmStreamRef.current) {
+      preWarmStreamRef.current.getTracks().forEach(t => t.stop());
+      preWarmStreamRef.current = null;
+      setPreWarmedStream(null);
     }
     const roomId = generateRoomId();
     await sendCallInvite(roomId);
     setActiveCall({ roomId, isCaller: true });
+
   }
 
   async function acceptIncomingCall(msg: Message) {
@@ -529,20 +522,23 @@ export function ChatView({
       return;
     }
     stopRing();
-    // Acquire camera WITHIN the user tap — mobile browsers require this.
-    // If pre-warm already got a stream, use it; otherwise acquire now.
-    if (!preWarmStreamRef.current) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: { echoCancellation: true, noiseSuppression: true },
-        });
-        preWarmStreamRef.current = stream;
-        setPreWarmedStream(stream);
-      } catch {
-        // Will retry in VideoCall — but mount anyway so user sees UI
-      }
+    // Acquire camera WITHIN the user tap — mobile browsers require this — then release it
+    // agad para makuha ito ng Jitsi.
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+        audio: true,
+      });
+      stream.getTracks().forEach(t => t.stop());
+    } catch {
+      // Ituloy pa rin — hihingi ulit ang Jitsi
     }
+    if (preWarmStreamRef.current) {
+      preWarmStreamRef.current.getTracks().forEach(t => t.stop());
+      preWarmStreamRef.current = null;
+      setPreWarmedStream(null);
+    }
+
     setIncomingCall(null);
     setActiveCall({ roomId: msg.call_room_id, isCaller: false });
     updateCallStatus(msg.id, 'accepted');

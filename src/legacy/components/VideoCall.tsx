@@ -76,7 +76,7 @@ export function VideoCall({ roomId, isCaller, otherName, preWarmedStream, onEnd 
             apiRef={apiRef}
             displayName={profile?.full_name || profile?.store_name || undefined}
             onOtherJoined={() => setPhase('connected')}
-            onOtherLeft={() => hangup()}
+            onOtherLeft={() => { if (phase === 'connected') hangup(); }}
             onLeft={() => { stopTimers(); setPhase(p => (p === 'failed' ? p : 'ended')); }}
             onError={(m) => { setError(m); setPhase('failed'); }}
           />

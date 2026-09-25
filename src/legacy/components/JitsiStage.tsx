@@ -38,6 +38,8 @@ export function JitsiStage({ roomId, displayName, onJoined, onOtherJoined, onOth
   useEffect(() => {
     let api: any = null;
     let cancelled = false;
+    let others = 0;
+    let everJoined = false;
     loadJitsi().then(() => {
       if (cancelled || !el.current) return;
       const safeRoom = 'GoPalengke-' + String(roomId).replace(/[^a-zA-Z0-9]/g, '');
@@ -56,7 +58,9 @@ export function JitsiStage({ roomId, displayName, onJoined, onOtherJoined, onOth
           enableWelcomePage: false,
           enableClosePage: false,
           disableInviteFunctions: true,
-          p2p: { enabled: true },
+          // Mobile data sa PH (Globe/Smart/DITO) ay naka-CGNAT: hindi umuubra ang direktang
+          // phone-to-phone. Dumaan sa Jitsi bridge para laging kumonekta.
+          p2p: { enabled: false },
         },
         interfaceConfigOverwrite: {
           MOBILE_APP_PROMO: false,
@@ -64,10 +68,23 @@ export function JitsiStage({ roomId, displayName, onJoined, onOtherJoined, onOth
           TOOLBAR_BUTTONS: ['microphone', 'camera', 'toggle-camera', 'hangup', 'tileview'],
         },
       });
+      // Mobile browsers (iOS Safari / Android Chrome) need explicit iframe permissions.
+      try {
+        const frame = api.getIFrame?.();
+        if (frame) {
+          frame.setAttribute('allow', 'camera *; microphone *; autoplay *; display-capture *; fullscreen *; speaker-selection *');
+          frame.setAttribute('allowfullscreen', 'true');
+        }
+      } catch {}
       if (apiRef) apiRef.current = api;
-      api.addListener('videoConferenceJoined', () => cbs.current.onJoined?.());
-      api.addListener('participantJoined', () => cbs.current.onOtherJoined?.());
-      api.addListener('participantLeft', () => cbs.current.onOtherLeft?.());
+      api.addListener('videoConferenceJoined', () => { everJoined = true; cbs.current.onJoined?.(); });
+      api.addListener('participantJoined', () => { others += 1; cbs.current.onOtherJoined?.(); });
+      api.addListener('participantLeft', () => {
+        others = Math.max(0, others - 1);
+        // Huwag agad ibaba ang tawag: baka moderator bot lang o pansamantalang network jitter.
+        if (!everJoined) return;
+        setTimeout(() => { if (!cancelled && others <= 0) cbs.current.onOtherLeft?.(); }, 4000);
+      });
       api.addListener('readyToClose', () => cbs.current.onLeft?.());
       api.addListener('videoConferenceLeft', () => cbs.current.onLeft?.());
     }).catch(e => cbs.current.onError?.(e.message));
@@ -77,6 +94,7 @@ export function JitsiStage({ roomId, displayName, onJoined, onOtherJoined, onOth
       if (apiRef) apiRef.current = null;
     };
   }, [roomId]);
+
 
   return <div ref={el} className="absolute inset-0 bg-black" />;
 }
