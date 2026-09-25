@@ -64,17 +64,22 @@ export function JitsiStage({ roomId, displayName, onJoined, onOtherJoined, onOth
           // Laging ipakita ang sariling camera (self-view), lalo na sa phone.
           disableSelfView: false,
           disableSelfViewSettings: true,
+          disableTileView: true,
+          startWithVideoMuted: false,
           disableFilmstripAutohiding: true,
-          filmstrip: { disabled: false, disableResizable: true },
-          tileView: { numberOfVisibleTiles: 4 },
+          filmstrip: { disabled: false, disableResizable: true, disableStageFilmstrip: true },
         },
         interfaceConfigOverwrite: {
           MOBILE_APP_PROMO: false,
           SHOW_JITSI_WATERMARK: false,
-          TOOLBAR_BUTTONS: ['microphone', 'camera', 'toggle-camera', 'hangup', 'tileview', 'filmstrip'],
-          FILM_STRIP_MAX_HEIGHT: 120,
-          VERTICAL_FILMSTRIP: true,
+          TOOLBAR_BUTTONS: ['microphone', 'camera', 'toggle-camera', 'hangup'],
+          // Messenger-style: malaki ang kausap, maliit na sariling camera sa ibaba.
+          FILM_STRIP_MAX_HEIGHT: 110,
+          VERTICAL_FILMSTRIP: false,
+          TILE_VIEW_MAX_COLUMNS: 1,
+          DISABLE_VIDEO_BACKGROUND: true,
         },
+
       });
       // Mobile browsers (iOS Safari / Android Chrome) need explicit iframe permissions.
       try {
@@ -87,11 +92,14 @@ export function JitsiStage({ roomId, displayName, onJoined, onOtherJoined, onOth
       if (apiRef) apiRef.current = api;
       api.addListener('videoConferenceJoined', () => {
         everJoined = true;
-        // Tile view: makikita ang sarili at ang kausap nang sabay sa phone.
-        try { api.executeCommand('setTileView', true); } catch {}
+        // Messenger-style: full screen ang kausap, maliit na self-view sa ibaba.
+        try { api.executeCommand('setTileView', false); } catch {}
+        try { api.executeCommand('setVideoQuality', 720); } catch {}
+        setTimeout(() => { try { api.executeCommand('setTileView', false); } catch {} }, 1500);
         cbs.current.onJoined?.();
       });
-      api.addListener('participantJoined', () => { others += 1; try { api.executeCommand('setTileView', true); } catch {} cbs.current.onOtherJoined?.(); });
+      api.addListener('participantJoined', () => { others += 1; try { api.executeCommand('setTileView', false); } catch {} cbs.current.onOtherJoined?.(); });
+
       api.addListener('participantLeft', () => {
         others = Math.max(0, others - 1);
         // Huwag agad ibaba ang tawag: baka moderator bot lang o pansamantalang network jitter.
