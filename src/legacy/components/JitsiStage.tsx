@@ -61,11 +61,19 @@ export function JitsiStage({ roomId, displayName, onJoined, onOtherJoined, onOth
           // Mobile data sa PH (Globe/Smart/DITO) ay naka-CGNAT: hindi umuubra ang direktang
           // phone-to-phone. Dumaan sa Jitsi bridge para laging kumonekta.
           p2p: { enabled: false },
+          // Laging ipakita ang sariling camera (self-view), lalo na sa phone.
+          disableSelfView: false,
+          disableSelfViewSettings: true,
+          disableFilmstripAutohiding: true,
+          filmstrip: { disabled: false, disableResizable: true },
+          tileView: { numberOfVisibleTiles: 4 },
         },
         interfaceConfigOverwrite: {
           MOBILE_APP_PROMO: false,
           SHOW_JITSI_WATERMARK: false,
-          TOOLBAR_BUTTONS: ['microphone', 'camera', 'toggle-camera', 'hangup', 'tileview'],
+          TOOLBAR_BUTTONS: ['microphone', 'camera', 'toggle-camera', 'hangup', 'tileview', 'filmstrip'],
+          FILM_STRIP_MAX_HEIGHT: 120,
+          VERTICAL_FILMSTRIP: true,
         },
       });
       // Mobile browsers (iOS Safari / Android Chrome) need explicit iframe permissions.
@@ -77,8 +85,11 @@ export function JitsiStage({ roomId, displayName, onJoined, onOtherJoined, onOth
         }
       } catch {}
       if (apiRef) apiRef.current = api;
-      api.addListener('videoConferenceJoined', () => { everJoined = true; cbs.current.onJoined?.(); });
-      api.addListener('participantJoined', () => { others += 1; cbs.current.onOtherJoined?.(); });
+      api.addListener('videoConferenceJoined', () => {
+        everJoined = true;
+        // Tile view: makikita ang sarili at ang kausap nang sabay sa phone.
+        try { api.executeCommand('setTileView', true); } catch {}
+      api.addListener('participantJoined', () => { others += 1; try { api.executeCommand('setTileView', true); } catch {} cbs.current.onOtherJoined?.(); });
       api.addListener('participantLeft', () => {
         others = Math.max(0, others - 1);
         // Huwag agad ibaba ang tawag: baka moderator bot lang o pansamantalang network jitter.
