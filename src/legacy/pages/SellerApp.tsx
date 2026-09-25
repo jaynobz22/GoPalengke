@@ -1598,7 +1598,8 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
 
     const [ridersRes, activeOrdersRes] = await Promise.all([
       supabase.from('profiles').select('id, full_name, phone, avatar_url').eq('role', 'rider').eq('is_available', true).order('full_name', { ascending: true }),
-      supabase.from('orders').select('id, rider_id, store:stores(name), delivery_barangay, delivery_city, delivery_lat, delivery_lng').eq('status', 'picked_up').not('rider_id', 'is', null),
+      // Riders na papunta pa lang / nasa palengke (hindi pa nakaalis) — pwedeng isabay
+      supabase.from('orders').select('id, rider_id, store:stores(name), delivery_barangay, delivery_city, delivery_lat, delivery_lng').in('status', ['accepted', 'preparing', 'ready_for_pickup']).not('rider_id', 'is', null).neq('buyer_id', currentOrder.buyer_id),
     ]);
 
     setAvailableRiders((ridersRes.data || []) as any);
@@ -1644,6 +1645,9 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
 
       if (isNearby) {
         seenRiders.add(ao.rider_id);
+        // Strict rules: tindahan ≤1 km, drop-off ≤1 km, kabuuang karga ≤20 kg
+        const batch = await checkRiderBatch(ao.rider_id, currentOrder);
+        if (!batch.ok) continue;
         nearby.push({
           rider_id: ao.rider_id,
           rider_name: '',
