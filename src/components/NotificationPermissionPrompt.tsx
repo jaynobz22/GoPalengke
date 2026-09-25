@@ -23,8 +23,9 @@ export function NotificationPermissionPrompt() {
     const dismissed = localStorage.getItem(DISMISSAL_KEY);
     if (dismissed === 'true') return;
 
-    // Small delay so it doesn't appear instantly on page load
-    const timer = setTimeout(() => setVisible(true), 2000);
+    // Delay so it doesn't collide with the LoginReminderPopup (which appears
+    // at ~600ms) or the geolocation request. Wait for those to be dismissed.
+    const timer = setTimeout(() => setVisible(true), 5000);
     return () => clearTimeout(timer);
   }, [profile]);
 
