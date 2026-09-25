@@ -680,8 +680,10 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
       </div>
       {/* Banner: eksakto kung ano ang inupload ng seller, walang overlay */}
       {store.banner_url && (
-        <div className="h-40 sm:h-56 md:h-64 lg:h-80 bg-brand-100 overflow-hidden md:rounded-b-3xl">
+        <div className="h-40 sm:h-56 md:h-64 lg:h-80 bg-brand-100 overflow-hidden md:rounded-b-3xl relative">
           <img src={store.banner_url} alt="" className="w-full h-full object-cover object-center" />
+          {/* Blend sa laptop: unti-unting green mula sa itaas papunta sa banner */}
+          <div aria-hidden className="hidden md:block absolute inset-x-0 top-0 h-24 lg:h-28 bg-gradient-to-b from-brand-700 to-transparent pointer-events-none" />
         </div>
       )}
 

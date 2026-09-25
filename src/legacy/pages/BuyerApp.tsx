@@ -1190,8 +1190,10 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
             <h2 className="font-display text-4xl lg:text-6xl font-extrabold leading-tight mt-1">{store.name}</h2>
             {store.description && <p className="mt-3 max-w-xl text-base leading-6 text-green-50 line-clamp-2">{store.description}</p>}
           </div>
-          <div className="w-1/2 lg:w-[45%] flex-shrink-0 bg-brand-100">
+          <div className="w-1/2 lg:w-[45%] flex-shrink-0 bg-brand-100 relative">
             {store.banner_url && <img src={store.banner_url} alt="" decoding="async" className="w-full h-full object-cover object-center" fetchPriority="high" />}
+            {/* Blend: unti-unting green papunta sa banner para walang matigas na putol */}
+            <div aria-hidden className="absolute inset-y-0 left-0 w-28 lg:w-44 bg-gradient-to-r from-brand-600 to-transparent pointer-events-none" />
           </div>
         </div>
         <button onClick={onBack} aria-label="Bumalik" className="absolute top-12 left-4 z-10 w-10 h-10 rounded-full bg-white/90 shadow-md flex items-center justify-center">

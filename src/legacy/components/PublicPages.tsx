@@ -180,9 +180,13 @@ function PublicStorePage({ slug }: { slug: string }) {
             {store.palengke_name && <p className="text-sm font-semibold uppercase tracking-wider text-green-100">{store.palengke_name}</p>}
             <h2 className="font-display text-4xl lg:text-5xl font-extrabold mt-1">{store.name}</h2>
           </div>
-          <div className="w-1/2 lg:w-[45%] flex-shrink-0 bg-brand-100">
+          <div className="w-1/2 lg:w-[45%] flex-shrink-0 bg-brand-100 relative">
             {store.banner_url && (
-              <img src={store.banner_url} alt="" className="w-full h-full object-cover object-center" />
+              <>
+                <img src={store.banner_url} alt="" className="w-full h-full object-cover object-center" />
+                {/* Blend: unti-unting green papunta sa banner para walang matigas na putol */}
+                <div aria-hidden className="absolute inset-y-0 left-0 w-24 lg:w-40 bg-gradient-to-r from-brand-600 to-transparent pointer-events-none" />
+              </>
             )}
           </div>
         </div>
