@@ -2,12 +2,13 @@
 import { useMemo } from 'react';
 import {
   ArrowRight, BadgeCheck, Bike, Check, ChevronRight, CircleDollarSign,
-  Clock3, Headphones, MapPin, MessageCircle, PackageCheck, Route, ShieldCheck,
-  ShoppingBasket, Smartphone, Star, Store, Truck, Users, WalletCards,
+  Clock3, Headphones, Infinity as InfinityIcon, MapPin, MessageCircle,
+  PackageCheck, Route, Share2, ShieldCheck, ShoppingBasket, Smartphone, Star,
+  Store, Target, TrendingUp, Truck, Users, WalletCards,
 } from 'lucide-react';
 import { navigate } from '../lib/router';
 
-type Audience = 'seller' | 'rider' | 'buyer';
+type Audience = 'seller' | 'rider' | 'buyer' | 'affiliate';
 
 type PageConfig = {
   audience: Audience;
@@ -123,6 +124,42 @@ const CONFIGS: Record<Audience, PageConfig> = {
     finalTitle: 'Ang susunod mong pamamalengke, puwedeng sa phone na.',
     finalCopy: 'Gumawa ng buyer account at mamili mula sa mga verified na tindahan ng GoPalengke.',
   },
+  affiliate: {
+    audience: 'affiliate',
+    eyebrow: 'Para sa kapwa affiliate',
+    title: 'I-promote ang GoPalengke — dito ang malaking kitaan.',
+    accent: 'Lifetime 2-tier commission, walang limit.',
+    summary: 'Hindi mo kailangang magtinda o maghatid. Ang trabaho mo ay mag-imbita: mag-refer ng sellers, riders, at kapwa affiliate. Kumita ka sa bawat milestone nila habang buhay — at mas lumalaki pa ang kita mo kapag ang mga naimbitahan mo ay may sariling mga referral na.',
+    image: '/images/gopalengke-affiliate-marketing.jpg',
+    imageAlt: 'Mga affiliate na masayang tumitingin ng kita sa phone sa gitna ng palengke',
+    cta: 'Sumali bilang Affiliate',
+    fitTitle: 'Sino ang puwedeng maging affiliate?',
+    fitItems: [
+      'Kahit sino — walang pwesto o paninda na kailangan',
+      'Students at freelancers na gusto ng dagdag na kita',
+      'Content creators at page admins na may audience',
+      'Mga affiliate ng ibang platform na gusto ng lifetime commission',
+    ],
+    benefitsTitle: 'Magkano ang puwede mong kitain?',
+    benefits: [
+      { icon: Store, title: '₱150 kada seller milestone', description: 'Kada ₱1,000 na ma-collect mula sa seller na nirefer mo, ₱200 ang commission — ₱150 sa iyo (Tier 1). Halimbawa: ₱50,000 sales = ₱330 sa iyo.' },
+      { icon: Bike, title: '₱35 kada rider milestone', description: 'Kada ₱500 na ma-collect mula sa rider na nirefer mo, ₱50 ang commission — ₱35 sa iyo (Tier 1). Halimbawa: 500 trips = ₱350 sa iyo.' },
+      { icon: Users, title: '₱50 + ₱15 Tier 2 override', description: 'Kapag nag-invite ka ng kapwa affiliate, kikita ka ng ₱50 kada seller milestone at ₱15 kada rider milestone ng mga referral nila.' },
+      { icon: InfinityIcon, title: 'Lifetime at walang limit', description: 'Habang aktibo ang mga nirefer mo sa GoPalengke, tuloy-tuloy ang commission mo — kahit minsan mo lang silang na-refer.' },
+      { icon: Share2, title: 'Handa nang marketing pages', description: 'May ready-to-share pages para sa sellers, riders, at buyers na awtomatikong may referral code mo at Facebook share button.' },
+      { icon: TrendingUp, title: 'Live na dashboard at calculator', description: 'Makikita mo agad sa affiliate dashboard ang milestones, kinita, referral links, at earnings calculator.' },
+    ],
+    steps: [
+      { title: 'Mag-sign up bilang Affiliate', description: 'Kung may sponsor kang nag-imbita sa iyo, awtomatikong nakakabit ka sa kanya.' },
+      { title: 'Kunin ang mga referral links mo', description: 'May link para sa sellers at riders, at isa pang link para sa kapwa affiliate.' },
+      { title: 'I-share at mag-imbita', description: 'I-post sa Facebook o ipasa sa mga kilala mong nagtitinda, may sasakyan, o gusto ring kumita.' },
+      { title: 'Kumita sa bawat milestone', description: 'Kapag may na-collect ang mga nirefer mo, kusang pumapasok ang commission sa dashboard mo.' },
+    ],
+    proofTitle: 'Totoong kita, hindi hula',
+    proof: 'May commission lang kapag may aktwal na na-collect na halaga sa platform, at nakikita ang bawat milestone sa dashboard — kaya malinaw ang pagkalkula ng kita.',
+    finalTitle: 'Ang malaking kitaan ay nasa pag-promote.',
+    finalCopy: 'Sumali sa affiliate program at simulan ang lifetime 2-tier commission sa GoPalengke.',
+  },
 };
 
 // Default to the admin affiliate account's code when the link has no ?ref=
@@ -139,6 +176,12 @@ export function MarketingAudiencePage({ audience }: { audience: Audience }) {
   const referralCode = useMemo(getReferralCode, []);
 
   function startSignup() {
+    if (audience === 'affiliate') {
+      sessionStorage.setItem('gopalengke_aff_ref_code', referralCode);
+      const suffix = referralCode ? `?aff_ref=${encodeURIComponent(referralCode)}` : '';
+      window.location.assign(`/affiliate${suffix}`);
+      return;
+    }
     if (referralCode) sessionStorage.setItem('gopalengke_ref_code', referralCode);
     const params = new URLSearchParams({ signup: audience });
     if (referralCode) params.set('ref', referralCode);

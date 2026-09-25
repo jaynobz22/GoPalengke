@@ -577,7 +577,7 @@ function ReviewsMarquee() {
         <div className="flex gap-3 animate-marquee-slow w-max px-5 md:px-6">
           {items.map((r, i) => (
             <div
-n              key={`${r.id}-${i}`}
+              key={`${r.id}-${i}`}
               className="flex-shrink-0 w-72 md:w-80 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition"
             >
               <div className="flex items-center gap-2.5 mb-2">

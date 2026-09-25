@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState } from 'react';
 import type { Affiliate } from '../../lib/affiliateAuth';
-import { CheckCheck, Copy, ExternalLink, Share2, Store, Bike, ShoppingBasket } from 'lucide-react';
+import { CheckCheck, Copy, ExternalLink, Handshake, Share2, Store, Bike, ShoppingBasket } from 'lucide-react';
 
 const PAGES = [
   {
@@ -34,13 +34,26 @@ const PAGES = [
     accent: 'text-brand-700',
     button: 'bg-brand-600',
   },
+  {
+    id: 'affiliate',
+    title: 'Para sa Kapwa Affiliates',
+    description: 'Para sa gusto ring kumita sa pag-promote: lifetime 2-tier commission, walang limit.',
+    path: '/para-sa-affiliate',
+    image: '/images/gopalengke-affiliate-marketing.jpg',
+    icon: Handshake,
+    accent: 'text-amber-700',
+    button: 'bg-amber-500',
+  },
 ] as const;
 
 export function TargetedMarketingPages({ affiliate }: { affiliate: Affiliate }) {
   const [copied, setCopied] = useState<string | null>(null);
 
-  function getLink(path: string) {
-    return `${window.location.origin}${path}?ref=${encodeURIComponent(affiliate.referral_code)}`;
+  function getLink(page) {
+    if (page.id === 'affiliate') {
+      return `${window.location.origin}/affiliate?aff_ref=${encodeURIComponent(affiliate.referral_code)}`;
+    }
+    return `${window.location.origin}${page.path}?ref=${encodeURIComponent(affiliate.referral_code)}`;
   }
 
   function copyLink(id: string, link: string) {
@@ -62,10 +75,10 @@ export function TargetedMarketingPages({ affiliate }: { affiliate: Affiliate }) 
         <p className="mt-1 text-xs leading-5 text-gray-500">Awtomatikong nakakabit ang referral code mo sa bawat link. Ang Facebook preview at click ay diretso sa napiling page, hindi sa homepage.</p>
       </div>
 
-      <div className="grid gap-px bg-gray-100 md:grid-cols-3">
+      <div className="grid gap-px bg-gray-100 sm:grid-cols-2 lg:grid-cols-4">
         {PAGES.map((page) => {
           const Icon = page.icon;
-          const link = getLink(page.path);
+          const link = getLink(page);
           return (
             <article key={page.id} className="min-w-0 bg-white p-4">
               <img src={page.image} alt={page.title} width={1200} height={630} loading="lazy" className="aspect-[1.91/1] w-full rounded-lg object-cover" />

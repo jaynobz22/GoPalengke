@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
+import { Route as ParaSaAffiliateRouteImport } from './routes/para-sa-affiliate'
 import { Route as ParaSaBuyerRouteImport } from './routes/para-sa-buyer'
 import { Route as ParaSaRiderRouteImport } from './routes/para-sa-rider'
 import { Route as ParaSaSellerRouteImport } from './routes/para-sa-seller'
@@ -23,6 +24,11 @@ const IndexRoute = IndexRouteImport.update({
 const SplatRoute = SplatRouteImport.update({
   id: '/$',
   path: '/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParaSaAffiliateRoute = ParaSaAffiliateRouteImport.update({
+  id: '/para-sa-affiliate',
+  path: '/para-sa-affiliate',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ParaSaBuyerRoute = ParaSaBuyerRouteImport.update({
@@ -44,6 +50,7 @@ const ParaSaSellerRoute = ParaSaSellerRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/para-sa-affiliate': typeof ParaSaAffiliateRoute
   '/para-sa-buyer': typeof ParaSaBuyerRoute
   '/para-sa-rider': typeof ParaSaRiderRoute
   '/para-sa-seller': typeof ParaSaSellerRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/para-sa-affiliate': typeof ParaSaAffiliateRoute
   '/para-sa-buyer': typeof ParaSaBuyerRoute
   '/para-sa-rider': typeof ParaSaRiderRoute
   '/para-sa-seller': typeof ParaSaSellerRoute
@@ -59,6 +67,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/para-sa-affiliate': typeof ParaSaAffiliateRoute
   '/para-sa-buyer': typeof ParaSaBuyerRoute
   '/para-sa-rider': typeof ParaSaRiderRoute
   '/para-sa-seller': typeof ParaSaSellerRoute
@@ -66,13 +75,25 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/$' | '/para-sa-buyer' | '/para-sa-rider' | '/para-sa-seller'
+    | '/'
+    | '/$'
+    | '/para-sa-affiliate'
+    | '/para-sa-buyer'
+    | '/para-sa-rider'
+    | '/para-sa-seller'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$' | '/para-sa-buyer' | '/para-sa-rider' | '/para-sa-seller'
+  to:
+    | '/'
+    | '/$'
+    | '/para-sa-affiliate'
+    | '/para-sa-buyer'
+    | '/para-sa-rider'
+    | '/para-sa-seller'
   id:
     | '__root__'
     | '/'
     | '/$'
+    | '/para-sa-affiliate'
     | '/para-sa-buyer'
     | '/para-sa-rider'
     | '/para-sa-seller'
@@ -81,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  ParaSaAffiliateRoute: typeof ParaSaAffiliateRoute
   ParaSaBuyerRoute: typeof ParaSaBuyerRoute
   ParaSaRiderRoute: typeof ParaSaRiderRoute
   ParaSaSellerRoute: typeof ParaSaSellerRoute
@@ -100,6 +122,13 @@ declare module '@tanstack/react-router' {
       path: '/$'
       fullPath: '/$'
       preLoaderRoute: typeof SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/para-sa-affiliate': {
+      id: '/para-sa-affiliate'
+      path: '/para-sa-affiliate'
+      fullPath: '/para-sa-affiliate'
+      preLoaderRoute: typeof ParaSaAffiliateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/para-sa-buyer': {
@@ -129,6 +158,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  ParaSaAffiliateRoute: ParaSaAffiliateRoute,
   ParaSaBuyerRoute: ParaSaBuyerRoute,
   ParaSaRiderRoute: ParaSaRiderRoute,
   ParaSaSellerRoute: ParaSaSellerRoute,
