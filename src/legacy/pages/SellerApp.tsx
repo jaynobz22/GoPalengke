@@ -637,9 +637,9 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
     <div>
       {/* Phone: pure banner on top, no green */}
       <div className="relative bg-white md:hidden">
-        <div className="relative h-52 bg-white sm:h-64">
+        <div className="relative aspect-video w-full overflow-hidden bg-white">
           {store.banner_url && (
-            <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-contain object-center" fetchPriority="high" />
+            <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-cover object-center" fetchPriority="high" />
           )}
           {store.description && (
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent px-4 pb-3 pt-8">
