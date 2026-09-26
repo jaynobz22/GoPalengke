@@ -624,13 +624,30 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
 
   return (
     <div>
-      <div className="relative overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700 md:rounded-b-3xl">
-        <div className="h-48 bg-brand-100 sm:h-64 md:hidden">
+      {/* Phone: pure banner on top, no green */}
+      <div className="relative bg-white md:hidden">
+        <div className="h-52 bg-brand-100 sm:h-64">
           {store.banner_url && (
             <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-cover object-center" fetchPriority="high" />
           )}
         </div>
-        <div className="hidden md:flex md:h-[26rem] lg:h-[30rem]">
+        <div className="absolute right-4 top-4 z-20 grid grid-cols-2 gap-2">
+          <button onClick={onOpenMessages} aria-label="Mga notification" className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md transition active:scale-90">
+            <Bell size={20} className="text-gray-700" />
+            {unreadMessages > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white" style={{ fontSize: 10 }}>
+                {unreadMessages > 9 ? '9+' : unreadMessages}
+              </span>
+            )}
+          </button>
+          <button onClick={onSignOut} aria-label="Mag-sign out" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md transition active:scale-90">
+            <LogOut size={20} className="text-gray-700" />
+          </button>
+        </div>
+      </div>
+      {/* Laptop: green header, details left + banner right */}
+      <div className="relative hidden overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700 md:block md:rounded-b-3xl">
+        <div className="md:flex md:h-[26rem] lg:h-[30rem]">
           <div className="relative z-[1] flex min-w-0 flex-1 flex-col justify-center p-10 text-white lg:p-14">
             {store.palengke_name && <p className="text-sm font-semibold uppercase tracking-wider text-green-100">{store.palengke_name}</p>}
             <h2 className="mt-1 font-display text-4xl font-extrabold leading-tight lg:text-6xl">{store.name}</h2>
@@ -642,7 +659,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
             )}
           </div>
         </div>
-        <div className="absolute right-4 top-4 z-20 grid grid-cols-2 gap-2 md:right-6 md:top-6">
+        <div className="absolute right-6 top-6 z-20 grid grid-cols-2 gap-2">
           <button onClick={onOpenMessages} aria-label="Mga notification" className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md transition active:scale-90">
             <Bell size={20} className="text-gray-700" />
             {unreadMessages > 0 && (
@@ -694,22 +711,22 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
           <span>{[store.barangay, store.city, formatRegionForDisplay(store.region)].filter(Boolean).join(', ')}</span>
         </div>
         <p className="mt-3 text-sm text-gray-500">Kumusta, {profile?.full_name?.split(' ')[0]}! Narito ang status ng tindahan mo.</p>
-        <div className="mt-3 grid grid-cols-2 gap-2 pb-5 sm:flex sm:flex-wrap sm:items-center">
-          <button onClick={onEditStore} className="flex min-w-0 items-center justify-center gap-1 rounded-full bg-gray-100 px-2.5 py-2 text-xs sm:px-3 sm:py-1.5">
-            <Edit size={14} className="shrink-0" /> I-edit ang tindahan
+        <div className="mt-3 flex gap-1.5 pb-5 sm:gap-2">
+          <button onClick={onEditStore} className="flex min-w-0 flex-1 items-center justify-center gap-1 rounded-full bg-gray-100 px-2 py-2 text-[11px] font-medium text-gray-700 transition active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs">
+            <Edit size={13} className="shrink-0" /> <span className="truncate">Edit Store</span>
           </button>
-          <button onClick={onViewStore} className="flex min-w-0 items-center justify-center gap-1 rounded-full bg-gray-100 px-2.5 py-2 text-xs sm:px-3 sm:py-1.5">
-            <ExternalLink size={14} className="shrink-0" /> Tingnan ang tindahan
+          <button onClick={onViewStore} className="flex min-w-0 flex-1 items-center justify-center gap-1 rounded-full bg-gray-100 px-2 py-2 text-[11px] font-medium text-gray-700 transition active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs">
+            <ExternalLink size={13} className="shrink-0" /> <span className="truncate">View Store</span>
           </button>
           <button
             onClick={toggleStoreOpen}
             disabled={toggling}
-            className={`col-span-2 flex justify-self-start items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition active:scale-95 disabled:opacity-50 sm:col-span-1 sm:py-1.5 ${
+            className={`flex min-w-0 flex-1 items-center justify-center gap-1 rounded-full px-2 py-2 text-[11px] font-semibold transition active:scale-95 disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-xs ${
               isOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
             }`}
           >
-            {toggling ? <Loader2 size={14} className="animate-spin" /> : isOpen ? <StoreIcon size={14} /> : <Lock size={14} />}
-            {isOpen ? 'Store Open' : 'Store Closed'}
+            {toggling ? <Loader2 size={13} className="animate-spin" /> : isOpen ? <StoreIcon size={13} /> : <Lock size={13} />}
+            <span className="truncate">{isOpen ? 'Store Open' : 'Store Closed'}</span>
           </button>
         </div>
       </div>
