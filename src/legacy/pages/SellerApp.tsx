@@ -661,18 +661,23 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
           </button>
         </div>
       </div>
-      {/* Laptop: show the complete uploaded banner without overlays or cropping */}
-      <div className="relative hidden h-72 overflow-hidden bg-brand-600 md:flex lg:h-80">
-        <div className="relative z-[1] flex w-[32%] min-w-0 shrink-0 flex-col justify-center px-8 text-white">
+      {/* Laptop: green left, banner with curved leaf-shaped edge on the right */}
+      <div className="relative hidden h-72 overflow-hidden bg-brand-600 md:block lg:h-80">
+        <div className="absolute left-0 top-0 z-[1] flex h-full w-[34%] min-w-0 flex-col justify-center px-8 text-white">
           {store.palengke_name && <p className="truncate text-xs font-semibold uppercase tracking-wide text-white/80">{store.palengke_name}</p>}
           <h2 className="mt-1 line-clamp-2 font-display text-3xl font-bold lg:text-4xl">{store.name}</h2>
           {store.description && <p className="mt-2 line-clamp-3 text-sm leading-5 text-white/90">{store.description}</p>}
         </div>
-        <div className="relative h-full min-w-0 flex-1">
-          {store.banner_url && (
-            <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-cover object-center" style={{ WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.08) 10%, rgba(0,0,0,0.25) 20%, rgba(0,0,0,0.5) 32%, rgba(0,0,0,0.78) 45%, #000 60%)', maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.08) 10%, rgba(0,0,0,0.25) 20%, rgba(0,0,0,0.5) 32%, rgba(0,0,0,0.78) 45%, #000 60%)' }} fetchPriority="high" />
-          )}
-        </div>
+        {store.banner_url && (
+          <div className="absolute right-0 top-0 h-full w-[62%] overflow-hidden" style={{ borderRadius: '45% 0 0 45% / 50% 0 0 50%' }}>
+            <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-cover object-center" fetchPriority="high" />
+            {store.description && (
+              <div className="absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black/70 via-black/40 to-transparent px-6 pb-4 pt-10">
+                <p className="line-clamp-2 text-center text-sm leading-6 text-white drop-shadow">{store.description}</p>
+              </div>
+            )}
+          </div>
+        )}
         <div className="absolute right-6 top-6 z-20 grid grid-cols-2 gap-2">
           <button onClick={onOpenMessages} aria-label="Mga notification" className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md transition active:scale-90">
             <Bell size={20} className="text-gray-700" />

@@ -183,14 +183,27 @@ function PublicStorePage({ slug }: { slug: string }) {
             </div>
           )}
         </div>
-        {/* Laptop: show the complete uploaded banner without changing its colors */}
-        <div className="relative hidden bg-white md:block md:h-[26rem] lg:h-[30rem]">
+        {/* Laptop: berdeng background na may kurbang banner (leaf shape) sa kanan */}
+        <div className="relative hidden h-72 overflow-hidden bg-brand-600 md:block lg:h-80">
+          <div className="absolute left-0 top-0 z-[1] flex h-full w-[34%] min-w-0 flex-col justify-center px-8 text-white">
+            <h2 className="line-clamp-2 font-display text-3xl font-bold lg:text-4xl">{store.name}</h2>
+            <div className="mt-2 flex items-center gap-1.5 text-sm text-white/90">
+              <Star size={14} className="shrink-0 fill-amber-400 text-amber-400" />
+              <span>{store.rating}</span>
+              {store.city && <><span className="text-white/50">·</span><span className="truncate">{store.city}</span></>}
+            </div>
+            <span className={`mt-2 w-fit rounded-full px-2.5 py-0.5 text-xs font-medium ${store.is_open ? 'bg-white/90 text-green-700' : 'bg-white/90 text-red-600'}`}>
+              {store.is_open ? 'Store Open' : 'Store Closed'}
+            </span>
+          </div>
           {store.banner_url && (
-            <img src={store.banner_url} alt={store.name} className="h-full w-full object-contain object-center" />
-          )}
-          {store.description && (
-            <div className="absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black/70 via-black/40 to-transparent px-6 pb-4 pt-10">
-              <p className="line-clamp-2 text-center text-sm leading-6 text-white drop-shadow">{store.description}</p>
+            <div className="absolute right-0 top-0 h-full w-[62%] overflow-hidden" style={{ borderRadius: '45% 0 0 45% / 50% 0 0 50%' }}>
+              <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-cover object-center" fetchPriority="high" />
+              {store.description && (
+                <div className="absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black/70 via-black/40 to-transparent px-6 pb-4 pt-10">
+                  <p className="line-clamp-2 text-center text-sm leading-6 text-white drop-shadow">{store.description}</p>
+                </div>
+              )}
             </div>
           )}
         </div>
