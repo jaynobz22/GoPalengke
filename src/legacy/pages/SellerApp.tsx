@@ -626,9 +626,14 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
     <div>
       {/* Phone: pure banner on top, no green */}
       <div className="relative bg-white md:hidden">
-        <div className="h-52 bg-brand-100 sm:h-64">
+        <div className="relative h-52 bg-brand-100 sm:h-64">
           {store.banner_url && (
             <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-cover object-center" fetchPriority="high" />
+          )}
+          {store.description && (
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent px-4 pb-3 pt-8">
+              <p className="line-clamp-2 text-xs leading-5 text-white drop-shadow sm:text-sm">{store.description}</p>
+            </div>
           )}
         </div>
         <div className="absolute right-4 top-4 z-20 grid grid-cols-2 gap-2">
@@ -705,27 +710,25 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
             )}
           </div>
         </div>
-        {store.description && <p className="mt-3 text-sm text-gray-600">{store.description}</p>}
         <div className="mt-2 flex items-start gap-2 text-sm text-gray-500">
           <MapPin size={16} className="mt-0.5 shrink-0" />
           <span>{[store.barangay, store.city, formatRegionForDisplay(store.region)].filter(Boolean).join(', ')}</span>
         </div>
-        <p className="mt-3 text-sm text-gray-500">Kumusta, {profile?.full_name?.split(' ')[0]}! Narito ang status ng tindahan mo.</p>
-        <div className="mt-3 flex gap-1.5 pb-5 sm:gap-2">
-          <button onClick={onEditStore} className="flex min-w-0 flex-1 items-center justify-center gap-1 rounded-full bg-gray-100 px-2 py-2 text-[11px] font-medium text-gray-700 transition active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs">
-            <Edit size={13} className="shrink-0" /> <span className="truncate">Edit Store</span>
+        <div className="mt-3 flex gap-1 pb-5 sm:gap-2">
+          <button onClick={onEditStore} className="flex min-w-0 flex-1 items-center justify-center gap-0.5 rounded-full bg-brand-600 px-1 py-1.5 text-[10px] font-semibold text-white transition active:scale-95 sm:gap-1 sm:px-3 sm:text-xs">
+            <Edit size={11} className="shrink-0" /> <span className="truncate">Edit Store</span>
           </button>
-          <button onClick={onViewStore} className="flex min-w-0 flex-1 items-center justify-center gap-1 rounded-full bg-gray-100 px-2 py-2 text-[11px] font-medium text-gray-700 transition active:scale-95 sm:px-3 sm:py-1.5 sm:text-xs">
-            <ExternalLink size={13} className="shrink-0" /> <span className="truncate">View Store</span>
+          <button onClick={onViewStore} className="flex min-w-0 flex-1 items-center justify-center gap-0.5 rounded-full bg-sky-600 px-1 py-1.5 text-[10px] font-semibold text-white transition active:scale-95 sm:gap-1 sm:px-3 sm:text-xs">
+            <ExternalLink size={11} className="shrink-0" /> <span className="truncate">View Store</span>
           </button>
           <button
             onClick={toggleStoreOpen}
             disabled={toggling}
-            className={`flex min-w-0 flex-1 items-center justify-center gap-1 rounded-full px-2 py-2 text-[11px] font-semibold transition active:scale-95 disabled:opacity-50 sm:px-3 sm:py-1.5 sm:text-xs ${
-              isOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+            className={`flex min-w-0 flex-1 items-center justify-center gap-0.5 rounded-full px-1 py-1.5 text-[10px] font-semibold transition active:scale-95 disabled:opacity-50 sm:gap-1 sm:px-3 sm:text-xs ${
+              isOpen ? 'bg-green-600 text-white' : 'bg-red-500 text-white'
             }`}
           >
-            {toggling ? <Loader2 size={13} className="animate-spin" /> : isOpen ? <StoreIcon size={13} /> : <Lock size={13} />}
+            {toggling ? <Loader2 size={11} className="animate-spin" /> : isOpen ? <StoreIcon size={11} /> : <Lock size={11} />}
             <span className="truncate">{isOpen ? 'Store Open' : 'Store Closed'}</span>
           </button>
         </div>
