@@ -715,7 +715,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
           <span>{[store.barangay, store.city, formatRegionForDisplay(store.region)].filter(Boolean).join(', ')}</span>
         </div>
         <div className="mt-3 flex gap-1 pb-5 sm:gap-2">
-          <button onClick={onEditStore} className="flex min-w-0 flex-1 items-center justify-center gap-0.5 rounded-full bg-brand-600 px-1 py-1.5 text-[10px] font-semibold text-white transition active:scale-95 sm:gap-1 sm:px-3 sm:text-xs">
+          <button onClick={onEditStore} className="flex min-w-0 flex-1 items-center justify-center gap-0.5 rounded-full bg-orange-500 px-1 py-1.5 text-[10px] font-semibold text-white transition active:scale-95 sm:gap-1 sm:px-3 sm:text-xs">
             <Edit size={11} className="shrink-0" /> <span className="truncate">Edit Store</span>
           </button>
           <button onClick={onViewStore} className="flex min-w-0 flex-1 items-center justify-center gap-0.5 rounded-full bg-sky-600 px-1 py-1.5 text-[10px] font-semibold text-white transition active:scale-95 sm:gap-1 sm:px-3 sm:text-xs">
