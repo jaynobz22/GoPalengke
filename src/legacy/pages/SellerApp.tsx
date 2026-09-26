@@ -249,7 +249,7 @@ export function SellerApp() {
         </div>
       )}
       <div className="flex-1 pb-24 overflow-y-auto">
-        {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} onOpenMessages={() => setTab('messages')} onOpenOrders={() => setTab('orders')} onViewStore={() => navigate(`/s/${store.slug}`)} onSignOut={signOut} unreadMessages={unreadCount} canAct={canAct} />}
+        {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} onOpenMessages={() => setTab('messages')} onOpenOrders={() => setTab('orders')} onViewStore={() => { sessionStorage.setItem('gp_store_preview_from_dashboard', '1'); navigate(`/s/${store.slug}`); }} onSignOut={signOut} unreadMessages={unreadCount} canAct={canAct} />}
         {tab === 'products' && (
           <SellerProducts store={store} onAdd={() => { setEditingProduct(null); setShowProductForm(true); }} onEdit={(p) => { setEditingProduct(p); setShowProductForm(true); }} />
         )}
