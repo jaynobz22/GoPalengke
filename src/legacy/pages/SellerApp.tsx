@@ -624,7 +624,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
 
   return (
     <div>
-      <div className="relative overflow-hidden bg-gradient-to-br from-brand-600 to-brand-700 text-white md:flex md:min-h-80 md:rounded-b-3xl">
+      <div className="relative overflow-hidden bg-white text-gray-900 md:flex md:min-h-80 md:rounded-b-3xl md:bg-gradient-to-br md:from-brand-600 md:to-brand-700 md:text-white">
         {store.banner_url && (
           <div className="absolute inset-y-0 right-0 hidden w-[58%] overflow-hidden md:block">
             <img
@@ -634,7 +634,12 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
             />
           </div>
         )}
-        <div className="relative z-10 min-w-0 px-5 pb-5 pt-8 md:flex md:min-h-80 md:w-[54%] md:flex-col md:justify-center md:px-8 md:py-10 lg:px-12">
+        {store.banner_url && (
+          <div className="h-52 w-full overflow-hidden bg-gray-100 sm:h-64 md:hidden">
+            <img src={store.banner_url} alt={`${store.name} banner`} className="h-full w-full object-cover object-center" />
+          </div>
+        )}
+        <div className="relative z-10 min-w-0 px-5 pb-5 pt-5 md:flex md:min-h-80 md:w-[54%] md:flex-col md:justify-center md:px-8 md:py-10 lg:px-12">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 mb-2">
           <div className="flex min-w-0 items-center gap-2">
             <div className="shrink-0 md:hidden">
@@ -644,31 +649,31 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
             <span className="truncate font-display text-xl font-extrabold md:text-4xl md:leading-tight lg:text-5xl">{store.name}</span>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <button onClick={onOpenMessages} className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/20 transition active:scale-90">
-              <Bell size={20} className="text-white" />
+            <button onClick={onOpenMessages} className="relative flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 transition active:scale-90 md:bg-white/20">
+              <Bell size={20} className="text-gray-700 md:text-white" />
               {unreadMessages > 0 && (
                 <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold" style={{ fontSize: 10 }}>
                   {unreadMessages > 9 ? '9+' : unreadMessages}
                 </span>
               )}
             </button>
-            <button onClick={onSignOut} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 transition active:scale-90">
-              <LogOut size={20} className="text-white" />
+            <button onClick={onSignOut} className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 transition active:scale-90 md:bg-white/20">
+              <LogOut size={20} className="text-gray-700 md:text-white" />
             </button>
           </div>
         </div>
         {store.palengke_name && (
-          <p className="text-brand-100 text-xs flex items-center gap-1 mb-1">
+          <p className="mb-1 flex items-center gap-1 text-xs text-gray-500 md:text-brand-100">
             <MapPin size={12} />
             {store.palengke_name}
           </p>
         )}
-        <p className="text-brand-100 text-sm">Kumusta, {profile?.full_name?.split(' ')[0]}! Narito ang status ng tindahan mo.</p>
+        <p className="text-sm text-gray-500 md:text-brand-100">Kumusta, {profile?.full_name?.split(' ')[0]}! Narito ang status ng tindahan mo.</p>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-          <button onClick={onEditStore} className="min-w-0 justify-center text-xs bg-white/20 px-2.5 py-2 rounded-full flex items-center gap-1 sm:px-3 sm:py-1.5">
+          <button onClick={onEditStore} className="flex min-w-0 items-center justify-center gap-1 rounded-full bg-gray-100 px-2.5 py-2 text-xs md:bg-white/20 sm:px-3 sm:py-1.5">
             <Edit size={14} /> I-edit ang tindahan
           </button>
-          <button onClick={onViewStore} className="min-w-0 justify-center text-xs bg-white/20 px-2.5 py-2 rounded-full flex items-center gap-1 sm:px-3 sm:py-1.5">
+          <button onClick={onViewStore} className="flex min-w-0 items-center justify-center gap-1 rounded-full bg-gray-100 px-2.5 py-2 text-xs md:bg-white/20 sm:px-3 sm:py-1.5">
             <ExternalLink size={14} /> Tingnan ang tindahan
           </button>
           <button
@@ -690,12 +695,6 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
         </div>
         </div>
       </div>
-      {/* Sa phone, nasa ilalim ulit ng green details ang buong banner. */}
-      {store.banner_url && (
-        <div className="h-44 overflow-hidden bg-brand-100 sm:h-56 md:hidden">
-          <img src={store.banner_url} alt="" className="h-full w-full object-cover object-center" />
-        </div>
-      )}
       {/* Payment Received Alert Banner */}
       {stats.paidOrders > 0 && (
         <div className="px-5 pt-4">
