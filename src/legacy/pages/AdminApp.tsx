@@ -27,6 +27,10 @@ export function AdminApp() {
   const { profile, signOut } = useAuth();
   const [tab, setTab] = useState<Tab>('overview');
   const [pendingCreditCount, setPendingCreditCount] = useState(0);
+  const [pendingUserCount, setPendingUserCount] = useState(0);
+  const [pendingFeeCount, setPendingFeeCount] = useState(0);
+  const [pendingRiderFeeCount, setPendingRiderFeeCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [activeCall, setActiveCall] = useState<{ roomId: string; isCaller: boolean; callId: string; otherName: string } | null>(null);
   const [activeChat, setActiveChat] = useState<{ conversationId: string; otherName: string; userId: string } | null>(null);
 
@@ -39,19 +43,65 @@ export function AdminApp() {
     if (!error) setPendingCreditCount(count ?? 0);
   }, []);
 
+  const loadPendingUserCount = useCallback(async () => {
+    const { count, error } = await supabase
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_approved', false);
+    if (!error) setPendingUserCount(count ?? 0);
+  }, []);
+
+  const loadPendingFeeCount = useCallback(async () => {
+    const { count, error } = await supabase
+      .from('fee_payments')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending');
+    if (!error) setPendingFeeCount(count ?? 0);
+  }, []);
+
+  const loadPendingRiderFeeCount = useCallback(async () => {
+    const { count, error } = await supabase
+      .from('rider_fee_payments')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending');
+    if (!error) setPendingRiderFeeCount(count ?? 0);
+  }, []);
+
+  const loadUnreadMessageCount = useCallback(async () => {
+    if (!profile) return;
+    const { count, error } = await supabase
+      .from('admin_messages')
+      .select('id', { count: 'exact', head: true })
+      .is('read_at', null)
+      .neq('sender_id', profile.id);
+    if (!error) setUnreadMessageCount(count ?? 0);
+  }, [profile]);
+
   useEffect(() => {
     loadPendingCreditCount();
+    loadPendingUserCount();
+    loadPendingFeeCount();
+    loadPendingRiderFeeCount();
+    loadUnreadMessageCount();
+
     const channel = supabase
-      .channel('admin-credit-pending-count')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'video_credit_purchases' },
-        () => loadPendingCreditCount(),
-      )
+      .channel('admin-tab-badges')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'video_credit_purchases' }, () => loadPendingCreditCount())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => loadPendingUserCount())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fee_payments' }, () => loadPendingFeeCount())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rider_fee_payments' }, () => loadPendingRiderFeeCount())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_messages' }, () => loadUnreadMessageCount())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [loadPendingCreditCount]);
+  }, [loadPendingCreditCount, loadPendingUserCount, loadPendingFeeCount, loadPendingRiderFeeCount, loadUnreadMessageCount]);
+
+  useEffect(() => {
+    if (tab === 'messages') loadUnreadMessageCount();
+    if (tab === 'users') loadPendingUserCount();
+    if (tab === 'fees') loadPendingFeeCount();
+    if (tab === 'rider_fees') loadPendingRiderFeeCount();
+  }, [tab, loadUnreadMessageCount, loadPendingUserCount, loadPendingFeeCount, loadPendingRiderFeeCount]);
 
   function startAdminCall(user: Profile) {
     const roomId = `admin-call-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -129,6 +179,12 @@ export function AdminApp() {
         {tabs.map(t => {
           const Icon = t.icon;
           const active = tab === t.id;
+          const badgeCount =
+            t.id === 'video_credits' ? pendingCreditCount :
+            t.id === 'users' ? pendingUserCount :
+            t.id === 'fees' ? pendingFeeCount :
+            t.id === 'rider_fees' ? pendingRiderFeeCount :
+            t.id === 'messages' ? unreadMessageCount : 0;
           return (
             <button
               key={t.id}
@@ -139,12 +195,12 @@ export function AdminApp() {
             >
               <span className="relative inline-flex">
                 <Icon size={18} />
-                {t.id === 'video_credits' && pendingCreditCount > 0 && (
+                {badgeCount > 0 && (
                   <span
                     className="absolute -right-3 -top-3 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1 text-[10px] font-bold leading-none text-white"
-                    aria-label={`${pendingCreditCount} pending credit approvals`}
+                    aria-label={`${badgeCount} bagong update sa ${t.label}`}
                   >
-                    {pendingCreditCount > 99 ? '99+' : pendingCreditCount}
+                    {badgeCount > 99 ? '99+' : badgeCount}
                   </span>
                 )}
               </span>
