@@ -624,14 +624,23 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
 
   return (
     <div>
-      <div className="bg-gradient-to-br from-brand-600 to-brand-700 px-5 pt-12 pb-6 text-white md:rounded-b-3xl md:px-8 md:pt-16 md:pb-10">
-        <div className="max-w-2xl">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <StoreIcon size={20} className="shrink-0" />
-            <span className="font-display text-lg font-extrabold truncate md:text-4xl lg:text-5xl md:leading-tight">{store.name}</span>
+      <div className="relative overflow-hidden bg-gradient-to-br from-brand-600 to-brand-700 text-white md:min-h-80 md:rounded-b-3xl">
+        {store.banner_url && (
+          <div className="absolute inset-y-0 right-0 hidden w-[58%] overflow-hidden md:block">
+            <img
+              src={store.banner_url}
+              alt=""
+              className="h-full w-full object-cover object-center [mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.18)_12%,rgba(0,0,0,0.72)_32%,black_48%)]"
+            />
           </div>
-          <div className="flex items-center gap-2">
+        )}
+        <div className="relative z-10 px-5 pb-5 pt-8 md:flex md:min-h-80 md:w-[54%] md:flex-col md:justify-center md:px-8 md:py-10 lg:px-12">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 mb-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <StoreIcon size={20} className="shrink-0 md:h-7 md:w-7" />
+            <span className="truncate font-display text-xl font-extrabold md:text-4xl md:leading-tight lg:text-5xl">{store.name}</span>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
             <button onClick={onOpenMessages} className="relative w-10 h-10 rounded-full bg-white/20 flex items-center justify-center active:scale-90 transition">
               <Bell size={20} className="text-white" />
               {unreadMessages > 0 && (
@@ -652,17 +661,17 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
           </p>
         )}
         <p className="text-brand-100 text-sm">Kumusta, {profile?.full_name?.split(' ')[0]}! Narito ang status ng tindahan mo.</p>
-        <div className="flex items-center gap-2 mt-3 flex-wrap">
-          <button onClick={onEditStore} className="text-xs bg-white/20 px-3 py-1.5 rounded-full flex items-center gap-1">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <button onClick={onEditStore} className="min-w-0 justify-center text-xs bg-white/20 px-2.5 py-2 rounded-full flex items-center gap-1 sm:px-3 sm:py-1.5">
             <Edit size={14} /> I-edit ang tindahan
           </button>
-          <button onClick={onViewStore} className="text-xs bg-white/20 px-3 py-1.5 rounded-full flex items-center gap-1">
+          <button onClick={onViewStore} className="min-w-0 justify-center text-xs bg-white/20 px-2.5 py-2 rounded-full flex items-center gap-1 sm:px-3 sm:py-1.5">
             <ExternalLink size={14} /> Tingnan ang tindahan
           </button>
           <button
             onClick={toggleStoreOpen}
             disabled={toggling}
-            className={`text-xs px-4 py-1.5 rounded-full font-semibold flex items-center gap-1.5 active:scale-95 transition disabled:opacity-50 ${
+            className={`col-span-2 justify-self-start text-xs px-4 py-2 rounded-full font-semibold flex items-center gap-1.5 active:scale-95 transition disabled:opacity-50 sm:col-span-1 sm:py-1.5 ${
               isOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
             }`}
           >
@@ -680,9 +689,8 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
       </div>
       {/* Banner: eksakto kung ano ang inupload ng seller, walang overlay */}
       {store.banner_url && (
-        <div className="h-40 sm:h-56 md:h-64 lg:h-80 bg-brand-100 md:bg-brand-700 overflow-hidden md:rounded-b-3xl relative">
-          <img src={store.banner_url} alt="" className="w-full h-full object-cover object-center md:[mask-image:linear-gradient(to_bottom,transparent_0%,rgba(0,0,0,0.5)_20%,black_45%)]" />
-          {/* Blend sa laptop: unti-unting green mula sa itaas papunta sa banner */}
+        <div className="h-44 overflow-hidden bg-brand-100 sm:h-56 md:hidden">
+          <img src={store.banner_url} alt="" className="h-full w-full object-cover object-center" />
         </div>
       )}
 
