@@ -1466,6 +1466,19 @@ function CartView({ onCheckout, refreshKey }: { onCheckout: () => void; refreshK
                       <Trash2 size={18} />
                     </button>
                   </div>
+                  {item.product.unit === 'kilo' && (
+                    <div className="flex gap-1.5 mt-2">
+                      {[{ l: '1/4 kg', v: 0.25 }, { l: '1/2 kg', v: 0.5 }, { l: '1 kg', v: 1 }].map(o => (
+                        <button
+                          key={o.v}
+                          onClick={() => updateQty(item.id, o.v)}
+                          className={`flex-1 py-1 rounded-lg text-xs font-semibold border-2 transition ${Number(item.quantity) === o.v ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 text-gray-600'}`}
+                        >
+                          {o.l}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
