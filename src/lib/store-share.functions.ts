@@ -20,6 +20,12 @@ type ProductShareRow = {
   unit: string;
 };
 
+// Facebook doesn't render WebP thumbnails; convert to a 1200x630 JPG via a public image CDN.
+function shareImage(src: string | null) {
+  if (!src) return null;
+  return `https://wsrv.nl/?url=${encodeURIComponent(src)}&w=1200&h=630&fit=cover&output=jpg&q=82`;
+}
+
 async function publicRead<T>(path: string): Promise<T[]> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: {
@@ -63,7 +69,7 @@ export const getStoreSharePreview = createServerFn({ method: "GET" })
         description:
           product.description ||
           `₱${Number(product.price).toLocaleString("en-PH")}/${product.unit} sa ${store.name}, ${location}.`,
-        image: product.image_url || store.banner_url,
+        image: shareImage(product.image_url || store.banner_url),
         storeName: store.name,
         productName: product.name,
       };
@@ -74,7 +80,7 @@ export const getStoreSharePreview = createServerFn({ method: "GET" })
       description:
         store.description ||
         `Tingnan ang mga sariwang paninda ng ${store.name} sa ${location}.`,
-      image: store.banner_url,
+      image: shareImage(store.banner_url),
       storeName: store.name,
       productName: null,
     };
