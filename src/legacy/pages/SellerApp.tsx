@@ -624,75 +624,93 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
 
   return (
     <div>
-      <div className="relative overflow-hidden bg-white text-gray-900 md:flex md:min-h-80 md:rounded-b-3xl md:bg-gradient-to-br md:from-brand-600 md:to-brand-700 md:text-white">
-        {store.banner_url && (
-          <div className="absolute inset-y-0 right-0 hidden w-[58%] overflow-hidden md:block">
-            <img
-              src={store.banner_url}
-              alt=""
-              className="h-full w-full object-cover object-center [mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.18)_12%,rgba(0,0,0,0.72)_32%,black_48%)]"
-            />
+      <div className="relative overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700 md:rounded-b-3xl">
+        <div className="h-48 bg-brand-100 sm:h-64 md:hidden">
+          {store.banner_url && (
+            <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-cover object-center" fetchPriority="high" />
+          )}
+        </div>
+        <div className="hidden md:flex md:h-[26rem] lg:h-[30rem]">
+          <div className="relative z-[1] flex min-w-0 flex-1 flex-col justify-center p-10 text-white lg:p-14">
+            {store.palengke_name && <p className="text-sm font-semibold uppercase tracking-wider text-green-100">{store.palengke_name}</p>}
+            <h2 className="mt-1 font-display text-4xl font-extrabold leading-tight lg:text-6xl">{store.name}</h2>
+            {store.description && <p className="mt-3 line-clamp-2 max-w-xl text-base leading-6 text-green-50">{store.description}</p>}
           </div>
-        )}
-        {store.banner_url && (
-          <div className="h-52 w-full overflow-hidden bg-gray-100 sm:h-64 md:hidden">
-            <img src={store.banner_url} alt={`${store.name} banner`} className="h-full w-full object-cover object-center" />
-          </div>
-        )}
-        <div className="relative z-10 min-w-0 px-5 pb-5 pt-5 md:flex md:min-h-80 md:w-[54%] md:flex-col md:justify-center md:px-8 md:py-10 lg:px-12">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 mb-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="shrink-0 md:hidden">
-              <Avatar src={profile?.avatar_url} name={profile?.full_name || store.name} size={44} />
-            </div>
-            <StoreIcon size={20} className="hidden shrink-0 md:block md:h-7 md:w-7" />
-            <span className="truncate font-display text-xl font-extrabold md:text-4xl md:leading-tight lg:text-5xl">{store.name}</span>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <button onClick={onOpenMessages} className="relative flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 transition active:scale-90 md:bg-white/20">
-              <Bell size={20} className="text-gray-700 md:text-white" />
-              {unreadMessages > 0 && (
-                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold" style={{ fontSize: 10 }}>
-                  {unreadMessages > 9 ? '9+' : unreadMessages}
-                </span>
-              )}
-            </button>
-            <button onClick={onSignOut} className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 transition active:scale-90 md:bg-white/20">
-              <LogOut size={20} className="text-gray-700 md:text-white" />
-            </button>
+          <div className="relative -ml-24 w-[55%] shrink-0 lg:-ml-32 lg:w-1/2">
+            {store.banner_url && (
+              <img src={store.banner_url} alt="" decoding="async" className="h-full w-full object-cover object-center [mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.35)_18%,rgba(0,0,0,0.8)_35%,black_50%)]" fetchPriority="high" />
+            )}
           </div>
         </div>
-        {store.palengke_name && (
-          <p className="mb-1 flex items-center gap-1 text-xs text-gray-500 md:text-brand-100">
-            <MapPin size={12} />
-            {store.palengke_name}
-          </p>
-        )}
-        <p className="text-sm text-gray-500 md:text-brand-100">Kumusta, {profile?.full_name?.split(' ')[0]}! Narito ang status ng tindahan mo.</p>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-          <button onClick={onEditStore} className="flex min-w-0 items-center justify-center gap-1 rounded-full bg-gray-100 px-2.5 py-2 text-xs md:bg-white/20 sm:px-3 sm:py-1.5">
-            <Edit size={14} /> I-edit ang tindahan
+        <div className="absolute right-4 top-4 z-20 grid grid-cols-2 gap-2 md:right-6 md:top-6">
+          <button onClick={onOpenMessages} aria-label="Mga notification" className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md transition active:scale-90">
+            <Bell size={20} className="text-gray-700" />
+            {unreadMessages > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white" style={{ fontSize: 10 }}>
+                {unreadMessages > 9 ? '9+' : unreadMessages}
+              </span>
+            )}
           </button>
-          <button onClick={onViewStore} className="flex min-w-0 items-center justify-center gap-1 rounded-full bg-gray-100 px-2.5 py-2 text-xs md:bg-white/20 sm:px-3 sm:py-1.5">
-            <ExternalLink size={14} /> Tingnan ang tindahan
+          <button onClick={onSignOut} aria-label="Mag-sign out" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md transition active:scale-90">
+            <LogOut size={20} className="text-gray-700" />
+          </button>
+        </div>
+      </div>
+
+      <div className="relative bg-white px-5 pt-4">
+        <div className="flex items-start gap-3">
+          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border-2 border-white bg-brand-50 shadow-md">
+            <Avatar src={profile?.avatar_url} name={profile?.full_name || store.name} size={64} />
+          </div>
+          <div className="min-w-0 flex-1 pt-1">
+            <h1 className="break-words text-xl font-bold text-gray-800">{store.name}</h1>
+            {profile?.full_name && (
+              <p className="mt-0.5 flex items-center gap-1 truncate text-sm text-gray-500">
+                <Users size={12} className="shrink-0 text-gray-400" />
+                {profile.full_name}
+              </p>
+            )}
+            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
+              <Star size={14} className="shrink-0 fill-amber-400 text-amber-400" />
+              <span className="text-sm text-gray-600">{store.rating}</span>
+              <span className="text-sm text-gray-300">·</span>
+              <span className="max-w-full truncate text-sm text-gray-500">{store.city}</span>
+              <span className="text-sm text-gray-300">·</span>
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${isOpen ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                {isOpen ? 'Store Open' : 'Store Closed'}
+              </span>
+            </div>
+            {store.palengke_name && (
+              <p className="mt-1 flex items-center gap-1 text-xs text-brand-600">
+                <MapPin size={12} className="shrink-0" />
+                <span className="truncate">Pwesto sa {store.palengke_name}</span>
+              </p>
+            )}
+          </div>
+        </div>
+        {store.description && <p className="mt-3 text-sm text-gray-600">{store.description}</p>}
+        <div className="mt-2 flex items-start gap-2 text-sm text-gray-500">
+          <MapPin size={16} className="mt-0.5 shrink-0" />
+          <span>{[store.barangay, store.city, formatRegionForDisplay(store.region)].filter(Boolean).join(', ')}</span>
+        </div>
+        <p className="mt-3 text-sm text-gray-500">Kumusta, {profile?.full_name?.split(' ')[0]}! Narito ang status ng tindahan mo.</p>
+        <div className="mt-3 grid grid-cols-2 gap-2 pb-5 sm:flex sm:flex-wrap sm:items-center">
+          <button onClick={onEditStore} className="flex min-w-0 items-center justify-center gap-1 rounded-full bg-gray-100 px-2.5 py-2 text-xs sm:px-3 sm:py-1.5">
+            <Edit size={14} className="shrink-0" /> I-edit ang tindahan
+          </button>
+          <button onClick={onViewStore} className="flex min-w-0 items-center justify-center gap-1 rounded-full bg-gray-100 px-2.5 py-2 text-xs sm:px-3 sm:py-1.5">
+            <ExternalLink size={14} className="shrink-0" /> Tingnan ang tindahan
           </button>
           <button
             onClick={toggleStoreOpen}
             disabled={toggling}
-            className={`col-span-2 justify-self-start text-xs px-4 py-2 rounded-full font-semibold flex items-center gap-1.5 active:scale-95 transition disabled:opacity-50 sm:col-span-1 sm:py-1.5 ${
+            className={`col-span-2 flex justify-self-start items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition active:scale-95 disabled:opacity-50 sm:col-span-1 sm:py-1.5 ${
               isOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
             }`}
           >
-            {toggling ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : isOpen ? (
-              <StoreIcon size={14} />
-            ) : (
-              <Lock size={14} />
-            )}
+            {toggling ? <Loader2 size={14} className="animate-spin" /> : isOpen ? <StoreIcon size={14} /> : <Lock size={14} />}
             {isOpen ? 'Store Open' : 'Store Closed'}
           </button>
-        </div>
         </div>
       </div>
       {/* Payment Received Alert Banner */}
