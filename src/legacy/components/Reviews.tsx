@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { shareToMessenger } from '../lib/messengerShare';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
@@ -121,20 +122,13 @@ export function ReviewForm({
             <Facebook size={20} />
             Facebook
           </a>
-          <a
-            href={`fb-messenger://share?link=${encodedShareUrl}`}
-            onClick={(e) => {
-              const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-              if (!isMobile) {
-                e.preventDefault();
-                window.open(`https://www.facebook.com/dialog/send?app_id=140586622674355&link=${encodedShareUrl}&redirect_uri=${encodedShareUrl}`, '_blank', 'noopener,noreferrer');
-              }
-            }}
-            className="flex flex-col items-center gap-1 py-3 bg-gradient-to-br from-[#00B2FF] to-[#006AFF] text-white rounded-xl font-semibold text-xs active:scale-95 transition"
+          <button type="button"
+          onClick={() => shareToMessenger(shareUrl)}
+          className="flex flex-col items-center gap-1 py-3 bg-gradient-to-br from-[#00B2FF] to-[#006AFF] text-white rounded-xl font-semibold text-xs active:scale-95 transition"
           >
             <MessageCircle size={20} />
             Messenger
-          </a>
+          </button>
           <button
             onClick={copyLink}
             className="flex flex-col items-center gap-1 py-3 bg-gray-700 text-white rounded-xl font-semibold text-xs active:scale-95 transition"

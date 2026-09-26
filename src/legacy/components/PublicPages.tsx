@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { shareToMessenger } from '../lib/messengerShare';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
@@ -55,6 +56,7 @@ function ProductShareBar({ url, text }: { url: string; text: string }) {
         <a
           key={p.id}
           href={p.shareUrl(url, text)}
+          onClick={p.id === 'messenger' ? (e) => { e.preventDefault(); shareToMessenger(url, text); } : undefined}
           target="_blank"
           rel="noopener noreferrer"
           className="w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition"
