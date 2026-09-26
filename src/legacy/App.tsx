@@ -10,6 +10,7 @@ import { BuyerApp } from './pages/BuyerApp';
 import { SellerApp } from './pages/SellerApp';
 import { RiderApp } from './pages/RiderApp';
 import { AdminApp } from './pages/AdminApp';
+import { AdminDeviceGate } from './components/AdminDeviceLock';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PublicPages } from './components/PublicPages';
 import { LegalPages, type LegalPageType } from './components/LegalPages';
@@ -129,7 +130,7 @@ function AppContent() {
   if (profile.role === 'buyer') return <><BuyerApp /><GlobalIncomingCall /><NotificationPermissionPrompt /></>;
   if (profile.role === 'seller') return <><SellerApp /><GlobalIncomingCall /><NotificationPermissionPrompt /></>;
   if (profile.role === 'rider') return <><RiderApp /><GlobalIncomingCall /><NotificationPermissionPrompt /></>;
-  if (profile.role === 'admin') return <ErrorBoundary><AdminApp /></ErrorBoundary>;
+  if (profile.role === 'admin') return <ErrorBoundary><AdminDeviceGate><AdminApp /></AdminDeviceGate></ErrorBoundary>;
 
   return <LandingPage onGetStarted={() => setShowAuth(true)} />;
 }

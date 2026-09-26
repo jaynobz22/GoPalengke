@@ -7,6 +7,7 @@ import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall,
 import { SUBSCRIPTION_THRESHOLD } from '../lib/types';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { rotateBillingQr, getVideoCreditQr, ROTATION_DAILY_LIMIT } from '../lib/qrRotation';
+import { AdminDevicesSettings } from '../components/AdminDeviceLock';
 import { SecurityDashboardTab } from '../components/SecurityDashboard';
 import { AdminVideoCall } from '../components/AdminVideoCall';
 import { AdminChat, getOrCreateAdminConversation } from '../components/AdminChat';
@@ -2351,6 +2352,8 @@ function SettingsTab() {
   return (
     <div className="px-5 py-4">
       <h2 className="text-lg font-bold text-gray-800 mb-4">Platform Settings</h2>
+
+      <AdminDevicesSettings />
 
       {/* Email Sending Toggle */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
