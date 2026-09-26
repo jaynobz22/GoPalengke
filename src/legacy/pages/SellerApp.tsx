@@ -662,7 +662,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
         </div>
       </div>
       {/* Laptop: show the complete uploaded banner without overlays or cropping */}
-      <div className="relative hidden h-72 overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700 md:flex lg:h-80">
+      <div className="relative hidden h-72 overflow-hidden bg-brand-600 md:flex lg:h-80">
         <div className="relative z-[1] flex w-[32%] min-w-0 shrink-0 flex-col justify-center px-8 text-white">
           {store.palengke_name && <p className="truncate text-xs font-semibold uppercase tracking-wide text-white/80">{store.palengke_name}</p>}
           <h2 className="mt-1 line-clamp-2 font-display text-3xl font-bold lg:text-4xl">{store.name}</h2>
@@ -670,7 +670,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
         </div>
         <div className="relative h-full min-w-0 flex-1">
           {store.banner_url && (
-            <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-cover object-center" style={{ WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 12%, rgba(0,0,0,0.8) 26%, #000 40%)', maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.35) 12%, rgba(0,0,0,0.8) 26%, #000 40%)' }} fetchPriority="high" />
+            <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-cover object-center" style={{ WebkitMaskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.08) 10%, rgba(0,0,0,0.25) 20%, rgba(0,0,0,0.5) 32%, rgba(0,0,0,0.78) 45%, #000 60%)', maskImage: 'linear-gradient(to right, transparent 0%, rgba(0,0,0,0.08) 10%, rgba(0,0,0,0.25) 20%, rgba(0,0,0,0.5) 32%, rgba(0,0,0,0.78) 45%, #000 60%)' }} fetchPriority="high" />
           )}
         </div>
         <div className="absolute right-6 top-6 z-20 grid grid-cols-2 gap-2">
