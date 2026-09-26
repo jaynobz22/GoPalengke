@@ -171,26 +171,18 @@ function PublicStorePage({ slug }: { slug: string }) {
   return (
     <div className="min-h-screen bg-gray-50 w-full max-w-6xl mx-auto relative">
       {/* Banner */}
-      <div className="relative bg-gradient-to-br from-brand-500 to-brand-700 overflow-hidden md:rounded-b-3xl">
+      <div className="relative overflow-hidden bg-white md:rounded-b-3xl">
         {/* Phone: ipakita ang banner eksakto kung ano ang inupload ng seller */}
-        <div className="h-48 sm:h-64 bg-brand-100 md:hidden">
+        <div className="h-48 bg-white sm:h-64 md:hidden">
           {store.banner_url && (
-            <img src={store.banner_url} alt="" className="w-full h-full object-cover" />
+            <img src={store.banner_url} alt={store.name} className="h-full w-full object-contain object-center" />
           )}
         </div>
-        {/* Laptop: hero split — teksto sa gradient, banner sa kanan na hindi binabago */}
-        <div className="hidden md:flex md:h-[26rem] lg:h-[30rem]">
-          <div className="flex-1 flex flex-col justify-center px-8 lg:px-10 text-white min-w-0 relative z-[1]">
-            {store.palengke_name && <p className="text-sm font-semibold uppercase tracking-wider text-green-100">{store.palengke_name}</p>}
-            <h2 className="font-display text-4xl lg:text-5xl font-extrabold mt-1">{store.name}</h2>
-          </div>
-          <div className="w-[55%] lg:w-1/2 flex-shrink-0 relative -ml-24 lg:-ml-32">
-            {store.banner_url && (
-              <>
-                <img src={store.banner_url} alt="" className="w-full h-full object-cover object-center [mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.35)_18%,rgba(0,0,0,0.8)_35%,black_50%)]" />
-              </>
-            )}
-          </div>
+        {/* Laptop: show the complete uploaded banner without changing its colors */}
+        <div className="hidden bg-white md:block md:h-[26rem] lg:h-[30rem]">
+          {store.banner_url && (
+            <img src={store.banner_url} alt={store.name} className="h-full w-full object-contain object-center" />
+          )}
         </div>
         <a
           href="/"

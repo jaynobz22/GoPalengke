@@ -626,9 +626,9 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
     <div>
       {/* Phone: pure banner on top, no green */}
       <div className="relative bg-white md:hidden">
-        <div className="relative h-52 bg-brand-100 sm:h-64">
+        <div className="relative h-52 bg-white sm:h-64">
           {store.banner_url && (
-            <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-cover object-center" fetchPriority="high" />
+            <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-contain object-center" fetchPriority="high" />
           )}
           {store.description && (
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent px-4 pb-3 pt-8">
@@ -650,20 +650,16 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
           </button>
         </div>
       </div>
-      {/* Laptop: green header, details left + banner right */}
-      <div className="relative hidden overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700 md:block md:rounded-b-3xl">
-        <div className="md:flex md:h-[26rem] lg:h-[30rem]">
-          <div className="relative z-[1] flex min-w-0 flex-1 flex-col justify-center p-10 text-white lg:p-14">
-            {store.palengke_name && <p className="text-sm font-semibold uppercase tracking-wider text-green-100">{store.palengke_name}</p>}
-            <h2 className="mt-1 font-display text-4xl font-extrabold leading-tight lg:text-6xl">{store.name}</h2>
-            {store.description && <p className="mt-3 line-clamp-2 max-w-xl text-base leading-6 text-green-50">{store.description}</p>}
+      {/* Laptop: show the complete uploaded banner without overlays or cropping */}
+      <div className="relative hidden h-[26rem] overflow-hidden bg-white md:block lg:h-[30rem]">
+        {store.banner_url && (
+          <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-contain object-center" fetchPriority="high" />
+        )}
+        {store.description && (
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent px-8 pb-6 pt-16">
+            <p className="line-clamp-2 max-w-3xl text-base leading-6 text-white drop-shadow">{store.description}</p>
           </div>
-          <div className="relative -ml-24 w-[55%] shrink-0 lg:-ml-32 lg:w-1/2">
-            {store.banner_url && (
-              <img src={store.banner_url} alt="" decoding="async" className="h-full w-full object-cover object-center [mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.35)_18%,rgba(0,0,0,0.8)_35%,black_50%)]" fetchPriority="high" />
-            )}
-          </div>
-        </div>
+        )}
         <div className="absolute right-6 top-6 z-20 grid grid-cols-2 gap-2">
           <button onClick={onOpenMessages} aria-label="Mga notification" className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md transition active:scale-90">
             <Bell size={20} className="text-gray-700" />
