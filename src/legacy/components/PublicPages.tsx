@@ -173,15 +173,25 @@ function PublicStorePage({ slug }: { slug: string }) {
       {/* Banner */}
       <div className="relative overflow-hidden bg-white md:rounded-b-3xl">
         {/* Phone: ipakita ang banner eksakto kung ano ang inupload ng seller */}
-        <div className="h-48 bg-white sm:h-64 md:hidden">
+        <div className="relative h-48 bg-white sm:h-64 md:hidden">
           {store.banner_url && (
             <img src={store.banner_url} alt={store.name} className="h-full w-full object-contain object-center" />
           )}
+          {store.description && (
+            <div className="absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black/70 via-black/40 to-transparent px-4 pb-3 pt-8">
+              <p className="line-clamp-2 text-center text-xs leading-5 text-white drop-shadow sm:text-sm">{store.description}</p>
+            </div>
+          )}
         </div>
         {/* Laptop: show the complete uploaded banner without changing its colors */}
-        <div className="hidden bg-white md:block md:h-[26rem] lg:h-[30rem]">
+        <div className="relative hidden bg-white md:block md:h-[26rem] lg:h-[30rem]">
           {store.banner_url && (
             <img src={store.banner_url} alt={store.name} className="h-full w-full object-contain object-center" />
+          )}
+          {store.description && (
+            <div className="absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black/70 via-black/40 to-transparent px-6 pb-4 pt-10">
+              <p className="line-clamp-2 text-center text-sm leading-6 text-white drop-shadow">{store.description}</p>
+            </div>
           )}
         </div>
         <a
@@ -199,7 +209,7 @@ function PublicStorePage({ slug }: { slug: string }) {
       </div>
 
       {/* Store Info */}
-      <div className="px-5 -mt-12 relative z-10 md:px-8">
+      <div className="px-5 pt-4 relative z-10 md:px-8">
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5">
           <div className="flex items-start gap-3">
             <div className="w-16 h-16 rounded-2xl overflow-hidden bg-brand-100 flex-shrink-0">
@@ -228,9 +238,6 @@ function PublicStorePage({ slug }: { slug: string }) {
               </div>
             </div>
           </div>
-          {store.description && (
-            <p className="text-sm text-gray-500 mt-3">{store.description}</p>
-          )}
           <div className="flex items-center gap-2 mt-3 text-sm text-gray-500">
             <MapPin size={14} />
             <span>{store.barangay}, {store.city}, {store.region}</span>

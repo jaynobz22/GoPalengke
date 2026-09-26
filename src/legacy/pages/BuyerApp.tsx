@@ -1190,12 +1190,22 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
     <div>
       <div className="relative overflow-hidden bg-white md:rounded-b-3xl">
         {/* Phone: ipakita ang banner eksakto kung ano ang inupload ng seller */}
-        <div className="h-48 bg-white sm:h-64 md:hidden">
+        <div className="relative h-48 bg-white sm:h-64 md:hidden">
           {store.banner_url && <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-contain object-center" fetchPriority="high" />}
+          {store.description && (
+            <div className="absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black/70 via-black/40 to-transparent px-4 pb-3 pt-8">
+              <p className="line-clamp-2 text-center text-xs leading-5 text-white drop-shadow sm:text-sm">{store.description}</p>
+            </div>
+          )}
         </div>
         {/* Laptop: show the complete uploaded banner without changing its colors */}
-        <div className="hidden bg-white md:block md:h-[26rem] lg:h-[30rem]">
+        <div className="relative hidden bg-white md:block md:h-[26rem] lg:h-[30rem]">
           {store.banner_url && <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-contain object-center" fetchPriority="high" />}
+          {store.description && (
+            <div className="absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black/70 via-black/40 to-transparent px-6 pb-4 pt-10">
+              <p className="line-clamp-2 text-center text-sm leading-6 text-white drop-shadow">{store.description}</p>
+            </div>
+          )}
         </div>
         <button onClick={onBack} aria-label="Bumalik" className="absolute top-12 left-4 z-10 w-10 h-10 rounded-full bg-white/90 shadow-md flex items-center justify-center">
           <ArrowLeft size={20} className="text-gray-700" />
@@ -1238,7 +1248,6 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
             )}
           </div>
         </div>
-        {store.description && <p className="text-gray-600 text-sm mt-3">{store.description}</p>}
         <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
           <MapPin size={16} />
           <span>{[store.barangay, store.city, formatRegionForDisplay(store.region)].filter(Boolean).join(', ')}</span>
