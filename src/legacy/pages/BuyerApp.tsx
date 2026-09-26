@@ -1190,8 +1190,8 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
     <div>
       <div className="relative overflow-hidden bg-white md:rounded-b-3xl">
         {/* Phone: ipakita ang banner eksakto kung ano ang inupload ng seller */}
-        <div className="relative h-48 bg-white sm:h-64 md:hidden">
-          {store.banner_url && <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-contain object-center" fetchPriority="high" />}
+        <div className="relative aspect-video w-full bg-gray-100 md:hidden">
+          {store.banner_url && <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-cover object-center" fetchPriority="high" />}
           {store.description && (
             <div className="absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black/70 via-black/40 to-transparent px-4 pb-3 pt-8">
               <p className="line-clamp-2 text-center text-xs leading-5 text-white drop-shadow sm:text-sm">{store.description}</p>
