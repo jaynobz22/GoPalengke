@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { watchOrders } from '../lib/liveOrders';
 import { supabase } from '../lib/supabase';
 import { checkRiderBatch } from '../lib/riderBatch';
 import { useAuth } from '../lib/auth';
@@ -256,10 +257,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
-    const sub = supabase.channel('rider-deliveries')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(sub); };
+    return watchOrders('rider-deliveries', undefined, () => load());
   }, [load]);
 
   async function toggleAvailability() {
@@ -521,12 +519,12 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         .then(({ data }) => { setSiblingOrders((data || []) as any); });
     }
 
-    const sub = supabase.channel(`rider-order-${order.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${order.id}` }, (payload: any) => {
-        if (payload.new) setCurrentOrder(payload.new as Order);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(sub); };
+    return watchOrders(`rider-order-${order.id}`, `id=eq.${order.id}`, (payload: any) => {
+      if (payload?.new) { setCurrentOrder((prev: any) => ({ ...prev, ...payload.new })); return; }
+      supabase.from('orders').select('*').eq('id', order.id).maybeSingle().then(({ data }) => {
+        if (data) setCurrentOrder((prev: any) => (prev.status === data.status && prev.rider_id === data.rider_id && prev.payment_status === data.payment_status ? prev : { ...prev, ...data }));
+      });
+    });
   }, [order.id, order.delivery_group_id]);
 
   useEffect(() => {
@@ -1662,17 +1660,16 @@ function RiderBottomNav({ tab, setTab, riderId, unreadMessages }: { tab: Tab; se
   const [activeCount, setActiveCount] = useState(0);
 
   useEffect(() => {
-    supabase.from('orders').select('*', { count: 'exact', head: true }).eq('rider_id', riderId).in('status', ['picked_up'])
-      .then(({ count }) => setActiveCount(count || 0));
-
-    const sub = supabase.channel('rider-nav')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `rider_id=eq.${riderId}` }, () => {
-        supabase.from('orders').select('*', { count: 'exact', head: true }).eq('rider_id', riderId).in('status', ['picked_up'])
-          .then(({ count }) => setActiveCount(count || 0));
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(sub); };
+    if (!riderId) return;
+    async function loadCount() {
+      const [{ count: mine }, { count: open }] = await Promise.all([
+        supabase.from('orders').select('*', { count: 'exact', head: true }).eq('rider_id', riderId).in('status', ['ready_for_pickup', 'picked_up']),
+        supabase.from('orders').select('*', { count: 'exact', head: true }).is('rider_id', null).eq('status', 'ready_for_pickup'),
+      ]);
+      setActiveCount((mine || 0) + (open || 0));
+    }
+    loadCount();
+    return watchOrders('rider-nav', undefined, () => loadCount());
   }, [riderId]);
 
   const items = [

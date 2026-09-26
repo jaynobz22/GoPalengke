@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { shareToMessenger } from '../lib/messengerShare';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { watchOrders } from '../lib/liveOrders';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { navigate } from '../lib/router';
@@ -196,10 +197,7 @@ export function BuyerApp() {
       setOrderUpdates(count || 0);
     }
     countUpdates();
-    const sub = supabase.channel('buyer-order-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `buyer_id=eq.${profile.id}` }, () => countUpdates())
-      .subscribe();
-    return () => { supabase.removeChannel(sub); };
+    return watchOrders('buyer-order-updates', `buyer_id=eq.${profile.id}`, () => countUpdates());
   }, [profile]);
 
   const canAct = profile?.is_active ?? true;
@@ -2489,13 +2487,11 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
   useEffect(() => {
     loadOrders();
     if (!profile) return;
-    const sub = supabase.channel('buyer-orders-list')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `buyer_id=eq.${profile.id}` }, () => loadOrders())
-      .subscribe();
+    const stopOrders = watchOrders('buyer-orders-list', `buyer_id=eq.${profile.id}`, () => loadOrders());
     const revSub = supabase.channel('buyer-orders-reviews')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews' }, () => loadOrders())
       .subscribe();
-    return () => { supabase.removeChannel(sub); supabase.removeChannel(revSub); };
+    return () => { stopOrders(); supabase.removeChannel(revSub); };
   }, [loadOrders, profile]);
 
   const activeStatuses: OrderStatus[] = ['pending', 'accepted', 'preparing', 'ready_for_pickup', 'picked_up'];
@@ -2770,13 +2766,12 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         .then(({ data }) => { setSiblingOrders((data || []) as any); });
     }
 
-    const sub = supabase.channel(`order-${order.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${order.id}` }, (payload: any) => {
-        if (payload.new) setCurrentOrder(payload.new as Order);
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(sub); };
+    return watchOrders(`order-${order.id}`, `id=eq.${order.id}`, (payload: any) => {
+      if (payload?.new) { setCurrentOrder((prev: any) => ({ ...prev, ...payload.new })); return; }
+      supabase.from('orders').select('*').eq('id', order.id).maybeSingle().then(({ data }) => {
+        if (data) setCurrentOrder((prev: any) => (prev.status === data.status && prev.rider_id === data.rider_id && prev.payment_status === data.payment_status ? prev : { ...prev, ...data }));
+      });
+    });
   }, [order.id, order.delivery_group_id]);
 
   const isBuyer = profile?.id === currentOrder.buyer_id;

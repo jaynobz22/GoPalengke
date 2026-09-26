@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, deleteStorageObject } from '../lib/supabase';
+import { watchOrders } from '../lib/liveOrders';
 import { checkRiderBatch } from '../lib/riderBatch';
 import { useAuth } from '../lib/auth';
 import { navigate } from '../lib/router';
@@ -628,10 +629,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
       setRecentOrders(allOrders);
     }
     load();
-    const sub = supabase.channel('seller-dashboard-orders')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `store_id=eq.${store.id}` }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(sub); };
+    return watchOrders('seller-dashboard-orders', `store_id=eq.${store.id}`, () => load());
   }, [store.id]);
 
   return (
@@ -1518,10 +1516,7 @@ function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o:
 
   // Subscribe to new orders
   useEffect(() => {
-    const sub = supabase.channel('seller-orders')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `store_id=eq.${store.id}` }, () => load())
-      .subscribe();
-    return () => { supabase.removeChannel(sub); };
+    return watchOrders('seller-orders', `store_id=eq.${store.id}`, () => load());
   }, [store.id, load]);
 
   const filters = [
@@ -1656,16 +1651,19 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       supabase.from('profiles').select('full_name, phone, avatar_url, rider_qr_code_url').eq('id', order.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
     }
 
-    const sub = supabase.channel(`seller-order-${order.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${order.id}` }, (payload: any) => {
-        const newOrder = payload.new as Order;
-        setCurrentOrder(newOrder);
+    const sub = { stop: watchOrders(`seller-order-${order.id}`, `id=eq.${order.id}`, async (payload: any) => {
+        let newOrder = payload?.new as Order;
+        if (!newOrder) {
+          const { data } = await supabase.from('orders').select('*').eq('id', order.id).maybeSingle();
+          if (!data) return;
+          newOrder = data as Order;
+        }
+        setCurrentOrder((prev: any) => (prev.status === newOrder.status && prev.rider_id === newOrder.rider_id && prev.payment_status === newOrder.payment_status ? prev : { ...prev, ...newOrder }));
         if (newOrder.rider_id && !rider) {
           supabase.from('profiles').select('full_name, phone, avatar_url, rider_qr_code_url').eq('id', newOrder.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
         }
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(sub); };
+      }) };
+    return () => { sub.stop(); };
   }, [order.id]);
 
   // Auto-load nearby riders when order is ready for pickup (for the hint banner)
@@ -2574,11 +2572,7 @@ function SellerBottomNav({ tab, setTab, storeId, unreadMessages }: { tab: Tab; s
     }
     loadCounts();
 
-    const sub = supabase.channel('seller-nav')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `store_id=eq.${storeId}` }, () => loadCounts())
-      .subscribe();
-
-    return () => { supabase.removeChannel(sub); };
+    return watchOrders('seller-nav', `store_id=eq.${storeId}`, () => loadCounts());
   }, [storeId]);
 
   const orderBadge = newOrders + paidOrders;
