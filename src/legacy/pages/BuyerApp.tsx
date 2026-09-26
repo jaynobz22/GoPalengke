@@ -1268,6 +1268,25 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
           <MapPin size={16} />
           <span>{[store.barangay, store.city, formatRegionForDisplay(store.region)].filter(Boolean).join(', ')}</span>
         </div>
+        {store.slug && (
+          <div className="mt-3 grid grid-cols-2 gap-2 md:max-w-sm">
+            <a
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/s/${store.slug}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 rounded-xl bg-[#1877F2] py-2.5 text-xs font-semibold text-white active:scale-[0.98]"
+            >
+              <Facebook size={16} /> I-share sa Facebook
+            </a>
+            <button
+              type="button"
+              onClick={() => shareToMessenger(`/s/${store.slug}`, `Tingnan ang ${store.name} sa GoPalengke`)}
+              className="flex items-center justify-center gap-2 rounded-xl bg-[#00B2FF] py-2.5 text-xs font-semibold text-white active:scale-[0.98]"
+            >
+              <MessageCircle size={16} /> Messenger
+            </button>
+          </div>
+        )}
       </div>
 
       {highlightProductId && !loading && products.find(p => p.id === highlightProductId) && (
