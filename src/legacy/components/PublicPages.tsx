@@ -260,25 +260,6 @@ function PublicStorePage({ slug }: { slug: string }) {
           <div className="mt-4">
             <CopyLink url={fullUrl} />
           </div>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <a
-              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullUrl)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-semibold text-white active:scale-[0.98]"
-              style={{ backgroundColor: '#1877F2' }}
-            >
-              <SocialIcon platform="facebook" size={16} /> I-share sa Facebook
-            </a>
-            <button
-              type="button"
-              onClick={() => shareToMessenger(fullUrl, `Tingnan ang ${store.name} sa GoPalengke`)}
-              className="flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-semibold text-white active:scale-[0.98]"
-              style={{ backgroundColor: '#00B2FF' }}
-            >
-              <SocialIcon platform="messenger" size={16} /> Messenger
-            </button>
-          </div>
         </div>
       </div>
 
@@ -320,7 +301,6 @@ function PublicStorePage({ slug }: { slug: string }) {
                   <p className="font-semibold text-sm text-gray-800 line-clamp-1">{p.name}</p>
                   <p className="font-bold text-brand-600 mt-1">₱{p.price}<span className="text-[10px] text-gray-400 font-normal">/{p.unit}</span></p>
                 </div>
-                <ProductShareBar url={productUrl} text={shareText} />
               </div>
               );
             })}

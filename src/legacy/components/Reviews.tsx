@@ -110,25 +110,9 @@ export function ReviewForm({
         </div>
 
         <p className="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1.5">
-          <Share2 size={14} /> I-share sa social media:
+          <Share2 size={14} /> Kopyahin ang link ng tindahan:
         </p>
-        <div className="grid grid-cols-3 gap-2">
-          <a
-            href={`https://www.facebook.com/sharer/sharer.php?u=${encodedShareUrl}&quote=${encodedShareText}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex flex-col items-center gap-1 py-3 bg-[#1877F2] text-white rounded-xl font-semibold text-xs active:scale-95 transition"
-          >
-            <Facebook size={20} />
-            Facebook
-          </a>
-          <button type="button"
-          onClick={() => shareToMessenger(shareUrl)}
-          className="flex flex-col items-center gap-1 py-3 bg-gradient-to-br from-[#00B2FF] to-[#006AFF] text-white rounded-xl font-semibold text-xs active:scale-95 transition"
-          >
-            <MessageCircle size={20} />
-            Messenger
-          </button>
+        <div className="grid grid-cols-1 gap-2">
           <button
             onClick={copyLink}
             className="flex flex-col items-center gap-1 py-3 bg-gray-700 text-white rounded-xl font-semibold text-xs active:scale-95 transition"

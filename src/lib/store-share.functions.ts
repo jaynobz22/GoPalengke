@@ -20,10 +20,9 @@ type ProductShareRow = {
   unit: string;
 };
 
-// Facebook doesn't render WebP thumbnails; convert to a 1200x630 JPG via a public image CDN.
 function shareImage(src: string | null) {
   if (!src) return null;
-  return `https://wsrv.nl/?url=${encodeURIComponent(src)}&w=1200&h=630&fit=cover&output=jpg&q=82`;
+  return src;
 }
 
 async function publicRead<T>(path: string): Promise<T[]> {

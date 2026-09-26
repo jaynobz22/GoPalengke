@@ -1268,25 +1268,6 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
           <MapPin size={16} />
           <span>{[store.barangay, store.city, formatRegionForDisplay(store.region)].filter(Boolean).join(', ')}</span>
         </div>
-        {store.slug && (
-          <div className="mt-3 grid grid-cols-2 gap-2 md:max-w-sm">
-            <a
-              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/s/${store.slug}`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 rounded-xl bg-[#1877F2] py-2.5 text-xs font-semibold text-white active:scale-[0.98]"
-            >
-              <Facebook size={16} /> I-share sa Facebook
-            </a>
-            <button
-              type="button"
-              onClick={() => shareToMessenger(`/s/${store.slug}`, `Tingnan ang ${store.name} sa GoPalengke`)}
-              className="flex items-center justify-center gap-2 rounded-xl bg-[#00B2FF] py-2.5 text-xs font-semibold text-white active:scale-[0.98]"
-            >
-              <MessageCircle size={16} /> Messenger
-            </button>
-          </div>
-        )}
       </div>
 
       {highlightProductId && !loading && products.find(p => p.id === highlightProductId) && (
@@ -3327,23 +3308,7 @@ function ShareStoreCard({ storeName, storeSlug }: { storeName: string; storeSlug
       <div className="bg-white/70 border border-brand-100 rounded-xl p-3 mb-3">
         <p className="text-[11px] text-gray-500 italic leading-relaxed">"{shareText}"</p>
       </div>
-      <div className="grid grid-cols-3 gap-2">
-        <a
-          href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex flex-col items-center gap-1 py-3 bg-[#1877F2] text-white rounded-xl font-semibold text-xs active:scale-95 transition"
-        >
-          <Facebook size={20} />
-          Facebook
-        </a>
-        <button type="button"
-          onClick={() => shareToMessenger(shareUrl)}
-          className="flex flex-col items-center gap-1 py-3 bg-gradient-to-br from-[#00B2FF] to-[#006AFF] text-white rounded-xl font-semibold text-xs active:scale-95 transition"
-        >
-          <MessageCircle size={20} />
-          Messenger
-        </button>
+      <div className="grid grid-cols-1 gap-2">
         <button
           onClick={copyLink}
           className="flex flex-col items-center gap-1 py-3 bg-gray-700 text-white rounded-xl font-semibold text-xs active:scale-95 transition"
