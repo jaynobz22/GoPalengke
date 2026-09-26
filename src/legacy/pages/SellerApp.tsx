@@ -662,15 +662,18 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
         </div>
       </div>
       {/* Laptop: show the complete uploaded banner without overlays or cropping */}
-      <div className="relative hidden h-[26rem] overflow-hidden bg-white md:block lg:h-[30rem]">
-        {store.banner_url && (
-          <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-contain object-center" fetchPriority="high" />
-        )}
-        {store.description && (
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent px-8 pb-6 pt-16">
-            <p className="line-clamp-2 max-w-3xl text-base leading-6 text-white drop-shadow">{store.description}</p>
-          </div>
-        )}
+      <div className="relative hidden h-72 overflow-hidden bg-gradient-to-br from-brand-500 to-brand-700 md:flex lg:h-80">
+        <div className="relative z-[1] flex w-[32%] min-w-0 shrink-0 flex-col justify-center px-8 text-white">
+          {store.palengke_name && <p className="truncate text-xs font-semibold uppercase tracking-wide text-white/80">{store.palengke_name}</p>}
+          <h2 className="mt-1 line-clamp-2 font-display text-3xl font-bold lg:text-4xl">{store.name}</h2>
+          {store.description && <p className="mt-2 line-clamp-3 text-sm leading-5 text-white/90">{store.description}</p>}
+        </div>
+        <div className="relative h-full min-w-0 flex-1">
+          {store.banner_url && (
+            <img src={store.banner_url} alt={store.name} decoding="async" className="h-full w-full object-cover object-center" fetchPriority="high" />
+          )}
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-28 bg-gradient-to-r from-brand-600 to-transparent lg:w-36" />
+        </div>
         <div className="absolute right-6 top-6 z-20 grid grid-cols-2 gap-2">
           <button onClick={onOpenMessages} aria-label="Mga notification" className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md transition active:scale-90">
             <Bell size={20} className="text-gray-700" />
