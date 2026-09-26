@@ -21,16 +21,20 @@ export function LoginReminderPopup({ storageKey, variant }: Props) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const dismissed = sessionStorage.getItem(storageKey);
-    if (!dismissed) {
-      const timer = setTimeout(() => setVisible(true), 600);
+    // Show at most once every 24 hours (persists across logout/login)
+    const key = `${storageKey}_last_shown`;
+    const last = Number(localStorage.getItem(key) || 0);
+    if (Date.now() - last >= 24 * 60 * 60 * 1000) {
+      const timer = setTimeout(() => {
+        localStorage.setItem(key, String(Date.now()));
+        setVisible(true);
+      }, 600);
       return () => clearTimeout(timer);
     }
   }, [storageKey]);
 
   function handleClose() {
     setVisible(false);
-    sessionStorage.setItem(storageKey, 'dismissed');
   }
 
   if (!visible) return null;

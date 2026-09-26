@@ -163,6 +163,10 @@ function PublicStorePage({ slug }: { slug: string }) {
   }
 
   const fullUrl = `${window.location.origin}/s/${store.slug}`;
+  const clearSellerPreviewFlag = () => {
+    try { sessionStorage.removeItem('gp_store_preview_from_dashboard'); } catch {}
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-50 w-full max-w-6xl mx-auto relative">
@@ -188,12 +192,16 @@ function PublicStorePage({ slug }: { slug: string }) {
             )}
           </div>
         </div>
-        <div className="absolute top-3 left-3">
-          <button onClick={() => navigate('/')} className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center active:scale-95 transition">
-            <ArrowLeft size={20} className="text-white" />
-          </button>
-        </div>
-        <div className="absolute top-3 right-3">
+        <a
+          href="/"
+          onClick={clearSellerPreviewFlag}
+          aria-label="Bumalik sa dashboard"
+          className="absolute left-3 top-3 z-[9999] flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white shadow-lg transition active:scale-95 md:h-11 md:w-11"
+        >
+          <ArrowLeft size={20} className="pointer-events-none text-gray-800" />
+        </a>
+
+        <div className="absolute top-3 right-3 z-20">
           <ShareButton url={fullUrl} />
         </div>
       </div>
