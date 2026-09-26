@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth';
 import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall, AdminConversation, Store, VideoCreditPurchase, RiderFee, RiderFeePayment } from '../lib/types';
 import { SUBSCRIPTION_THRESHOLD } from '../lib/types';
 import { ImageUploadField } from '../components/ImageUploadField';
+import { rotateBillingQr, getVideoCreditQr, ROTATION_DAILY_LIMIT } from '../lib/qrRotation';
 import { SecurityDashboardTab } from '../components/SecurityDashboard';
 import { AdminVideoCall } from '../components/AdminVideoCall';
 import { AdminChat, getOrCreateAdminConversation } from '../components/AdminChat';
@@ -80,6 +81,7 @@ export function AdminApp() {
   useEffect(() => {
     loadPendingCreditCount();
     loadPendingUserCount();
+    rotateBillingQr().catch(() => {});
     loadPendingFeeCount();
     loadPendingRiderFeeCount();
     loadUnreadMessageCount();
@@ -88,8 +90,8 @@ export function AdminApp() {
       .channel('admin-tab-badges')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'video_credit_purchases' }, () => loadPendingCreditCount())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => loadPendingUserCount())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fee_payments' }, () => loadPendingFeeCount())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rider_fee_payments' }, () => loadPendingRiderFeeCount())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fee_payments' }, () => { loadPendingFeeCount(); rotateBillingQr().catch(() => {}); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rider_fee_payments' }, () => { loadPendingRiderFeeCount(); rotateBillingQr().catch(() => {}); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_messages' }, () => loadUnreadMessageCount())
       .subscribe();
 
@@ -2287,9 +2289,13 @@ function SettingsTab() {
     setEmailEnabled(val !== 'false');
   }, []);
 
+  const [rotationInfo, setRotationInfo] = useState<{ total: number; current?: string; pool: string[]; videoLabel?: string } | null>(null);
   const load = useCallback(async () => {
+    const rot = await rotateBillingQr().catch(() => null);
+    const videoQr = await getVideoCreditQr().catch(() => null);
     const { data } = await supabase.from('platform_qr_codes').select('*').order('created_at', { ascending: false });
     setQrCodes((data || []) as PlatformQrCode[]);
+    if (rot) setRotationInfo({ total: rot.total, current: rot.current?.label, pool: rot.pool.map(q => q.label), videoLabel: videoQr?.label });
     setLoading(false);
   }, []);
 
@@ -2493,6 +2499,15 @@ function SettingsTab() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {rotationInfo && (
+          <div className="mt-4 rounded-xl bg-blue-50 border border-blue-100 p-3 text-xs text-blue-800 space-y-1">
+            <p><b>Video Call Credits QR:</b> {rotationInfo.videoLabel || 'Walang UnionBank QR'} (laging ito)</p>
+            <p><b>Seller/Rider fees — auto-rotate:</b> {rotationInfo.pool.join(' → ') || 'wala'}</p>
+            <p>Lilipat sa susunod na QR kada ₱{ROTATION_DAILY_LIMIT.toLocaleString()} na natanggap sa isang araw. Balik sa una tuwing bagong araw.</p>
+            <p><b>Natanggap ngayong araw:</b> ₱{rotationInfo.total.toLocaleString()} — gamit ngayon: <b>{rotationInfo.current || '—'}</b></p>
           </div>
         )}
 

@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { getVideoCreditQr } from '../lib/qrRotation';
 import { useAuth } from '../lib/auth';
 import type { VideoCreditPurchase, CreditPackage } from '../lib/types';
 import { VIDEO_CREDIT_PACKAGES } from '../lib/types';
@@ -202,11 +203,7 @@ function PaymentModal({
   useEffect(() => {
     async function loadQrCode() {
       setQrLoading(true);
-      const { data } = await supabase
-        .from('platform_qr_codes')
-        .select('image_url')
-        .eq('is_active', true)
-        .maybeSingle();
+      const data = await getVideoCreditQr();
       if (data?.image_url) setQrCodeUrl(data.image_url);
       setQrLoading(false);
     }
