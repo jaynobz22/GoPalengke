@@ -25,6 +25,7 @@ import { LoginReminderPopup } from '../components/LoginReminderPopup';
 import { VideoCreditStore } from '../components/VideoCreditStore';
 import { useIncomingAdminCall } from '../lib/useAdminCall';
 import { useAdminConversations } from '../lib/useAdminChat';
+import { shareToMessenger } from '../lib/messengerShare';
 import {
   Store as StoreIcon, Package, Plus, ArrowLeft, Edit, Trash2, X,
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
@@ -2370,6 +2371,25 @@ function ShareableLinkSection({ label, url, onOpen }: { label: string; url: stri
           <ExternalLink size={16} className="text-brand-600" />
         </button>
       </div>
+      {label === 'Store Link' && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <a
+            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 rounded-xl bg-[#1877F2] py-2.5 text-xs font-semibold text-white active:scale-[0.98]"
+          >
+            Facebook
+          </a>
+          <button
+            type="button"
+            onClick={() => shareToMessenger(url, 'Tingnan ang tindahan ko sa GoPalengke')}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[#00B2FF] py-2.5 text-xs font-semibold text-white active:scale-[0.98]"
+          >
+            Messenger
+          </button>
+        </div>
+      )}
     </div>
   );
 }

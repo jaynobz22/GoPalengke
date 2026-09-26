@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - User dashboards use full-width responsive shells up to `max-w-7xl`, while preserving their phone layout below `md`; this prevents desktop sessions from remaining in a narrow mobile column.
+- Public store shares use the dedicated `/s/$slug` SSR data route with optional `?p=<product-id>`; social crawlers need server-readable store/product metadata and images.

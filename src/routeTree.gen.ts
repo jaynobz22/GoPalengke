@@ -15,6 +15,7 @@ import { Route as ParaSaAffiliateRouteImport } from './routes/para-sa-affiliate'
 import { Route as ParaSaBuyerRouteImport } from './routes/para-sa-buyer'
 import { Route as ParaSaRiderRouteImport } from './routes/para-sa-rider'
 import { Route as ParaSaSellerRouteImport } from './routes/para-sa-seller'
+import { Route as SSlugRouteImport } from './routes/s.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const ParaSaSellerRoute = ParaSaSellerRouteImport.update({
   path: '/para-sa-seller',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SSlugRoute = SSlugRouteImport.update({
+  id: '/s/$slug',
+  path: '/s/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/para-sa-buyer': typeof ParaSaBuyerRoute
   '/para-sa-rider': typeof ParaSaRiderRoute
   '/para-sa-seller': typeof ParaSaSellerRoute
+  '/s/$slug': typeof SSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/para-sa-buyer': typeof ParaSaBuyerRoute
   '/para-sa-rider': typeof ParaSaRiderRoute
   '/para-sa-seller': typeof ParaSaSellerRoute
+  '/s/$slug': typeof SSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/para-sa-buyer': typeof ParaSaBuyerRoute
   '/para-sa-rider': typeof ParaSaRiderRoute
   '/para-sa-seller': typeof ParaSaSellerRoute
+  '/s/$slug': typeof SSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,6 +90,7 @@ export interface FileRouteTypes {
     | '/para-sa-buyer'
     | '/para-sa-rider'
     | '/para-sa-seller'
+    | '/s/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/para-sa-buyer'
     | '/para-sa-rider'
     | '/para-sa-seller'
+    | '/s/$slug'
   id:
     | '__root__'
     | '/'
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
     | '/para-sa-buyer'
     | '/para-sa-rider'
     | '/para-sa-seller'
+    | '/s/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -106,6 +118,7 @@ export interface RootRouteChildren {
   ParaSaBuyerRoute: typeof ParaSaBuyerRoute
   ParaSaRiderRoute: typeof ParaSaRiderRoute
   ParaSaSellerRoute: typeof ParaSaSellerRoute
+  SSlugRoute: typeof SSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -152,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ParaSaSellerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/s/$slug': {
+      id: '/s/$slug'
+      path: '/s/$slug'
+      fullPath: '/s/$slug'
+      preLoaderRoute: typeof SSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -162,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   ParaSaBuyerRoute: ParaSaBuyerRoute,
   ParaSaRiderRoute: ParaSaRiderRoute,
   ParaSaSellerRoute: ParaSaSellerRoute,
+  SSlugRoute: SSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

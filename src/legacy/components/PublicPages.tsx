@@ -79,12 +79,12 @@ export function PublicPages() {
   return null;
 }
 
-function ShareButton({ url }: { url: string }) {
+function ShareButton({ url, title }: { url: string; title: string }) {
   const [copied, setCopied] = useState(false);
 
   function share() {
     if (navigator.share) {
-      navigator.share({ url }).catch(() => {});
+      navigator.share({ title, text: `Tingnan ang ${title} sa GoPalengke`, url }).catch(() => {});
     } else {
       navigator.clipboard.writeText(url);
       setCopied(true);
@@ -219,7 +219,7 @@ function PublicStorePage({ slug }: { slug: string }) {
         </a>
 
         <div className="absolute top-3 right-3 z-20">
-          <ShareButton url={fullUrl} />
+          <ShareButton url={fullUrl} title={store.name} />
         </div>
       </div>
 
@@ -283,7 +283,7 @@ function PublicStorePage({ slug }: { slug: string }) {
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 md:gap-5">
             {products.map(p => {
-              const productUrl = `${window.location.origin}/s/${store.slug}`;
+              const productUrl = `${window.location.origin}/s/${store.slug}?p=${encodeURIComponent(p.id)}`;
               const shareText = `${p.name} - ₱${p.price}/${p.unit} at ${store.name} | GoPalengke`;
               return (
               <div key={p.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
