@@ -11,12 +11,27 @@ interface CropModalProps {
   defaultAspect?: number;
 }
 
+function makeCrop(natW: number, natH: number, aspect?: number): Crop {
+  if (!aspect || !natW || !natH) {
+    return { unit: '%', x: 0, y: 0, width: 100, height: 100 };
+  }
+  const imgAspect = natW / natH;
+  if (imgAspect > aspect) {
+    // Larawan ay mas pahiga kaysa sa target — buong taas ang gamitin
+    const widthPct = (aspect / imgAspect) * 100;
+    return { unit: '%', x: (100 - widthPct) / 2, y: 0, width: widthPct, height: 100 };
+  }
+  const heightPct = (imgAspect / aspect) * 100;
+  return { unit: '%', x: 0, y: (100 - heightPct) / 2, width: 100, height: heightPct };
+}
+
 export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect }: CropModalProps) {
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [zoom, setZoom] = useState(1);
   const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
   const [processing, setProcessing] = useState(false);
+  const [aspect, setAspect] = useState<number | undefined>(defaultAspect);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [displaySize, setDisplaySize] = useState({ w: 0, h: 0 });
@@ -26,17 +41,13 @@ export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect }: Crop
     const natW = img.naturalWidth;
     const natH = img.naturalHeight;
     setImgSize({ w: natW, h: natH });
+    setCrop(makeCrop(natW, natH, defaultAspect));
+  }, [defaultAspect]);
 
-    // Default crop = full image (no forced aspect ratio)
-    const c: Crop = {
-      unit: '%',
-      x: 0,
-      y: 0,
-      width: 100,
-      height: 100,
-    };
-    setCrop(c);
-  }, []);
+  function applyAspect(next: number | undefined) {
+    setAspect(next);
+    setCrop(makeCrop(imgSize.w, imgSize.h, next));
+  }
 
   // Fit image within viewport and track display size
   useEffect(() => {
@@ -92,9 +103,36 @@ export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect }: Crop
 
       {/* Hint */}
       <div className="px-4 pb-1 text-center">
-        <p className="text-xs text-white/50">
-          I-drag ang mga gilid o sulok ng kahon para ayusin ang crop. Free-form — walang fixed na sukat.
+        <p className="text-xs text-white/60">
+          {aspect
+            ? 'Igalaw ang kahon para mapasok ang pangalan o karatula sa loob. Naka-lock na ito sa tamang pahigang sukat.'
+            : 'I-drag ang mga gilid o sulok ng kahon para ayusin ang crop. Libreng sukat ito.'}
         </p>
+      </div>
+
+      {/* Mga preset na sukat */}
+      <div className="flex items-center justify-center gap-2 px-4 pb-2">
+        <button
+          type="button"
+          onClick={() => applyAspect(16 / 9)}
+          className={`rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-95 ${aspect === 16 / 9 ? 'bg-green-600 text-white' : 'bg-white/10 text-white/70'}`}
+        >
+          Pahiga (banner)
+        </button>
+        <button
+          type="button"
+          onClick={() => applyAspect(1)}
+          className={`rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-95 ${aspect === 1 ? 'bg-green-600 text-white' : 'bg-white/10 text-white/70'}`}
+        >
+          Parisukat
+        </button>
+        <button
+          type="button"
+          onClick={() => applyAspect(undefined)}
+          className={`rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-95 ${aspect === undefined ? 'bg-green-600 text-white' : 'bg-white/10 text-white/70'}`}
+        >
+          Libreng sukat
+        </button>
       </div>
 
       {/* Crop area */}
@@ -106,6 +144,7 @@ export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect }: Crop
           <div style={{ width: displaySize.w, height: displaySize.h }} className="relative">
             <ReactCrop
               crop={crop}
+              aspect={aspect}
               onChange={(_, percent) => setCrop(percent)}
               onComplete={(c) => setCompletedCrop(c)}
               minWidth={5}

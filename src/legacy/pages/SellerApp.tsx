@@ -533,15 +533,26 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
           />
           {avatarUploading && <p className="text-xs text-brand-500 mt-1">Nag-a-upload...</p>}
         </div>
-        <ImageUploadField
-          label="Store Banner"
-          value={bannerUrl}
-          onChange={setBannerUrl}
-          folder="banners"
-          aspectClass="h-40"
-          icon={<StoreIcon size={16} />}
-          cropAspect={16 / 9}
-        />
+        <div>
+          <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+            <p className="text-xs font-semibold text-amber-800">Gabay sa Store Banner</p>
+            <ul className="mt-1 space-y-0.5 text-[11px] leading-4 text-amber-700">
+              <li>• Pahiga (landscape) na larawan — pinakamainam ang <strong>1200 × 630 px</strong>.</li>
+              <li>• Ilagay sa gitna ang pangalan o karatula para hindi matabunan ng mga button.</li>
+              <li>• Pagkapili ng larawan, pindutin ang <strong>“Pahiga (banner)”</strong> sa crop screen, igalaw ang kahon hanggang kasya ang buong karatula, tapos <strong>I-upload</strong>.</li>
+            </ul>
+          </div>
+          <ImageUploadField
+            label="Store Banner"
+            value={bannerUrl}
+            onChange={setBannerUrl}
+            folder="banners"
+            aspectClass="h-40"
+            icon={<StoreIcon size={16} />}
+            hint="Pahigang larawan (1200 × 630 px) ang pinakabagay dito."
+            cropAspect={16 / 9}
+          />
+        </div>
         <ImageUploadField
           label="QR Code (para sa GCash payment)"
           value={qrCodeUrl}
@@ -1422,15 +1433,26 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
               </select>
             </div>
           )}
-          <ImageUploadField
-            label="Store Banner"
-            value={bannerUrl}
-            onChange={setBannerUrl}
-            folder="banners"
-            aspectClass="h-40"
-            icon={<StoreIcon size={16} />}
-            cropAspect={16 / 9}
-          />
+          <div>
+            <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+              <p className="text-xs font-semibold text-amber-800">Gabay sa Store Banner</p>
+              <ul className="mt-1 space-y-0.5 text-[11px] leading-4 text-amber-700">
+                <li>• Pahiga (landscape) na larawan — pinakamainam ang <strong>1200 × 630 px</strong>.</li>
+                <li>• Ilagay sa gitna ang pangalan o karatula para hindi matabunan ng mga button.</li>
+                <li>• Pagkapili ng larawan, pindutin ang <strong>“Pahiga (banner)”</strong> sa crop screen, igalaw ang kahon hanggang kasya ang buong karatula, tapos <strong>I-upload</strong>.</li>
+              </ul>
+            </div>
+            <ImageUploadField
+              label="Store Banner"
+              value={bannerUrl}
+              onChange={setBannerUrl}
+              folder="banners"
+              aspectClass="h-40"
+              icon={<StoreIcon size={16} />}
+              hint="Pahigang larawan (1200 × 630 px) ang pinakabagay dito."
+              cropAspect={16 / 9}
+            />
+          </div>
           <ImageUploadField
             label="QR Code (para sa GCash payment)"
             value={qrCodeUrl}
