@@ -1001,17 +1001,27 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
       .eq('product_id', product.id)
       .maybeSingle();
 
-    if (existing) {
-      await supabase.from('cart_items').update({ quantity: Number(existing.quantity) + effectiveQty }).eq('id', existing.id);
-    } else {
-      await supabase.from('cart_items').insert({
-        buyer_id: profile.id,
-        product_id: product.id,
-        store_id: store.id,
-        quantity: effectiveQty,
-      });
-    }
+    const expected = Math.round(((existing ? Number(existing.quantity) : 0) + effectiveQty) * 100) / 100;
+    const res = existing
+      ? await supabase.from('cart_items').update({ quantity: expected }).eq('id', existing.id).select('quantity').single()
+      : await supabase.from('cart_items').insert({
+          buyer_id: profile.id,
+          product_id: product.id,
+          store_id: store.id,
+          quantity: expected,
+        }).select('quantity').single();
     setAdding(false);
+    if (res.error) {
+      alert('Hindi naidagdag sa cart. Pakisubukan ulit.');
+      return;
+    }
+    const saved = Number(res.data?.quantity);
+    if (isKilo && Math.abs(saved - expected) > 0.001) {
+      console.error('[cart] quantity mismatch', { expected, saved });
+      alert(`Paalala: ${expected} kg ang pinili mo pero ${saved} kg ang na-save. Paki-ayos sa Cart gamit ang - / + button.`);
+    } else if (existing && isKilo) {
+      alert(`Nasa cart mo na ito dati, kaya ${expected} kg na ang kabuuan ng ${product.name}.`);
+    }
     onAddToCart();
     onBack();
   }
