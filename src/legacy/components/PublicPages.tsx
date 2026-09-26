@@ -218,9 +218,6 @@ function PublicStorePage({ slug }: { slug: string }) {
           <ArrowLeft size={20} className="pointer-events-none text-gray-800" />
         </a>
 
-        <div className="absolute top-3 right-3 z-20">
-          <ShareButton url={fullUrl} title={store.name} />
-        </div>
       </div>
 
       {/* Store Info */}

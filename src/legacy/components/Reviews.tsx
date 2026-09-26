@@ -88,43 +88,6 @@ export function ReviewForm({
     });
   }
 
-  if (submitted && reviewType === 'seller' && storeSlug) {
-    return (
-      <div className="bg-gradient-to-br from-brand-50 to-amber-50 rounded-2xl border border-brand-200 p-4 mb-3">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center">
-            <Check size={18} className="text-white" />
-          </div>
-          <div>
-            <p className="font-bold text-sm text-gray-800">Salamat sa iyong review!</p>
-            <p className="text-xs text-gray-500">I-share ang magandang experience mo</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl p-3 mb-3 border border-gray-100">
-          <div className="flex items-center gap-2 mb-2">
-            <Star size={14} className="fill-amber-400 text-amber-400" />
-            <span className="text-xs font-medium text-gray-700">{revieweeName}</span>
-          </div>
-          <p className="text-sm text-gray-600 italic">"{comment}"</p>
-        </div>
-
-        <p className="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1.5">
-          <Share2 size={14} /> Kopyahin ang link ng tindahan:
-        </p>
-        <div className="grid grid-cols-1 gap-2">
-          <button
-            onClick={copyLink}
-            className="flex flex-col items-center gap-1 py-3 bg-gray-700 text-white rounded-xl font-semibold text-xs active:scale-95 transition"
-          >
-            {copied ? <Check size={20} /> : <Copy size={20} />}
-            {copied ? 'Nakopya!' : 'Kopyahin'}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <form onSubmit={submit} className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
       <div className="flex items-center justify-between mb-3">

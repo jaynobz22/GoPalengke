@@ -20,6 +20,11 @@ export const Route = createFileRoute("/")({
           "Bumili ng sariwang gulay, isda, karne, at prutas online mula sa palengke. Mabilis na delivery sa iyong bahay.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://gopalengke.net/" },
+      { property: "og:image", content: "https://gopalengke.net/images/gopalengke-share.jpg" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { name: "twitter:image", content: "https://gopalengke.net/images/gopalengke-share.jpg" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [

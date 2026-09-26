@@ -3281,41 +3281,55 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
   );
 }
 
-// ============= SHARE STORE CARD =============
-function ShareStoreCard({ storeName, storeSlug }: { storeName: string; storeSlug: string }) {
+// ============= SHARE GOPALENGKE POPUP =============
+const GOPALENGKE_SITE = 'https://gopalengke.net';
+function ShareGoPalengkePopup({ onClose }: { onClose: () => void }) {
   const [copied, setCopied] = useState(false);
-  const shareUrl = `${window.location.origin}/s/${storeSlug}`;
-  const shareText = `Maganda ang experience ko sa ${storeName} dito sa GoPalengke! Sariwa ang paninda at mabilis ang delivery — diretso sa bahay galing palengke. Suportahan natin ang lokal na tindera at tindero. Subukan mo rin: ${shareUrl}`;
-  const encodedUrl = encodeURIComponent(shareUrl);
-  const encodedText = encodeURIComponent(shareText);
+  const shareText = 'Sariwang gulay, isda, karne at prutas mula sa palengke — diretso sa bahay! Subukan mo ang GoPalengke 🛒';
 
   function copyLink() {
-    navigator.clipboard.writeText(shareUrl).then(() => {
+    navigator.clipboard.writeText(GOPALENGKE_SITE).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
   }
 
   return (
-    <div className="bg-gradient-to-br from-brand-50 to-amber-50 rounded-2xl border border-brand-200 p-4 mb-3">
-      <div className="flex items-center gap-2 mb-2">
-        <Share2 size={18} className="text-brand-600" />
-        <p className="font-bold text-sm text-gray-800">Naging maganda ba ang pamimili mo?</p>
-      </div>
-      <p className="text-xs text-gray-600 mb-3 leading-relaxed">
-        Opsyonal lang ito — pero malaking tulong kay <strong>{storeName}</strong> kung i-share mo sa Facebook o Messenger. Mas maraming makakakita, mas dumadami ang suki ng ating lokal na palengke.
-      </p>
-      <div className="bg-white/70 border border-brand-100 rounded-xl p-3 mb-3">
-        <p className="text-[11px] text-gray-500 italic leading-relaxed">"{shareText}"</p>
-      </div>
-      <div className="grid grid-cols-1 gap-2">
-        <button
-          onClick={copyLink}
-          className="flex flex-col items-center gap-1 py-3 bg-gray-700 text-white rounded-xl font-semibold text-xs active:scale-95 transition"
-        >
-          {copied ? <Check size={20} /> : <Copy size={20} />}
-          {copied ? 'Nakopya!' : 'Kopyahin'}
-        </button>
+    <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/50 p-4 sm:items-center" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <p className="font-bold text-gray-800">Salamat sa iyong review! 💚</p>
+            <p className="mt-1 text-xs leading-relaxed text-gray-500">Tulungan mo kaming palaguin ang lokal na palengke — i-share ang GoPalengke sa pamilya at kaibigan.</p>
+          </div>
+          <button onClick={onClose} aria-label="Isara" className="rounded-full p-1 text-gray-400 hover:bg-gray-100"><X size={18} /></button>
+        </div>
+        <img src="/images/gopalengke-share.jpg" alt="GoPalengke" className="mb-4 aspect-[1200/630] w-full rounded-2xl object-cover" />
+        <div className="grid grid-cols-3 gap-2">
+          <a
+            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(GOPALENGKE_SITE)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex flex-col items-center gap-1 rounded-xl bg-[#1877F2] py-3 text-xs font-semibold text-white active:scale-95 transition"
+          >
+            <Facebook size={20} /> Facebook
+          </a>
+          <button
+            type="button"
+            onClick={() => shareToMessenger(GOPALENGKE_SITE, shareText)}
+            className="flex flex-col items-center gap-1 rounded-xl bg-gradient-to-br from-[#00B2FF] to-[#006AFF] py-3 text-xs font-semibold text-white active:scale-95 transition"
+          >
+            <MessageCircle size={20} /> Messenger
+          </button>
+          <button
+            type="button"
+            onClick={copyLink}
+            className="flex flex-col items-center gap-1 rounded-xl bg-gray-700 py-3 text-xs font-semibold text-white active:scale-95 transition"
+          >
+            {copied ? <Check size={20} /> : <Copy size={20} />}
+            {copied ? 'Nakopya!' : 'Kopyahin'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -3477,6 +3491,18 @@ function ReviewSectionForOrder({
     });
   }, [orderId]);
 
+  const [justReviewed, setJustReviewed] = useState(false);
+  const [showSharePopup, setShowSharePopup] = useState(false);
+  useEffect(() => {
+    if (!justReviewed) return;
+    const seller = existingReviews.some(r => r.review_type === 'seller');
+    const rider = existingReviews.some(r => r.review_type === 'rider');
+    if (seller && (rider || !riderId)) {
+      setShowSharePopup(true);
+      setJustReviewed(false);
+    }
+  }, [justReviewed, existingReviews, riderId]);
+
   if (loading) return null;
 
   const hasSellerReview = existingReviews.some(r => r.review_type === 'seller');
@@ -3496,7 +3522,7 @@ function ReviewSectionForOrder({
           reviewType="seller"
           revieweeName={store.name}
           storeSlug={store.slug}
-          onSubmitted={() => setExistingReviews(prev => [...prev, { review_type: 'seller' }])}
+          onSubmitted={() => { setJustReviewed(true); setExistingReviews(prev => [...prev, { review_type: 'seller' }]); }}
         />
       )}
 
@@ -3507,7 +3533,7 @@ function ReviewSectionForOrder({
           revieweeId={riderId}
           reviewType="rider"
           revieweeName={rider.full_name}
-          onSubmitted={() => setExistingReviews(prev => [...prev, { review_type: 'rider' }])}
+          onSubmitted={() => { setJustReviewed(true); setExistingReviews(prev => [...prev, { review_type: 'rider' }]); }}
         />
       )}
 
@@ -3525,10 +3551,8 @@ function ReviewSectionForOrder({
         </div>
       )}
 
-      {/* Share store after reviewing */}
-      {hasSellerReview && store?.slug && (
-        <ShareStoreCard storeName={store.name} storeSlug={store.slug} />
-      )}
+      {/* Share GoPalengke popup after finishing reviews */}
+      {showSharePopup && <ShareGoPalengkePopup onClose={() => setShowSharePopup(false)} />}
     </div>
   );
 }
