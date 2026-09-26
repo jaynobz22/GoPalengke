@@ -499,9 +499,19 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
             <img src="/images/Copilot_20260907_183703.jpg" alt="GoPalengke" className="w-8 h-8 rounded-lg object-cover" />
             <span className="text-xl font-bold">GoPalengke</span>
           </div>
-          <button onClick={onSignOut} className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition">
-            <LogOut size={18} className="text-white" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onGoToProfile}
+              aria-label="Buksan ang buyer profile"
+              className="h-12 w-12 overflow-hidden rounded-full border-2 border-white bg-white shadow-md active:scale-95 transition"
+            >
+              <Avatar src={profile?.avatar_url} name={profile?.full_name} size={44} />
+            </button>
+            <button onClick={onSignOut} aria-label="Mag-logout" className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition">
+              <LogOut size={18} className="text-white" />
+            </button>
+          </div>
         </div>
         <p className="text-brand-100 text-sm mb-4">
           Hello, {profile?.full_name?.split(' ')[0]}! Ano ang plano mong lutuin ngayon?

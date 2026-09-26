@@ -111,7 +111,7 @@ export function RiderApp() {
           selectedOrder ? (
             <RiderOrderDetail order={selectedOrder} onBack={() => setSelectedOrder(null)} onOpenChat={openChat} />
           ) : (
-            <RiderDeliveries onOrderClick={setSelectedOrder} canAct={canAct} onSignOut={signOut} />
+            <RiderDeliveries onOrderClick={setSelectedOrder} canAct={canAct} onSignOut={signOut} onGoToProfile={() => setTab('profile')} />
           )
         )}
         {tab === 'messages' && (
@@ -189,7 +189,15 @@ function groupOrders(orders: (Order & { store: Store; buyer: { full_name: string
 
 // ============= RIDER REMINDER BANNER =============
 function RiderReminderBanner() {
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(true);
+  useEffect(() => {
+    const key = 'gp_rider_reminder_last_shown';
+    const last = Number(localStorage.getItem(key) || 0);
+    if (Date.now() - last >= 24 * 60 * 60 * 1000) {
+      localStorage.setItem(key, String(Date.now()));
+      setDismissed(false);
+    }
+  }, []);
   if (dismissed) return null;
   return (
     <div className="px-5 pt-3">
@@ -219,7 +227,7 @@ function RiderReminderBanner() {
 }
 
 // ============= DELIVERIES =============
-function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o: Order) => void; canAct: boolean; onSignOut: () => void }) {
+function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { onOrderClick: (o: Order) => void; canAct: boolean; onSignOut: () => void; onGoToProfile: () => void }) {
   const { profile } = useAuth();
   const [availableOrders, setAvailableOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
   const [myOrders, setMyOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
@@ -299,9 +307,19 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut }: { onOrderClick: (o
             <Bike size={24} />
             <span className="text-xl font-bold">GoPalengke Rider</span>
           </div>
-          <button onClick={onSignOut} className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition">
-            <LogOut size={18} className="text-white" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onGoToProfile}
+              aria-label="Buksan ang rider profile"
+              className="h-12 w-12 overflow-hidden rounded-full border-2 border-white bg-white shadow-md active:scale-95 transition"
+            >
+              <Avatar src={profile?.avatar_url} name={profile?.full_name} size={44} className="!bg-blue-100 !text-blue-600" />
+            </button>
+            <button onClick={onSignOut} aria-label="Mag-logout" className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition">
+              <LogOut size={18} className="text-white" />
+            </button>
+          </div>
         </div>
         <p className="text-blue-100 text-sm">Kumusta, {profile?.full_name?.split(' ')[0]}! Handa ka na ba mag-deliver?</p>
       </div>
