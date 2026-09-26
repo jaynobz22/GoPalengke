@@ -948,6 +948,25 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
   const [adding, setAdding] = useState(false);
   const [showReminder, setShowReminder] = useState(false);
   const [reminderData, setReminderData] = useState<{ storeName: string; storeId: string; productId: string; productPrice: number } | null>(null);
+  const [others, setOthers] = useState<Product[]>([]);
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [quickId, setQuickId] = useState<string | null>(null);
+  const [pendingQuick, setPendingQuick] = useState<Product | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from('products')
+      .select('*')
+      .eq('store_id', store.id)
+      .eq('is_available', true)
+      .gt('stock', 0)
+      .neq('id', product.id)
+      .order('created_at', { ascending: false })
+      .limit(10)
+      .then(({ data }) => { if (!cancelled) setOthers((data as Product[]) || []); });
+    return () => { cancelled = true; };
+  }, [store.id, product.id]);
 
   const isKilo = product.unit === 'kilo';
   const effectiveQty = isKilo ? quantity * sizeMultiplier : quantity;
@@ -991,39 +1010,91 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
     await doAddToCart();
   }
 
-  async function doAddToCart() {
-    if (!profile) return;
-    setAdding(true);
+  async function upsertCartItem(p: Product, qty: number, pIsKilo: boolean): Promise<boolean> {
+    if (!profile) return false;
     const { data: existing } = await supabase
       .from('cart_items')
       .select('*')
       .eq('buyer_id', profile.id)
-      .eq('product_id', product.id)
+      .eq('product_id', p.id)
       .maybeSingle();
 
-    const expected = Math.round(((existing ? Number(existing.quantity) : 0) + effectiveQty) * 100) / 100;
+    const expected = Math.round(((existing ? Number(existing.quantity) : 0) + qty) * 100) / 100;
     const res = existing
       ? await supabase.from('cart_items').update({ quantity: expected }).eq('id', existing.id).select('quantity').single()
       : await supabase.from('cart_items').insert({
           buyer_id: profile.id,
-          product_id: product.id,
+          product_id: p.id,
           store_id: store.id,
           quantity: expected,
         }).select('quantity').single();
-    setAdding(false);
     if (res.error) {
       alert('Hindi naidagdag sa cart. Pakisubukan ulit.');
-      return;
+      return false;
     }
     const saved = Number(res.data?.quantity);
-    if (isKilo && Math.abs(saved - expected) > 0.001) {
+    if (pIsKilo && Math.abs(saved - expected) > 0.001) {
       console.error('[cart] quantity mismatch', { expected, saved });
       alert(`Paalala: ${expected} kg ang pinili mo pero ${saved} kg ang na-save. Paki-ayos sa Cart gamit ang - / + button.`);
-    } else if (existing && isKilo) {
-      alert(`Nasa cart mo na ito dati, kaya ${expected} kg na ang kabuuan ng ${product.name}.`);
+    } else if (existing && pIsKilo) {
+      alert(`Nasa cart mo na ito dati, kaya ${expected} kg na ang kabuuan ng ${p.name}.`);
     }
-    onAddToCart();
-    onBack();
+    return true;
+  }
+
+  async function doAddToCart() {
+    if (!profile) return;
+    setAdding(true);
+    const ok = await upsertCartItem(product, effectiveQty, isKilo);
+    setAdding(false);
+    if (ok) {
+      onAddToCart();
+      onBack();
+    }
+  }
+
+  async function addQuickItem(p: Product) {
+    if (!profile) return;
+    setQuickId(p.id);
+
+    const { data: otherItems } = await supabase
+      .from('cart_items')
+      .select('store_id, store:stores(name)')
+      .eq('buyer_id', profile.id)
+      .neq('store_id', store.id);
+
+    if (otherItems && otherItems.length > 0) {
+      const otherStoreId = otherItems[0].store_id;
+      const otherStoreName = (otherItems[0].store as any)?.name || 'ibang tindahan';
+
+      const { data: matchingProduct } = await supabase
+        .from('products')
+        .select('id, name, price')
+        .eq('store_id', otherStoreId)
+        .eq('is_available', true)
+        .ilike('name', p.name)
+        .maybeSingle();
+
+      if (matchingProduct) {
+        setReminderData({
+          storeName: otherStoreName,
+          storeId: otherStoreId,
+          productId: matchingProduct.id,
+          productPrice: matchingProduct.price,
+        });
+        setPendingQuick(p);
+        setShowReminder(true);
+        setQuickId(null);
+        return;
+      }
+    }
+
+    const ok = await upsertCartItem(p, 1, p.unit === 'kilo');
+    setQuickId(null);
+    if (ok) {
+      setAddedIds(prev => new Set(prev).add(p.id));
+      onAddToCart();
+    }
   }
 
   return (
@@ -1132,6 +1203,36 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
         ) : (
           <p className="text-center py-4 text-gray-400 font-medium">Ubos na ang paninda. Balik na lang mamaya!</p>
         )}
+
+        {others.length > 0 && (
+          <div className="mt-8">
+            <h2 className="font-bold text-gray-800">Iba pang paninda ng {store.name}</h2>
+            <p className="text-xs text-gray-400 mt-0.5 mb-3">Isang pindot lang — hindi na kailangang bumalik sa tindahan.</p>
+            <div className="space-y-2">
+              {others.map(p => {
+                const added = addedIds.has(p.id);
+                return (
+                  <div key={p.id} className="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl p-2.5 shadow-sm">
+                    <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
+                      {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-gray-800 truncate">{p.name}</p>
+                      <p className="text-xs text-gray-500">₱{Number(p.price).toFixed(2)} / {p.unit}</p>
+                    </div>
+                    <button
+                      onClick={() => addQuickItem(p)}
+                      disabled={quickId === p.id || added}
+                      className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold active:scale-95 transition flex-shrink-0 ${added ? 'bg-green-100 text-green-700' : 'bg-brand-600 text-white disabled:opacity-60'}`}
+                    >
+                      {added ? 'Naidagdag ✓' : quickId === p.id ? 'Nadadagdag...' : <><Plus size={14} /> Idagdag</>}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {showReminder && reminderData && (
@@ -1142,15 +1243,25 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
                 <Info size={24} className="text-brand-600" />
               </div>
               <div>
-                <h3 className="font-bold text-gray-800 text-lg">May {product.name} din sa {reminderData.storeName}</h3>
+              <h3 className="font-bold text-gray-800 text-lg">May {pendingQuick?.name || product.name} din sa {reminderData.storeName}</h3>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  May cart items ka na mula sa {reminderData.storeName}. Available din doon ang {product.name}{reminderData.productPrice !== product.price ? ` sa ₱${reminderData.productPrice}` : ''}.
+                  May cart items ka na mula sa {reminderData.storeName}. Available din doon ang {pendingQuick?.name || product.name}{reminderData.productPrice !== (pendingQuick?.price ?? product.price) ? ` sa ₱${reminderData.productPrice}` : ''}.
                 </p>
               </div>
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => { setShowReminder(false); doAddToCart(); }}
+                onClick={async () => {
+                  const p = pendingQuick;
+                  setShowReminder(false);
+                  setPendingQuick(null);
+                  if (p) {
+                    const ok = await upsertCartItem(p, 1, p.unit === 'kilo');
+                    if (ok) { setAddedIds(prev => new Set(prev).add(p.id)); onAddToCart(); }
+                  } else {
+                    doAddToCart();
+                  }
+                }}
                 className="flex-1 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 font-semibold active:scale-[0.98] transition"
               >
                 Magpatuloy dito
