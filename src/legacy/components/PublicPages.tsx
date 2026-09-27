@@ -122,12 +122,32 @@ function CopyLink({ url }: { url: string }) {
   );
 }
 
+function StoreRating({ rating, light = false }: { rating: number; light?: boolean }) {
+  const roundedRating = Math.round(rating);
+
+  return (
+    <div className="flex items-center gap-1" aria-label={`${rating.toFixed(1)} sa 5 stars`}>
+      <div className="flex items-center gap-0.5">
+        {[1, 2, 3, 4, 5].map(value => (
+          <Star
+            key={value}
+            size={14}
+            className={value <= roundedRating ? 'fill-amber-400 text-amber-400' : light ? 'fill-white/20 text-white/40' : 'fill-gray-200 text-gray-200'}
+          />
+        ))}
+      </div>
+      <span className={light ? 'text-sm text-white/90' : 'text-sm font-medium text-gray-700'}>{rating.toFixed(1)}</span>
+    </div>
+  );
+}
+
 // ============= PUBLIC STORE PAGE =============
 function PublicStorePage({ slug }: { slug: string }) {
   const { session } = useAuth();
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [seller, setSeller] = useState<{ full_name: string; avatar_url: string | null } | null>(null);
+  const [reviewRating, setReviewRating] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -141,8 +161,16 @@ function PublicStorePage({ slug }: { slug: string }) {
       setStore(s as Store);
       const { data: sellerData } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', (s as Store).seller_id).maybeSingle();
       setSeller(sellerData as any);
-      const { data: prods } = await supabase.from('products').select('*').eq('store_id', s.id).eq('is_available', true).order('created_at', { ascending: false });
+      const [{ data: prods }, { data: storeReviews }] = await Promise.all([
+        supabase.from('products').select('*').eq('store_id', s.id).eq('is_available', true).order('created_at', { ascending: false }),
+        supabase.from('reviews').select('rating').eq('reviewee_id', (s as Store).seller_id).eq('review_type', 'seller'),
+      ]);
       setProducts(prods || []);
+      if (storeReviews?.length) {
+        setReviewRating(storeReviews.reduce((sum, review) => sum + Number(review.rating), 0) / storeReviews.length);
+      } else {
+        setReviewRating(Number((s as Store).rating) || 0);
+      }
       setLoading(false);
     }
     load();
@@ -169,6 +197,7 @@ function PublicStorePage({ slug }: { slug: string }) {
   }
 
   const fullUrl = `${window.location.origin}/s/${store.slug}`;
+  const displayedRating = reviewRating ?? (Number(store.rating) || 0);
   const clearSellerPreviewFlag = () => {
     try { sessionStorage.removeItem('gp_store_preview_from_dashboard'); } catch {}
   };
@@ -194,8 +223,7 @@ function PublicStorePage({ slug }: { slug: string }) {
           <div className="absolute left-0 top-0 z-[1] flex h-full w-[34%] min-w-0 flex-col justify-center px-8 text-white">
             <h2 className="line-clamp-2 font-display text-3xl font-bold lg:text-4xl">{store.name}</h2>
             <div className="mt-2 flex items-center gap-1.5 text-sm text-white/90">
-              <Star size={14} className="shrink-0 fill-amber-400 text-amber-400" />
-              <span>{store.rating}</span>
+              <StoreRating rating={displayedRating} light />
               {store.city && <><span className="text-white/50">·</span><span className="truncate">{store.city}</span></>}
             </div>
             <span className={`mt-2 w-fit rounded-full px-2.5 py-0.5 text-xs font-medium ${store.is_open ? 'bg-white/90 text-green-700' : 'bg-white/90 text-red-600'}`}>
@@ -245,8 +273,7 @@ function PublicStorePage({ slug }: { slug: string }) {
                 </p>
               )}
               <div className="flex items-center gap-1 mt-1">
-                <Star size={14} className="fill-amber-400 text-amber-400" />
-                <span className="text-sm font-medium text-gray-700">{store.rating}</span>
+                <StoreRating rating={displayedRating} />
                 <span className="text-xs text-gray-300">·</span>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${store.is_open ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                   {store.is_open ? 'Store Open' : 'Store Closed'}
