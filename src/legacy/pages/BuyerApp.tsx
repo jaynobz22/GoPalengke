@@ -45,6 +45,7 @@ import { AdminVideoCall } from '../components/AdminVideoCall';
 import { AdminChat } from '../components/AdminChat';
 import { LoginReminderPopup } from '../components/LoginReminderPopup';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { SellerRankBadge } from '../components/SellerRankBadge';
 import { useIncomingAdminCall } from '../lib/useAdminCall';
 import { useAdminConversations } from '../lib/useAdminChat';
 import {
@@ -1289,6 +1290,7 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
   const [loading, setLoading] = useState(true);
   const [sellerAvatar, setSellerAvatar] = useState<string | null>(null);
   const [sellerName, setSellerName] = useState<string>('');
+  const [sellerRank, setSellerRank] = useState<string | null>(store.seller_rank || null);
   const highlightRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1298,6 +1300,8 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
       .then(({ data }) => {
         if (data) { setSellerAvatar(data.avatar_url); setSellerName(data.full_name); }
       });
+    supabase.from('stores').select('*').eq('id', store.id).maybeSingle()
+      .then(({ data }) => { if (data?.seller_rank) setSellerRank(data.seller_rank); });
   }, [store.id]);
 
   useEffect(() => {
@@ -1359,6 +1363,7 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
           </div>
           <div className="min-w-0 pt-1">
             <h1 className="text-xl font-bold text-gray-800 break-words">{store.name}</h1>
+            <div className="mt-1"><SellerRankBadge rankKey={sellerRank} /></div>
             {sellerName && (
               <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5 truncate">
                 <UserRound size={12} className="text-gray-400 flex-shrink-0" />
