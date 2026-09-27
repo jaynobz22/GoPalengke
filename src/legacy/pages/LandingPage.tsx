@@ -545,9 +545,10 @@ function WhySection() {
 // ============= REVIEWS MARQUEE =============
 function ReviewsMarquee() {
   const [reviews, setReviews] = useState<(Review & {
-    reviewer: { full_name: string; avatar_url: string | null };
+    reviewer: { full_name: string; avatar_url: string | null; barangay: string | null; city: string | null };
     reviewee: { full_name: string; avatar_url: string | null } | null;
     store_name?: string | null;
+    store_city?: string | null;
   })[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -555,21 +556,25 @@ function ReviewsMarquee() {
     async function load() {
       const { data } = await supabase
         .from('reviews')
-        .select('*, reviewer:profiles!reviews_reviewer_id_fkey(full_name, avatar_url), reviewee:profiles!reviews_reviewee_id_fkey(full_name, avatar_url)')
+        .select('*, reviewer:profiles!reviews_reviewer_id_fkey(full_name, avatar_url, barangay, city), reviewee:profiles!reviews_reviewee_id_fkey(full_name, avatar_url)')
         .order('created_at', { ascending: false })
         .limit(15);
       const rows = (data || []) as any[];
-      // Map seller reviewees to their store names
+      // Map seller reviewees to their store names + location
       const sellerIds = [...new Set(rows.filter(r => r.review_type === 'seller').map(r => r.reviewee_id))];
-      let storeMap: Record<string, string> = {};
+      let storeMap: Record<string, { name: string; city: string | null }> = {};
       if (sellerIds.length > 0) {
         const { data: stores } = await supabase
           .from('stores')
-          .select('seller_id, name')
+          .select('seller_id, name, city')
           .in('seller_id', sellerIds);
-        storeMap = Object.fromEntries((stores || []).map((s: any) => [s.seller_id, s.name]));
+        storeMap = Object.fromEntries((stores || []).map((s: any) => [s.seller_id, { name: s.name, city: s.city }]));
       }
-      setReviews(rows.map(r => ({ ...r, store_name: storeMap[r.reviewee_id] || null })));
+      setReviews(rows.map(r => ({
+        ...r,
+        store_name: storeMap[r.reviewee_id]?.name || null,
+        store_city: storeMap[r.reviewee_id]?.city || null,
+      })));
       setLoading(false);
     }
     load();
@@ -606,7 +611,7 @@ function ReviewsMarquee() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-gray-800 line-clamp-1">
                     {r.review_type === 'seller'
-                      ? (r.store_name || r.reviewee?.full_name || 'Tindahan')
+                      ? [r.store_name || r.reviewee?.full_name || 'Tindahan', r.store_city].filter(Boolean).join(' ')
                       : (r.reviewee?.full_name || 'Rider')}
                   </p>
                   <div className="flex items-center gap-1">
@@ -623,6 +628,9 @@ function ReviewsMarquee() {
               </div>
               <p className="text-[11px] text-gray-400 line-clamp-1">
                 Review ni {r.reviewer?.full_name || 'Anonymous'}
+                {' '}· Buyer{r.reviewer?.barangay || r.reviewer?.city
+                  ? ` · ${[r.reviewer?.barangay, r.reviewer?.city].filter(Boolean).join(', ')}`
+                  : ''}
               </p>
               <p className="text-sm text-gray-600 line-clamp-3 leading-snug">"{r.comment}"</p>
               <p className="text-[10px] text-gray-300 mt-2">
