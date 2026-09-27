@@ -287,7 +287,20 @@ function PublicStorePage({ slug }: { slug: string }) {
               const productUrl = `${window.location.origin}/s/${store.slug}?p=${encodeURIComponent(p.id)}`;
               const shareText = `${p.name} - ₱${p.price}/${p.unit} at ${store.name} | GoPalengke`;
               return (
-              <div key={p.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+              <div
+                key={p.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  if (!session) {
+                    alert('Mag-sign up muna para makabili sa GoPalengke 🛒');
+                    window.location.href = '/?signup';
+                  } else {
+                    window.location.href = '/';
+                  }
+                }}
+                className="bg-white rounded-2xl border border-gray-100 overflow-hidden cursor-pointer active:scale-[0.98] transition hover:shadow-md"
+              >
                 <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                   {p.image_url ? (
                     <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
@@ -317,7 +330,7 @@ function PublicStorePage({ slug }: { slug: string }) {
             <p className="text-white font-bold">Gusto mo bang umorder dito?</p>
             <p className="text-brand-100 text-sm mt-1">Mag-sign up para makapag-order sa {store.name}!</p>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => { window.location.href = '/?signup'; }}
               className="mt-3 px-6 py-3 bg-white text-brand-700 rounded-xl font-bold active:scale-95 transition"
             >
               Mag-sign Up
@@ -530,7 +543,7 @@ function PublicUserPage({ slug }: { slug: string }) {
             <p className="text-white font-bold">Sali na ang GoPalengke!</p>
             <p className="text-brand-100 text-sm mt-1">Mag-sign up para makapag-order o magtinda.</p>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => { window.location.href = '/?signup'; }}
               className="mt-3 px-6 py-3 bg-white text-brand-700 rounded-xl font-bold active:scale-95 transition"
             >
               Mag-sign Up
