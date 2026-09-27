@@ -167,7 +167,7 @@ function PublicStorePage({ slug }: { slug: string }) {
       ]);
       setProducts(prods || []);
       if (storeReviews?.length) {
-        setReviewRating(storeReviews.reduce((sum, review) => sum + Number(review.rating), 0) / storeReviews.length);
+        setReviewRating(Math.max(...storeReviews.map(review => Number(review.rating) || 0)));
       } else {
         setReviewRating(Number((s as Store).rating) || 0);
       }
