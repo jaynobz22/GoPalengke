@@ -536,7 +536,11 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
   useEffect(() => { load(); }, [load]);
 
   async function toggleApproved(user: Profile) {
-    await supabase.from('profiles').update({ is_approved: !user.is_approved }).eq('id', user.id);
+    const next = !user.is_approved;
+    await supabase.from('profiles').update({ is_approved: next }).eq('id', user.id);
+    if (user.role === 'seller') {
+      await supabase.from('stores').update({ is_verified: next }).eq('seller_id', user.id);
+    }
     load();
   }
 
