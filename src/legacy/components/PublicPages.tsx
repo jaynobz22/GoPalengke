@@ -134,6 +134,10 @@ function PublicStorePage({ slug }: { slug: string }) {
     async function load() {
       const { data: s } = await supabase.from('stores').select('*').eq('slug', slug).maybeSingle();
       if (!s) { setLoading(false); return; }
+      if (!(s as Store).is_verified) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id !== (s as Store).seller_id) { setLoading(false); return; }
+      }
       setStore(s as Store);
       const { data: sellerData } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', (s as Store).seller_id).maybeSingle();
       setSeller(sellerData as any);
