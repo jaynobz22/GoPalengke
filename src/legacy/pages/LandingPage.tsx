@@ -557,7 +557,7 @@ function ReviewsMarquee() {
     async function load() {
       const { data } = await supabase
         .from('reviews')
-        .select('*, reviewer:profiles!reviews_reviewer_id_fkey(full_name, avatar_url, barangay, city, slug), reviewee:profiles!reviews_reviewee_id_fkey(full_name, avatar_url, slug)')
+        .select('*, reviewer:profiles!reviews_reviewer_id_fkey(full_name, avatar_url, barangay, city, slug), reviewee:profiles!reviews_reviewee_id_fkey(full_name, avatar_url, barangay, city, slug)')
         .order('created_at', { ascending: false })
         .limit(15);
       const rows = (data || []) as any[];
@@ -600,9 +600,10 @@ function ReviewsMarquee() {
           {items.map((r, i) => (
             <div
               key={`${r.id}-${i}`}
-              className="flex-shrink-0 w-72 md:w-80 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition"
+              className="flex-shrink-0 w-72 md:w-80 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 hover:shadow-md transition flex flex-col"
             >
-              <div className="flex items-center gap-2.5 mb-2">
+              {/* Nirereview: tindahan o rider (itaas) */}
+              <div className="flex items-center gap-2.5 mb-2.5">
                 {(() => {
                   const href = r.review_type === 'seller'
                     ? (r.store_slug ? `/s/${r.store_slug}` : null)
@@ -618,12 +619,17 @@ function ReviewsMarquee() {
                   ) : <div className={cls}>{inner}</div>;
                 })()}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-800 line-clamp-1">
+                  <p className="text-xs font-medium text-gray-500 line-clamp-1">
                     {r.review_type === 'seller'
-                      ? [r.store_name || r.reviewee?.full_name || 'Tindahan', r.store_city].filter(Boolean).join(' ')
+                      ? (r.store_name || r.reviewee?.full_name || 'Tindahan')
                       : (r.reviewee?.full_name || 'Rider')}
                   </p>
-                  <div className="flex items-center gap-1">
+                  <p className="text-[10px] text-gray-400 line-clamp-1">
+                    {r.review_type === 'seller'
+                      ? [r.store_city, 'Tindahan'].filter(Boolean).join(' · ')
+                      : [r.reviewee?.barangay || r.reviewee?.city, 'Rider'].filter(Boolean).join(' · ')}
+                  </p>
+                  <div className="flex items-center gap-0.5 mt-0.5">
                     {[1, 2, 3, 4, 5].map(n => (
                       <Star key={n} size={11} className={n <= r.rating ? 'fill-amber-400 text-amber-400' : 'fill-gray-200 text-gray-200'} />
                     ))}
@@ -635,29 +641,36 @@ function ReviewsMarquee() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 mb-1">
+              {/* Review message (gitna, naka-highlight) */}
+              <p className="text-sm font-bold text-gray-900 line-clamp-3 leading-snug">"{r.comment}"</p>
+              {/* Nag-review: buyer (baba, may profile pic) */}
+              <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-gray-100">
                 {(() => {
                   const inner = r.reviewer?.avatar_url ? (
                     <img src={r.reviewer.avatar_url} alt={r.reviewer?.full_name || ''} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-[9px] font-bold text-gray-500">{r.reviewer?.full_name?.[0]?.toUpperCase() || '?'}</span>
+                    <span className="text-[10px] font-bold text-gray-500">{r.reviewer?.full_name?.[0]?.toUpperCase() || '?'}</span>
                   );
-                  const cls = "w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0";
+                  const cls = "w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0";
                   return r.reviewer?.slug
-                    ? <a href={`/u/${r.reviewer.slug}`} title="Tingnan ang profile" className={cls}>{inner}</a>
+                    ? <a href={`/u/${r.reviewer.slug}`} title="Tingnan ang profile" className={cls + " ring-2 ring-transparent hover:ring-brand-400 active:scale-95 transition"}>{inner}</a>
                     : <div className={cls}>{inner}</div>;
                 })()}
-              <p className="text-[11px] text-gray-400 line-clamp-1">
-                Review ni {r.reviewer?.full_name || 'Anonymous'}
-                {' '}· Buyer{r.reviewer?.barangay || r.reviewer?.city
-                  ? ` · ${[r.reviewer?.barangay, r.reviewer?.city].filter(Boolean).join(', ')}`
-                  : ''}
-              </p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] text-gray-600 line-clamp-1">
+                    <span className="font-medium">Review ni {r.reviewer?.full_name || 'Anonymous'}</span>
+                    {' '}· Buyer
+                  </p>
+                  {(r.reviewer?.barangay || r.reviewer?.city) && (
+                    <p className="text-[10px] text-gray-400 line-clamp-1">
+                      {[r.reviewer?.barangay, r.reviewer?.city].filter(Boolean).join(', ')}
+                    </p>
+                  )}
+                </div>
+                <p className="text-[10px] text-gray-300 flex-shrink-0">
+                  {new Date(r.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </p>
               </div>
-              <p className="text-sm text-gray-600 line-clamp-3 leading-snug">"{r.comment}"</p>
-              <p className="text-[10px] text-gray-300 mt-2">
-                {new Date(r.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </p>
             </div>
           ))}
         </div>
