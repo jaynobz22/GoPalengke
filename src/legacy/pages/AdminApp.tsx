@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall, AdminConversation, Store, VideoCreditPurchase, RiderFee, RiderFeePayment } from '../lib/types';
@@ -45,13 +45,36 @@ export function AdminApp() {
     if (!error) setPendingCreditCount(count ?? 0);
   }, []);
 
+  const prevPendingUsersRef = useRef<number | null>(null);
   const loadPendingUserCount = useCallback(async () => {
     const { count, error } = await supabase
       .from('profiles')
       .select('id', { count: 'exact', head: true })
       .eq('is_approved', false);
-    if (!error) setPendingUserCount(count ?? 0);
+    if (error) return;
+    const c = count ?? 0;
+    const prev = prevPendingUsersRef.current;
+    prevPendingUsersRef.current = c;
+    setPendingUserCount(c);
+    if (prev !== null && c > prev) {
+      try {
+        const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+        const ctx = new Ctx(); const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.frequency.value = 880; o.connect(g); g.connect(ctx.destination); g.gain.value = 0.2;
+        o.start(); o.stop(ctx.currentTime + 0.4);
+      } catch { /* ignore */ }
+      const msg = 'May bagong account na naghihintay ng approval (Users > Pending).';
+      try {
+        if ('Notification' in window && Notification.permission === 'granted') new Notification('GoPalengke Admin', { body: msg });
+      } catch { /* ignore */ }
+      alert('🔔 ' + msg);
+    }
   }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => loadPendingUserCount(), 15000);
+    return () => clearInterval(t);
+  }, [loadPendingUserCount]);
 
   const loadPendingFeeCount = useCallback(async () => {
     const { count, error } = await supabase

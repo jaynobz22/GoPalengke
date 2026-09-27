@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       region: location.region || null,
       email_verified: false,
       phone_verified: true,
-      is_approved: role !== 'admin',
+      is_approved: role === 'buyer',
       vehicle_type: role === 'rider' ? (vehicleType || 'motorcycle') : null,
     });
 
