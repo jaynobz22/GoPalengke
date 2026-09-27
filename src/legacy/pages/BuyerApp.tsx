@@ -1637,6 +1637,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
     province: profile?.province == null ? '' : String(profile.province),
   });
   const [addressDetails, setAddressDetails] = useState(profile?.complete_address == null ? '' : String(profile.complete_address));
+  const [editLocation, setEditLocation] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'qr_code' | 'cod'>('qr_code');
   const [note, setNote] = useState('');
   const [deliveryPin, setDeliveryPin] = useState<Coords | null>(null);
@@ -2001,20 +2002,39 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
           <MapPin size={18} className="text-brand-600" />
           <h3 className="font-semibold text-gray-800">Delivery Address</h3>
         </div>
-        <LocationSelector
-          value={deliveryLocation}
-          onChange={setDeliveryLocation}
-          compact
-        />
+        {!editLocation && deliveryLocation.city && deliveryLocation.barangay ? (
+          <div className="flex items-start justify-between gap-3 bg-brand-50 rounded-xl px-3 py-2.5">
+            <div className="text-sm text-gray-700">
+              <p className="font-medium">Brgy. {deliveryLocation.barangay}</p>
+              <p className="text-xs text-gray-500">{deliveryLocation.city}</p>
+            </div>
+            <button type="button" onClick={() => setEditLocation(true)} className="text-xs font-semibold text-brand-600 hover:underline shrink-0">
+              Palitan
+            </button>
+          </div>
+        ) : (
+          <LocationSelector
+            value={deliveryLocation}
+            onChange={setDeliveryLocation}
+            compact
+          />
+        )}
         <div className="mt-3">
-          <label className="text-xs font-medium text-gray-500 mb-1 block">Eksaktong Detalye (House/Block/Phase)</label>
+          <label className="text-xs font-medium text-gray-500 mb-1 block">Eksaktong Address (House/Block/Street)</label>
           <input
             type="text"
             value={addressDetails}
             onChange={(e) => setAddressDetails(e.target.value)}
+            onBlur={() => {
+              const v = addressDetails.trim();
+              if (profile?.id && v && v !== (profile.complete_address || '')) {
+                supabase.from('profiles').update({ complete_address: v }).eq('id', profile.id).then(() => {});
+              }
+            }}
             placeholder="Hal. Blk 3 Lot 12, Phase 2, Subdivision"
             className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition text-sm"
           />
+          <p className="text-[11px] text-gray-400 mt-1">Mase-save ito para sa susunod mong order.</p>
         </div>
 
         {/* Auto GPS status */}
