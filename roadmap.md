@@ -37,3 +37,10 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 - [x] Preserve the natural proportions of profile, valid ID, OR/CR, and QR images
 - [x] Verify responsive image sizing and build
 - [x] Push rider profile image fix to GitHub
+
+## Current: Seller milestones
+- [x] Define seven unique Palengke-themed seller ranks based on completed sales
+- [x] Add rank badges to seller, buyer, and public store views
+- [x] Add seller-only sales progress toward the next rank
+- [ ] Apply the secure public rank field and automatic database update
+- [ ] Verify rank thresholds on phone and laptop, then push to GitHub
