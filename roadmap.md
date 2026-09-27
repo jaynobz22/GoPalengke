@@ -42,5 +42,5 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 - [x] Define seven unique Palengke-themed seller ranks based on completed sales
 - [x] Add rank badges to seller, buyer, and public store views
 - [x] Add seller-only sales progress toward the next rank
-- [ ] Apply the secure public rank field and automatic database update
-- [ ] Verify rank thresholds on phone and laptop, then push to GitHub
+- [ ] Apply `database/seller-ranks.sql` to the existing GoPalengke database (blocked: this workspace has no privileged access to that external database)
+- [x] Verify rank thresholds on phone and laptop, then push to GitHub
