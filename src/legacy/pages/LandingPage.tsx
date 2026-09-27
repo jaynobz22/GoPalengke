@@ -544,17 +544,32 @@ function WhySection() {
 
 // ============= REVIEWS MARQUEE =============
 function ReviewsMarquee() {
-  const [reviews, setReviews] = useState<(Review & { reviewer: { full_name: string; avatar_url: string | null } })[]>([]);
+  const [reviews, setReviews] = useState<(Review & {
+    reviewer: { full_name: string; avatar_url: string | null };
+    reviewee: { full_name: string; avatar_url: string | null } | null;
+    store_name?: string | null;
+  })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       const { data } = await supabase
         .from('reviews')
-        .select('*, reviewer:profiles!reviews_reviewer_id_fkey(full_name, avatar_url)')
+        .select('*, reviewer:profiles!reviews_reviewer_id_fkey(full_name, avatar_url), reviewee:profiles!reviews_reviewee_id_fkey(full_name, avatar_url)')
         .order('created_at', { ascending: false })
         .limit(15);
-      setReviews((data || []) as any);
+      const rows = (data || []) as any[];
+      // Map seller reviewees to their store names
+      const sellerIds = [...new Set(rows.filter(r => r.review_type === 'seller').map(r => r.reviewee_id))];
+      let storeMap: Record<string, string> = {};
+      if (sellerIds.length > 0) {
+        const { data: stores } = await supabase
+          .from('stores')
+          .select('seller_id, name')
+          .in('seller_id', sellerIds);
+        storeMap = Object.fromEntries((stores || []).map((s: any) => [s.seller_id, s.name]));
+      }
+      setReviews(rows.map(r => ({ ...r, store_name: storeMap[r.reviewee_id] || null })));
       setLoading(false);
     }
     load();
@@ -582,24 +597,33 @@ function ReviewsMarquee() {
             >
               <div className="flex items-center gap-2.5 mb-2">
                 <div className="w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {r.reviewer?.avatar_url ? (
-                    <img src={r.reviewer.avatar_url} alt={r.reviewer.full_name} className="w-full h-full object-cover" />
+                  {r.reviewee?.avatar_url ? (
+                    <img src={r.reviewee.avatar_url} alt={r.reviewee?.full_name || ''} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-sm font-bold text-brand-600">{r.reviewer?.full_name?.[0]?.toUpperCase() || '?'}</span>
+                    <span className="text-sm font-bold text-brand-600">{r.reviewee?.full_name?.[0]?.toUpperCase() || '?'}</span>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-800 line-clamp-1">{r.reviewer?.full_name || 'Anonymous'}</p>
+                  <p className="text-sm font-semibold text-gray-800 line-clamp-1">
+                    {r.review_type === 'seller'
+                      ? (r.store_name || r.reviewee?.full_name || 'Tindahan')
+                      : (r.reviewee?.full_name || 'Rider')}
+                  </p>
                   <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map(n => (
                       <Star key={n} size={11} className={n <= r.rating ? 'fill-amber-400 text-amber-400' : 'fill-gray-200 text-gray-200'} />
                     ))}
-                    <span className="text-[10px] text-gray-400 ml-1">
+                    <span className={`text-[10px] ml-1 px-1.5 py-0.5 rounded-full font-medium ${
+                      r.review_type === 'seller' ? 'bg-brand-50 text-brand-600' : 'bg-blue-50 text-blue-600'
+                    }`}>
                       {r.review_type === 'seller' ? 'Tindahan' : 'Rider'}
                     </span>
                   </div>
                 </div>
               </div>
+              <p className="text-[11px] text-gray-400 line-clamp-1">
+                Review ni {r.reviewer?.full_name || 'Anonymous'}
+              </p>
               <p className="text-sm text-gray-600 line-clamp-3 leading-snug">"{r.comment}"</p>
               <p className="text-[10px] text-gray-300 mt-2">
                 {new Date(r.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
