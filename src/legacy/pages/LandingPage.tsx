@@ -607,9 +607,8 @@ function ReviewsMarquee() {
               {/* Nirereview: tindahan o rider (itaas) */}
               <div className="flex items-center gap-2.5 mb-2.5">
                 {(() => {
-                  const href = r.review_type === 'seller'
-                    ? (r.store_slug ? `/s/${r.store_slug}` : null)
-                    : (r.reviewee?.slug ? `/u/${r.reviewee.slug}` : null);
+                  // Seller lang ang naka-link (para makita ang paninda); rider = private
+                  const href = r.review_type === 'seller' ? (r.store_slug ? `/s/${r.store_slug}` : null) : null;
                   const inner = r.reviewee?.avatar_url ? (
                     <img src={r.reviewee.avatar_url} alt={r.reviewee?.full_name || ''} className="w-full h-full object-cover" />
                   ) : (
@@ -617,7 +616,7 @@ function ReviewsMarquee() {
                   );
                   const cls = "w-9 h-9 rounded-full bg-brand-100 flex items-center justify-center overflow-hidden flex-shrink-0";
                   return href ? (
-                    <a href={href} title={r.review_type === 'seller' ? 'Tingnan ang tindahan' : 'Tingnan ang profile ng rider'} className={cls + " ring-2 ring-transparent hover:ring-brand-400 active:scale-95 transition"}>{inner}</a>
+                    <a href={href} title="Tingnan ang tindahan" className={cls + " ring-2 ring-transparent hover:ring-brand-400 active:scale-95 transition"}>{inner}</a>
                   ) : <div className={cls}>{inner}</div>;
                 })()}
                 <div className="min-w-0 flex-1">
@@ -648,15 +647,14 @@ function ReviewsMarquee() {
               {/* Nag-review: buyer (baba, may profile pic) */}
               <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-gray-100">
                 {(() => {
+                  // Buyer avatar = hindi naka-link (private ang profile)
                   const inner = r.reviewer?.avatar_url ? (
                     <img src={r.reviewer.avatar_url} alt={r.reviewer?.full_name || ''} className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-[10px] font-bold text-gray-500">{r.reviewer?.full_name?.[0]?.toUpperCase() || '?'}</span>
                   );
                   const cls = "w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0";
-                  return r.reviewer?.slug
-                    ? <a href={`/u/${r.reviewer.slug}`} title="Tingnan ang profile" className={cls + " ring-2 ring-transparent hover:ring-brand-400 active:scale-95 transition"}>{inner}</a>
-                    : <div className={cls}>{inner}</div>;
+                  return <div className={cls}>{inner}</div>;
                 })()}
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] text-gray-600 line-clamp-1">
