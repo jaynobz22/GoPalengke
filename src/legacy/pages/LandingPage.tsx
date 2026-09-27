@@ -550,6 +550,7 @@ function ReviewsMarquee() {
     store_slug?: string | null;
     store_name?: string | null;
     store_city?: string | null;
+    store_palengke?: string | null;
   })[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -563,19 +564,20 @@ function ReviewsMarquee() {
       const rows = (data || []) as any[];
       // Map seller reviewees to their store names + location
       const sellerIds = [...new Set(rows.filter(r => r.review_type === 'seller').map(r => r.reviewee_id))];
-      let storeMap: Record<string, { name: string; city: string | null; slug: string | null }> = {};
+      let storeMap: Record<string, { name: string; city: string | null; slug: string | null; palengke_name: string | null }> = {};
       if (sellerIds.length > 0) {
         const { data: stores } = await supabase
           .from('stores')
-          .select('seller_id, name, city, slug')
+          .select('seller_id, name, city, slug, palengke_name')
           .in('seller_id', sellerIds);
-        storeMap = Object.fromEntries((stores || []).map((s: any) => [s.seller_id, { name: s.name, city: s.city, slug: s.slug }]));
+        storeMap = Object.fromEntries((stores || []).map((s: any) => [s.seller_id, { name: s.name, city: s.city, slug: s.slug, palengke_name: s.palengke_name }]));
       }
       setReviews(rows.map(r => ({
         ...r,
         store_name: storeMap[r.reviewee_id]?.name || null,
         store_city: storeMap[r.reviewee_id]?.city || null,
         store_slug: storeMap[r.reviewee_id]?.slug || null,
+        store_palengke: storeMap[r.reviewee_id]?.palengke_name || null,
       })));
       setLoading(false);
     }
@@ -626,7 +628,7 @@ function ReviewsMarquee() {
                   </p>
                   <p className="text-[10px] text-gray-400 line-clamp-1">
                     {r.review_type === 'seller'
-                      ? [r.store_city, 'Tindahan'].filter(Boolean).join(' · ')
+                      ? [[r.store_palengke, r.store_city].filter(Boolean).join(', '), 'Tindahan'].filter(Boolean).join(' · ')
                       : [r.reviewee?.barangay || r.reviewee?.city, 'Rider'].filter(Boolean).join(' · ')}
                   </p>
                   <div className="flex items-center gap-0.5 mt-0.5">
