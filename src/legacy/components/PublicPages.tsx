@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { navigate, useRoute } from '../lib/router';
 import type { Store, Product, Profile } from '../lib/types';
+import { SellerRankBadge } from './SellerRankBadge';
 import {
   MapPin, Star, ShoppingBag, Bike, Store as StoreIcon, ArrowLeft,
   Phone, Clock, Package, TrendingUp, Share2, Copy, Check, User,
@@ -267,6 +268,7 @@ function PublicStorePage({ slug }: { slug: string }) {
             </div>
             <div className="flex-1 min-w-0">
               <h1 className="text-lg font-bold text-gray-800">{store.name}</h1>
+              <div className="mt-1"><SellerRankBadge rankKey={store.seller_rank} /></div>
               {store.palengke_name && (
                 <p className="text-sm text-brand-600 flex items-center gap-1 mt-0.5">
                   <MapPin size={12} /> {store.palengke_name}
