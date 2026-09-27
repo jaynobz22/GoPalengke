@@ -24,6 +24,7 @@ import { AdminVideoCall } from '../components/AdminVideoCall';
 import { AdminChat } from '../components/AdminChat';
 import { LoginReminderPopup } from '../components/LoginReminderPopup';
 import { VideoCreditStore } from '../components/VideoCreditStore';
+import { SellerRankBadge, SellerRankProgress } from '../components/SellerRankBadge';
 import { useIncomingAdminCall } from '../lib/useAdminCall';
 import { useAdminConversations } from '../lib/useAdminChat';
 import { shareToMessenger } from '../lib/messengerShare';
@@ -591,6 +592,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
   const [recentOrders, setRecentOrders] = useState<(Order & { buyer: { full_name: string } })[]>([]);
   const [isOpen, setIsOpen] = useState(store.is_open);
   const [toggling, setToggling] = useState(false);
+  const [totalSales, setTotalSales] = useState(0);
 
   async function toggleStoreOpen() {
     setToggling(true);
@@ -602,10 +604,11 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
 
   useEffect(() => {
     async function load() {
-      const [{ data: orders }, { data: products }, { count }] = await Promise.all([
+      const [{ data: orders }, { data: products }, { count }, { data: fee }] = await Promise.all([
         supabase.from('orders').select('*, buyer:profiles!orders_buyer_id_fkey(full_name)').eq('store_id', store.id).order('created_at', { ascending: false }).limit(5),
         supabase.from('products').select('*').eq('store_id', store.id),
         supabase.from('orders').select('*', { count: 'exact', head: true }).eq('store_id', store.id),
+        supabase.from('seller_fees').select('total_sales').eq('seller_id', store.seller_id).maybeSingle(),
       ]);
 
       const allOrders = (orders || []) as any;
@@ -627,6 +630,8 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
         paidOrders: paidCount || 0,
       });
       setRecentOrders(allOrders);
+      const completedSales = Number(fee?.total_sales) || 0;
+      setTotalSales(completedSales);
     }
     load();
     return watchOrders('seller-dashboard-orders', `store_id=eq.${store.id}`, () => load());
@@ -699,6 +704,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
           </div>
           <div className="min-w-0 flex-1 pt-1">
             <h1 className="break-words text-xl font-bold text-gray-800">{store.name}</h1>
+            <div className="mt-1"><SellerRankBadge totalSales={totalSales} /></div>
             {profile?.full_name && (
               <p className="mt-0.5 flex items-center gap-1 truncate text-sm text-gray-500">
                 <Users size={12} className="shrink-0 text-gray-400" />
@@ -746,6 +752,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
           </button>
         </div>
       </div>
+      <SellerRankProgress totalSales={totalSales} />
       {/* Payment Received Alert Banner */}
       {stats.paidOrders > 0 && (
         <div className="px-5 pt-4">
