@@ -2,13 +2,13 @@
 import { Award, Crown, Flame, Sparkles, Sprout, Star, Store } from 'lucide-react';
 
 export const SELLER_RANKS = [
-  { key: 'bagong_sibol', name: 'Bagong Sibol', minimum: 0, icon: Sprout, badgeClass: 'border-emerald-200 bg-emerald-50 text-emerald-700', barClass: 'bg-emerald-500' },
-  { key: 'suki_magnet', name: 'Suki Magnet', minimum: 25_000, icon: Sparkles, badgeClass: 'border-sky-200 bg-sky-50 text-sky-700', barClass: 'bg-sky-500' },
-  { key: 'palengke_paborito', name: 'Palengke Paborito', minimum: 100_000, icon: Star, badgeClass: 'border-amber-200 bg-amber-50 text-amber-700', barClass: 'bg-amber-500' },
-  { key: 'hari_ng_pwesto', name: 'Hari ng Pwesto', minimum: 300_000, icon: Crown, badgeClass: 'border-orange-200 bg-orange-50 text-orange-700', barClass: 'bg-orange-500' },
-  { key: 'bantog_na_tindero', name: 'Bantog na Tindero', minimum: 750_000, icon: Award, badgeClass: 'border-rose-200 bg-rose-50 text-rose-700', barClass: 'bg-rose-500' },
-  { key: 'alamat_ng_palengke', name: 'Alamat ng Palengke', minimum: 1_500_000, icon: Flame, badgeClass: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700', barClass: 'bg-fuchsia-500' },
-  { key: 'pambansang_suking_bayan', name: 'Pambansang Suking-Bayan', minimum: 3_000_000, icon: Store, badgeClass: 'border-teal-200 bg-teal-50 text-teal-700', barClass: 'bg-teal-600' },
+  { key: 'rising_merchant', name: 'Rising Merchant', minimum: 0, icon: Sprout, badgeClass: 'border-emerald-200 bg-emerald-50 text-emerald-700', barClass: 'bg-emerald-500' },
+  { key: 'customer_favorite', name: 'Customer Favorite', minimum: 25_000, icon: Sparkles, badgeClass: 'border-sky-200 bg-sky-50 text-sky-700', barClass: 'bg-sky-500' },
+  { key: 'market_star', name: 'Market Star', minimum: 100_000, icon: Star, badgeClass: 'border-amber-200 bg-amber-50 text-amber-700', barClass: 'bg-amber-500' },
+  { key: 'market_champion', name: 'Market Champion', minimum: 300_000, icon: Crown, badgeClass: 'border-orange-200 bg-orange-50 text-orange-700', barClass: 'bg-orange-500' },
+  { key: 'elite_merchant', name: 'Elite Merchant', minimum: 750_000, icon: Award, badgeClass: 'border-rose-200 bg-rose-50 text-rose-700', barClass: 'bg-rose-500' },
+  { key: 'market_legend', name: 'Market Legend', minimum: 1_500_000, icon: Flame, badgeClass: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700', barClass: 'bg-fuchsia-500' },
+  { key: 'grand_market_icon', name: 'Grand Market Icon', minimum: 3_000_000, icon: Store, badgeClass: 'border-teal-200 bg-teal-50 text-teal-700', barClass: 'bg-teal-600' },
 ] as const;
 
 export type SellerRankKey = typeof SELLER_RANKS[number]['key'];
