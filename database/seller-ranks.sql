@@ -2,21 +2,36 @@
 -- Public pages receive only seller_rank; seller_fees.total_sales remains private.
 
 ALTER TABLE public.stores
-  ADD COLUMN IF NOT EXISTS seller_rank text NOT NULL DEFAULT 'bagong_sibol';
+  ADD COLUMN IF NOT EXISTS seller_rank text NOT NULL DEFAULT 'rising_merchant';
+
+ALTER TABLE public.stores
+  ALTER COLUMN seller_rank SET DEFAULT 'rising_merchant';
 
 ALTER TABLE public.stores
   DROP CONSTRAINT IF EXISTS stores_seller_rank_check;
 
+UPDATE public.stores
+SET seller_rank = CASE seller_rank
+  WHEN 'bagong_sibol' THEN 'rising_merchant'
+  WHEN 'suki_magnet' THEN 'customer_favorite'
+  WHEN 'palengke_paborito' THEN 'market_star'
+  WHEN 'hari_ng_pwesto' THEN 'market_champion'
+  WHEN 'bantog_na_tindero' THEN 'elite_merchant'
+  WHEN 'alamat_ng_palengke' THEN 'market_legend'
+  WHEN 'pambansang_suking_bayan' THEN 'grand_market_icon'
+  ELSE seller_rank
+END;
+
 ALTER TABLE public.stores
   ADD CONSTRAINT stores_seller_rank_check CHECK (
     seller_rank IN (
-      'bagong_sibol',
-      'suki_magnet',
-      'palengke_paborito',
-      'hari_ng_pwesto',
-      'bantog_na_tindero',
-      'alamat_ng_palengke',
-      'pambansang_suking_bayan'
+      'rising_merchant',
+      'customer_favorite',
+      'market_star',
+      'market_champion',
+      'elite_merchant',
+      'market_legend',
+      'grand_market_icon'
     )
   );
 
@@ -27,13 +42,13 @@ IMMUTABLE
 SET search_path = public
 AS $$
   SELECT CASE
-    WHEN COALESCE(_total_sales, 0) >= 3000000 THEN 'pambansang_suking_bayan'
-    WHEN COALESCE(_total_sales, 0) >= 1500000 THEN 'alamat_ng_palengke'
-    WHEN COALESCE(_total_sales, 0) >= 750000 THEN 'bantog_na_tindero'
-    WHEN COALESCE(_total_sales, 0) >= 300000 THEN 'hari_ng_pwesto'
-    WHEN COALESCE(_total_sales, 0) >= 100000 THEN 'palengke_paborito'
-    WHEN COALESCE(_total_sales, 0) >= 25000 THEN 'suki_magnet'
-    ELSE 'bagong_sibol'
+    WHEN COALESCE(_total_sales, 0) >= 3000000 THEN 'grand_market_icon'
+    WHEN COALESCE(_total_sales, 0) >= 1500000 THEN 'market_legend'
+    WHEN COALESCE(_total_sales, 0) >= 750000 THEN 'elite_merchant'
+    WHEN COALESCE(_total_sales, 0) >= 300000 THEN 'market_champion'
+    WHEN COALESCE(_total_sales, 0) >= 100000 THEN 'market_star'
+    WHEN COALESCE(_total_sales, 0) >= 25000 THEN 'customer_favorite'
+    ELSE 'rising_merchant'
   END
 $$;
 
