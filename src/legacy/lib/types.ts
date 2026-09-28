@@ -78,7 +78,7 @@ export interface Store {
   slug: string | null;
   created_at: string;
   updated_at: string;
-  seller_rank?: 'bagong_sibol' | 'suki_magnet' | 'palengke_paborito' | 'hari_ng_pwesto' | 'bantog_na_tindero' | 'alamat_ng_palengke' | 'pambansang_suking_bayan';
+  seller_rank?: 'rising_merchant' | 'customer_favorite' | 'market_star' | 'market_champion' | 'elite_merchant' | 'market_legend' | 'grand_market_icon';
 }
 
 export interface Product {
