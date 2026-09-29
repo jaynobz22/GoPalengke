@@ -329,7 +329,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [locationFilter, setLocationFilter] = useState({ city: '', region: '', barangay: '', palengke: '' });
+  const [locationFilter, setLocationFilter] = useState({ city: '', region: '', province: '', barangay: '', palengke: '' });
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [showBarangayDropdown, setShowBarangayDropdown] = useState(false);
   const [showPalengkeDropdown, setShowPalengkeDropdown] = useState(false);
@@ -389,15 +389,24 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 },
     );
   }, [showPalengkeDropdown, buyerCoords]);
+  const palengkeRegion = (() => {
+    const raw = locationFilter.region || profile?.region || '';
+    return /^\d{10}$/.test(raw) ? raw : (OLD_REGION_MAP[raw] || '');
+  })();
   const palengkeGroups = useMemo(
-    () => groupPalengke(locationFilter.city || profile?.city || '', buyerCoords, palengkeOptions),
-    [locationFilter.city, profile?.city, buyerCoords, palengkeOptions.join('|')],
+    () => groupPalengke({
+      city: locationFilter.city || profile?.city || '',
+      region: palengkeRegion,
+      coords: buyerCoords,
+      extraNames: palengkeOptions,
+    }),
+    [locationFilter.city, profile?.city, palengkeRegion, buyerCoords, palengkeOptions.join('|')],
   );
 
   // Auto-set location filter from buyer's profile on first load
   useEffect(() => {
     if (profile?.city && !locationFilter.city && !locationFilter.region) {
-      setLocationFilter({ city: profile.city, region: profile.region || '', barangay: '', palengke: '' });
+      setLocationFilter({ city: profile.city, region: profile.region || '', province: '', barangay: '', palengke: '' });
     }
   }, [profile]);
 
@@ -581,13 +590,13 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
           <Filter size={16} className="text-gray-400 flex-shrink-0" />
           <button
-            onClick={() => setLocationFilter({ city: profile?.city || '', region: profile?.region || '', barangay: '', palengke: '' })}
+            onClick={() => setLocationFilter({ city: profile?.city || '', region: profile?.region || '', province: '', barangay: '', palengke: '' })}
             className={`px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 ${!locationFilter.barangay && !locationFilter.palengke ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
           >
             Near Me
           </button>
           <button
-            onClick={() => setLocationFilter({ city: '', region: '', barangay: '', palengke: '' })}
+            onClick={() => setLocationFilter({ city: '', region: '', province: '', barangay: '', palengke: '' })}
             className={`px-3 py-1.5 rounded-full text-xs font-medium flex-shrink-0 ${!locationFilter.city && !locationFilter.region && !locationFilter.barangay && !locationFilter.palengke ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-600'}`}
           >
             Lahat
@@ -919,8 +928,8 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
             </div>
             <div className="px-5 py-4 pb-8">
               <LocationSelector
-                value={{ barangay: locationFilter.barangay, district: '', city: locationFilter.city, region: locationFilter.region }}
-                onChange={(loc) => setLocationFilter({ city: loc.city, region: loc.region, barangay: loc.barangay, palengke: locationFilter.palengke })}
+                value={{ barangay: locationFilter.barangay, district: '', city: locationFilter.city, region: locationFilter.region, province: locationFilter.province }}
+                onChange={(loc) => setLocationFilter({ city: loc.city, region: loc.region, province: loc.province || '', barangay: loc.barangay, palengke: locationFilter.palengke })}
                 label="Hanapin ang mga tindahan malapit sa..."
               />
               <button
