@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useState } from 'react';
 import type { Affiliate } from '../../lib/affiliateAuth';
-import { CheckCheck, Copy, ExternalLink, Handshake, Share2, Store, Bike, ShoppingBasket } from 'lucide-react';
+import { CheckCheck, Copy, Download, ExternalLink, Handshake, Store, Bike, ShoppingBasket } from 'lucide-react';
 
 const PAGES = [
   {
@@ -60,16 +60,29 @@ export function TargetedMarketingPages({ affiliate }: { affiliate: Affiliate }) 
     });
   }
 
-  function shareFacebook(link: string) {
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`, '_blank', 'width=640,height=540');
+  async function downloadImage(image: string, id: string) {
+    try {
+      const response = await fetch(image);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = blobUrl;
+      anchor.download = `gopalengke-${id}-marketing.jpg`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      window.open(image, '_blank');
+    }
   }
 
   return (
     <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
       <div className="border-b border-gray-100 p-5">
-        <p className="text-xs font-bold uppercase text-brand-600">Ready-to-share pages</p>
+        <p className="text-xs font-bold uppercase text-brand-600">Marketing pages at images</p>
         <h2 className="mt-1 text-lg font-bold text-gray-900">Piliin kung sino ang iimbitahan</h2>
-        <p className="mt-1 text-xs leading-5 text-gray-500">Awtomatikong nakakabit ang referral code mo sa bawat link. Ang Facebook preview at click ay diretso sa napiling page, hindi sa homepage.</p>
+        <p className="mt-1 text-xs leading-5 text-gray-500">Awtomatikong nakakabit ang referral code mo sa bawat link. I-download ang image at ikaw na ang mag-post saan mo gusto.</p>
       </div>
 
       <div className="grid gap-px bg-gray-100 sm:grid-cols-2 lg:grid-cols-4">
@@ -88,8 +101,8 @@ export function TargetedMarketingPages({ affiliate }: { affiliate: Affiliate }) 
                 <p className="truncate font-mono text-[10px] text-gray-500">{link}</p>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => shareFacebook(link)} className={`col-span-2 flex h-10 items-center justify-center gap-2 rounded-xl ${page.button} text-xs font-bold text-white active:scale-95`}>
-                  <Share2 size={15} /> Share sa Facebook
+                <button type="button" onClick={() => downloadImage(page.image, page.id)} className={`col-span-2 flex h-10 items-center justify-center gap-2 rounded-xl ${page.button} text-xs font-bold text-white active:scale-95`}>
+                  <Download size={15} /> Download Image
                 </button>
                 <button type="button" onClick={() => copyLink(page.id, link)} className="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-gray-100 text-xs font-semibold text-gray-700 active:scale-95">
                   {copied === page.id ? <CheckCheck size={15} /> : <Copy size={15} />}
