@@ -614,7 +614,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
     return watchOrders(`rider-order-${order.id}`, `id=eq.${order.id}`, (payload: any) => {
       if (payload?.new) { setCurrentOrder((prev: any) => ({ ...prev, ...payload.new })); return; }
       supabase.from('orders').select('*').eq('id', order.id).maybeSingle().then(({ data }) => {
-        if (data) setCurrentOrder((prev: any) => (prev.status === data.status && prev.rider_id === data.rider_id && prev.payment_status === data.payment_status && prev.rider_accepted_at === data.rider_accepted_at && prev.picked_up_at === data.picked_up_at ? prev : { ...prev, ...data }));
+        if (data) setCurrentOrder((prev: any) => (prev.status === data.status && prev.rider_id === data.rider_id && prev.payment_status === data.payment_status && prev.rider_accepted_at === data.rider_accepted_at && prev.picked_up_at === data.picked_up_at && prev.rider_arrived_store_at === data.rider_arrived_store_at ? prev : { ...prev, ...data }));
       });
     });
   }, [order.id, order.delivery_group_id]);
@@ -918,7 +918,10 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
 
       {/* In-App Navigation Map — shown from pickup phase */}
       {(currentOrder.status === 'ready_for_pickup' || currentOrder.status === 'picked_up') && store && (() => {
-        const sCoords = getStoreCoords(store);
+        // Habang hindi pa na-pick up LAHAT: rider → susunod na tindahan lang (walang buyer)
+        const toBuyer = currentOrder.status === 'picked_up';
+        const nextStore = allStores.find(s => !pickedUpStores.has(s.order.store_id))?.order.store || store;
+        const sCoords = getStoreCoords(nextStore);
         const bCoords = getDeliveryCoords({
           lat: currentOrder.delivery_lat,
           lng: currentOrder.delivery_lng,
@@ -926,7 +929,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           city: currentOrder.delivery_city,
           region: currentOrder.delivery_region,
         });
-        if (!sCoords || !bCoords) {
+        if ((!toBuyer && !sCoords) || (toBuyer && !bCoords)) {
           return (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
               <p className="text-sm text-amber-700">Hindi available ang coordinates para sa navigation. Gumamit ng address sa ibaba.</p>
@@ -936,15 +939,17 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         return (
           <div className="mb-3">
             <RiderNavigationMap
-              phase={navPhase}
+              key={toBuyer ? 'buyer' : `store-${nextStore.id}`}
+              phase={toBuyer ? 'to_buyer' : 'to_store'}
               storeCoords={sCoords}
-              storeName={store.name}
-              buyerCoords={bCoords}
+              storeName={nextStore.name}
+              buyerCoords={toBuyer ? bCoords : null}
               buyerName={buyer?.full_name || 'Buyer'}
               onPhaseChange={(p) => setNavPhase(p)}
-              storeRegion={store.region}
-              storeCity={store.city}
-              allStoreCoords={allStores.map(s => ({ coords: getStoreCoords(s.order.store)!, name: s.order.store.name })).filter(s => s.coords)}
+              hidePhaseButton
+              storeRegion={nextStore.region}
+              storeCity={nextStore.city}
+              allStoreCoords={toBuyer ? [] : allStores.filter(s => !pickedUpStores.has(s.order.store_id)).map(s => ({ coords: getStoreCoords(s.order.store)!, name: s.order.store.name })).filter(s => s.coords)}
             />
           </div>
         );
@@ -971,7 +976,25 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
                   <p className="text-xs text-gray-400 font-medium">PICKUP {allStores.length > 1 ? `${idx + 1} ng ${allStores.length}` : ''}</p>
                   <p className="font-semibold text-sm text-gray-800">{storeData.name}</p>
                   <p className="text-sm text-gray-500">{storeData.barangay}, {storeData.city}, {formatRegionForDisplay(storeData.region)}</p>
-                  {currentOrder.status === 'ready_for_pickup' && !isPickedUp && currentOrder.rider_accepted_at && (
+                  {currentOrder.status === 'ready_for_pickup' && !isPickedUp && currentOrder.rider_accepted_at && !(s.order as any).rider_arrived_store_at && !(s.order.id === currentOrder.id && currentOrder.rider_arrived_store_at) && (
+                    <button
+                      onClick={async () => {
+                        const now = new Date().toISOString();
+                        setUpdating(true);
+                        const { error } = await supabase.from('orders').update({ rider_arrived_store_at: now }).eq('id', s.order.id);
+                        setUpdating(false);
+                        if (error) { alert('Hindi ma-update. Paki-run muna ang database update (rider_arrived_store_at).'); return; }
+                        (s.order as any).rider_arrived_store_at = now;
+                        if (s.order.id === currentOrder.id) setCurrentOrder((p: any) => ({ ...p, rider_arrived_store_at: now }));
+                        else setSiblingOrders(prev => prev.map((o: any) => o.id === s.order.id ? { ...o, rider_arrived_store_at: now } : o));
+                      }}
+                      disabled={updating}
+                      className="mt-2 px-4 py-2 bg-amber-500 text-white rounded-lg text-xs font-semibold active:scale-95 transition disabled:opacity-50"
+                    >
+                      {updating ? 'Nag-uupdate...' : 'Nandito na ako sa Tindahan'}
+                    </button>
+                  )}
+                  {currentOrder.status === 'ready_for_pickup' && !isPickedUp && currentOrder.rider_accepted_at && ((s.order as any).rider_arrived_store_at || (s.order.id === currentOrder.id && currentOrder.rider_arrived_store_at)) && (
                     <button
                       onClick={async () => {
                         setPickedUpStores(prev => new Set(prev).add(s.order.store_id));
