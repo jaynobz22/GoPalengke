@@ -33,7 +33,8 @@ const COPY: Record<Role, { subject: string; title: string; cta: string }> = {
 };
 
 function esc(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+  const map: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+  return s.replace(/[&<>"']/g, (c) => map[c] ?? c);
 }
 
 function emailHtml(c: Candidate) {
