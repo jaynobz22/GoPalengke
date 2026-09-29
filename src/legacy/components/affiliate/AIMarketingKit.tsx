@@ -1,9 +1,9 @@
 // @ts-nocheck
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import type { Affiliate } from '../../lib/affiliateAuth';
 import {
   Store, ShoppingBag, Bike, Users, Sparkles, Loader2, Copy,
-  CheckCheck, Download, Share2, Image as ImageIcon, FileText,
+  CheckCheck, FileText,
 } from 'lucide-react';
 
 type InviteType = 'seller' | 'buyer' | 'rider' | 'affiliate';
@@ -578,31 +578,19 @@ const TEMPLATE_MAP: Record<InviteType, string[]> = {
   affiliate: AFFILIATE_TEMPLATES,
 };
 
-function randomSeed(): string {
-  return Math.random().toString(36).substring(2, 10);
-}
-
 function pickRandomTemplate(type: InviteType, link: string, affiliateName: string): string {
   const templates = TEMPLATE_MAP[type];
   const template = templates[Math.floor(Math.random() * templates.length)];
   return template.replace(/__LINK__/g, link);
 }
 
-function buildPollinationsUrl(prompt: string, seed: string): string {
-  const separator = prompt.includes('?') ? '&' : '?';
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}${separator}seed=${seed}`;
-}
-
 export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
   const [activeType, setActiveType] = useState<InviteType | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [text, setText] = useState<string>('');
-  const [imageLoading, setImageLoading] = useState(false);
   const [textLoading, setTextLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [genCount, setGenCount] = useState(0);
-  const imgLoaderRef = useRef<HTMLImageElement | null>(null);
 
   const referralLink = `${window.location.origin}/?ref=${affiliate.referral_code}`;
   const affiliateLink = `${window.location.origin}/affiliate?aff_ref=${affiliate.referral_code}`;
@@ -614,11 +602,8 @@ export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
 
   const generate = useCallback(
     (type: InviteType) => {
-      const config = INVITE_CONFIGS[type];
       setActiveType(type);
-      setImageUrl(null);
       setText('');
-      setImageLoading(true);
       setTextLoading(true);
 
       const link = type === 'affiliate' ? affiliateLink : referralLink;
@@ -630,30 +615,6 @@ export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
         setTextLoading(false);
       }, 600);
 
-      // Generate image via Pollinations.ai with random seed
-      const seed = randomSeed();
-      const url = buildPollinationsUrl(config.imagePrompt, seed);
-
-      // Cancel previous image loader if any
-      if (imgLoaderRef.current) {
-        imgLoaderRef.current.src = '';
-      }
-
-      const img = new Image();
-      imgLoaderRef.current = img;
-      img.onload = () => {
-        if (imgLoaderRef.current === img) {
-          setImageUrl(url);
-          setImageLoading(false);
-        }
-      };
-      img.onerror = () => {
-        if (imgLoaderRef.current === img) {
-          setImageLoading(false);
-        }
-      };
-      img.src = url;
-
       setGenCount((c) => c + 1);
     },
     [referralLink, affiliateLink, affiliate.full_name],
@@ -661,41 +622,15 @@ export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
 
   function copyText() {
     if (!text) return;
-    navigator.clipboard.writeText(text).then(() => {
+    const requiredLink = activeType === 'affiliate' ? affiliateLink : referralLink;
+    const textWithAffiliateLink = text.includes(requiredLink)
+      ? text
+      : `${text.trim()}\n\n${requiredLink}`;
+    navigator.clipboard.writeText(textWithAffiliateLink).then(() => {
       setCopied(true);
       showToast('Na-copy na ang text sa clipboard!');
       setTimeout(() => setCopied(false), 2000);
     });
-  }
-
-  function shareToFacebook() {
-    if (!text) return;
-    const shareUrl = activeType === 'affiliate' ? affiliateLink : referralLink;
-    const fbText = encodeURIComponent(text);
-    window.open(
-      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${fbText}`,
-      '_blank',
-      'width=600,height=400',
-    );
-  }
-
-  async function downloadImage() {
-    if (!imageUrl) return;
-    try {
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = `gopalengke_${activeType}_poster_${Date.now()}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-      showToast('Na-download na ang larawan!');
-    } catch {
-      window.open(imageUrl, '_blank');
-    }
   }
 
   return (
@@ -707,7 +642,7 @@ export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
         </div>
       )}
 
-      {/* AI Marketing Kit Generator Card */}
+      {/* AI Marketing Text Generator Card */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-brand-600 via-emerald-600 to-teal-600 px-5 py-4">
@@ -716,8 +651,8 @@ export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
               <Sparkles size={20} className="text-white" />
             </div>
             <div className="flex-1">
-              <h2 className="font-bold text-white text-base">AI Marketing Kit Generator</h2>
-              <p className="text-green-100 text-xs">Bawat click = panibagong post at poster! Infinite generator.</p>
+              <h2 className="font-bold text-white text-base">AI Marketing Text Generator</h2>
+              <p className="text-green-100 text-xs">Bawat click = panibagong marketing text na may affiliate link mo.</p>
             </div>
             {genCount > 0 && (
               <span className="text-[10px] bg-white/20 text-white px-2 py-1 rounded-full font-medium">
@@ -738,7 +673,7 @@ export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
                 <button
                   key={type}
                   onClick={() => generate(type)}
-                  disabled={imageLoading || textLoading}
+                  disabled={textLoading}
                   className={`flex items-center gap-2.5 px-4 py-3.5 rounded-xl border-2 text-sm font-semibold transition active:scale-[0.98] disabled:opacity-50 ${
                     isActive
                       ? `${config.bgColor} ${config.borderColor} ${config.color}`
@@ -749,63 +684,24 @@ export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
                     <Icon size={18} className={isActive ? config.color : 'text-gray-400'} />
                   </div>
                   <span className="text-left flex-1">{config.label}</span>
-                  {isActive && !imageLoading && !textLoading && (
+                  {isActive && !textLoading && (
                     <Sparkles size={16} className={config.color} />
                   )}
                 </button>
               );
             })}
           </div>
-          {activeType && !imageLoading && !textLoading && (
+          {activeType && !textLoading && (
             <p className="text-center text-xs text-gray-400">
-              Pindutin ulit ang parehong button para sa panibagong post at poster!
+              Pindutin ulit ang parehong button para sa panibagong marketing text.
             </p>
           )}
         </div>
 
-        {/* Results: Two-Column Layout */}
-        {(activeType || imageLoading || textLoading) && (
+        {/* Generated marketing text */}
+        {(activeType || textLoading) && (
           <div className="px-4 pb-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* LEFT COLUMN: Image */}
-              <div className="bg-gray-50 rounded-2xl border border-gray-100 p-4">
-                <div className="flex items-center gap-1.5 mb-3">
-                  <ImageIcon size={16} className="text-gray-500" />
-                  <h3 className="text-sm font-bold text-gray-700">AI Generated Poster</h3>
-                </div>
-
-                <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center relative">
-                  {imageLoading ? (
-                    <div className="flex flex-col items-center gap-2 text-gray-400">
-                      <Loader2 size={28} className="animate-spin" />
-                      <p className="text-xs">Gumagawa ng bagong larawan...</p>
-                    </div>
-                  ) : imageUrl ? (
-                    <img
-                      src={imageUrl}
-                      alt="AI Generated Poster"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center gap-1 text-gray-400">
-                      <ImageIcon size={28} />
-                      <p className="text-xs">Pumili ng type sa taas</p>
-                    </div>
-                  )}
-                </div>
-
-                {imageUrl && !imageLoading && (
-                  <button
-                    onClick={downloadImage}
-                    className="w-full mt-3 flex items-center justify-center gap-2 py-2.5 bg-gray-700 text-white rounded-xl text-xs font-semibold active:scale-95 transition"
-                  >
-                    <Download size={15} /> I-download ang Larawan
-                  </button>
-                )}
-              </div>
-
-              {/* RIGHT COLUMN: Text */}
-              <div className="bg-gray-50 rounded-2xl border border-gray-100 p-4">
+            <div className="bg-gray-50 rounded-2xl border border-gray-100 p-4">
                 <div className="flex items-center gap-1.5 mb-3">
                   <FileText size={16} className="text-gray-500" />
                   <h3 className="text-sm font-bold text-gray-700">AI Generated Post</h3>
@@ -828,25 +724,18 @@ export function AIMarketingKit({ affiliate }: { affiliate: Affiliate }) {
                 </div>
 
                 {text && !textLoading && (
-                  <div className="flex gap-2 mt-3">
+                  <div className="mt-3">
                     <button
                       onClick={copyText}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-brand-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition"
+                      className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-brand-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition"
                     >
                       {copied ? <CheckCheck size={15} /> : <Copy size={15} />}
-                      {copied ? 'Na-copy na!' : 'Kopyahin ang Text'}
-                    </button>
-                    <button
-                      onClick={shareToFacebook}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition"
-                    >
-                      <Share2 size={15} /> I-share sa Facebook
+                      {copied ? 'Na-copy na kasama ang link!' : 'Kopyahin ang Text + Affiliate Link'}
                     </button>
                   </div>
                 )}
               </div>
             </div>
-          </div>
         )}
       </div>
     </div>
