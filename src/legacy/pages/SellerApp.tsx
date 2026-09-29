@@ -1678,7 +1678,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   const [currentOrder, setCurrentOrder] = useState(order);
   const [updating, setUpdating] = useState(false);
   const [showRiderPicker, setShowRiderPicker] = useState(false);
-  const [availableRiders, setAvailableRiders] = useState<{ id: string; full_name: string; phone: string | null; avatar_url: string | null }[]>([]);
+  const [availableRiders, setAvailableRiders] = useState<{ id: string; full_name: string; phone: string | null; avatar_url: string | null; busy?: number }[]>([]);
   const [loadingRiders, setLoadingRiders] = useState(false);
   const [assigningRider, setAssigningRider] = useState<string | null>(null);
   const [fleetTier, setFleetTier] = useState<VehicleTier>((order.vehicle_type as VehicleTier) || 'motorcycle');
@@ -1735,7 +1735,21 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       supabase.from('orders').select('id, rider_id, store:stores(name), delivery_barangay, delivery_city, delivery_lat, delivery_lng').in('status', ['accepted', 'preparing', 'ready_for_pickup']).not('rider_id', 'is', null).neq('buyer_id', currentOrder.buyer_id),
     ]);
 
-    setAvailableRiders((ridersRes.data || []) as any);
+    // Mark riders currently on a trip (accepted/picked up but not yet delivered) as busy
+    const riderList = (ridersRes.data || []) as any[];
+    const ids = riderList.map(r => r.id);
+    const busyMap: Record<string, number> = {};
+    if (ids.length) {
+      const { data: busyRows } = await supabase.from('orders').select('rider_id, status, rider_accepted_at')
+        .in('rider_id', ids).in('status', ['accepted', 'preparing', 'ready_for_pickup', 'picked_up']);
+      for (const o of (busyRows || []) as any[]) {
+        if (o.status === 'picked_up' || o.rider_accepted_at) busyMap[o.rider_id] = (busyMap[o.rider_id] || 0) + 1;
+      }
+    }
+    setAvailableRiders(
+      riderList.map(r => ({ ...r, busy: busyMap[r.id] || 0 }))
+        .sort((a, b) => (a.busy ? 1 : 0) - (b.busy ? 1 : 0)) as any
+    );
 
     // Find riders already delivering to the same or nearby destination
     const activeOrders = (activeOrdersRes.data || []) as any[];
@@ -2317,12 +2331,21 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
                         key={r.id}
                         onClick={() => assignRider(r.id)}
                         disabled={assigningRider !== null}
-                        className="w-full flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-2xl active:scale-[0.98] transition disabled:opacity-50 text-left"
+                        className={`w-full flex items-center gap-3 p-3 border rounded-2xl active:scale-[0.98] transition disabled:opacity-50 text-left ${r.busy ? 'bg-amber-50/60 border-amber-200' : 'bg-white border-gray-100'}`}
                       >
                         <Avatar src={r.avatar_url} name={r.full_name} size={40} />
                         <div className="flex-1">
                           <p className="font-medium text-gray-800 text-sm">{r.full_name}</p>
                           {r.phone && <p className="text-xs text-gray-400">{r.phone}</p>}
+                          {r.busy ? (
+                            <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                              <Bike size={10} /> Busy — nasa biyahe pa ({r.busy} delivery)
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                              ● Available ngayon
+                            </span>
+                          )}
                         </div>
                         {assigningRider === r.id ? (
                           <Loader2 size={18} className="text-brand-500 animate-spin" />
