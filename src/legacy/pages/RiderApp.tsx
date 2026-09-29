@@ -1218,15 +1218,6 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
         </div>
       </div>
 
-      {/* Reviews */}
-      {profile && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
-          <h3 className="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2">
-            <Star size={16} className="text-amber-500" /> Mga Review mula sa Buyers
-          </h3>
-          <ReviewSection userId={profile.id} />
-        </div>
-      )}
 
       {/* Profile Picture Upload with face-match note */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
@@ -1485,6 +1476,16 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
         <VideoCreditStore />
       </div>
+
+      {/* Reviews — dinala sa pinakababa para hindi dumami sa taas ng profile */}
+      {profile && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
+          <h3 className="font-bold text-gray-800 mb-3 text-sm flex items-center gap-2">
+            <Star size={16} className="text-amber-500" /> Mga Review mula sa Buyers
+          </h3>
+          <ReviewSection userId={profile.id} />
+        </div>
+      )}
 
       <button onClick={onSignOut} className="w-full py-3 bg-white text-red-500 border border-red-200 rounded-2xl font-semibold active:scale-[0.98] transition">
         Mag-sign Out
