@@ -8,28 +8,23 @@ interface EmailPayload {
 }
 
 /**
- * Direktang tumatawag sa official Resend API gamit ang katutubong fetch mechanism ng runtime.
- * Gagamitin nito ang RESEND_API_KEY na naka-configure sa Vercel Environment Variables.
+ * Direktang tumatawag sa official Resend API gamit ang compatibility configuration.
+ * Gagamitin nito ang global token configuration para sa Vercel pipeline.
  */
 export async function sendOnboardingEmail(payload: EmailPayload) {
-  const apiKey = process.env.RESEND_API_KEY;
+  // Gumagamit ng runtime agnostic check upang maiwasan ang compilation boundary restriction
+  const targetEnv = typeof process !== 'undefined' ? process.env : (globalThis as any).process?.env;
+  const apiKey = targetEnv?.RESEND_API_KEY;
 
   if (!apiKey) {
     console.error("❌ Error: RESEND_API_KEY is not defined in environment variables.");
     throw new Error("Missing RESEND_API_KEY configuration");
   }
 
-  // Gagamit ng default verified domain email ng GoPalengke kung walang ipinasang custom 'from'
   const senderEmail = payload.from || "admin@gopalengke.net";
 
   try {
-    // Gumagamit ng runtime fetch ng Bun / Node config upang maiwasan ang server environment compilation boundary error
-    const globalFetch = globalThis.fetch;
-    if (!globalFetch) {
-      throw new Error("Runtime fetch environment is missing");
-    }
-
-    const response = await globalFetch("https://resend.com", {
+    const response = await fetch("https://resend.com", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
