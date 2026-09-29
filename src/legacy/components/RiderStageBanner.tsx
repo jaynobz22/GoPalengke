@@ -10,15 +10,15 @@ export function getRiderStage(order: any): Stage {
       return { title: 'Naghihintay na tanggapin ng rider', note: 'Na-assign na ang rider. Hinihintay pa ang kanyang pag-accept.', tone: 'amber' };
     }
     if (order.picked_up_at) {
-      return { title: 'Na Pick Up na ng Rider', note: 'Punta pa sa isang tindahan para kunin ang iba pang order, bago dumiretso sa buyer.', tone: 'blue' };
+      return { title: 'Na Pick Up na ng Rider', note: 'Nasa delivery box na ang parcel. Maaaring may pupuntahan pang ibang tindahan bago dumiretso sa buyer.', tone: 'blue' };
     }
     if (order.rider_arrived_store_at) {
-      return { title: 'Nasa Tindahan na ang Rider', note: 'Kinukuha na ang order sa seller. Susunod: aalis na papunta sa buyer.', tone: 'green' };
+      return { title: 'Nandito na ang Rider sa Tindahan', note: 'Kinukuha na niya ang parcel. Susunod: "Na Pick Up ko na".', tone: 'green' };
     }
     return { title: 'Rider Accepted the Delivery', note: 'Going to Seller to Pick Up', tone: 'green' };
   }
   if (order.status === 'picked_up') {
-    return { title: 'Na Pick Up na ng Rider', note: 'Aalis na ang rider — papunta na sa buyer.', tone: 'blue' };
+    return { title: 'Going to Buyer na', note: 'Umalis na ang rider — papunta na sa lokasyon ng buyer.', tone: 'blue' };
   }
   return null;
 }
