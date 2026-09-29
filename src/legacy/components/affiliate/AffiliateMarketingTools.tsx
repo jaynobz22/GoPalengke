@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import type { Affiliate } from '../../lib/affiliateAuth';
 import {
   Megaphone, Image as ImageIcon, Youtube, FileText, Copy, CheckCheck,
-  Loader2, Share2, Download, ExternalLink,
+  Loader2, Link as LinkIcon, Download, ExternalLink,
 } from 'lucide-react';
 
 interface MarketingMaterial {
@@ -54,14 +54,6 @@ export function AffiliateMarketingTools({ affiliate }: { affiliate: Affiliate })
     return match ? `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg` : null;
   }
 
-  function shareToFacebook(shareUrl: string) {
-    window.open(
-      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
-      '_blank',
-      'width=600,height=400'
-    );
-  }
-
   async function downloadImage(url: string, title: string) {
     try {
       const response = await fetch(url);
@@ -102,7 +94,7 @@ export function AffiliateMarketingTools({ affiliate }: { affiliate: Affiliate })
       {/* Quick Reference: Referral Links */}
       <div className="bg-gradient-to-br from-brand-50 to-emerald-50 rounded-2xl border border-brand-100 p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Share2 size={18} className="text-brand-600" />
+          <LinkIcon size={18} className="text-brand-600" />
           <h3 className="font-bold text-gray-800 text-sm">Iyong Mga Referral Links</h3>
         </div>
         <div className="space-y-2">
@@ -138,11 +130,11 @@ export function AffiliateMarketingTools({ affiliate }: { affiliate: Affiliate })
       {/* Marketing Materials */}
       {materials.map((mat) => {
         const processedCaption = mat.caption ? getProcessedCaption(mat.caption) : '';
-        const shareText = `${mat.title}\n\n${processedCaption}`;
+        const captionWithReferralLink = processedCaption.includes(referralLink)
+          ? processedCaption
+          : `${processedCaption}${processedCaption ? '\n\n' : ''}${referralLink}`;
+        const shareText = `${mat.title}\n\n${captionWithReferralLink}`;
         const shareId = `mat_${mat.id}`;
-        const fbShareUrl = mat.type === 'video' && mat.youtube_url
-          ? mat.youtube_url
-          : mat.media_url || referralLink;
 
         return (
           <div key={mat.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -222,21 +214,13 @@ export function AffiliateMarketingTools({ affiliate }: { affiliate: Affiliate })
               )}
 
               <div className="flex gap-2">
-                {/* Share to Facebook */}
-                <button
-                  onClick={() => shareToFacebook(fbShareUrl)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition"
-                >
-                  <Share2 size={14} /> Share sa Facebook
-                </button>
-
-                {/* Download Image */}
+                {/* Download uploaded banner/image */}
                 {mat.media_url && (
                   <button
                     onClick={() => downloadImage(mat.media_url!, mat.title)}
-                    className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-gray-100 text-gray-700 rounded-xl text-xs font-semibold active:scale-95 transition"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 bg-brand-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition"
                   >
-                    <Download size={14} />
+                    <Download size={14} /> Download
                   </button>
                 )}
 
