@@ -84,7 +84,7 @@ function FreeDeliveryBadge({ store, className = '' }: { store: Store; className?
   if (min === null) return null;
   return (
     <span className={`inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-700 ${className}`}>
-      🚚 Libreng delivery sa ₱{min.toLocaleString('en-PH')}+
+      🚚 Free delivery sa ₱{min.toLocaleString('en-PH')}+
     </span>
   );
 }
@@ -1486,9 +1486,9 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
 
       {freeDeliveryMin(storeInfo) !== null && (
         <div className="mx-5 mt-3 rounded-2xl border-2 border-brand-300 bg-brand-50 p-3.5">
-          <p className="text-sm font-bold text-brand-800">🚚 Libreng Hatid mula sa Tindahan!</p>
+          <p className="text-sm font-bold text-brand-800">🚚 Free delivery sa ₱{freeDeliveryMin(storeInfo)!.toLocaleString('en-PH')} pataas!</p>
           <p className="mt-0.5 text-xs leading-relaxed text-brand-700">
-            Bumili ng ₱{freeDeliveryMin(storeInfo)!.toLocaleString('en-PH')} pataas sa tindahang ito at libre na ang delivery fee mo — sagot na ito ng tindera.
+            Sagot ng tindahan ang delivery fee mo.
           </p>
         </div>
       )}
@@ -2345,7 +2345,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                   <span>LIBRE (₱0.00)</span>
                 </div>
                 <p className="text-xs text-brand-700 bg-brand-50 rounded-lg p-2">
-                  🚚 Libreng delivery — sagot ng tindahan ang ₱{sellerSubsidy.toFixed(2)} na delivery fee dahil umabot ang bili mo sa ₱{Number(store.free_delivery_min_amount ?? 0).toLocaleString('en-PH')}.
+                  🚚 Free delivery — sagot ng tindahan ang ₱{sellerSubsidy.toFixed(2)}.
                 </p>
               </div>
             ) : (
