@@ -1341,6 +1341,8 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
   );
   const [farmType, setFarmType] = useState(store.farm_type || '');
   const [isOpen, setIsOpen] = useState(store.is_open);
+  const [freeDeliveryEnabled, setFreeDeliveryEnabled] = useState(Boolean(store.free_delivery_enabled));
+  const [freeDeliveryMin, setFreeDeliveryMin] = useState(String(store.free_delivery_min_amount ?? 500));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1361,6 +1363,8 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
       seller_type: sellerType || null,
       farm_type: sellerType === 'farm' ? (farmType || null) : null,
       livestock_permit_url: livestockPermitUrl || null,
+      free_delivery_enabled: freeDeliveryEnabled,
+      free_delivery_min_amount: Math.max(0, Number(freeDeliveryMin) || 0),
     }).eq('id', store.id);
     setSaving(false);
     if (error) { setError(error.message); return; }
@@ -1487,6 +1491,28 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
             hint="Kung nagbebenta ka ng buhay na hayop at malayo ang biyahe, kailangan ng permit mula sa awtoridad (DA/BAI). I-upload dito."
             cropAspect={4 / 3}
           />
+          <div className="rounded-2xl border-2 border-brand-200 bg-brand-50/60 p-4">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="checkbox" checked={freeDeliveryEnabled} onChange={e => setFreeDeliveryEnabled(e.target.checked)} className="mt-0.5 w-5 h-5 rounded accent-brand-600" />
+              <span>
+                <span className="text-sm font-semibold text-gray-800 block">Mag-alok ng Libreng Delivery</span>
+                <span className="text-xs text-gray-600">Ikaw ang sasagot sa delivery fee kapag umabot ang bili ng buyer sa halagang itatakda mo. Buo pa rin ang bayad ng rider.</span>
+              </span>
+            </label>
+            {freeDeliveryEnabled && (
+              <div className="mt-3">
+                <label className="text-sm font-medium text-gray-600 mb-1 block">Minimum na bili para libre ang delivery (₱)</label>
+                <input type="number" min={0} step={10} value={freeDeliveryMin}
+                  onChange={e => setFreeDeliveryMin(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition" />
+                <div className="mt-2 rounded-xl bg-white border border-brand-200 px-3 py-2">
+                  <p className="text-[11px] font-semibold text-gray-500">Ganito makikita ng buyer:</p>
+                  <p className="text-sm font-bold text-brand-700 mt-0.5">🚚 Libreng delivery kapag ₱{Math.max(0, Number(freeDeliveryMin) || 0).toLocaleString('en-PH')} pataas ang bili sa tindahang ito!</p>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={isOpen} onChange={e => setIsOpen(e.target.checked)} className="w-5 h-5 rounded accent-brand-600" />
@@ -2413,6 +2439,9 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         <div className="pt-2 border-t border-gray-100 mt-2 space-y-1">
           <div className="flex justify-between text-sm text-gray-500"><span>Subtotal</span><span>₱{Number(currentOrder.total).toFixed(2)}</span></div>
           <div className="flex justify-between text-sm text-gray-500"><span>Delivery fee</span><span>₱{Number(currentOrder.delivery_fee).toFixed(2)}</span></div>
+          {Number(currentOrder.seller_delivery_subsidy || 0) > 0 && (
+            <div className="flex justify-between text-sm font-semibold text-brand-700"><span>Libreng delivery — sagot mo</span><span>₱{Number(currentOrder.seller_delivery_subsidy).toFixed(2)}</span></div>
+          )}
           <div className="flex justify-between font-bold text-gray-800"><span>Total</span><span>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</span></div>
         </div>
       </div>
