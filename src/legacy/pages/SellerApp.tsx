@@ -15,6 +15,7 @@ import { LocationSelector, type LocationData } from '../components/LocationSelec
 import { compressImage } from '../lib/imageCompress';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { ChatView, getOrCreateConversation } from '../components/ChatView';
+import { RiderStageBanner } from '../components/RiderStageBanner';
 import { Avatar } from '../components/Avatar';
 import { InactiveBanner } from '../components/InactiveBanner';
 import { SellerBilling } from '../components/SellerBilling';
@@ -1601,6 +1602,7 @@ function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o:
                     <span className="text-xs text-gray-400">{order.payment_method === 'qr_code' ? 'QR' : 'COD'}</span>
                   </div>
                 </div>
+                <RiderStageBanner order={order} compact />
               </button>
               {canDelete && (
                 <button
@@ -1665,7 +1667,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           if (!data) return;
           newOrder = data as Order;
         }
-        setCurrentOrder((prev: any) => (prev.status === newOrder.status && prev.rider_id === newOrder.rider_id && prev.payment_status === newOrder.payment_status ? prev : { ...prev, ...newOrder }));
+        setCurrentOrder((prev: any) => (prev.status === newOrder.status && prev.rider_id === newOrder.rider_id && prev.payment_status === newOrder.payment_status && prev.rider_accepted_at === newOrder.rider_accepted_at && prev.picked_up_at === newOrder.picked_up_at ? prev : { ...prev, ...newOrder }));
         if (newOrder.rider_id && !rider) {
           supabase.from('profiles').select('full_name, phone, avatar_url, rider_qr_code_url').eq('id', newOrder.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
         }
@@ -1873,6 +1875,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         </div>
         <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString('en-PH')}</p>
       </div>
+      <RiderStageBanner order={currentOrder} />
 
       {/* Scheduled delivery banner */}
       {currentOrder.scheduled_delivery_at && (
@@ -2062,11 +2065,17 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             </a>
           </div>
           <div className="mt-2 flex items-center gap-2 text-xs">
-            <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full flex items-center gap-1">
-              <Clock size={12} /> Naghihintay na tanggapin ng rider
-            </span>
+            {currentOrder.rider_accepted_at ? (
+              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1 font-semibold">
+                <Check size={12} /> Rider Accepted the Delivery — Going to Seller to Pick Up
+              </span>
+            ) : (
+              <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full flex items-center gap-1">
+                <Clock size={12} /> Naghihintay na tanggapin ng rider
+              </span>
+            )}
           </div>
-          {riderAssigned && (
+          {riderAssigned && !currentOrder.rider_accepted_at && (
             <p className="text-xs text-green-600 mt-2 font-medium">Na-assign na ang rider! Maghihintay na lang na tanggapin niya ang delivery.</p>
           )}
           {currentOrder.payment_method !== 'cod' && (
