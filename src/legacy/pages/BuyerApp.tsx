@@ -870,8 +870,9 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
                 <p className="text-xs text-gray-400 px-2 py-2">Hinahanap ang mga palengke na malapit sa iyo...</p>
               )}
               {[
-                { title: 'Malapit sa iyo — kaya ng rider', items: palengkeGroups.near },
-                { title: palengkeGroups.near.length ? 'Iba pang palengke (medyo malayo)' : 'Mga palengke', items: palengkeGroups.far },
+                { title: 'Malalaking palengke — dinadayo ng mga mamimili', items: palengkeGroups.major, major: true },
+                { title: 'Malapit sa iyo — kaya ng rider', items: palengkeGroups.near, major: false },
+                { title: palengkeGroups.near.length || palengkeGroups.major.length ? 'Iba pang palengke (medyo malayo)' : 'Mga palengke', items: palengkeGroups.far, major: false },
               ].filter(g => g.items.length > 0).map(group => (
                 <div key={group.title} className="pt-2">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-2 pb-1">{group.title}</p>
@@ -881,11 +882,16 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
                       onClick={() => { setLocationFilter(f => ({ ...f, palengke: name })); setShowPalengkeDropdown(false); }}
                       className={`w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3 ${locationFilter.palengke === name ? 'bg-brand-50 text-brand-700 font-semibold' : 'hover:bg-gray-50 text-gray-700'}`}
                     >
-                      <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
-                        <MapPin size={18} className="text-brand-600" />
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${group.major ? 'bg-amber-100' : 'bg-brand-100'}`}>
+                        <MapPin size={18} className={group.major ? 'text-amber-600' : 'text-brand-600'} />
                       </div>
                       <span className="text-sm flex-1">
-                        {name}
+                        <span className="flex items-center gap-2 flex-wrap">
+                          {name}
+                          {group.major && (
+                            <span className="text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Bagsakan</span>
+                          )}
+                        </span>
                         {distanceKm != null && <span className="block text-xs text-gray-400 font-normal">~{distanceKm.toFixed(1)} km mula sa iyo</span>}
                       </span>
                       {locationFilter.palengke === name && <Check size={18} className="text-brand-600 flex-shrink-0" />}
@@ -893,7 +899,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
                   ))}
                 </div>
               ))}
-              {palengkeGroups.near.length === 0 && palengkeGroups.far.length === 0 && (
+              {palengkeGroups.major.length === 0 && palengkeGroups.near.length === 0 && palengkeGroups.far.length === 0 && (
                 <p className="text-center text-gray-400 text-sm py-8">Walang available na palengke sa location na ito.</p>
               )}
             </div>
