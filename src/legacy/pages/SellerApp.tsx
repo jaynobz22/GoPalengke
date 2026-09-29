@@ -1508,15 +1508,34 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
 function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o: Order) => void }) {
   const [orders, setOrders] = useState<(Order & { buyer: { full_name: string; phone: string | null } })[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'completed'>('active');
+  const [counts, setCounts] = useState({ all: 0, pending: 0, active: 0, completed: 0 });
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [showHidden, setShowHidden] = useState(false);
 
   const load = useCallback(async () => {
     let q = supabase.from('orders').select('*, buyer:profiles!orders_buyer_id_fkey(full_name, phone)').eq('store_id', store.id).is('hidden_by_seller_at', null).order('created_at', { ascending: false });
     if (filter === 'pending') q = q.eq('status', 'pending');
-    if (filter === 'active') q = q.in('status', ['accepted', 'preparing', 'ready_for_pickup', 'picked_up']);
+    if (filter === 'active') q = q.in('status', ['pending', 'accepted', 'preparing', 'ready_for_pickup', 'picked_up']);
     if (filter === 'completed') q = q.in('status', ['delivered', 'cancelled']);
-    const { data } = await q;
-    setOrders((data || []) as any);
+    const [{ data }, { data: all }] = await Promise.all([
+      q,
+      supabase.from('orders').select('status').eq('store_id', store.id).is('hidden_by_seller_at', null),
+    ]);
+    let list = (data || []) as any[];
+    if (filter === 'active') {
+      // In-progress orders first (oldest first), then new pending orders
+      const rank = (st: string) => (st === 'pending' ? 1 : 0);
+      list = [...list].sort((a, b) => rank(a.status) - rank(b.status) || new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    }
+    const st = (all || []).map((o: any) => o.status as string);
+    setCounts({
+      all: st.length,
+      pending: st.filter(x => x === 'pending').length,
+      active: st.filter(x => !['delivered', 'cancelled'].includes(x)).length,
+      completed: st.filter(x => ['delivered', 'cancelled'].includes(x)).length,
+    });
+    setOrders(list as any);
     setLoading(false);
   }, [store.id, filter]);
 
@@ -1528,20 +1547,32 @@ function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o:
   }, [store.id, load]);
 
   const filters = [
-    { id: 'all' as const, label: 'Lahat' },
-    { id: 'pending' as const, label: 'Pending' },
     { id: 'active' as const, label: 'Active' },
+    { id: 'pending' as const, label: 'Pending' },
     { id: 'completed' as const, label: 'Tapos na' },
+    { id: 'all' as const, label: 'Lahat' },
   ];
+
+  const focused = filter === 'active' ? (orders.find(o => o.id === focusedId) || orders[0]) : null;
+  const hiddenOrders = filter === 'active' && focused ? orders.filter(o => o.id !== focused.id) : [];
+  const shownOrders = filter === 'active'
+    ? (focused ? [focused, ...(showHidden ? hiddenOrders : [])] : [])
+    : orders;
+  const hiddenNew = hiddenOrders.filter(o => o.status === 'pending').length;
 
   return (
     <div className="px-5 py-4">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Mga Orders</h2>
       <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar">
         {filters.map(f => (
-          <button key={f.id} onClick={() => setFilter(f.id)}
-            className={`px-4 py-2 rounded-full text-sm font-medium flex-shrink-0 ${filter === f.id ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
+          <button key={f.id} onClick={() => { setFilter(f.id); setShowHidden(false); }}
+            className={`px-4 py-2 rounded-full text-sm font-medium flex-shrink-0 flex items-center gap-1.5 ${filter === f.id ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
             {f.label}
+            {counts[f.id] > 0 && (
+              <span className={`min-w-5 h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center ${filter === f.id ? 'bg-white text-brand-700' : f.id === 'active' || f.id === 'pending' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                {counts[f.id]}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -1555,7 +1586,17 @@ function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o:
         </div>
       ) : (
         <div className="space-y-2">
-          {orders.map(order => {
+          {hiddenOrders.length > 0 && (
+            <button onClick={() => setShowHidden(v => !v)}
+              className={`w-full rounded-2xl border px-4 py-3 text-left text-sm font-semibold flex items-center justify-between ${hiddenNew > 0 ? 'bg-red-50 border-red-300 text-red-700' : 'bg-amber-50 border-amber-300 text-amber-800'}`}>
+              <span>
+                🔔 May {hiddenOrders.length} pang active order na naka-hide
+                {hiddenNew > 0 && <span className="block text-xs font-medium">{hiddenNew} dito ay bagong order na naghihintay ng confirmation</span>}
+              </span>
+              <span className="text-xs underline flex-shrink-0 ml-2">{showHidden ? 'Itago' : 'Ipakita'}</span>
+            </button>
+          )}
+          {shownOrders.map(order => {
             const canDelete = order.status === 'delivered' || order.status === 'cancelled';
             return (
             <div key={order.id}
@@ -1564,8 +1605,11 @@ function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o:
                   ? 'bg-red-50 border-red-300 shadow-sm'
                   : 'bg-white border-gray-100'
               }`}>
-              <button onClick={() => onOrderClick(order)}
+              <button onClick={() => { if (filter === 'active') { setFocusedId(order.id); setShowHidden(false); } onOrderClick(order); }}
                 className="w-full text-left active:scale-[0.98] transition">
+                {filter === 'active' && focused?.id === order.id && (
+                  <p className="text-[10px] font-bold text-brand-700 mb-1">INAASIKASO NGAYON</p>
+                )}
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <p className="font-semibold text-sm text-gray-800">{order.buyer?.full_name || 'Buyer'}</p>
