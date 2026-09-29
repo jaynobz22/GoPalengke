@@ -26,6 +26,13 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 - [x] Verify mobile/desktop, social metadata, build, and referral flow
 - [x] Push completed work to jaynobz22/GoPalengke
 
+## Current: Affiliate marketing simplification
+- [x] Remove social-media share buttons from the affiliate marketing dashboard
+- [x] Make uploaded and targeted marketing images download-only
+- [x] Disable AI image generation while retaining marketing text generation
+- [x] Guarantee the correct affiliate link is included when generated text is copied
+- [x] Verify the affiliate marketing controls and build, then push to GitHub
+
 ## Current: Responsive user dashboards
 - [x] Make buyer, seller, rider, and admin dashboards adapt to laptop/desktop widths
 - [x] Make public seller storefronts adapt without stretching or breaking images
