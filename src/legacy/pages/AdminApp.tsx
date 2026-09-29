@@ -15,6 +15,7 @@ import { AnalyticsDashboard } from '../components/AnalyticsDashboard';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { UserProfileReview } from '../components/UserProfileReview';
 import { AdminMarketingMaterials } from '../components/affiliate/AdminMarketingMaterials';
+import { OnboardingReminders } from '../components/OnboardingReminders';
 import {
   Megaphone, Plus, Trash2, Power, Check, Loader2, LogOut, Eye,
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
@@ -376,6 +377,7 @@ function OverviewTab() {
 
   return (
     <div className="px-5 py-4">
+      <div className="mb-4"><OnboardingReminders /></div>
       {/* Alerts */}
       {stats.pendingApprovals > 0 && (
         <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4">
