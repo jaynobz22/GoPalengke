@@ -414,8 +414,8 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
     async function load() {
       const [{ data: cats }, { data: prods }, { data: strs }] = await Promise.all([
         supabase.from('categories').select('id, name, name_fil, slug, icon, image_url, sort_order').order('sort_order'),
-        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, delivery_method, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url, seller_id)').eq('is_available', true).order('created_at', { ascending: false }).limit(30),
-        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id, seller:profiles(full_name, avatar_url)').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(20),
+        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, delivery_method, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url, seller_id)').eq('is_available', true).order('created_at', { ascending: false }).limit(300),
+        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id, seller:profiles(full_name, avatar_url)').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(200),
       ]);
       setCategories(cats || []);
       setProducts((prods || []) as any);
@@ -429,22 +429,33 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
   useEffect(() => {
     const sub = supabase.channel('browse-stores-products')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stores' }, () => {
-        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id, seller:profiles(full_name, avatar_url)').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(20)
+        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id, seller:profiles(full_name, avatar_url)').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(200)
           .then(({ data }) => setStores((data || []) as any));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
-        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, delivery_method, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url, seller_id)').eq('is_available', true).order('created_at', { ascending: false }).limit(30)
+        supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, delivery_method, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url, seller_id)').eq('is_available', true).order('created_at', { ascending: false }).limit(300)
           .then(({ data }) => setProducts((data || []) as any));
       })
       .subscribe();
     return () => { supabase.removeChannel(sub); };
   }, []);
 
+  // Search: tumutugma sa pangalan, description, tindahan at category — hindi kailangang nasa palengke
+  const searchWords = search.toLowerCase().split(/\s+/).filter(Boolean);
+  const matchesSearch = (fields: (string | null | undefined)[]) => {
+    const hay = fields.filter(Boolean).join(' ').toLowerCase();
+    return searchWords.every(w => hay.includes(w));
+  };
+  const categoryText = (id?: string | null) => {
+    const c = categories.find(c => c.id === id);
+    return c ? `${c.name} ${(c as any).name_fil || ''} ${(c as any).slug || ''}` : '';
+  };
+
   const filteredProducts = products.filter(p => {
     if (!p.store?.is_verified) return false;
     if (!p.store?.is_open) return false;
     if (activeCategory && p.category_id !== activeCategory) return false;
-    if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.store.name.toLowerCase().includes(search.toLowerCase()) && !(p.store.palengke_name || '').toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !matchesSearch([p.name, p.description, p.store.name, p.store.palengke_name, categoryText(p.category_id)])) return false;
     if (locationFilter.city && p.store.city.toLowerCase() !== locationFilter.city.toLowerCase()) return false;
     if (locationFilter.region && p.store.region.toLowerCase() !== locationFilter.region.toLowerCase()) return false;
     if (locationFilter.barangay) {
@@ -472,7 +483,8 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
   const otherProducts = sortedProducts.filter(p => p.store.city.toLowerCase() !== (locationFilter.city || '').toLowerCase());
 
   const filteredStores = stores.filter(s => {
-    if (search && !s.name.toLowerCase().includes(search.toLowerCase()) && !(s.palengke_name || '').toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !matchesSearch([s.name, (s as any).description, s.palengke_name, ...products.filter(p => p.store_id === s.id).flatMap(p => [p.name, categoryText(p.category_id)])])) return false;
+    if (activeCategory && !products.some(p => p.store_id === s.id && p.category_id === activeCategory)) return false;
     if (locationFilter.city && s.city.toLowerCase() !== locationFilter.city.toLowerCase()) return false;
     if (locationFilter.region && s.region.toLowerCase() !== locationFilter.region.toLowerCase()) return false;
     if (locationFilter.barangay) {
