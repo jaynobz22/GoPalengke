@@ -36,6 +36,7 @@ import { LiveETATimer } from '../components/LiveETATimer';
 import { DeliveryMap } from '../components/DeliveryMap';
 import { COMMISSION_RATE } from '../lib/types';
 import { ChatView, getOrCreateConversation } from '../components/ChatView';
+import { RiderStageBanner } from '../components/RiderStageBanner';
 import { Avatar } from '../components/Avatar';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { ReviewForm, ReviewSection } from '../components/Reviews';
@@ -2807,6 +2808,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
                       </div>
                       <ChevronRight size={18} className="text-gray-300" />
                     </div>
+                    <RiderStageBanner order={order} compact />
                   </button>
                   {canDelete && (
                     <button
@@ -2928,7 +2930,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
     return watchOrders(`order-${order.id}`, `id=eq.${order.id}`, (payload: any) => {
       if (payload?.new) { setCurrentOrder((prev: any) => ({ ...prev, ...payload.new })); return; }
       supabase.from('orders').select('*').eq('id', order.id).maybeSingle().then(({ data }) => {
-        if (data) setCurrentOrder((prev: any) => (prev.status === data.status && prev.rider_id === data.rider_id && prev.payment_status === data.payment_status ? prev : { ...prev, ...data }));
+        if (data) setCurrentOrder((prev: any) => (prev.status === data.status && prev.rider_id === data.rider_id && prev.payment_status === data.payment_status && prev.rider_accepted_at === data.rider_accepted_at && prev.picked_up_at === data.picked_up_at ? prev : { ...prev, ...data }));
       });
     });
   }, [order.id, order.delivery_group_id]);
@@ -2998,6 +3000,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         </div>
         <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString('en-PH')}</p>
       </div>
+      <RiderStageBanner order={currentOrder} />
 
       {/* Scheduled delivery banner */}
       {currentOrder.scheduled_delivery_at && (
