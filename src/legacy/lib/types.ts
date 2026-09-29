@@ -76,6 +76,8 @@ export interface Store {
   farm_type: string | null;
   livestock_permit_url: string | null;
   slug: string | null;
+  free_delivery_enabled?: boolean | null;
+  free_delivery_min_amount?: number | null;
   created_at: string;
   updated_at: string;
   seller_rank?: 'rising_merchant' | 'customer_favorite' | 'market_star' | 'market_champion' | 'elite_merchant' | 'market_legend' | 'grand_market_icon';
@@ -148,6 +150,7 @@ export interface Order {
   picked_up_at: string | null;
   rider_accepted_at?: string | null;
   rider_arrived_store_at?: string | null;
+  seller_delivery_subsidy?: number | null;
   delivery_group_id: string | null;
   hidden_by_buyer_at: string | null;
   hidden_by_seller_at: string | null;
