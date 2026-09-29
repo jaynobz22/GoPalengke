@@ -176,7 +176,7 @@ export interface OrderItem {
 }
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  pending: 'Naghihintay ng confirm',
+  pending: 'Naghihintay ng confirmation',
   accepted: 'Na-confirm na',
   preparing: 'Inihahanda na',
   ready_for_pickup: 'Ready for pickup',
