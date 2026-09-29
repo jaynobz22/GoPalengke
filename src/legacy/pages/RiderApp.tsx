@@ -12,6 +12,7 @@ import { RiderNavigationMap, type NavPhase } from '../components/RiderNavigation
 import { RiderBilling } from '../components/RiderBilling';
 import { LiveETATimer } from '../components/LiveETATimer';
 import { ChatView, getOrCreateConversation } from '../components/ChatView';
+import { RiderStageBanner } from '../components/RiderStageBanner';
 import { Avatar } from '../components/Avatar';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { InactiveBanner } from '../components/InactiveBanner';
@@ -287,7 +288,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
       alert(batch.reason);
       return;
     }
-    const update = { rider_id: profile.id, status: 'ready_for_pickup' as const };
+    const update = { rider_id: profile.id, status: 'ready_for_pickup' as const, rider_accepted_at: new Date().toISOString() };
     let error;
     if (order.delivery_group_id) {
       ({ error } = await supabase.from('orders').update(update).eq('delivery_group_id', order.delivery_group_id));
@@ -302,9 +303,51 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
     load();
   }
 
+  async function confirmAssigned(order: Order) {
+    if (!profile) return;
+    setAccepting(order.id);
+    const q = supabase.from('orders').update({ rider_accepted_at: new Date().toISOString() }).eq('rider_id', profile.id);
+    const { error } = order.delivery_group_id ? await q.eq('delivery_group_id', order.delivery_group_id) : await q.eq('id', order.id);
+    setAccepting(null);
+    if (error) { alert('Hindi matanggap ang delivery. Subukan ulit.'); return; }
+    load();
+    onOrderClick({ ...order, rider_accepted_at: new Date().toISOString() } as Order);
+  }
+
+  // Real-time na abiso kapag may bagong delivery na in-assign ng seller
+  const seenAssignedRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const pending = myOrders.filter(o => o.status === 'ready_for_pickup' && !o.rider_accepted_at).map(o => o.id);
+    if (seenAssignedRef.current === null) { seenAssignedRef.current = new Set(pending); return; }
+    const fresh = pending.filter(id => !seenAssignedRef.current!.has(id));
+    pending.forEach(id => seenAssignedRef.current!.add(id));
+    if (fresh.length === 0) return;
+    try {
+      const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+      const ctx = new Ctx();
+      [0, 0.25, 0.5].forEach(t => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(0.3, ctx.currentTime + t); g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.2);
+        o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.2);
+      });
+    } catch {}
+    try { navigator.vibrate?.([300, 150, 300]); } catch {}
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('May bagong delivery para sa iyo!', { body: 'In-assign ka ng seller. Buksan ang GoPalengke para tanggapin.', icon: '/icon-192.png' });
+      } else if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    } catch {}
+  }, [myOrders]);
+
   if (loading) {
     return <div className="p-5"><div className="h-32 bg-gray-100 rounded-2xl animate-pulse" /></div>;
   }
+
+  const assignedGroups = groupOrders(myOrders.filter(o => o.status === 'ready_for_pickup' && !o.rider_accepted_at));
+  const activeOrders = myOrders.filter(o => !(o.status === 'ready_for_pickup' && !o.rider_accepted_at));
 
   return (
     <div>
@@ -366,10 +409,43 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
         </button>
       </div>
 
+      {/* Bagong assigned na delivery — kailangang tanggapin */}
+      {assignedGroups.length > 0 && (
+        <div className="px-5 pb-4 space-y-3">
+          {assignedGroups.map(group => {
+            const first = group.orders[0];
+            const totalFee = group.orders.reduce((s, o) => s + o.delivery_fee, 0);
+            return (
+              <div key={group.key} className="rounded-2xl border-2 border-green-500 bg-green-50 p-4 shadow-lg shadow-green-500/20">
+                <p className="text-[11px] font-bold text-green-700 uppercase tracking-wide flex items-center gap-1"><Bike size={14} /> Bagong Delivery para sa iyo!</p>
+                <p className="font-bold text-gray-800 mt-1">{first.buyer?.full_name || 'Buyer'}</p>
+                <div className="text-sm text-gray-600 mt-1 space-y-0.5">
+                  {group.orders.map((o, i) => (
+                    <p key={o.id} className="flex items-center gap-1.5"><StoreIcon size={14} className="text-green-600" /> {group.orders.length > 1 ? `Pickup ${i + 1}: ` : ''}{o.store?.name}</p>
+                  ))}
+                  <p className="flex items-center gap-1.5"><MapPin size={14} className="text-green-600" /> {first.delivery_barangay}, {first.delivery_city}</p>
+                </div>
+                {group.orders.length > 1 && (
+                  <p className="text-xs text-green-800 bg-white/70 rounded-lg px-2 py-1 mt-2">Multiple pickup — {group.orders.length} tindahan ang pupuntahan bago ang buyer.</p>
+                )}
+                <p className="text-sm font-semibold text-green-700 mt-2">₱{totalFee.toFixed(0)} ang delivery fee</p>
+                <button
+                  onClick={() => confirmAssigned(first)}
+                  disabled={accepting === first.id || !canAct}
+                  className="mt-3 w-full py-3 bg-green-600 text-white rounded-xl font-bold active:scale-[0.98] transition disabled:opacity-50"
+                >
+                  {accepting === first.id ? 'Tinatanggap...' : 'Tanggapin ang Delivery'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* My Active Deliveries */}
       <div className="px-5 pb-4">
         <h2 className="font-bold text-gray-800 mb-3">Active Deliveries ko</h2>
-        {myOrders.length === 0 ? (
+        {activeOrders.length === 0 ? (
           <div className="text-center py-8 text-gray-400">
             <Bike size={40} className="mx-auto mb-2 opacity-50" />
             <p className="text-sm">Wala kang active delivery. Kumuha ng order!</p>
@@ -377,7 +453,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
         ) : (
           <div className="space-y-2">
             {(() => {
-              const groups = groupOrders(myOrders);
+              const groups = groupOrders(activeOrders);
               return groups.map(group => {
                 const isMulti = group.orders.length > 1;
                 const first = group.orders[0];
@@ -396,6 +472,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
                         {ORDER_STATUS_LABELS[first.status]}
                       </span>
                     </div>
+                    <RiderStageBanner order={group.orders.find(o => o.status === 'ready_for_pickup') || first} compact />
                     {isMulti ? (
                       <>
                         <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
@@ -525,13 +602,19 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
 
     if (order.delivery_group_id) {
       supabase.from('orders').select('*, store:stores(*)').eq('delivery_group_id', order.delivery_group_id).neq('id', order.id)
-        .then(({ data }) => { setSiblingOrders((data || []) as any); });
+        .then(({ data }) => {
+          setSiblingOrders((data || []) as any);
+          const done = [order, ...(data || [])].filter((o: any) => o.picked_up_at || o.status === 'picked_up').map((o: any) => o.store_id);
+          if (done.length) setPickedUpStores(new Set(done));
+        });
+    } else if (order.picked_up_at) {
+      setPickedUpStores(new Set([order.store_id]));
     }
 
     return watchOrders(`rider-order-${order.id}`, `id=eq.${order.id}`, (payload: any) => {
       if (payload?.new) { setCurrentOrder((prev: any) => ({ ...prev, ...payload.new })); return; }
       supabase.from('orders').select('*').eq('id', order.id).maybeSingle().then(({ data }) => {
-        if (data) setCurrentOrder((prev: any) => (prev.status === data.status && prev.rider_id === data.rider_id && prev.payment_status === data.payment_status ? prev : { ...prev, ...data }));
+        if (data) setCurrentOrder((prev: any) => (prev.status === data.status && prev.rider_id === data.rider_id && prev.payment_status === data.payment_status && prev.rider_accepted_at === data.rider_accepted_at && prev.picked_up_at === data.picked_up_at ? prev : { ...prev, ...data }));
       });
     });
   }, [order.id, order.delivery_group_id]);
@@ -680,6 +763,46 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         </div>
         <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString('en-PH')}</p>
       </div>
+
+      {currentOrder.status === 'ready_for_pickup' && currentOrder.rider_id === profile?.id && !currentOrder.rider_accepted_at && (
+        <div className="rounded-2xl border-2 border-green-500 bg-green-50 p-4 mb-3">
+          <p className="font-bold text-green-800">In-assign sa iyo ang delivery na ito</p>
+          <p className="text-xs text-green-700 mt-1">Tanggapin para malaman ng buyer at seller na papunta ka na sa tindahan.</p>
+          <button
+            onClick={async () => {
+              setUpdating(true);
+              const now = new Date().toISOString();
+              const q = supabase.from('orders').update({ rider_accepted_at: now }).eq('rider_id', profile!.id);
+              const { error } = currentOrder.delivery_group_id ? await q.eq('delivery_group_id', currentOrder.delivery_group_id) : await q.eq('id', currentOrder.id);
+              setUpdating(false);
+              if (error) { alert('Hindi matanggap ang delivery. Subukan ulit.'); return; }
+              setCurrentOrder(prev => ({ ...prev, rider_accepted_at: now }));
+            }}
+            disabled={updating}
+            className="mt-3 w-full py-3 bg-green-600 text-white rounded-xl font-bold active:scale-[0.98] transition disabled:opacity-50"
+          >
+            {updating ? 'Tinatanggap...' : 'Tanggapin ang Delivery'}
+          </button>
+        </div>
+      )}
+      {currentOrder.status === 'ready_for_pickup' && currentOrder.rider_accepted_at && (() => {
+        const remaining = allStores.filter(x => !pickedUpStores.has(x.order.store_id));
+        const donePart = remaining.length > 0 && remaining.length < allStores.length;
+        return (
+          <div className="rounded-2xl border-2 border-green-400 bg-green-50 p-4 mb-3">
+            <p className="font-bold text-green-800 text-sm">{donePart ? 'Na Pick Up na sa unang tindahan' : 'Rider Accepted the Delivery'}</p>
+            <p className="text-xs text-green-700 mt-1">
+              {donePart ? `Punta pa sa isang tindahan: ${remaining.map(x => x.order.store.name).join(', ')}` : `Going to Seller to Pick Up${remaining[0] ? ` — ${remaining[0].order.store.name}` : ''}`}
+            </p>
+          </div>
+        );
+      })()}
+      {currentOrder.status === 'picked_up' && (
+        <div className="rounded-2xl border-2 border-blue-300 bg-blue-50 p-4 mb-3">
+          <p className="font-bold text-blue-800 text-sm">Na Pick Up mo na ang order</p>
+          <p className="text-xs text-blue-700 mt-1">Papunta ka na sa buyer. Live na nakikita ng buyer ang location mo.</p>
+        </div>
+      )}
 
       {/* Collapsible Step Tracker */}
       {!isCancelled && (
@@ -848,10 +971,11 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
                   <p className="text-xs text-gray-400 font-medium">PICKUP {allStores.length > 1 ? `${idx + 1} ng ${allStores.length}` : ''}</p>
                   <p className="font-semibold text-sm text-gray-800">{storeData.name}</p>
                   <p className="text-sm text-gray-500">{storeData.barangay}, {storeData.city}, {formatRegionForDisplay(storeData.region)}</p>
-                  {currentOrder.status === 'ready_for_pickup' && !isPickedUp && (
+                  {currentOrder.status === 'ready_for_pickup' && !isPickedUp && currentOrder.rider_accepted_at && (
                     <button
                       onClick={async () => {
                         setPickedUpStores(prev => new Set(prev).add(s.order.store_id));
+                        await supabase.from('orders').update({ picked_up_at: new Date().toISOString() }).eq('id', s.order.id);
                         if (allPickupStoreIds.every(id => pickedUpStores.has(id) || id === s.order.store_id)) {
                           setUpdating(true);
                           if (currentOrder.delivery_group_id) {
@@ -871,7 +995,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
                       disabled={updating}
                       className="mt-2 px-4 py-2 bg-brand-600 text-white rounded-lg text-xs font-semibold active:scale-95 transition disabled:opacity-50"
                     >
-                      {updating ? 'Nag-uupdate...' : 'Nakuha ko na dito'}
+                      {updating ? 'Nag-uupdate...' : 'Na Pick Up ko na'}
                     </button>
                   )}
                 </div>
