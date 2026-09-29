@@ -2930,7 +2930,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
     return watchOrders(`order-${order.id}`, `id=eq.${order.id}`, (payload: any) => {
       if (payload?.new) { setCurrentOrder((prev: any) => ({ ...prev, ...payload.new })); return; }
       supabase.from('orders').select('*').eq('id', order.id).maybeSingle().then(({ data }) => {
-        if (data) setCurrentOrder((prev: any) => (prev.status === data.status && prev.rider_id === data.rider_id && prev.payment_status === data.payment_status && prev.rider_accepted_at === data.rider_accepted_at && prev.picked_up_at === data.picked_up_at ? prev : { ...prev, ...data }));
+        if (data) setCurrentOrder((prev: any) => (prev.status === data.status && prev.rider_id === data.rider_id && prev.payment_status === data.payment_status && prev.rider_accepted_at === data.rider_accepted_at && prev.picked_up_at === data.picked_up_at && prev.rider_arrived_store_at === data.rider_arrived_store_at ? prev : { ...prev, ...data }));
       });
     });
   }, [order.id, order.delivery_group_id]);
