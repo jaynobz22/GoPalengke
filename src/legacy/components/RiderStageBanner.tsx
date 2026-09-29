@@ -12,6 +12,9 @@ export function getRiderStage(order: any): Stage {
     if (order.picked_up_at) {
       return { title: 'Na Pick Up na ng Rider', note: 'Punta pa sa isang tindahan para kunin ang iba pang order, bago dumiretso sa buyer.', tone: 'blue' };
     }
+    if (order.rider_arrived_store_at) {
+      return { title: 'Nasa Tindahan na ang Rider', note: 'Kinukuha na ang order sa seller. Susunod: aalis na papunta sa buyer.', tone: 'green' };
+    }
     return { title: 'Rider Accepted the Delivery', note: 'Going to Seller to Pick Up', tone: 'green' };
   }
   if (order.status === 'picked_up') {
