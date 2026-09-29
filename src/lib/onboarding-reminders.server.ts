@@ -8,7 +8,7 @@ interface EmailPayload {
 }
 
 /**
- * Direktang tumatawag sa official Resend API gamit ang Fetch.
+ * Direktang tumatawag sa official Resend API gamit ang katutubong fetch mechanism ng runtime.
  * Gagamitin nito ang RESEND_API_KEY na naka-configure sa Vercel Environment Variables.
  */
 export async function sendOnboardingEmail(payload: EmailPayload) {
@@ -23,7 +23,13 @@ export async function sendOnboardingEmail(payload: EmailPayload) {
   const senderEmail = payload.from || "admin@gopalengke.net";
 
   try {
-    const response = await fetch("https://resend.com", {
+    // Gumagamit ng runtime fetch ng Bun / Node config upang maiwasan ang server environment compilation boundary error
+    const globalFetch = globalThis.fetch;
+    if (!globalFetch) {
+      throw new Error("Runtime fetch environment is missing");
+    }
+
+    const response = await globalFetch("https://resend.com", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
