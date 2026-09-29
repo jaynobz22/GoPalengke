@@ -61,6 +61,8 @@ import {
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
 type View = 'browse' | 'product' | 'store' | 'checkout' | 'order_detail' | 'chat' | 'payment_summary';
 
+const MIN_ORDER_AMOUNT = 150;
+
 function createCheckoutGroupId(): string {
   if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
@@ -1674,11 +1676,22 @@ function CartView({ onCheckout, refreshKey }: { onCheckout: () => void; refreshK
         </div>
       </div>
 
+      {total < MIN_ORDER_AMOUNT && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4">
+          <p className="text-sm font-semibold text-amber-800">Kulang pa ng ₱{(MIN_ORDER_AMOUNT - total).toFixed(2)} para makapag-checkout</p>
+          <p className="text-xs text-amber-700 mb-2">Minimum order: ₱{MIN_ORDER_AMOUNT} (subtotal ng paninda)</p>
+          <div className="h-2 bg-amber-100 rounded-full overflow-hidden">
+            <div className="h-full bg-amber-500" style={{ width: `${Math.min(100, (total / MIN_ORDER_AMOUNT) * 100)}%` }} />
+          </div>
+        </div>
+      )}
+
       <button
         onClick={onCheckout}
-        className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition"
+        disabled={total < MIN_ORDER_AMOUNT}
+        className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50 disabled:shadow-none"
       >
-        Mag-checkout
+        {total < MIN_ORDER_AMOUNT ? `Minimum ₱${MIN_ORDER_AMOUNT} para mag-checkout` : 'Mag-checkout'}
       </button>
     </div>
   );
@@ -1880,6 +1893,11 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
 
   async function placeOrder() {
     if (!profile) return;
+    const itemsSubtotal = cartItems.reduce((s, i) => s + Number(i.product?.price || 0) * Number(i.quantity), 0);
+    if (itemsSubtotal < MIN_ORDER_AMOUNT) {
+      alert(`Minimum order ay ₱${MIN_ORDER_AMOUNT} (subtotal ng paninda). Kulang pa ng ₱${(MIN_ORDER_AMOUNT - itemsSubtotal).toFixed(2)}.`);
+      return;
+    }
     if (!profile.house_photo_url) {
       alert('Kailangan mag-upload ng larawan ng bahay mo sa Profile bago mag-order. Para makilala ng rider kung aling bahay ang pupuntahan.');
       return;
