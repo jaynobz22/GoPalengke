@@ -63,6 +63,32 @@ type View = 'browse' | 'product' | 'store' | 'checkout' | 'order_detail' | 'chat
 
 const MIN_ORDER_AMOUNT = 150;
 
+// ===== Libreng delivery na sagot ng seller =====
+function freeDeliveryMin(store: { free_delivery_enabled?: boolean | null; free_delivery_min_amount?: number | null } | null | undefined): number | null {
+  if (!store?.free_delivery_enabled) return null;
+  const min = Number(store.free_delivery_min_amount ?? 0);
+  return Number.isFinite(min) && min >= 0 ? min : null;
+}
+
+function qualifiesFreeDelivery(store: { free_delivery_enabled?: boolean | null; free_delivery_min_amount?: number | null } | null | undefined, subtotal: number): boolean {
+  const min = freeDeliveryMin(store);
+  return min !== null && subtotal >= min;
+}
+
+function storeSubtotal(items?: { product?: { price: number } | null; quantity: number }[]): number {
+  return (items || []).reduce((s, i) => s + Number(i.product?.price || 0) * Number(i.quantity), 0);
+}
+
+function FreeDeliveryBadge({ store, className = '' }: { store: Store; className?: string }) {
+  const min = freeDeliveryMin(store);
+  if (min === null) return null;
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-700 ${className}`}>
+      🚚 Libreng delivery sa ₱{min.toLocaleString('en-PH')}+
+    </span>
+  );
+}
+
 function createCheckoutGroupId(): string {
   if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
@@ -417,7 +443,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
       const [{ data: cats }, { data: prods }, { data: strs }] = await Promise.all([
         supabase.from('categories').select('id, name, name_fil, slug, icon, image_url, sort_order').order('sort_order'),
         supabase.from('products').select('id, name, description, price, unit, image_url, stock, is_available, category_id, store_id, delivery_method, created_at, store:stores(id, name, barangay, district, city, region, palengke_name, is_open, is_verified, rating, logo_url, banner_url, seller_id)').eq('is_available', true).order('created_at', { ascending: false }).limit(300),
-        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id, seller:profiles(full_name, avatar_url)').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(200),
+        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id, free_delivery_enabled, free_delivery_min_amount, seller:profiles(full_name, avatar_url)').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(200),
       ]);
       setCategories(cats || []);
       setProducts((prods || []) as any);
@@ -431,7 +457,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
   useEffect(() => {
     const sub = supabase.channel('browse-stores-products')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stores' }, () => {
-        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id, seller:profiles(full_name, avatar_url)').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(200)
+        supabase.from('stores').select('id, name, description, barangay, district, city, region, palengke_name, logo_url, banner_url, is_open, rating, qr_code_url, payment_method, seller_id, free_delivery_enabled, free_delivery_min_amount, seller:profiles(full_name, avatar_url)').eq('is_open', true).eq('is_verified', true).order('rating', { ascending: false }).limit(200)
           .then(({ data }) => setStores((data || []) as any));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
@@ -717,6 +743,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
                     <MapPin size={12} className="text-gray-400" />
                     <span className="text-xs text-gray-500 truncate">{store.city}</span>
                   </div>
+                  <FreeDeliveryBadge store={store} className="mt-1" />
                 </div>
               </button>
             ))}
@@ -1353,6 +1380,7 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
   const [sellerAvatar, setSellerAvatar] = useState<string | null>(null);
   const [sellerName, setSellerName] = useState<string>('');
   const [sellerRank, setSellerRank] = useState<string | null>(store.seller_rank || null);
+  const [storeInfo, setStoreInfo] = useState<Store>(store);
   const highlightRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1363,7 +1391,7 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
         if (data) { setSellerAvatar(data.avatar_url); setSellerName(data.full_name); }
       });
     supabase.from('stores').select('*').eq('id', store.id).maybeSingle()
-      .then(({ data }) => { if (data?.seller_rank) setSellerRank(data.seller_rank); });
+      .then(({ data }) => { if (data) { setStoreInfo(data as Store); if (data.seller_rank) setSellerRank(data.seller_rank); } });
   }, [store.id]);
 
   useEffect(() => {
@@ -1456,6 +1484,16 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
         </div>
       </div>
 
+      {freeDeliveryMin(storeInfo) !== null && (
+        <div className="mx-5 mt-3 rounded-2xl border-2 border-brand-300 bg-brand-50 p-3.5">
+          <p className="text-sm font-bold text-brand-800">🚚 Libreng Hatid mula sa Tindahan!</p>
+          <p className="mt-0.5 text-xs leading-relaxed text-brand-700">
+            Bumili ng ₱{freeDeliveryMin(storeInfo)!.toLocaleString('en-PH')} pataas sa tindahang ito at libre na ang delivery fee mo — sagot na ito ng tindera.
+          </p>
+        </div>
+      )}
+
+
       {highlightProductId && !loading && products.find(p => p.id === highlightProductId) && (
         <div className="mx-5 mt-3 bg-brand-50 border border-brand-200 rounded-xl p-3 flex items-center gap-2">
           <CheckCircle size={18} className="text-brand-600 flex-shrink-0" />
@@ -1495,6 +1533,7 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
                       <p className="font-semibold text-sm text-gray-800 line-clamp-1">{p.name}</p>
                       <p className="font-bold text-brand-600 mt-1">₱{p.price}<span className="text-xs text-gray-400 font-normal">/{p.unit}</span></p>
                     </div>
+
                   </button>
                 </div>
               );
@@ -1623,6 +1662,23 @@ function CartView({ onCheckout, refreshKey }: { onCheckout: () => void; refreshK
             <MapPin size={14} />
             <span>{items[0].store.city}</span>
           </div>
+          {freeDeliveryMin(items[0].store) !== null && (() => {
+            const min = freeDeliveryMin(items[0].store)!;
+            const sub = storeSubtotal(items);
+            const kulang = min - sub;
+            return kulang > 0 ? (
+              <div className="mb-2 rounded-xl border border-brand-200 bg-brand-50 p-3">
+                <p className="text-xs font-semibold text-brand-800">🚚 Kulang pa ng ₱{kulang.toFixed(2)} sa tindahang ito para libre ang delivery!</p>
+                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-brand-100">
+                  <div className="h-full bg-brand-500" style={{ width: `${Math.min(100, (sub / min) * 100)}%` }} />
+                </div>
+              </div>
+            ) : (
+              <div className="mb-2 rounded-xl border border-brand-300 bg-brand-100 p-3">
+                <p className="text-xs font-bold text-brand-800">🎉 Libre na ang delivery mo sa {items[0].store.name}!</p>
+              </div>
+            );
+          })()}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             {items.map((item, i) => (
               <div key={item.id} className={`flex items-center gap-3 p-3 ${i > 0 ? 'border-t border-gray-50' : ''}`}>
@@ -1857,15 +1913,22 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   // Multi-store checkout: only the FIRST deliverable store (Store A) carries the base fee
   // and distance charge. Other stores (B, C...) have ₱0 delivery fee — their cargo weight
   // is added to Store A's weight surcharge. Store A receives the rider's fee (non-COD).
-  function getFeeForStore(store: Store, items?: (CartItem & { product: Product; store: Store })[]): ReturnType<typeof getBaseFeeForStore> & { isPrimary: boolean; primaryStoreName: string | null; combinedStores: number } {
+  function getFeeForStore(store: Store, items?: (CartItem & { product: Product; store: Store })[]): ReturnType<typeof getBaseFeeForStore> & { isPrimary: boolean; primaryStoreName: string | null; combinedStores: number; freeDelivery: boolean; sellerSubsidy: number } {
     const deliverable = Object.values(grouped).filter(its => !isLivestockOrder(its));
-    if (deliverable.length <= 1) return { ...getBaseFeeForStore(store, items), isPrimary: true, primaryStoreName: null, combinedStores: 1 };
+    const applyFree = (base: ReturnType<typeof getBaseFeeForStore>, extra: { isPrimary: boolean; primaryStoreName: string | null; combinedStores: number }) => {
+      const sub = storeSubtotal(items);
+      if (base.fee > 0 && qualifiesFreeDelivery(store, sub)) {
+        return { ...base, fee: 0, ...extra, freeDelivery: true, sellerSubsidy: base.fee };
+      }
+      return { ...base, ...extra, freeDelivery: false, sellerSubsidy: 0 };
+    };
+    if (deliverable.length <= 1) return applyFree(getBaseFeeForStore(store, items), { isPrimary: true, primaryStoreName: null, combinedStores: 1 });
     const primaryStore = deliverable[0][0].store;
     if (store.id === primaryStore.id) {
-      return { ...getBaseFeeForStore(store, deliverable.flat()), isPrimary: true, primaryStoreName: null, combinedStores: deliverable.length };
+      return applyFree(getBaseFeeForStore(store, deliverable.flat()), { isPrimary: true, primaryStoreName: null, combinedStores: deliverable.length });
     }
     const own = items ? estimateWeightKg(items) : 0;
-    return { fee: 0, distanceKm: 0, isEstimated: false, distanceCharge: 0, weightSurcharge: 0, totalWeightKg: own, isNcr: isNcrRegion(store.region, store.city), tier: getRequiredTier(own), riderNet: 0, commission: 0, isPrimary: false, primaryStoreName: primaryStore.name, combinedStores: deliverable.length };
+    return { fee: 0, distanceKm: 0, isEstimated: false, distanceCharge: 0, weightSurcharge: 0, totalWeightKg: own, isNcr: isNcrRegion(store.region, store.city), tier: getRequiredTier(own), riderNet: 0, commission: 0, isPrimary: false, primaryStoreName: primaryStore.name, combinedStores: deliverable.length, freeDelivery: false, sellerSubsidy: 0 };
   }
 
   // Calculate tiered fee per store: distance charge + weight surcharge
@@ -1981,6 +2044,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
         commission_amount: commissionAmount,
         distance_km: feeBreakdown?.distanceKm || 0,
         vehicle_type: feeBreakdown?.tier || null,
+        seller_delivery_subsidy: feeBreakdown?.sellerSubsidy || 0,
         delivery_group_id: groupId,
         scheduled_delivery_at: scheduleEnabled && scheduleDate && scheduleTime
           ? new Date(`${scheduleDate}T${scheduleTime}`).toISOString()
@@ -2209,7 +2273,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
       {Object.entries(grouped).map(([storeId, items]) => {
         const store = items[0].store;
         const livestock = isLivestockOrder(items);
-        const { fee, distanceKm, isEstimated, distanceCharge, weightSurcharge, totalWeightKg, isNcr, tier, isPrimary, primaryStoreName, combinedStores } = getFeeForStore(store, items);
+        const { fee, distanceKm, isEstimated, distanceCharge, weightSurcharge, totalWeightKg, isNcr, tier, isPrimary, primaryStoreName, combinedStores, freeDelivery, sellerSubsidy } = getFeeForStore(store, items);
         const rates = getZoneRates(store.region, store.city, tier);
 
         return (
@@ -2273,6 +2337,16 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                   <span className="w-4 h-4 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
                   Kinukuha ang road distance para sa eksaktong delivery fee...
                 </div>
+              </div>
+            ) : freeDelivery ? (
+              <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5">
+                <div className="flex justify-between text-sm font-semibold text-brand-700">
+                  <span>Delivery Fee</span>
+                  <span>LIBRE (₱0.00)</span>
+                </div>
+                <p className="text-xs text-brand-700 bg-brand-50 rounded-lg p-2">
+                  🚚 Libreng delivery — sagot ng tindahan ang ₱{sellerSubsidy.toFixed(2)} na delivery fee dahil umabot ang bili mo sa ₱{Number(store.free_delivery_min_amount ?? 0).toLocaleString('en-PH')}.
+                </p>
               </div>
             ) : (
               <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5">
@@ -2473,6 +2547,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                     delivery_lat: deliveryPin?.lat ?? null, delivery_lng: deliveryPin?.lng ?? null, buyer_note: note || null,
                     commission_amount: commissionAmount, delivery_group_id: groupId,
                     distance_km: feeBreakdown?.distanceKm || 0, vehicle_type: feeBreakdown?.tier || null,
+                    seller_delivery_subsidy: feeBreakdown?.sellerSubsidy || 0,
                   }).select('*').single();
                   if (error) { setPlacing(false); return; }
                   createdOrders.push(order as Order);
