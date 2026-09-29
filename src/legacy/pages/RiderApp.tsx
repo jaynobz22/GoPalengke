@@ -690,20 +690,21 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const totalFee = allStores.reduce((s, o) => s + o.order.delivery_fee, 0);
   const totalAmount = allStores.reduce((s, o) => s + o.order.total + o.order.delivery_fee, 0);
 
-  // Build rider-side step list
+  // Build rider-side step list — eksaktong daloy: Tanggapin → Nandito sa Tindahan → Na Pick Up → Going to Buyer → Delivered
   const riderSteps: StepInfo[] = [
-    { key: 'accept', label: 'Tanggapin ang Delivery', description: 'Tinanggap mo na ang delivery order. Pumunta sa pickup point (store) para kunin ang parcel.', status: 'completed' },
-    { key: 'pickup', label: 'Pickup sa Store', description: 'Pumunta sa store at kunin ang order. Kumpirmahin ang pickup sa bawat store.', status: 'completed' },
-    { key: 'on_the_way', label: 'On the Way sa Buyer', description: 'Nakuha mo na ang order. Nasa daan ka na papunta sa buyer. Ang GPS location mo ay live na nakikita ng buyer sa mapa.', status: 'completed' },
+    { key: 'accept', label: 'Tanggapin ang Delivery', description: 'Tinanggap mo na ang delivery order. Papunta ka na sa tindahan ng seller para kunin ang parcel.', status: 'completed' },
+    { key: 'arrive', label: 'Nandito na ako sa Tindahan', description: 'Pagdating mo sa tindahan, pindutin ang "Nandito na ako sa Tindahan" para malaman agad ng buyer at seller.', status: 'completed' },
+    { key: 'pickup', label: 'Na Pick Up ko na', description: 'Pag nailagay mo na ang parcel sa delivery box, pindutin ang "Na Pick Up ko na".', status: 'completed' },
+    { key: 'on_the_way', label: 'Going to Buyer na', description: 'Kapag wala nang ibang tindahang puntahan, aalis ka na papunta sa buyer. Live na nakikita ng buyer ang location mo sa mapa.', status: 'completed' },
     { key: 'delivered', label: 'Na-deliver na!', description: 'Na-deliver mo na ang parcel sa buyer. Tapusin ang delivery.', status: 'completed' },
   ];
 
   let currentStepIndex = 0;
-  if (currentOrder.status === 'ready_for_pickup') currentStepIndex = 1;
-  else if (currentOrder.status === 'picked_up') {
-    currentStepIndex = 2;
-  }
-  else if (currentOrder.status === 'delivered') currentStepIndex = 3;
+  if (currentOrder.rider_accepted_at) currentStepIndex = 1;
+  const allArrived = allStores.length > 0 && allStores.every(s => !!(s.order as any).rider_arrived_store_at || pickedUpStores.has(s.order.store_id));
+  if (currentOrder.rider_accepted_at && allArrived) currentStepIndex = 2;
+  if (currentOrder.status === 'picked_up') currentStepIndex = 3;
+  else if (currentOrder.status === 'delivered') currentStepIndex = 4;
 
   riderSteps.forEach((s, i) => {
     s.status = i < currentStepIndex ? 'completed' : i === currentStepIndex ? 'active' : 'pending';
@@ -721,8 +722,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           : 'Kolektahin ang cash sa buyer, i-scan ang QR code ng seller, ipadala ang bayad, at i-submit ang reference number.',
       status: codAccepted ? 'completed' : codSubmitted ? 'active' : 'pending',
     });
-    if (codAccepted) currentStepIndex = 4;
-    else if (codSubmitted) currentStepIndex = 4;
+    if (codAccepted || codSubmitted) currentStepIndex = riderSteps.length - 1;
   }
 
   const sameCity = store?.city === currentOrder.delivery_city;
