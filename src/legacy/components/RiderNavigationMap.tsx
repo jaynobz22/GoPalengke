@@ -17,6 +17,7 @@ interface RiderNavigationMapProps {
   storeRegion?: string | null;
   storeCity?: string | null;
   allStoreCoords?: { coords: Coords; name: string }[];
+  hidePhaseButton?: boolean;
 }
 
 interface RouteData {
@@ -63,6 +64,7 @@ export function RiderNavigationMap({
   storeRegion,
   storeCity,
   allStoreCoords,
+  hidePhaseButton,
 }: RiderNavigationMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -420,7 +422,7 @@ export function RiderNavigationMap({
       )}
 
       {/* Phase switch button */}
-      {phase === 'to_store' && (
+      {phase === 'to_store' && !hidePhaseButton && (
         <button
           onClick={() => {
             // Clear old route, switch to buyer phase
