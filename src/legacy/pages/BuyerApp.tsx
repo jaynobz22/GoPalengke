@@ -18,6 +18,7 @@ import {
   type Coords, type RouteResult,
 } from '../lib/deliveryFee';
 import { fetchBarangaysByCity, fetchCitiesByRegion, fetchCitiesByProvince, fetchProvincesByRegion, formatRegionForDisplay as sharedFormatRegion } from '../lib/philippineLocations';
+import { groupPalengke } from '../lib/palengkeDirectory';
 
 const OLD_REGION_MAP: Record<string, string> = {
   'NCR': '1300000000', 'CAR': '1400000000',
@@ -375,6 +376,23 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
       .filter((v, i, arr) => arr.indexOf(v) === i);
     return names;
   })();
+
+  // Detect buyer GPS once the palengke picker opens, to find nearby markets
+  const [buyerCoords, setBuyerCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locatingPalengke, setLocatingPalengke] = useState(false);
+  useEffect(() => {
+    if (!showPalengkeDropdown || buyerCoords || typeof navigator === 'undefined' || !navigator.geolocation) return;
+    setLocatingPalengke(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setBuyerCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocatingPalengke(false); },
+      () => setLocatingPalengke(false),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 },
+    );
+  }, [showPalengkeDropdown, buyerCoords]);
+  const palengkeGroups = useMemo(
+    () => groupPalengke(locationFilter.city || profile?.city || '', buyerCoords, palengkeOptions),
+    [locationFilter.city, profile?.city, buyerCoords, palengkeOptions.join('|')],
+  );
 
   // Auto-set location filter from buyer's profile on first load
   useEffect(() => {
@@ -848,20 +866,34 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
                 <span className="text-sm">Lahat ng Palengke</span>
                 {!locationFilter.palengke && <Check size={18} className="text-brand-600 ml-auto" />}
               </button>
-              {palengkeOptions.map(name => (
-                <button
-                  key={name}
-                  onClick={() => { setLocationFilter(f => ({ ...f, palengke: name })); setShowPalengkeDropdown(false); }}
-                  className={`w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3 ${locationFilter.palengke === name ? 'bg-brand-50 text-brand-700 font-semibold' : 'hover:bg-gray-50 text-gray-700'}`}
-                >
-                  <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
-                    <MapPin size={18} className="text-brand-600" />
-                  </div>
-                  <span className="text-sm flex-1">{name}</span>
-                  {locationFilter.palengke === name && <Check size={18} className="text-brand-600 flex-shrink-0" />}
-                </button>
+              {locatingPalengke && (
+                <p className="text-xs text-gray-400 px-2 py-2">Hinahanap ang mga palengke na malapit sa iyo...</p>
+              )}
+              {[
+                { title: 'Malapit sa iyo — kaya ng rider', items: palengkeGroups.near },
+                { title: palengkeGroups.near.length ? 'Iba pang palengke (medyo malayo)' : 'Mga palengke', items: palengkeGroups.far },
+              ].filter(g => g.items.length > 0).map(group => (
+                <div key={group.title} className="pt-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-2 pb-1">{group.title}</p>
+                  {group.items.map(({ name, distanceKm }) => (
+                    <button
+                      key={name}
+                      onClick={() => { setLocationFilter(f => ({ ...f, palengke: name })); setShowPalengkeDropdown(false); }}
+                      className={`w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-3 ${locationFilter.palengke === name ? 'bg-brand-50 text-brand-700 font-semibold' : 'hover:bg-gray-50 text-gray-700'}`}
+                    >
+                      <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
+                        <MapPin size={18} className="text-brand-600" />
+                      </div>
+                      <span className="text-sm flex-1">
+                        {name}
+                        {distanceKm != null && <span className="block text-xs text-gray-400 font-normal">~{distanceKm.toFixed(1)} km mula sa iyo</span>}
+                      </span>
+                      {locationFilter.palengke === name && <Check size={18} className="text-brand-600 flex-shrink-0" />}
+                    </button>
+                  ))}
+                </div>
               ))}
-              {palengkeOptions.length === 0 && (
+              {palengkeGroups.near.length === 0 && palengkeGroups.far.length === 0 && (
                 <p className="text-center text-gray-400 text-sm py-8">Walang available na palengke sa location na ito.</p>
               )}
             </div>
