@@ -999,21 +999,6 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
                       onClick={async () => {
                         setPickedUpStores(prev => new Set(prev).add(s.order.store_id));
                         await supabase.from('orders').update({ picked_up_at: new Date().toISOString() }).eq('id', s.order.id);
-                        if (allPickupStoreIds.every(id => pickedUpStores.has(id) || id === s.order.store_id)) {
-                          setUpdating(true);
-                          if (currentOrder.delivery_group_id) {
-                            await supabase.from('orders').update({
-                              status: 'picked_up',
-                              picked_up_at: new Date().toISOString(),
-                            }).eq('delivery_group_id', currentOrder.delivery_group_id);
-                          } else {
-                            await supabase.from('orders').update({
-                              status: 'picked_up',
-                              picked_up_at: new Date().toISOString(),
-                            }).eq('id', currentOrder.id);
-                          }
-                          setUpdating(false);
-                        }
                       }}
                       disabled={updating}
                       className="mt-2 px-4 py-2 bg-brand-600 text-white rounded-lg text-xs font-semibold active:scale-95 transition disabled:opacity-50"
@@ -1072,6 +1057,29 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           </div>
         </div>
       </div>
+
+      {/* Step 4: Going to Buyer na — pagkatapos makuha lahat ng tindahan */}
+      {currentOrder.status === 'ready_for_pickup' && currentOrder.rider_accepted_at && allPickupStoreIds.length > 0 && allPickupStoreIds.every(id => pickedUpStores.has(id)) && (
+        <button
+          onClick={async () => {
+            setUpdating(true);
+            const now = new Date().toISOString();
+            if (currentOrder.delivery_group_id) {
+              await supabase.from('orders').update({ status: 'picked_up', picked_up_at: now }).eq('delivery_group_id', currentOrder.delivery_group_id);
+            } else {
+              await supabase.from('orders').update({ status: 'picked_up', picked_up_at: now }).eq('id', currentOrder.id);
+            }
+            setCurrentOrder((p: any) => ({ ...p, status: 'picked_up', picked_up_at: now }));
+            setUpdating(false);
+          }}
+          disabled={updating}
+          className="w-full py-4 bg-blue-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-blue-600/20 active:scale-[0.98] transition disabled:opacity-50 mb-3"
+        >
+          {updating ? 'Nag-uupdate...' : 'Going to Buyer na'}
+        </button>
+      )}
+
+
 
       {/* Contact Buyer */}
       {buyer && (
