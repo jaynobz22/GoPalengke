@@ -1507,7 +1507,7 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition" />
                 <div className="mt-2 rounded-xl bg-white border border-brand-200 px-3 py-2">
                   <p className="text-[11px] font-semibold text-gray-500">Ganito makikita ng buyer:</p>
-                  <p className="text-sm font-bold text-brand-700 mt-0.5">🚚 Libreng delivery kapag ₱{Math.max(0, Number(freeDeliveryMin) || 0).toLocaleString('en-PH')} pataas ang bili sa tindahang ito!</p>
+                  <p className="text-sm font-bold text-brand-700 mt-0.5">🚚 Free delivery sa ₱{Math.max(0, Number(freeDeliveryMin) || 0).toLocaleString('en-PH')} pataas!</p>
                 </div>
               </div>
             )}
