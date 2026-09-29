@@ -414,7 +414,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
         <div className="px-5 pb-4 space-y-3">
           {assignedGroups.map(group => {
             const first = group.orders[0];
-            const totalFee = group.orders.reduce((s, o) => s + o.delivery_fee, 0);
+            const totalFee = group.orders.reduce((s, o) => s + o.delivery_fee + Number(o.seller_delivery_subsidy || 0), 0);
             return (
               <div key={group.key} className="rounded-2xl border-2 border-green-500 bg-green-50 p-4 shadow-lg shadow-green-500/20">
                 <p className="text-[11px] font-bold text-green-700 uppercase tracking-wide flex items-center gap-1"><Bike size={14} /> Bagong Delivery para sa iyo!</p>
@@ -457,7 +457,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
               return groups.map(group => {
                 const isMulti = group.orders.length > 1;
                 const first = group.orders[0];
-                const totalFee = group.orders.reduce((s, o) => s + o.delivery_fee, 0);
+                const totalFee = group.orders.reduce((s, o) => s + o.delivery_fee + Number(o.seller_delivery_subsidy || 0), 0);
                 return (
                   <button key={group.key} onClick={() => onOrderClick(first)}
                     className="w-full bg-white rounded-2xl border border-blue-200 p-4 text-left active:scale-[0.98] transition">
@@ -522,7 +522,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
                 return groups.map(group => {
                   const isMulti = group.orders.length > 1;
                   const first = group.orders[0];
-                  const totalFee = group.orders.reduce((s, o) => s + o.delivery_fee, 0);
+                  const totalFee = group.orders.reduce((s, o) => s + o.delivery_fee + Number(o.seller_delivery_subsidy || 0), 0);
                   return (
                     <div key={group.key} className="bg-white rounded-2xl border border-gray-100 p-4">
                       <div className="flex items-center justify-between mb-2">
@@ -687,7 +687,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   ].filter(s => s.order.store);
   const allPickupStoreIds = allStores.map(s => s.order.store_id);
   const allPickedUp = allPickupStoreIds.every(id => pickedUpStores.has(id));
-  const totalFee = allStores.reduce((s, o) => s + o.order.delivery_fee, 0);
+  const totalFee = allStores.reduce((s, o) => s + o.order.delivery_fee + Number(o.order.seller_delivery_subsidy || 0), 0);
   const totalAmount = allStores.reduce((s, o) => s + o.order.total + o.order.delivery_fee, 0);
 
   // Build rider-side step list — eksaktong daloy: Tanggapin → Nandito sa Tindahan → Na Pick Up → Going to Buyer → Delivered
@@ -1212,7 +1212,7 @@ function RiderHistory({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
       .then(({ data }) => { setOrders((data || []) as any); setLoading(false); });
   }, [profile]);
 
-  const totalEarnings = orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + o.delivery_fee, 0);
+  const totalEarnings = orders.filter(o => o.status === 'delivered').reduce((sum, o) => sum + o.delivery_fee + Number(o.seller_delivery_subsidy || 0), 0);
 
   return (
     <div className="px-5 py-4">
@@ -1250,7 +1250,7 @@ function RiderHistory({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">{order.store.name}</span>
-                  <span className="text-sm font-bold text-blue-600">+₱{Number(order.delivery_fee).toFixed(0)}</span>
+                  <span className="text-sm font-bold text-blue-600">+₱{(Number(order.delivery_fee) + Number(order.seller_delivery_subsidy || 0)).toFixed(0)}</span>
                 </div>
               </button>
               <button
@@ -1308,7 +1308,7 @@ function RiderProfile({ onSignOut }: { onSignOut: () => void }) {
         const orders = data || [];
         setStats({
           totalDeliveries: orders.length,
-          totalEarnings: orders.reduce((s, o: any) => s + o.delivery_fee, 0),
+          totalEarnings: orders.reduce((s, o: any) => s + o.delivery_fee + Number(o.seller_delivery_subsidy || 0), 0),
         });
       });
   }, [profile]);
