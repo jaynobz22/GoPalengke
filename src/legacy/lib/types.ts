@@ -147,6 +147,7 @@ export interface Order {
   rider_lng: number | null;
   picked_up_at: string | null;
   rider_accepted_at?: string | null;
+  rider_arrived_store_at?: string | null;
   delivery_group_id: string | null;
   hidden_by_buyer_at: string | null;
   hidden_by_seller_at: string | null;
