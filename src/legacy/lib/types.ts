@@ -146,6 +146,7 @@ export interface Order {
   rider_lat: number | null;
   rider_lng: number | null;
   picked_up_at: string | null;
+  rider_accepted_at?: string | null;
   delivery_group_id: string | null;
   hidden_by_buyer_at: string | null;
   hidden_by_seller_at: string | null;
@@ -180,7 +181,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   accepted: 'Na-confirm na',
   preparing: 'Inihahanda na',
   ready_for_pickup: 'Ready for pickup',
-  picked_up: 'Na pick up na',
+  picked_up: 'Na Pick Up na ng Rider',
   delivered: 'Na-deliver na',
   cancelled: 'Nakansela',
 };
