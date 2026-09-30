@@ -860,8 +860,8 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
 
       {/* Barangay Picker Modal */}
       {showBarangayDropdown && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end max-w-md mx-auto animate-fade-in" onClick={() => setShowBarangayDropdown(false)}>
-          <div className="bg-white w-full rounded-t-3xl max-h-[70vh] overflow-y-auto animate-slide-up" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center animate-fade-in" onClick={() => setShowBarangayDropdown(false)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl max-h-[70vh] overflow-y-auto animate-slide-up" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-white px-5 py-4 flex items-center justify-between border-b border-gray-100">
               <h2 className="text-lg font-bold text-gray-800">Piliin ang Barangay</h2>
               <button onClick={() => setShowBarangayDropdown(false)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
@@ -902,8 +902,8 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
 
       {/* Palengke Picker Modal */}
       {showPalengkeDropdown && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end max-w-md mx-auto animate-fade-in" onClick={() => setShowPalengkeDropdown(false)}>
-          <div className="bg-white w-full rounded-t-3xl max-h-[70vh] overflow-y-auto animate-slide-up" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center animate-fade-in" onClick={() => setShowPalengkeDropdown(false)}>
+          <div className="bg-white w-full max-w-md rounded-t-3xl max-h-[70vh] overflow-y-auto animate-slide-up" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-white px-5 py-4 flex items-center justify-between border-b border-gray-100">
               <h2 className="text-lg font-bold text-gray-800">Piliin ang Palengke</h2>
               <button onClick={() => setShowPalengkeDropdown(false)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
@@ -964,8 +964,8 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
 
       {/* Location Modal */}
       {showLocationModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end max-w-md mx-auto animate-fade-in">
-          <div className="bg-white w-full rounded-t-3xl max-h-[90vh] overflow-y-auto animate-slide-up">
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center animate-fade-in">
+          <div className="bg-white w-full max-w-md rounded-t-3xl max-h-[90vh] overflow-y-auto animate-slide-up">
             <div className="sticky top-0 bg-white px-5 py-4 flex items-center justify-between border-b border-gray-100">
               <h2 className="text-lg font-bold text-gray-800">Palitan ang Location</h2>
               <button onClick={() => setShowLocationModal(false)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
@@ -1331,8 +1331,8 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
       </div>
 
       {showReminder && reminderData && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end max-w-md mx-auto animate-fade-in">
-          <div className="bg-white w-full rounded-t-3xl p-5 animate-slide-up">
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center animate-fade-in">
+          <div className="bg-white w-full max-w-md rounded-t-3xl p-5 animate-slide-up">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
                 <Info size={24} className="text-brand-600" />
@@ -3697,8 +3697,8 @@ function RiderProfileModal({ riderId, riderName, riderAvatar, riderPhone, onClos
   }, [riderId]);
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-[60] flex items-end max-w-md mx-auto animate-fade-in" onClick={onClose}>
-      <div className="bg-white w-full rounded-t-3xl max-h-[85vh] overflow-y-auto animate-slide-up" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-end justify-center animate-fade-in" onClick={onClose}>
+      <div className="bg-white w-full max-w-md rounded-t-3xl max-h-[85vh] overflow-y-auto animate-slide-up" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white px-5 py-4 flex items-center justify-between border-b border-gray-100 z-10">
           <h2 className="text-lg font-bold text-gray-800">Profile ng Rider</h2>
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
@@ -4286,8 +4286,8 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
       </button>
 
       {showLocationModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end max-w-md mx-auto animate-fade-in">
-          <div className="bg-white w-full rounded-t-3xl max-h-[90vh] overflow-y-auto animate-slide-up">
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center animate-fade-in">
+          <div className="bg-white w-full max-w-md rounded-t-3xl max-h-[90vh] overflow-y-auto animate-slide-up">
             <div className="sticky top-0 bg-white px-5 py-4 flex items-center justify-between border-b border-gray-100">
               <h2 className="text-lg font-bold text-gray-800">Palitan ang Location</h2>
               <button onClick={() => setShowLocationModal(false)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
