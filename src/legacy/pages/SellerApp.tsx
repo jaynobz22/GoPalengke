@@ -1343,6 +1343,7 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
   const [isOpen, setIsOpen] = useState(store.is_open);
   const [freeDeliveryEnabled, setFreeDeliveryEnabled] = useState(Boolean(store.free_delivery_enabled));
   const [freeDeliveryMin, setFreeDeliveryMin] = useState(String(store.free_delivery_min_amount ?? 500));
+  const [freeDeliveryType, setFreeDeliveryType] = useState<'full' | 'base_only'>(store.free_delivery_type === 'base_only' ? 'base_only' : 'full');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1365,6 +1366,7 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
       livestock_permit_url: livestockPermitUrl || null,
       free_delivery_enabled: freeDeliveryEnabled,
       free_delivery_min_amount: Math.max(0, Number(freeDeliveryMin) || 0),
+      free_delivery_type: freeDeliveryType,
     }).eq('id', store.id);
     setSaving(false);
     if (error) { setError(error.message); return; }
@@ -1505,9 +1507,28 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
                 <input type="number" min={0} step={10} value={freeDeliveryMin}
                   onChange={e => setFreeDeliveryMin(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 outline-none transition" />
+
+                <p className="text-sm font-medium text-gray-600 mt-3 mb-1">Magkano ang sasagutin mo?</p>
+                <div className="space-y-2">
+                  <label className={`flex items-start gap-2 p-3 rounded-xl border-2 cursor-pointer transition ${freeDeliveryType === 'full' ? 'border-brand-500 bg-white' : 'border-gray-200 bg-white'}`}>
+                    <input type="radio" name="free_delivery_type" checked={freeDeliveryType === 'full'} onChange={() => setFreeDeliveryType('full')} className="mt-0.5 w-4 h-4 accent-brand-600" />
+                    <span>
+                      <span className="text-sm font-semibold text-gray-800 block">100% sagot ng tindahan</span>
+                      <span className="text-xs text-gray-600">₱0.00 ang delivery ng buyer kahit malayo o mabigat ang order.</span>
+                    </span>
+                  </label>
+                  <label className={`flex items-start gap-2 p-3 rounded-xl border-2 cursor-pointer transition ${freeDeliveryType === 'base_only' ? 'border-brand-500 bg-white' : 'border-gray-200 bg-white'}`}>
+                    <input type="radio" name="free_delivery_type" checked={freeDeliveryType === 'base_only'} onChange={() => setFreeDeliveryType('base_only')} className="mt-0.5 w-4 h-4 accent-brand-600" />
+                    <span>
+                      <span className="text-sm font-semibold text-gray-800 block">Base fee lang ang sagot ko (₱49 / ₱60 sa NCR)</span>
+                      <span className="text-xs text-gray-600">Sagot mo ang unang 2 km. Kung malayo o mabigat, ang buyer na ang magbabayad sa sobra. Buo pa rin ang bayad ng rider.</span>
+                    </span>
+                  </label>
+                </div>
+
                 <div className="mt-2 rounded-xl bg-white border border-brand-200 px-3 py-2">
                   <p className="text-[11px] font-semibold text-gray-500">Ganito makikita ng buyer:</p>
-                  <p className="text-sm font-bold text-brand-700 mt-0.5">🚚 Free delivery sa ₱{Math.max(0, Number(freeDeliveryMin) || 0).toLocaleString('en-PH')} pataas!</p>
+                  <p className="text-sm font-bold text-brand-700 mt-0.5">🚚 {freeDeliveryType === 'base_only' ? 'Delivery discount' : 'Free delivery'} sa ₱{Math.max(0, Number(freeDeliveryMin) || 0).toLocaleString('en-PH')} pataas!</p>
                 </div>
               </div>
             )}
