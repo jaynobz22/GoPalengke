@@ -78,6 +78,8 @@ export interface Store {
   slug: string | null;
   free_delivery_enabled?: boolean | null;
   free_delivery_min_amount?: number | null;
+  /** 'full' = sagot lahat ng tindahan; 'base_only' = base fee lang ang sagot */
+  free_delivery_type?: 'full' | 'base_only' | null;
   created_at: string;
   updated_at: string;
   seller_rank?: 'rising_merchant' | 'customer_favorite' | 'market_star' | 'market_champion' | 'elite_merchant' | 'market_legend' | 'grand_market_icon';
