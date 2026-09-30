@@ -75,6 +75,11 @@ function qualifiesFreeDelivery(store: { free_delivery_enabled?: boolean | null; 
   return min !== null && subtotal >= min;
 }
 
+/** 'base_only' = base fee lang ang sagot ng tindahan; 'full' = sagot lahat. */
+function freeDeliveryType(store: { free_delivery_type?: string | null } | null | undefined): 'full' | 'base_only' {
+  return store?.free_delivery_type === 'base_only' ? 'base_only' : 'full';
+}
+
 function storeSubtotal(items?: { product?: { price: number } | null; quantity: number }[]): number {
   return (items || []).reduce((s, i) => s + Number(i.product?.price || 0) * Number(i.quantity), 0);
 }
@@ -84,7 +89,7 @@ function FreeDeliveryBadge({ store, className = '' }: { store: Store; className?
   if (min === null) return null;
   return (
     <span className={`inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-700 ${className}`}>
-      🚚 Free delivery sa ₱{min.toLocaleString('en-PH')}+
+      🚚 {freeDeliveryType(store) === 'base_only' ? 'Delivery discount' : 'Free delivery'} sa ₱{min.toLocaleString('en-PH')}+
     </span>
   );
 }
@@ -1486,9 +1491,11 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
 
       {freeDeliveryMin(storeInfo) !== null && (
         <div className="mx-5 mt-3 rounded-2xl border-2 border-brand-300 bg-brand-50 p-3.5">
-          <p className="text-sm font-bold text-brand-800">🚚 Free delivery sa ₱{freeDeliveryMin(storeInfo)!.toLocaleString('en-PH')} pataas!</p>
+          <p className="text-sm font-bold text-brand-800">🚚 {freeDeliveryType(storeInfo) === 'base_only' ? 'Delivery discount' : 'Free delivery'} sa ₱{freeDeliveryMin(storeInfo)!.toLocaleString('en-PH')} pataas!</p>
           <p className="mt-0.5 text-xs leading-relaxed text-brand-700">
-            Sagot ng tindahan ang delivery fee mo.
+            {freeDeliveryType(storeInfo) === 'base_only'
+              ? 'Sagot ng tindahan ang base delivery fee. Kung malayo o mabigat, may konting dagdag ka pa.'
+              : 'Sagot ng tindahan ang buong delivery fee mo.'}
           </p>
         </div>
       )}
@@ -1668,14 +1675,14 @@ function CartView({ onCheckout, refreshKey }: { onCheckout: () => void; refreshK
             const kulang = min - sub;
             return kulang > 0 ? (
               <div className="mb-2 rounded-xl border border-brand-200 bg-brand-50 p-3">
-                <p className="text-xs font-semibold text-brand-800">🚚 Kulang pa ng ₱{kulang.toFixed(2)} sa tindahang ito para libre ang delivery!</p>
+                <p className="text-xs font-semibold text-brand-800">🚚 Kulang pa ng ₱{kulang.toFixed(2)} sa tindahang ito para {freeDeliveryType(items[0].store) === 'base_only' ? 'sa delivery discount' : 'libre ang delivery'}!</p>
                 <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-brand-100">
                   <div className="h-full bg-brand-500" style={{ width: `${Math.min(100, (sub / min) * 100)}%` }} />
                 </div>
               </div>
             ) : (
               <div className="mb-2 rounded-xl border border-brand-300 bg-brand-100 p-3">
-                <p className="text-xs font-bold text-brand-800">🎉 Libre na ang delivery mo sa {items[0].store.name}!</p>
+                <p className="text-xs font-bold text-brand-800">{freeDeliveryType(items[0].store) === 'base_only' ? `🎉 May delivery discount ka na sa ${items[0].store.name}!` : `🎉 Libre na ang delivery mo sa ${items[0].store.name}!`}</p>
               </div>
             );
           })()}
@@ -1918,6 +1925,13 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
     const applyFree = (base: ReturnType<typeof getBaseFeeForStore>, extra: { isPrimary: boolean; primaryStoreName: string | null; combinedStores: number }) => {
       const sub = storeSubtotal(items);
       if (base.fee > 0 && qualifiesFreeDelivery(store, sub)) {
+        if (freeDeliveryType(store) === 'base_only') {
+          // Base fee lang ang sagot ng tindahan; ang sobra sa layo at bigat ay sa buyer
+          const baseFee = getZoneRates(store.region, store.city, base.tier).baseFee;
+          const subsidy = Math.min(base.fee, baseFee);
+          const remaining = Math.max(0, Math.round((base.fee - subsidy) * 100) / 100);
+          return { ...base, fee: remaining, ...extra, freeDelivery: remaining === 0, sellerSubsidy: subsidy };
+        }
         return { ...base, fee: 0, ...extra, freeDelivery: true, sellerSubsidy: base.fee };
       }
       return { ...base, ...extra, freeDelivery: false, sellerSubsidy: 0 };
@@ -2384,8 +2398,23 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                 )}
                 <div className="flex justify-between text-sm font-semibold text-gray-700 pt-1.5 border-t border-gray-50">
                   <span>Total Delivery Fee (Rider Payout)</span>
-                  <span>₱{fee.toFixed(2)}</span>
+                  <span>₱{(fee + sellerSubsidy).toFixed(2)}</span>
                 </div>
+                {sellerSubsidy > 0 && (
+                  <>
+                    <div className="flex justify-between text-sm font-semibold text-brand-700">
+                      <span>Discount — sagot ng tindahan</span>
+                      <span>−₱{sellerSubsidy.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-bold text-gray-800">
+                      <span>Babayaran mo</span>
+                      <span>₱{fee.toFixed(2)}</span>
+                    </div>
+                    <p className="text-xs text-brand-700 bg-brand-50 rounded-lg p-2">
+                      🚚 May ₱{sellerSubsidy.toFixed(2)} discount mula sa tindahan. Ang ₱{fee.toFixed(2)} ay para sa sobrang layo at bigat.
+                    </p>
+                  </>
+                )}
                 {distanceKm > 20 && (
                   <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2 mt-1">
                     Mahaba ang distansya — ang rider ay sasahurin ng ₱{fee.toFixed(0)} para sa paghatid.
