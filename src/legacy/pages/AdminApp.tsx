@@ -16,6 +16,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { UserProfileReview } from '../components/UserProfileReview';
 import { AdminMarketingMaterials } from '../components/affiliate/AdminMarketingMaterials';
 import { OnboardingReminders } from '../components/OnboardingReminders';
+import { formatRegionForDisplay } from '../lib/philippineLocations';
 import {
   Megaphone, Plus, Trash2, Power, Check, Loader2, LogOut, Eye,
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
@@ -923,7 +924,7 @@ function GeographicTab() {
             className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 bg-white"
           >
             <option value="">Lahat ng Region</option>
-            {regions.map(r => <option key={r} value={r}>{r}</option>)}
+            {regions.map(r => <option key={r} value={r}>{formatRegionForDisplay(r) || r}</option>)}
           </select>
         </div>
         <div>
@@ -1420,7 +1421,7 @@ function CampaignsTab() {
                   className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 bg-white"
                 >
                   <option value="">Lahat ng Region</option>
-                  {allRegions.map(r => <option key={r} value={r}>{r}</option>)}
+                  {allRegions.map(r => <option key={r} value={r}>{formatRegionForDisplay(r) || r}</option>)}
                 </select>
               </div>
               <div>
