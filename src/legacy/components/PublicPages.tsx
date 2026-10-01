@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth';
 import { navigate, useRoute } from '../lib/router';
 import type { Store, Product, Profile } from '../lib/types';
 import { SellerRankBadge } from './SellerRankBadge';
+import { formatRegionForDisplay } from '../lib/philippineLocations';
 import {
   MapPin, Star, ShoppingBag, Bike, Store as StoreIcon, ArrowLeft,
   Phone, Clock, Package, TrendingUp, Share2, Copy, Check, User,
@@ -285,7 +286,7 @@ function PublicStorePage({ slug }: { slug: string }) {
           </div>
           <div className="flex items-center gap-2 mt-3 text-sm text-gray-500">
             <MapPin size={14} />
-            <span>{store.barangay}, {store.city}, {store.region}</span>
+            <span>{[store.barangay, store.city, formatRegionForDisplay(store.region)].filter(Boolean).join(', ')}</span>
           </div>
           <div className="mt-4">
             <CopyLink url={fullUrl} />
@@ -455,7 +456,7 @@ function PublicUserPage({ slug }: { slug: string }) {
             </div>
             <div className="flex items-center gap-2 text-gray-600">
               <MapPin size={16} className="text-gray-400" />
-              <span>{profile.barangay}, {profile.city}, {profile.region}</span>
+              <span>{[profile.barangay, profile.city, formatRegionForDisplay(profile.region)].filter(Boolean).join(', ')}</span>
             </div>
             <div className="flex items-center gap-2 text-gray-600">
               <Clock size={16} className="text-gray-400" />
