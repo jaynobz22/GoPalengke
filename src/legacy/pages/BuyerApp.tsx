@@ -10,6 +10,7 @@ import type { Product, Store, Category, CartItem, Order, OrderItem, OrderStatus,
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '../lib/types';
 import { LocationSelector, type LocationData } from '../components/LocationSelector';
 import { InactiveBanner } from '../components/InactiveBanner';
+import { GpsPermissionModal } from '../components/GpsPermissionModal';
 import {
   computeDeliveryFee, estimateDistanceKm,
   haversineKm, getStoreCoords, getDeliveryCoords,
@@ -413,15 +414,24 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
   // Detect buyer GPS once the palengke picker opens, to find nearby markets
   const [buyerCoords, setBuyerCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locatingPalengke, setLocatingPalengke] = useState(false);
-  useEffect(() => {
-    if (!showPalengkeDropdown || buyerCoords || typeof navigator === 'undefined' || !navigator.geolocation) return;
+  const [showPalengkeGpsPrompt, setShowPalengkeGpsPrompt] = useState(false);
+  const detectPalengkeGps = useCallback(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) { setShowPalengkeGpsPrompt(true); return; }
     setLocatingPalengke(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => { setBuyerCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocatingPalengke(false); },
-      () => setLocatingPalengke(false),
+      (pos) => {
+        setBuyerCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocatingPalengke(false);
+        setShowPalengkeGpsPrompt(false);
+      },
+      () => { setLocatingPalengke(false); setShowPalengkeGpsPrompt(true); },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 },
     );
-  }, [showPalengkeDropdown, buyerCoords]);
+  }, []);
+  useEffect(() => {
+    if (!showPalengkeDropdown || buyerCoords) return;
+    detectPalengkeGps();
+  }, [showPalengkeDropdown, buyerCoords, detectPalengkeGps]);
   const palengkeRegion = (() => {
     const raw = locationFilter.region || profile?.region || '';
     return /^\d{10}$/.test(raw) ? raw : (OLD_REGION_MAP[raw] || '');
@@ -899,6 +909,13 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
           </div>
         </div>
       )}
+
+      <GpsPermissionModal
+        open={showPalengkeGpsPrompt}
+        role="buyer"
+        onRetry={detectPalengkeGps}
+        onClose={() => setShowPalengkeGpsPrompt(false)}
+      />
 
       {/* Palengke Picker Modal */}
       {showPalengkeDropdown && (
@@ -1784,6 +1801,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   const [deliveryPin, setDeliveryPin] = useState<Coords | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'found' | 'denied' | 'unavailable' | 'timeout'>('idle');
+  const [showGpsPrompt, setShowGpsPrompt] = useState(false);
   const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleTime, setScheduleTime] = useState('');
@@ -1811,26 +1829,30 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   // Auto-detect buyer's GPS location on checkout load
   // Two-stage approach: try low-accuracy (fast) first, then refine with high-accuracy
   const detectLocation = useCallback((highAccuracy: boolean) => {
-    if (!navigator.geolocation) { setGpsStatus('unavailable'); return; }
+    if (!navigator.geolocation) { setGpsStatus('unavailable'); setShowGpsPrompt(true); return; }
     setGpsStatus('locating');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
         setDeliveryPin({ lat: latitude, lng: longitude });
         setGpsStatus('found');
+        setShowGpsPrompt(false);
       },
       (err) => {
         if (err.code === err.PERMISSION_DENIED) {
           setGpsStatus('denied');
+          setShowGpsPrompt(true);
         } else if (err.code === err.TIMEOUT) {
           if (highAccuracy) {
             // High-accuracy timed out — fall back to low-accuracy
             detectLocation(false);
           } else {
             setGpsStatus('timeout');
+            setShowGpsPrompt(true);
           }
         } else {
           setGpsStatus('unavailable');
+          setShowGpsPrompt(true);
         }
       },
       { enableHighAccuracy: highAccuracy, timeout: highAccuracy ? 12000 : 8000, maximumAge: 30000 }
@@ -2197,6 +2219,13 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
           />
           <p className="text-[11px] text-gray-400 mt-1">Mase-save ito para sa susunod mong order.</p>
         </div>
+
+        <GpsPermissionModal
+          open={showGpsPrompt}
+          role="buyer"
+          onRetry={() => detectLocation(true)}
+          onClose={() => setShowGpsPrompt(false)}
+        />
 
         {/* Auto GPS status */}
         {gpsStatus === 'locating' && (
