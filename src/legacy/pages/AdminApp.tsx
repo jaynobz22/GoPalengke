@@ -530,8 +530,107 @@ function OverviewTab() {
   );
 }
 
+// ============= STORAGE CLEANUP =============
+function StorageCleanupButton() {
+  const [busy, setBusy] = useState(false);
+  const [scan, setScan] = useState<any>(null);
+  const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function runScan() {
+    setBusy(true); setError(null); setResult(null);
+    try {
+      const { scanOrphanStorage } = await import('../lib/orphanStorage');
+      const s = await scanOrphanStorage();
+      setScan(s);
+      if (s.totalOrphans === 0) setResult('Malinis na! Walang naiwang larawan sa storage.');
+    } catch (err: any) {
+      setError(err?.message || 'Hindi matapos ang pagsuri.');
+    }
+    setBusy(false);
+  }
+
+  async function runDelete() {
+    if (!scan) return;
+    if (!confirm(`Buburahin ang ${scan.totalOrphans} larawang walang kaugnay na account. Hindi na ito maibabalik. Ituloy?`)) return;
+    setBusy(true); setError(null);
+    try {
+      const { deleteOrphanStorage } = await import('../lib/orphanStorage');
+      const n = await deleteOrphanStorage(scan);
+      setResult(`Nabura ang ${n} larawan. Malinis na ang storage.`);
+      setScan(null);
+    } catch (err: any) {
+      setError(err?.message || 'Hindi matapos ang pagbura.');
+    }
+    setBusy(false);
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={runScan}
+        disabled={busy}
+        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold text-gray-600 hover:border-brand-400 hover:text-brand-700 transition disabled:opacity-50"
+      >
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+        Linisin ang Storage
+      </button>
+
+      {(scan || result || error) && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 p-4" onClick={() => { if (!busy) { setScan(null); setResult(null); setError(null); } }}>
+          <div className="w-full max-w-md bg-white rounded-2xl overflow-hidden shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 bg-brand-600 text-white">
+              <h3 className="font-bold text-sm">Paglilinis ng Storage</h3>
+              <button onClick={() => { setScan(null); setResult(null); setError(null); }} disabled={busy}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 max-h-[60vh] overflow-y-auto">
+              {error && (
+                <div className="mb-3 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">{error}</div>
+              )}
+              {result && (
+                <div className="mb-3 p-3 rounded-xl bg-brand-50 border border-brand-200 text-xs text-brand-800 font-medium">{result}</div>
+              )}
+              {scan && scan.totalOrphans > 0 && (
+                <>
+                  <p className="text-sm text-gray-700 mb-1">
+                    May <span className="font-bold text-red-600">{scan.totalOrphans}</span> larawang naiwan na walang kaugnay na account, mula sa kabuuang {scan.totalFiles} file.
+                  </p>
+                  <p className="text-[11px] text-gray-400 mb-3">Ligtas burahin ang mga ito — wala nang gumagamit sa kanila.</p>
+                  <div className="space-y-2 mb-4">
+                    {[...scan.orphans.entries()].map(([bucket, paths]: any) => (
+                      <div key={bucket} className="rounded-xl border border-gray-200 p-3">
+                        <p className="text-xs font-semibold text-gray-700 mb-1">{bucket} · {paths.length}</p>
+                        <div className="space-y-0.5 max-h-28 overflow-y-auto">
+                          {paths.map((p: string) => (
+                            <p key={p} className="text-[10px] text-gray-400 truncate">{p}</p>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={runDelete}
+                    disabled={busy}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-600 text-white text-sm font-semibold disabled:opacity-50"
+                  >
+                    {busy ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                    Burahin ang {scan.totalOrphans} Larawan
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ============= USERS TAB =============
 type UserSubtab = 'active' | 'inactive' | 'pending';
+
 
 function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) => void; onStartChat: (user: Profile) => void }) {
   const { profile: adminProfile } = useAuth();
@@ -616,7 +715,11 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
 
   return (
     <div className="px-5 py-4">
-      <h2 className="text-lg font-bold text-gray-800 mb-3">User Management</h2>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <h2 className="text-lg font-bold text-gray-800">User Management</h2>
+        <StorageCleanupButton />
+      </div>
+
 
       {/* Subtabs */}
       <div className="flex gap-1 mb-3 bg-gray-100 rounded-xl p-1">
