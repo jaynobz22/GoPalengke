@@ -3,14 +3,17 @@
 
 const SITE = "https://www.gopalengke.net";
 const TUTORIAL = "https://www.gopalengke.net/tutorial";
-const FROM = "GoPalengke <admin@gopalengke.net>";
+const AFFILIATE = "https://www.gopalengke.net/affiliate";
+const TERMS = "https://www.gopalengke.net/legal/terms";
+const PRIVACY = "https://www.gopalengke.net/legal/privacy";
+const LOGO = "https://www.gopalengke.net/images/Copilot_20260907_183703.jpg";
+const FROM = "GoPalengke Admin <admin@gopalengke.net>";
 
 type Role = "seller" | "rider" | "buyer";
 
 type RoleCopy = {
   subject: string;
-  title: string;
-  intro: string;
+  roleLabel: string;
   approvalNote: string | null;
   checklist: string[];
   gps: string;
@@ -19,10 +22,8 @@ type RoleCopy = {
 
 const COPY: Record<Role, RoleCopy> = {
   seller: {
-    subject: "Maligayang pagdating sa GoPalengke! I-setup na ang tindahan mo",
-    title: "Welcome, Ka-Tindera/Ka-Tindero!",
-    intro:
-      "Na-verify na ang email mo. Konti na lang at bukas na ang tindahan mo sa GoPalengke.",
+    subject: "Welcome to GoPalengke! I-setup na ang tindahan mo",
+    roleLabel: "Seller",
     approvalNote:
       "Paalala: kailangan munang kumpleto ang tindahan mo at ma-approve ng admin bago ito makita at mabilhan ng mga mamimili.",
     checklist: [
@@ -33,13 +34,11 @@ const COPY: Record<Role, RoleCopy> = {
       "Mag-post ng iyong unang paninda (may presyo kada kilo)",
     ],
     gps: "Kapag humingi ang GoPalengke ng location access, pindutin ang <strong>Allow / Payagan</strong>. Dito nakadepende ang tamang pagkakalagay ng tindahan mo sa mapa, kung aling palengke ka mapapabilang, at kung paano ka mahahanap ng mga malapit na mamimili at rider.",
-    cta: "I-setup ang Tindahan Ko",
+    cta: "I-setup ang Tindahan Ngayon",
   },
   rider: {
-    subject: "Maligayang pagdating sa GoPalengke! Kumpletuhin ang rider profile mo",
-    title: "Welcome, Ka-Rider!",
-    intro:
-      "Na-verify na ang email mo. Kumpletuhin na lang ang mga requirement at makakabiyahe ka na.",
+    subject: "Welcome to GoPalengke! Kumpletuhin ang rider profile mo",
+    roleLabel: "Rider",
     approvalNote:
       "Paalala: kailangan munang kumpleto ang profile mo at ma-approve ng admin bago ka makatanggap ng delivery.",
     checklist: [
@@ -49,13 +48,11 @@ const COPY: Record<Role, RoleCopy> = {
       "I-on ang iyong Available status kapag handa nang bumiyahe",
     ],
     gps: "Kapag humingi ang GoPalengke ng location access, pindutin ang <strong>Allow / Payagan</strong> (mas mabuti kung <strong>Always Allow</strong>). Dito gumagana ang GPS navigation papunta sa tindahan at sa bahay ng buyer, ang live tracking, at ang tamang kwenta ng distansya at bayad mo.",
-    cta: "Kumpletuhin ang Rider Profile",
+    cta: "Kumpletuhin ang Profile Ngayon",
   },
   buyer: {
-    subject: "Maligayang pagdating sa GoPalengke! Kumpletuhin ang profile mo",
-    title: "Welcome, Suki!",
-    intro:
-      "Na-verify na ang email mo. Konti na lang at makakabili ka na ng sariwang paninda mula sa palengke.",
+    subject: "Welcome to GoPalengke! Kumpletuhin ang profile mo",
+    roleLabel: "Buyer",
     approvalNote: null,
     checklist: [
       "Mag-upload ng profile picture",
@@ -63,7 +60,7 @@ const COPY: Record<Role, RoleCopy> = {
       "Siguraduhing tama ang delivery address at numero mo",
     ],
     gps: "Kapag humingi ang GoPalengke ng location access, pindutin ang <strong>Allow / Payagan</strong>. Dito nakadepende ang paghahanap ng pinakamalapit na palengke at tindahan sa iyo, at ang tamang kwenta ng delivery fee papunta sa bahay mo.",
-    cta: "Kumpletuhin ang Profile Ko",
+    cta: "Mag-shopping Ngayon",
   },
 };
 
@@ -80,44 +77,96 @@ function esc(s: string) {
 
 export function welcomeEmailHtml(role: Role, name: string) {
   const copy = COPY[role];
-  const first = esc((name || "Suki").split(" ")[0] ?? "Suki");
+  const displayName = esc(name?.trim() || "Suki");
   const items = copy.checklist
-    .map((m) => `<li style="margin:6px 0">${esc(m)}</li>`)
+    .map(
+      (m) =>
+        `<tr><td style="vertical-align:top;padding:5px 10px 5px 0;font-size:15px;line-height:1.5;color:#16a34a;font-weight:bold">&#10003;</td>
+<td style="vertical-align:top;padding:5px 0;font-size:15px;line-height:1.55;color:#374151">${esc(m)}</td></tr>`,
+    )
     .join("");
+
   const approval = copy.approvalNote
-    ? `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:14px 16px;margin:0 0 18px">
-<div style="font-size:14px;font-weight:bold;color:#92400e;margin-bottom:4px">⏳ Pending approval muna</div>
-<div style="font-size:14px;line-height:1.6;color:#92400e">${esc(copy.approvalNote)}</div></div>`
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px"><tr>
+<td style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:14px 16px">
+<div style="font-size:14px;font-weight:bold;color:#92400e;margin-bottom:4px">&#9203; Pending approval muna</div>
+<div style="font-size:14px;line-height:1.6;color:#92400e">${esc(copy.approvalNote)}</div>
+</td></tr></table>`
     : "";
 
-  return `<!doctype html><html><body style="margin:0;background:#ffffff;font-family:Arial,sans-serif;color:#1f2937">
-<div style="max-width:560px;margin:0 auto;padding:24px">
-<div style="background:#15803d;border-radius:16px 16px 0 0;padding:20px 24px;color:#ffffff">
-<div style="font-size:22px;font-weight:bold">GoPalengke</div>
-<div style="font-size:13px;opacity:.9">Online palengke ng bayan</div></div>
-<div style="border:1px solid #e5e7eb;border-top:0;border-radius:0 0 16px 16px;padding:24px">
-<h1 style="font-size:20px;margin:0 0 12px">${esc(copy.title)}</h1>
-<p style="font-size:15px;line-height:1.6;margin:0 0 8px">Hi ${first},</p>
-<p style="font-size:15px;line-height:1.6;margin:0 0 18px">${esc(copy.intro)}</p>
-${approval}
-<div style="font-size:15px;font-weight:bold;margin:0 0 6px">Mga dapat mong tapusin:</div>
-<ul style="font-size:15px;line-height:1.5;padding-left:20px;margin:6px 0 20px">${items}</ul>
+  return `<!doctype html>
+<html lang="tl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Welcome to GoPalengke</title></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#1f2937">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">Welcome to GoPalengke! Mga dapat mong gawin para ma-activate ang account mo.</div>
 
-<div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:12px;padding:14px 16px;margin:0 0 20px">
-<div style="font-size:14px;font-weight:bold;color:#1e40af;margin-bottom:6px">📍 Pakibuksan ang Location (GPS)</div>
-<div style="font-size:14px;line-height:1.6;color:#1e3a8a">${copy.gps}</div>
-</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 12px">
+<tr><td align="center">
 
-<a href="${SITE}/" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 22px;border-radius:12px">${esc(copy.cta)}</a>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden">
 
-<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px 16px;margin:22px 0 0">
-<div style="font-size:14px;font-weight:bold;margin-bottom:4px">🎬 Panoorin muna ang mga tutorial</div>
-<div style="font-size:14px;line-height:1.6;color:#4b5563">May mga maikling video kung paano gamitin ang GoPalengke step by step.</div>
-<a href="${TUTORIAL}" style="display:inline-block;margin-top:8px;color:#15803d;font-weight:bold;text-decoration:underline;font-size:14px">Buksan ang Tutorials</a>
-</div>
+  <tr><td style="background:#15803d;padding:26px 24px" align="center">
+    <img src="${LOGO}" width="64" height="64" alt="GoPalengke" style="display:block;border-radius:16px;border:3px solid rgba(255,255,255,.35);margin:0 auto 10px">
+    <div style="font-size:24px;font-weight:bold;color:#ffffff;letter-spacing:.3px">GoPalengke</div>
+    <div style="font-size:13px;color:#dcfce7;margin-top:2px">The First Online Wet Market sa Pilipinas</div>
+  </td></tr>
 
-<p style="font-size:13px;color:#6b7280;margin:24px 0 0">Kung hindi mo pa matapos sa loob ng 24 oras, may ipapadala kaming paalala. May tanong? I-reply lang ang email na ito.</p>
-</div></div></body></html>`;
+  <tr><td style="padding:28px 24px">
+
+    <h1 style="font-size:20px;line-height:1.4;margin:0 0 16px;color:#111827">
+      Hello ${displayName}, Welcome to GoPalengke! The First Online Wet Market sa Pilipinas!
+    </h1>
+
+    <p style="font-size:15px;line-height:1.65;margin:0 0 18px;color:#374151">
+      Maraming salamat sa pag sign up bilang isang <strong>${esc(copy.roleLabel)}</strong>.
+      Mga dapat mong gawin ngayon upang maging active ang iyong account:
+    </p>
+
+    ${approval}
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;margin:0 0 20px">
+      <tr><td style="padding:14px 16px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${items}</table>
+      </td></tr>
+    </table>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px"><tr>
+      <td style="background:#eff6ff;border:1px solid #93c5fd;border-radius:12px;padding:14px 16px">
+        <div style="font-size:14px;font-weight:bold;color:#1e40af;margin-bottom:6px">&#128205; Pakibuksan ang Location (GPS)</div>
+        <div style="font-size:14px;line-height:1.6;color:#1e3a8a">${copy.gps}</div>
+      </td></tr></table>
+
+    <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto"><tr>
+      <td align="center" bgcolor="#16a34a" style="border-radius:12px">
+        <a href="${SITE}/" style="display:inline-block;padding:15px 34px;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:12px">${esc(copy.cta)}</a>
+      </td></tr></table>
+
+  </td></tr>
+
+  <tr><td style="background:#f9fafb;border-top:1px solid #e5e7eb;padding:20px 24px" align="center">
+    <div style="font-size:13px;font-weight:bold;color:#374151;margin-bottom:10px">Mga Mahalagang Link</div>
+    <div style="font-size:14px;line-height:2;color:#15803d">
+      <a href="${TUTORIAL}" style="color:#15803d;text-decoration:none;font-weight:bold">Video Tutorial</a>
+      <span style="color:#d1d5db">&nbsp;&bull;&nbsp;</span>
+      <a href="${AFFILIATE}" style="color:#15803d;text-decoration:none;font-weight:bold">Affiliate Program</a>
+      <span style="color:#d1d5db">&nbsp;&bull;&nbsp;</span>
+      <a href="${TERMS}" style="color:#15803d;text-decoration:none;font-weight:bold">Terms of Service</a>
+      <span style="color:#d1d5db">&nbsp;&bull;&nbsp;</span>
+      <a href="${PRIVACY}" style="color:#15803d;text-decoration:none;font-weight:bold">Privacy Policy</a>
+    </div>
+  </td></tr>
+
+  <tr><td style="background:#ffffff;border-top:1px solid #e5e7eb;padding:16px 24px" align="center">
+    <div style="font-size:12px;line-height:1.6;color:#9ca3af">
+      Kung hindi mo pa matapos sa loob ng 24 oras, may ipapadala kaming paalala.<br>
+      May tanong? I-reply lang ang email na ito.<br>
+      &copy; GoPalengke &mdash; Online palengke ng bayan
+    </div>
+  </td></tr>
+
+</table>
+</td></tr></table>
+</body></html>`;
 }
 
 export async function sendWelcomeEmailFor(sb: any, userId: string) {
