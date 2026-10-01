@@ -2033,7 +2033,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
       const feeBreakdown = livestock ? null : getFeeForStore(store, items);
       const deliveryFee = feeBreakdown?.fee || 0;
       const deliveryMethod = livestock ? (items[0].product.delivery_method || 'pickup') : null;
-      const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, deliveryLocation.region]
+      const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, formatRegionForDisplay(deliveryLocation.region)]
         .filter(Boolean).join(', ');
 
       const commissionAmount = Math.round(total * COMMISSION_RATE * 100) / 100;
@@ -2567,7 +2567,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                   const feeBreakdown = livestock ? null : getFeeForStore(store, items);
                   const deliveryFee = livestock ? 0 : (feeBreakdown?.fee || 0);
                   const deliveryMethod = livestock ? (items[0].product.delivery_method || 'pickup') : null;
-                  const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, deliveryLocation.region].filter(Boolean).join(', ');
+                  const fullAddress = [addressDetails, deliveryLocation.barangay, deliveryLocation.district, deliveryLocation.city, formatRegionForDisplay(deliveryLocation.region)].filter(Boolean).join(', ');
                   const commissionAmount = Math.round(total * COMMISSION_RATE * 100) / 100;
                   const { data: order, error } = await supabase.from('orders').insert({
                     buyer_id: profile!.id, store_id: storeId, status: 'pending', payment_method: paymentMethod, payment_status: 'pending',
@@ -3359,7 +3359,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
             city: currentOrder.delivery_city,
             region: currentOrder.delivery_region,
           })}
-          deliveryAddress={currentOrder.delivery_address || `${currentOrder.delivery_barangay} ${currentOrder.delivery_city} ${currentOrder.delivery_region}`}
+          deliveryAddress={currentOrder.delivery_address || `${currentOrder.delivery_barangay} ${currentOrder.delivery_city} ${formatRegionForDisplay(currentOrder.delivery_region)}`}
           pickedUpAt={currentOrder.picked_up_at}
           sameCity={store?.city === currentOrder.delivery_city}
           phase={currentOrder.status === 'ready_for_pickup' ? 'to_store' : 'to_buyer'}
