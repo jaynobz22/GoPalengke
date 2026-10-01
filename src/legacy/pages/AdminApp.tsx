@@ -597,7 +597,17 @@ function StorageCleanupButton() {
                   <p className="text-sm text-gray-700 mb-1">
                     May <span className="font-bold text-red-600">{scan.totalOrphans}</span> larawang naiwan na walang kaugnay na account, mula sa kabuuang {scan.totalFiles} file.
                   </p>
-                  <p className="text-[11px] text-gray-400 mb-3">Ligtas burahin ang mga ito — wala nang gumagamit sa kanila.</p>
+                  <p className="text-[11px] text-gray-400 mb-2">Ligtas burahin ang mga ito — wala nang gumagamit sa kanila.</p>
+                  <div className="mb-3 p-3 rounded-xl bg-brand-50 border border-brand-200">
+                    <p className="text-[11px] font-semibold text-brand-800 mb-1">Hindi kailanman mabubura:</p>
+                    <ul className="text-[11px] text-brand-700 space-y-0.5 list-disc list-inside">
+                      <li>Mga payment QR code mo (GoTyme, OwnBank, MariBank, UnionBank)</li>
+                      <li>Mga larawan ng landing at marketing pages</li>
+                      <li>Mga QR code ng aktibong affiliate</li>
+                      <li>Mga demo o fake na tindahan at produkto nila</li>
+                    </ul>
+                  </div>
+
                   <div className="space-y-2 mb-4">
                     {[...scan.orphans.entries()].map(([bucket, paths]: any) => (
                       <div key={bucket} className="rounded-xl border border-gray-200 p-3">
