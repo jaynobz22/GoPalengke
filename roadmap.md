@@ -51,3 +51,11 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 - [x] Add seller-only sales progress toward the next rank
 - [ ] Apply `database/seller-ranks.sql` to the existing GoPalengke database (blocked: this workspace has no privileged access to that external database)
 - [x] Verify rank thresholds on phone and laptop, then push to GitHub
+
+## Current: Welcome email redesign
+- [x] Green logo header with GoPalengke branding
+- [x] Exact welcome wording: "Hello [Pangalan], Welcome to GoPalengke! The First Online Wet Market sa Pilipinas!"
+- [x] Second paragraph thanking the user for signing up as their role, with role checklist
+- [x] Green CTA button ending in "Ngayon" plus helpful links footer
+- [x] Sender set to GoPalengke Admin
+- [x] Push welcome email redesign to GitHub
