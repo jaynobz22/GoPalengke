@@ -237,29 +237,48 @@ export const REGIONS_LIST: RegionInfo[] = [
   { code: '1900000000', name: 'Bangsamoro Autonomous Region In Muslim Mindanao (BARMM)' },
 ];
 
-// Format a region code (PSGC 10-digit or old name) for compact display.
-// Returns the region number (e.g. "11" for Davao) or the short name (e.g. "NCR").
+// Format a region code (PSGC 10-digit or old name) for clean display.
+// Always shows "Region 11" style — never the long PSGC code with many zeros.
+// Named regions stay short: NCR, CAR, BARMM, MIMAROPA.
 export function formatRegionForDisplay(region: string | null | undefined): string {
   if (!region) return '';
-  // PSGC 10-digit code → extract region number
-  if (/^\d{10}$/.test(region)) {
-    const num = String(Number(region.slice(0, 2)));
-    // Special cases: NCR=13, CAR=14, BARMM=19, Region XIII=16
-    if (region.startsWith('13')) return 'NCR';
-    if (region.startsWith('14')) return 'CAR';
-    if (region.startsWith('19')) return 'BARMM';
-    if (region.startsWith('16')) return '13';
-    return num;
+  const text = String(region).trim();
+  if (!text) return '';
+
+  // PSGC 10-digit code → "Region 11" / short name
+  if (/^\d{10}$/.test(text)) {
+    const prefix = text.slice(0, 2);
+    const psgcMap: Record<string, string> = {
+      '13': 'NCR',
+      '14': 'CAR',
+      '19': 'BARMM',
+      '17': 'MIMAROPA',
+      '16': 'Region 13',
+    };
+    if (psgcMap[prefix]) return psgcMap[prefix];
+    const num = Number(prefix);
+    return num > 0 ? `Region ${num}` : text;
   }
-  // Old-style region names → extract number
-  const m = region.match(/Region\s+([IVX]+)/i);
-  if (m) {
-    const roman = m[1].toUpperCase();
+
+  // Short names already fine
+  if (/^(NCR|CAR|BARMM|ARMM|MIMAROPA)$/i.test(text)) return text.toUpperCase() === 'MIMAROPA' ? 'MIMAROPA' : text.toUpperCase();
+
+  // "Region XI (Davao Region)" / "Region IV-A" / "Region 11" → "Region 11"
+  const roman = text.match(/Region\s+([IVX]+)(-[AB])?/i);
+  if (roman) {
     const map: Record<string, string> = { 'I': '1', 'II': '2', 'III': '3', 'IV': '4', 'V': '5', 'VI': '6', 'VII': '7', 'VIII': '8', 'IX': '9', 'X': '10', 'XI': '11', 'XII': '12', 'XIII': '13' };
-    return map[roman] || region;
+    const n = map[roman[1].toUpperCase()];
+    if (n) return `Region ${n}${roman[2] ? roman[2].toUpperCase() : ''}`;
   }
-  // Already short names like "NCR", "CAR", "BARMM"
-  return region;
+  const arabic = text.match(/Region\s+(\d{1,2})(-[AB])?/i);
+  if (arabic) return `Region ${Number(arabic[1])}${arabic[2] ? arabic[2].toUpperCase() : ''}`;
+
+  if (/National Capital Region/i.test(text)) return 'NCR';
+  if (/Cordillera/i.test(text)) return 'CAR';
+  if (/Bangsamoro/i.test(text)) return 'BARMM';
+  if (/MIMAROPA/i.test(text)) return 'MIMAROPA';
+
+  return text;
 }
 
 // Synchronous stubs — return empty arrays. Use async versions instead.
