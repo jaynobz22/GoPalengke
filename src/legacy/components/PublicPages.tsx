@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { DemoBadge } from './DemoBadge';
 import { shareToMessenger } from '../lib/messengerShare';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
@@ -336,7 +337,7 @@ function PublicStorePage({ slug }: { slug: string }) {
                     <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-3xl opacity-40">📦</div>
-                  )}
+                  )}<DemoBadge storeId={p.store_id} />
                   {p.stock <= 5 && p.stock > 0 && (
                     <span className="absolute top-1.5 left-1.5 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">Lang {p.stock} na</span>
                   )}
