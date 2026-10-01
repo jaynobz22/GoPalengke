@@ -670,6 +670,17 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
     load();
   }
 
+  async function toggleDemo(user: Profile) {
+    const { data: st } = await supabase.from('stores').select('id, is_demo').eq('seller_id', user.id).maybeSingle();
+    if (!st) { alert('Wala pang tindahan ang seller na ito.'); return; }
+    const next = !st.is_demo;
+    const { error } = await supabase.from('stores').update({ is_demo: next }).eq('id', st.id);
+    if (error) { alert('Kailangan munang i-run ang database/demo-stores.sql sa SQL Editor.\n' + error.message); return; }
+    const { refreshDemoStores } = await import('../components/DemoBadge');
+    refreshDemoStores();
+    alert(next ? 'Naka-DEMO na ang tindahan — may "DEMO" label na ang lahat ng paninda nito.' : 'Inalis na ang DEMO label. Live store na ito.');
+  }
+
   async function toggleActive(user: Profile) {
     await supabase.from('profiles').update({ is_active: !user.is_active }).eq('id', user.id);
     load();
@@ -875,6 +886,14 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
                     <Video size={15} />
                     Video Call
                   </button>
+                  {user.role === 'seller' && (
+                    <button
+                      onClick={() => toggleDemo(user)}
+                      className="flex items-center justify-center gap-1 py-2.5 px-3 rounded-xl text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 active:scale-95 transition"
+                    >
+                      🧪 Demo
+                    </button>
+                  )}
                   <button
                     onClick={() => deleteUser(user)}
                     disabled={deleting === user.id}
