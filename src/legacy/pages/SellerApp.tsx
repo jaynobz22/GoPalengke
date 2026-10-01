@@ -18,6 +18,7 @@ import { ChatView, getOrCreateConversation } from '../components/ChatView';
 import { RiderStageBanner } from '../components/RiderStageBanner';
 import { Avatar } from '../components/Avatar';
 import { InactiveBanner } from '../components/InactiveBanner';
+import { GpsPermissionModal } from '../components/GpsPermissionModal';
 import { SellerBilling } from '../components/SellerBilling';
 import { ReviewSection } from '../components/Reviews';
 import { OrderStepTracker, type StepInfo } from '../components/OrderStepTracker';
@@ -74,30 +75,36 @@ export function SellerApp() {
   // the seller's actual current location instead of a static palengke/city center.
   // Waits until the login reminder popup is dismissed before requesting
   // geolocation so the browser permission dialog doesn't overlap with it.
+  const [showGpsPrompt, setShowGpsPrompt] = useState(false);
+  const requestStoreGps = useCallback(() => {
+    if (!store) return;
+    if (typeof navigator === 'undefined' || !navigator.geolocation) { setShowGpsPrompt(true); return; }
+    sessionStorage.setItem('gopalengke_gps_fired_at', Date.now().toString());
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const curLat = store.latitude;
+        const curLng = store.longitude;
+        const moved = curLat == null || curLng == null ||
+          Math.abs(curLat - lat) > 0.001 || Math.abs(curLng - lng) > 0.001;
+        if (moved) {
+          supabase.from('stores').update({ latitude: lat, longitude: lng }).eq('id', store.id);
+        }
+        setShowGpsPrompt(false);
+      },
+      () => { setShowGpsPrompt(true); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  }, [store?.id, store?.latitude, store?.longitude]);
+
   useEffect(() => {
     if (!store) return;
-    if (!navigator.geolocation) return;
     let cancelled = false;
 
     function requestGps() {
       if (cancelled) return;
-      sessionStorage.setItem('gopalengke_gps_fired_at', Date.now().toString());
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          if (cancelled) return;
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          const curLat = store.latitude;
-          const curLng = store.longitude;
-          const moved = curLat == null || curLng == null ||
-            Math.abs(curLat - lat) > 0.001 || Math.abs(curLng - lng) > 0.001;
-          if (moved) {
-            supabase.from('stores').update({ latitude: lat, longitude: lng }).eq('id', store.id);
-          }
-        },
-        () => {},
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-      );
+      requestStoreGps();
     }
 
     const reminderKey = 'seller_login_reminder';
@@ -115,7 +122,7 @@ export function SellerApp() {
     }
 
     return () => { cancelled = true; };
-  }, [store?.id]);
+  }, [store?.id, requestStoreGps]);
 
   // Realtime: reload store when it changes (e.g. admin verifies the store)
   useEffect(() => {
@@ -244,6 +251,13 @@ export function SellerApp() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col w-full max-w-7xl mx-auto relative">
       {!canAct && !isFeeFrozen && <InactiveBanner />}
+      <GpsPermissionModal
+        open={showGpsPrompt}
+        role="seller"
+        onRetry={requestStoreGps}
+        onClose={() => setShowGpsPrompt(false)}
+      />
+
       {!store.is_verified && (
         <div className="bg-amber-50 border-b border-amber-200 px-5 py-3 flex items-center gap-2">
           <Shield size={18} className="text-amber-600 flex-shrink-0" />
