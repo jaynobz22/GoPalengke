@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { X, MapPin, Phone, Mail, Calendar, Check, XCircle, ImageIcon, Store as StoreIcon, Bike, Home, IdCard, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Profile, Store } from '../lib/types';
+import { formatRegionForDisplay } from '../lib/philippineLocations';
 
 interface Props {
   user: Profile;
@@ -138,7 +139,7 @@ export function UserProfileReview({ user, onClose }: Props) {
               </div>
               <div className="flex-1">
                 <p className="text-[10px] text-gray-400">Region</p>
-                <p className="text-xs font-medium text-gray-700">{user.region || <span className="text-gray-300 italic">Wala</span>}</p>
+                <p className="text-xs font-medium text-gray-700">{formatRegionForDisplay(user.region) || <span className="text-gray-300 italic">Wala</span>}</p>
               </div>
             </div>
           </div>
