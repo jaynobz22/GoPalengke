@@ -571,6 +571,8 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
     if (!confirm(`Sigurado ka bang gusto mong PERMANENTENG burahin ang account ni ${user.full_name}? Hindi na ito maaaring bawiin. Mabubura rin ang lahat ng kaugnay na data (tindahan, orders, messages, atbp.)`)) return;
     setDeleting(user.id);
     try {
+      const { purgeUserStorage } = await import('../lib/purgeUserStorage');
+      await purgeUserStorage(user.id);
       const { error } = await supabase.rpc('admin_delete_user', {
         p_user_id: user.id,
         p_admin_id: adminProfile.id,
