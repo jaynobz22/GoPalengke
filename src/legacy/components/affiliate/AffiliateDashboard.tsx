@@ -6,10 +6,11 @@ import { supabase } from '../../lib/supabase';
 import { AffiliateMarketingTools } from '../../components/affiliate/AffiliateMarketingTools';
 import { AIMarketingKit } from '../../components/affiliate/AIMarketingKit';
 import { TargetedMarketingPages } from '../../components/affiliate/TargetedMarketingPages';
+import { AffiliateChat, countUnreadAffiliateMessages } from './AffiliateChat';
 import {
   Wallet, TrendingUp, Store, Bike, Copy, CheckCheck, LogOut, ArrowLeft,
   Link as LinkIcon, Loader2, Receipt, Target, Users, RefreshCw, Download,
-  ChevronRight, QrCode, AlertCircle, Megaphone, X, UserPlus,
+  ChevronRight, QrCode, AlertCircle, Megaphone, X, UserPlus, MessageCircle, BadgeCheck,
 } from 'lucide-react';
 
 interface Referral {
@@ -60,7 +61,9 @@ export function AffiliateDashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'history' | 'marketing'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'history' | 'marketing' | 'messages'>('overview');
+  const [unreadAdmin, setUnreadAdmin] = useState(0);
+  const [lastPayout, setLastPayout] = useState<any>(null);
   const [payoutSubmitting, setPayoutSubmitting] = useState(false);
   const [payoutMsg, setPayoutMsg] = useState<string | null>(null);
   const [downline, setDownline] = useState<any[]>([]);
@@ -89,6 +92,23 @@ export function AffiliateDashboard() {
   }, [affiliate]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!affiliate) return;
+    const check = async () => {
+      setUnreadAdmin(activeTab === 'messages' ? 0 : await countUnreadAffiliateMessages('affiliate', affiliate.id));
+      const { data } = await supabase.from('affiliate_messages').select('id, body, created_at')
+        .eq('affiliate_id', affiliate.id).eq('kind', 'payout_sent').order('created_at', { ascending: false }).limit(1);
+      const p = data?.[0];
+      if (p && localStorage.getItem('gp_aff_payout_seen') !== p.id) setLastPayout(p); else setLastPayout(null);
+    };
+    check();
+    const ch = supabase.channel(`aff-notif-${affiliate.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'affiliate_messages', filter: `affiliate_id=eq.${affiliate.id}` }, () => { check(); refresh(); load(); })
+      .subscribe();
+    const t = setInterval(check, 15000);
+    return () => { supabase.removeChannel(ch); clearInterval(t); };
+  }, [affiliate?.id, activeTab]);
 
   function copyLink() {
     if (!affiliate) return;
@@ -141,12 +161,13 @@ export function AffiliateDashboard() {
 
       {/* Tabs */}
       <div className="max-w-7xl mx-auto px-5 md:px-8">
-        <div className="grid grid-cols-4 sm:flex sm:justify-around gap-2 mt-4 bg-white rounded-2xl border border-gray-100 p-1.5 shadow-sm">
+        <div className="grid grid-cols-5 sm:flex sm:justify-around gap-2 mt-4 bg-white rounded-2xl border border-gray-100 p-1.5 shadow-sm">
           {[
             { id: 'overview' as const, label: 'Overview', icon: TrendingUp },
             { id: 'milestones' as const, label: 'Milestones', icon: Target },
             { id: 'history' as const, label: 'History', icon: Receipt },
             { id: 'marketing' as const, label: 'Marketing', icon: Megaphone },
+            { id: 'messages' as const, label: 'Admin', icon: MessageCircle },
           ].map(t => {
             const Icon = t.icon;
             return (
@@ -157,7 +178,11 @@ export function AffiliateDashboard() {
                   activeTab === t.id ? 'bg-brand-600 text-white' : 'text-gray-500'
                 }`}
               >
-                <Icon size={16} /> {t.label}
+                <span className="relative inline-flex"><Icon size={16} />
+                  {t.id === 'messages' && unreadAdmin > 0 && (
+                    <span className="absolute -top-2 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">{unreadAdmin}</span>
+                  )}
+                </span> <span className="hidden sm:inline">{t.label}</span><span className="sm:hidden text-[11px]">{t.label}</span>
               </button>
             );
           })}
@@ -165,6 +190,21 @@ export function AffiliateDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-5 py-5 md:px-8 md:py-7">
+        {lastPayout && (
+          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-4">
+            <BadgeCheck size={24} className="text-green-600 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-green-800">Payout Sent!</p>
+              <p className="text-sm text-green-700">{lastPayout.body}</p>
+            </div>
+            <button aria-label="Isara" onClick={() => { localStorage.setItem('gp_aff_payout_seen', lastPayout.id); setLastPayout(null); }} className="text-green-700"><X size={18} /></button>
+          </div>
+        )}
+        {unreadAdmin > 0 && activeTab !== 'messages' && (
+          <button onClick={() => setActiveTab('messages')} className="mb-4 w-full flex items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 p-3 text-left text-sm text-blue-800">
+            <MessageCircle size={18} /> May {unreadAdmin} bagong mensahe mula sa Admin. <span className="ml-auto font-semibold">Buksan ›</span>
+          </button>
+        )}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 size={28} className="animate-spin text-brand-500" />
@@ -470,7 +510,7 @@ export function AffiliateDashboard() {
                     className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 rounded-xl text-xs font-semibold border border-green-200 active:scale-95 transition disabled:opacity-50"
                   >
                     {payoutSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                    {affiliate.payout_status === 'requested' ? 'Payout Pending' : 'Request Payout'}
+                    {affiliate.payout_status === 'requested' ? 'Payout Pending (hinihintay ang admin)' : 'Request Payout'}
                   </button>
                 </div>
 
@@ -535,6 +575,10 @@ export function AffiliateDashboard() {
             )}
 
             {/* MARKETING TAB */}
+            {activeTab === 'messages' && (
+              <AffiliateChat affiliateId={affiliate.id} viewer="affiliate" title="GoPalengke Admin" />
+            )}
+
             {activeTab === 'marketing' && (
               <div className="space-y-4">
                 <TargetedMarketingPages affiliate={affiliate} />
