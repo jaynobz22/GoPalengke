@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { AffiliateChat, countUnreadAffiliateMessages } from '../components/affiliate/AffiliateChat';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
@@ -35,6 +36,14 @@ export function AdminApp() {
   const [pendingFeeCount, setPendingFeeCount] = useState(0);
   const [pendingRiderFeeCount, setPendingRiderFeeCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [affiliateAlertCount, setAffiliateAlertCount] = useState(0);
+  const loadAffiliateAlertCount = useCallback(async () => {
+    const [{ count: p }, m] = await Promise.all([
+      supabase.from('affiliates').select('id', { count: 'exact', head: true }).eq('payout_status', 'requested'),
+      countUnreadAffiliateMessages('admin'),
+    ]);
+    setAffiliateAlertCount((p ?? 0) + m);
+  }, []);
   const [activeCall, setActiveCall] = useState<{ roomId: string; isCaller: boolean; callId: string; otherName: string } | null>(null);
   const [activeChat, setActiveChat] = useState<{ conversationId: string; otherName: string; userId: string } | null>(null);
 
@@ -111,6 +120,7 @@ export function AdminApp() {
     loadPendingFeeCount();
     loadPendingRiderFeeCount();
     loadUnreadMessageCount();
+    loadAffiliateAlertCount();
 
     const channel = supabase
       .channel('admin-tab-badges')
@@ -119,10 +129,13 @@ export function AdminApp() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fee_payments' }, () => { loadPendingFeeCount(); rotateBillingQr().catch(() => {}); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rider_fee_payments' }, () => { loadPendingRiderFeeCount(); rotateBillingQr().catch(() => {}); })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_messages' }, () => loadUnreadMessageCount())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'affiliates' }, () => loadAffiliateAlertCount())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'affiliate_messages' }, () => loadAffiliateAlertCount())
       .subscribe();
+    const affT = setInterval(loadAffiliateAlertCount, 20000);
 
-    return () => { supabase.removeChannel(channel); };
-  }, [loadPendingCreditCount, loadPendingUserCount, loadPendingFeeCount, loadPendingRiderFeeCount, loadUnreadMessageCount]);
+    return () => { supabase.removeChannel(channel); clearInterval(affT); };
+  }, [loadAffiliateAlertCount, loadPendingCreditCount, loadPendingUserCount, loadPendingFeeCount, loadPendingRiderFeeCount, loadUnreadMessageCount]);
 
   useEffect(() => {
     if (tab === 'messages') loadUnreadMessageCount();
@@ -212,7 +225,8 @@ export function AdminApp() {
             t.id === 'users' ? pendingUserCount :
             t.id === 'fees' ? pendingFeeCount :
             t.id === 'rider_fees' ? pendingRiderFeeCount :
-            t.id === 'messages' ? unreadMessageCount : 0;
+            t.id === 'messages' ? unreadMessageCount :
+            t.id === 'affiliates' ? affiliateAlertCount : 0;
           return (
             <button
               key={t.id}
@@ -3380,13 +3394,20 @@ function AffiliatesTab() {
   const [loading, setLoading] = useState(true);
   const [selectedAff, setSelectedAff] = useState<AdminAffiliate | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [unreadByAff, setUnreadByAff] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
+    const { data: unreadRows } = await supabase.from('affiliate_messages')
+      .select('affiliate_id').eq('sender', 'affiliate').is('read_at', null);
+    const um: Record<string, number> = {};
+    (unreadRows || []).forEach((r: any) => { um[r.affiliate_id] = (um[r.affiliate_id] || 0) + 1; });
+    setUnreadByAff(um);
     const { data: affData } = await supabase
       .from('affiliates')
       .select('*')
       .order('created_at', { ascending: false });
-    const affs = (affData || []) as AdminAffiliate[];
+    const affs = ((affData || []) as AdminAffiliate[]).sort((a, b) =>
+      ((b.payout_status === 'requested' ? 2 : 0) + (um[b.id] ? 1 : 0)) - ((a.payout_status === 'requested' ? 2 : 0) + (um[a.id] ? 1 : 0)));
     setAffiliates(affs);
 
     if (affs.length > 0) {
@@ -3408,11 +3429,13 @@ function AffiliatesTab() {
     load();
     const sub = supabase.channel('admin-affiliates-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'affiliates' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'affiliate_messages' }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(sub); };
   }, [load]);
 
   async function processPayout(aff: AdminAffiliate) {
+    if (!confirm(`Naipadala mo na ba ang ₱${Number(aff.wallet_balance).toFixed(2)} sa QR ni ${aff.full_name}?`)) return;
     setProcessing(aff.id);
     const amount = Number(aff.wallet_balance);
     await supabase.from('affiliate_transactions').insert({
@@ -3430,9 +3453,25 @@ function AffiliatesTab() {
         payout_requested_at: null,
       })
       .eq('id', aff.id);
+    await supabase.from('affiliate_messages').insert({
+      affiliate_id: aff.id,
+      sender: 'admin',
+      kind: 'payout_sent',
+      body: `Naipadala na ang ₱${amount.toFixed(2)} sa iyong GCash/Maya QR. Paki-check ang iyong account. Salamat sa pagiging GoPalengke affiliate!`,
+    });
     setProcessing(null);
     setSelectedAff(null);
     load();
+  }
+
+  async function rejectPayoutWithNote(aff: AdminAffiliate) {
+    const reason = prompt('Dahilan ng pag-reject (makikita ng affiliate):', 'Paki-check ang iyong payout QR code.');
+    if (reason === null) return;
+    await rejectPayout(aff);
+    await supabase.from('affiliate_messages').insert({
+      affiliate_id: aff.id, sender: 'admin', kind: 'text',
+      body: `Hindi muna naproseso ang payout request mo. ${reason}`,
+    });
   }
 
   async function rejectPayout(aff: AdminAffiliate) {
@@ -3549,6 +3588,9 @@ function AffiliatesTab() {
                       {aff.payout_status === 'requested' && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Payout Requested</span>
                       )}
+                      {unreadByAff[aff.id] > 0 && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500 text-white font-bold">{unreadByAff[aff.id]} bagong message</span>
+                      )}
                     </div>
                     <p className="text-xs text-gray-400 truncate">{aff.email} · Code: {aff.referral_code}</p>
                     <div className="flex gap-3 mt-1">
@@ -3649,10 +3691,10 @@ function AffiliatesTab() {
                     className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold active:scale-95 transition disabled:opacity-50 flex items-center justify-center gap-1.5"
                   >
                     {processing === selectedAff.id ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                    Process Payout
+                    Naipadala Na (Mark Paid)
                   </button>
                   <button
-                    onClick={() => rejectPayout(selectedAff)}
+                    onClick={() => rejectPayoutWithNote(selectedAff)}
                     disabled={processing === selectedAff.id}
                     className="py-2.5 px-4 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-200 active:scale-95 transition disabled:opacity-50"
                   >
@@ -3660,6 +3702,7 @@ function AffiliatesTab() {
                   </button>
                 </div>
               )}
+              <AffiliateChat affiliateId={selectedAff.id} viewer="admin" title={`Chat kay ${selectedAff.full_name}`} />
             </div>
           </div>
         </div>
