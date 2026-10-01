@@ -9,7 +9,7 @@ import { TargetedMarketingPages } from '../../components/affiliate/TargetedMarke
 import {
   Wallet, TrendingUp, Store, Bike, Copy, CheckCheck, LogOut, ArrowLeft,
   Link as LinkIcon, Loader2, Receipt, Target, Users, RefreshCw, Download,
-  ChevronRight, QrCode, AlertCircle, Megaphone,
+  ChevronRight, QrCode, AlertCircle, Megaphone, X, UserPlus,
 } from 'lucide-react';
 
 interface Referral {
@@ -63,10 +63,12 @@ export function AffiliateDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'milestones' | 'history' | 'marketing'>('overview');
   const [payoutSubmitting, setPayoutSubmitting] = useState(false);
   const [payoutMsg, setPayoutMsg] = useState<string | null>(null);
+  const [downline, setDownline] = useState<any[]>([]);
+  const [detail, setDetail] = useState<null | 'seller' | 'rider' | 'affiliate'>(null);
 
   const load = useCallback(async () => {
     if (!affiliate) return;
-    const [refData, txData] = await Promise.all([
+    const [refData, txData, dlData] = await Promise.all([
       supabase.from('affiliate_referrals')
         .select('*')
         .eq('affiliate_id', affiliate.id)
@@ -75,7 +77,12 @@ export function AffiliateDashboard() {
         .select('*')
         .eq('affiliate_id', affiliate.id)
         .order('created_at', { ascending: false }),
+      supabase.from('affiliates')
+        .select('id, full_name, email, phone, referral_code, lifetime_earnings, created_at')
+        .eq('sponsor_id', affiliate.id)
+        .order('created_at', { ascending: false }),
     ]);
+    setDownline(dlData.data || []);
     setReferrals((refData.data || []) as Referral[]);
     setTransactions((txData.data || []) as Transaction[]);
     setLoading(false);
@@ -168,7 +175,7 @@ export function AffiliateDashboard() {
             {activeTab === 'overview' && (
               <div className="space-y-5">
                 {/* Metrics Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                   <MetricCard
                     icon={Wallet}
                     label="Wallet Balance"
@@ -189,6 +196,7 @@ export function AffiliateDashboard() {
                     value={String(sellerRefs.length)}
                     color="from-orange-500 to-amber-500"
                     subtitle="Active Sellers"
+                    onClick={() => setDetail('seller')}
                   />
                   <MetricCard
                     icon={Bike}
@@ -196,6 +204,15 @@ export function AffiliateDashboard() {
                     value={String(riderRefs.length)}
                     color="from-purple-500 to-indigo-500"
                     subtitle="Active Riders"
+                    onClick={() => setDetail('rider')}
+                  />
+                  <MetricCard
+                    icon={UserPlus}
+                    label="Referred Affiliates"
+                    value={String(downline.length)}
+                    color="from-pink-500 to-rose-500"
+                    subtitle="Tier 2 Affiliates"
+                    onClick={() => setDetail('affiliate')}
                   />
                 </div>
 
@@ -528,11 +545,56 @@ export function AffiliateDashboard() {
           </>
         )}
       </div>
+      {detail && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-800">
+                {detail === 'seller' ? 'Referred Sellers' : detail === 'rider' ? 'Referred Riders' : 'Referred Affiliates'}
+              </h3>
+              <button onClick={() => setDetail(null)} aria-label="Isara" className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500"><X size={18} /></button>
+            </div>
+            <div className="overflow-y-auto p-4 space-y-3">
+              {detail === 'affiliate' ? (
+                downline.length === 0 ? <p className="text-center text-gray-400 text-sm py-6">Wala pang affiliate na nag-sign up gamit ang link mo.</p> :
+                downline.map(a => (
+                  <div key={a.id} className="border border-gray-100 rounded-xl p-3">
+                    <p className="font-semibold text-gray-800">{a.full_name}</p>
+                    <p className="text-xs text-gray-500 break-all">{a.email}{a.phone ? ` • ${a.phone}` : ''}</p>
+                    <div className="flex justify-between text-xs text-gray-500 mt-2">
+                      <span>Code: <b className="text-gray-700">{a.referral_code}</b></span>
+                      <span>Sumali: {new Date(a.created_at).toLocaleDateString('en-PH')}</span>
+                    </div>
+                  </div>
+                ))
+              ) : (() => {
+                const list = detail === 'seller' ? sellerRefs : riderRefs;
+                const ms = detail === 'seller' ? SELLER_MILESTONE : RIDER_MILESTONE;
+                if (list.length === 0) return <p className="text-center text-gray-400 text-sm py-6">Wala pang {detail} referrals.</p>;
+                return list.map(r => (
+                  <div key={r.id} className="border border-gray-100 rounded-xl p-3">
+                    <div className="flex justify-between items-start gap-2">
+                      <p className="font-semibold text-gray-800">{r.referred_name || 'Walang pangalan'}</p>
+                      <span className="text-xs text-gray-400 shrink-0">Sumali: {new Date(r.created_at).toLocaleDateString('en-PH')}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center mt-2">
+                      <div className="bg-gray-50 rounded-lg p-2"><p className="text-[10px] text-gray-400">Milestones</p><p className="text-sm font-bold text-gray-800">{r.milestones_hit || 0}</p></div>
+                      <div className="bg-gray-50 rounded-lg p-2"><p className="text-[10px] text-gray-400">Progress</p><p className="text-sm font-bold text-gray-800">₱{Number(r.accumulated_admin_collected || 0).toLocaleString()}/{ms}</p></div>
+                      <div className="bg-green-50 rounded-lg p-2"><p className="text-[10px] text-gray-400">Kita mo</p><p className="text-sm font-bold text-green-700">₱{Number(r.total_commission_earned || 0).toLocaleString()}</p></div>
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function MetricCard({ icon: Icon, label, value, color, subtitle }: {
+function MetricCard({ icon: Icon, label, value, color, subtitle, onClick }: {
+  onClick?: () => void;
   icon: typeof Wallet;
   label: string;
   value: string;
@@ -540,13 +602,13 @@ function MetricCard({ icon: Icon, label, value, color, subtitle }: {
   subtitle: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+    <div onClick={onClick} role={onClick ? 'button' : undefined} className={`bg-white rounded-2xl border border-gray-100 shadow-sm p-4 ${onClick ? 'cursor-pointer hover:border-brand-300 hover:shadow-md transition' : ''}`}>
       <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-3`}>
         <Icon size={20} className="text-white" />
       </div>
       <p className="text-xs text-gray-400 mb-0.5">{label}</p>
       <p className="text-lg font-bold text-gray-800 leading-tight">{value}</p>
-      <p className="text-[10px] text-gray-400 mt-0.5">{subtitle}</p>
+      <p className="text-[10px] text-gray-400 mt-0.5">{subtitle}{onClick ? ' • Tingnan ›' : ''}</p>
     </div>
   );
 }
