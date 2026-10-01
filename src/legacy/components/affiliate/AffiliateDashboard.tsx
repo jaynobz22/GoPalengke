@@ -43,6 +43,14 @@ const RIDER_TIER1 = 35;
 const RIDER_TIER2 = 15;
 const PAYOUT_MINIMUM = 1000;
 
+const AFFILIATE_TABS = [
+  { id: 'overview' as const, label: 'Overview', icon: TrendingUp },
+  { id: 'milestones' as const, label: 'Milestones', icon: Target },
+  { id: 'history' as const, label: 'History', icon: Receipt },
+  { id: 'marketing' as const, label: 'Marketing', icon: Megaphone },
+  { id: 'messages' as const, label: 'Admin', icon: MessageCircle },
+];
+
 async function requestPayout(affiliateId: string, walletBalance: number): Promise<{ error: string | null }> {
   if (walletBalance < PAYOUT_MINIMUM) {
     return { error: `Dapat maabot ang ₱${PAYOUT_MINIMUM} wallet balance bago mag-request ng payout.` };
@@ -159,16 +167,10 @@ export function AffiliateDashboard() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="max-w-7xl mx-auto px-5 md:px-8">
-        <div className="grid grid-cols-5 sm:flex sm:justify-around gap-2 mt-4 bg-white rounded-2xl border border-gray-100 p-1.5 shadow-sm">
-          {[
-            { id: 'overview' as const, label: 'Overview', icon: TrendingUp },
-            { id: 'milestones' as const, label: 'Milestones', icon: Target },
-            { id: 'history' as const, label: 'History', icon: Receipt },
-            { id: 'marketing' as const, label: 'Marketing', icon: Megaphone },
-            { id: 'messages' as const, label: 'Admin', icon: MessageCircle },
-          ].map(t => {
+      {/* Tabs — top bar on tablet/desktop only */}
+      <div className="hidden md:block max-w-7xl mx-auto px-5 md:px-8">
+        <div className="flex justify-around gap-2 mt-4 bg-white rounded-2xl border border-gray-100 p-1.5 shadow-sm">
+          {AFFILIATE_TABS.map(t => {
             const Icon = t.icon;
             return (
               <button
@@ -182,14 +184,43 @@ export function AffiliateDashboard() {
                   {t.id === 'messages' && unreadAdmin > 0 && (
                     <span className="absolute -top-2 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">{unreadAdmin}</span>
                   )}
-                </span> <span className="hidden sm:inline">{t.label}</span><span className="sm:hidden text-[11px]">{t.label}</span>
+                </span> {t.label}
               </button>
             );
           })}
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-5 py-5 md:px-8 md:py-7">
+      {/* Bottom navigation — mobile only */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 shadow-[0_-2px_12px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom)]">
+        <div className="grid grid-cols-5">
+          {AFFILIATE_TABS.map(t => {
+            const Icon = t.icon;
+            const active = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                aria-label={t.label}
+                aria-current={active ? 'page' : undefined}
+                className={`flex flex-col items-center justify-center gap-0.5 py-2 transition ${
+                  active ? 'text-brand-600' : 'text-gray-400'
+                }`}
+              >
+                <span className="relative inline-flex">
+                  <Icon size={22} strokeWidth={active ? 2.4 : 2} />
+                  {t.id === 'messages' && unreadAdmin > 0 && (
+                    <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">{unreadAdmin}</span>
+                  )}
+                </span>
+                <span className={`text-[10px] leading-none ${active ? 'font-bold' : 'font-medium'}`}>{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      <div className="max-w-7xl mx-auto px-5 pt-5 pb-24 md:px-8 md:py-7">
         {lastPayout && (
           <div className="mb-4 flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-4">
             <BadgeCheck size={24} className="text-green-600 shrink-0" />
