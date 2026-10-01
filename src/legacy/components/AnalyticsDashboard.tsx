@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { formatRegionForDisplay } from '../lib/philippineLocations';
 import {
   Loader2, Store as StoreIcon, Bike, ShoppingBag, MapPin, TrendingUp,
   Trophy, Crown, Medal, BarChart3, Calendar, DollarSign, Package,
@@ -518,7 +519,7 @@ function GeographicAnalytics({ period }: { period: Period }) {
       let name = 'Unknown';
       if (view === 'palengke') name = o.store?.palengke_name || 'No Palengke';
       else if (view === 'city') name = o.store?.city || 'Unknown City';
-      else name = o.store?.region || 'Unknown Region';
+      else name = formatRegionForDisplay(o.store?.region) || 'Unknown Region';
 
       if (!geoMap[name]) {
         geoMap[name] = { name, order_count: 0, total_volume: 0, store_count: 0 };
