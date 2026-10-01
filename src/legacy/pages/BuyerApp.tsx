@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { DemoBadge } from '../components/DemoBadge';
 import { shareToMessenger } from '../lib/messengerShare';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { watchOrders } from '../lib/liveOrders';
@@ -797,6 +798,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
                     >
                       <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                         {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
+<DemoBadge storeId={p.store_id} size="sm" />
                         {p.stock <= 5 && p.stock > 0 && (
                           <span className="absolute top-2 left-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">Lang {p.stock} na</span>
                         )}
@@ -839,6 +841,7 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
                     >
                       <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
                         {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
+<DemoBadge storeId={p.store_id} size="sm" />
                         {p.stock <= 5 && p.stock > 0 && (
                           <span className="absolute top-2 left-2 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full">Lang {p.stock} na</span>
                         )}
@@ -1213,6 +1216,7 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
     <div>
       <div className="relative h-64 bg-gray-100">
         {product.image_url && <img src={product.image_url} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
+        <DemoBadge storeId={product.store_id} size="lg" />
         <button onClick={onBack} className="absolute top-12 left-4 w-10 h-10 rounded-full bg-white/90 shadow-md flex items-center justify-center">
           <ArrowLeft size={20} className="text-gray-700" />
         </button>
@@ -1325,8 +1329,9 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
                 const added = addedIds.has(p.id);
                 return (
                   <div key={p.id} className="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl p-2.5 shadow-sm">
-                    <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
+                    <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0 relative">
                       {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
+<DemoBadge storeId={p.store_id} size="xs" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-gray-800 truncate">{p.name}</p>
@@ -1550,8 +1555,9 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
                     {isHighlighted && (
                       <span className="absolute top-2 left-2 z-10 bg-brand-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">Pinili mo</span>
                     )}
-                    <div className="aspect-[4/3] bg-gray-100 overflow-hidden">
+                    <div className="aspect-[4/3] bg-gray-100 overflow-hidden relative">
                       {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
+<DemoBadge storeId={p.store_id} size="sm" />
                     </div>
                     <div className="p-2.5">
                       <p className="font-semibold text-sm text-gray-800 line-clamp-1">{p.name}</p>
@@ -1706,8 +1712,9 @@ function CartView({ onCheckout, refreshKey }: { onCheckout: () => void; refreshK
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             {items.map((item, i) => (
               <div key={item.id} className={`flex items-center gap-3 p-3 ${i > 0 ? 'border-t border-gray-50' : ''}`}>
-                <div className="w-16 h-16 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
+                <div className="w-16 h-16 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0 relative">
                   {item.product.image_url && <img src={item.product.image_url} alt={item.product.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
+                  <DemoBadge storeId={item.store_id || item.product.store_id} size="xs" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm text-gray-800 line-clamp-1">{item.product.name}</p>
