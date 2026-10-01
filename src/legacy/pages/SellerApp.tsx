@@ -450,7 +450,7 @@ function CreateStoreView({ onCreated }: { onCreated: () => void }) {
           <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
             <p className="text-sm font-medium text-gray-600">Location ng tindahan</p>
             <p className="text-sm text-gray-800 mt-1">
-              {[profile.barangay, profile.city, profile.district, profile.region].filter(Boolean).join(', ')}
+              {[profile.barangay, profile.city, profile.district, formatRegionForDisplay(profile.region)].filter(Boolean).join(', ')}
             </p>
             <p className="text-xs text-gray-400 mt-1">Galing sa address na inilagay mo noong nag-register.</p>
           </div>
