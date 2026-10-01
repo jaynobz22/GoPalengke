@@ -35,6 +35,15 @@ function esc(s: string) {
   return s.replace(/[&<>"']/g, (c) => map[c] ?? c);
 }
 
+const GPS_NOTE: Record<Role, string> = {
+  seller:
+    "Kapag humingi ang GoPalengke ng location access, pindutin ang <strong>Allow / Payagan</strong>. Dito nakadepende kung saang palengke mapapabilang ang tindahan mo at kung paano ka mahahanap ng mga malapit na mamimili at rider.",
+  rider:
+    "Kapag humingi ang GoPalengke ng location access, pindutin ang <strong>Allow / Payagan</strong> (mas mabuti kung <strong>Always Allow</strong>). Dito gumagana ang GPS navigation, live tracking, at ang tamang kwenta ng distansya at bayad mo.",
+  buyer:
+    "Kapag humingi ang GoPalengke ng location access, pindutin ang <strong>Allow / Payagan</strong>. Dito nakadepende ang paghahanap ng pinakamalapit na palengke at ang tamang kwenta ng delivery fee papunta sa bahay mo.",
+};
+
 function emailHtml(c: Candidate) {
   const copy = COPY[c.role];
   const first = esc((c.name || "Suki").split(" ")[0] ?? "Suki");
@@ -43,6 +52,15 @@ function emailHtml(c: Candidate) {
     c.stage === "7d"
       ? "Huling paalala na ito — hindi pa rin kumpleto ang account mo sa GoPalengke."
       : "Salamat sa pag-sign up sa GoPalengke! May ilang bagay pa na kulang sa account mo:";
+  const approval =
+    c.role === "seller"
+      ? "Paalala: kailangan munang kumpleto at ma-approve ng admin ang tindahan mo bago ito makita ng mga mamimili."
+      : c.role === "rider"
+        ? "Paalala: kailangan munang kumpleto at ma-approve ng admin ang profile mo bago ka makatanggap ng delivery."
+        : null;
+  const approvalBox = approval
+    ? `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:12px 14px;margin:0 0 16px;font-size:14px;line-height:1.6;color:#92400e">⏳ ${esc(approval)}</div>`
+    : "";
   return `<!doctype html><html><body style="margin:0;background:#ffffff;font-family:Arial,sans-serif;color:#1f2937">
 <div style="max-width:560px;margin:0 auto;padding:24px">
 <div style="background:#15803d;border-radius:16px 16px 0 0;padding:20px 24px;color:#ffffff">
@@ -52,8 +70,18 @@ function emailHtml(c: Candidate) {
 <h1 style="font-size:20px;margin:0 0 12px">${copy.title}</h1>
 <p style="font-size:15px;line-height:1.6;margin:0 0 8px">Hi ${first},</p>
 <p style="font-size:15px;line-height:1.6;margin:0 0 8px">${lead}</p>
-<ul style="font-size:15px;line-height:1.5;padding-left:20px;margin:8px 0 20px">${items}</ul>
+<ul style="font-size:15px;line-height:1.5;padding-left:20px;margin:8px 0 18px">${items}</ul>
+${approvalBox}
+<div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:12px;padding:14px 16px;margin:0 0 20px">
+<div style="font-size:14px;font-weight:bold;color:#1e40af;margin-bottom:6px">📍 Pakibuksan ang Location (GPS)</div>
+<div style="font-size:14px;line-height:1.6;color:#1e3a8a">${GPS_NOTE[c.role]}</div>
+</div>
 <a href="${SITE}/" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 22px;border-radius:12px">${copy.cta}</a>
+<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px 16px;margin:22px 0 0">
+<div style="font-size:14px;font-weight:bold;margin-bottom:4px">🎬 Panoorin ang mga tutorial</div>
+<div style="font-size:14px;line-height:1.6;color:#4b5563">May mga maikling video kung paano gamitin ang GoPalengke step by step.</div>
+<a href="${SITE}/tutorial" style="display:inline-block;margin-top:8px;color:#15803d;font-weight:bold;text-decoration:underline;font-size:14px">Buksan ang Tutorials</a>
+</div>
 <p style="font-size:13px;color:#6b7280;margin:24px 0 0">May tanong? I-reply lang ang email na ito o i-message kami sa GoPalengke app.</p>
 </div></div></body></html>`;
 }
