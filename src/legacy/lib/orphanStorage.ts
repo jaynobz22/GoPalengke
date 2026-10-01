@@ -4,7 +4,22 @@ import { supabase } from './supabase';
 /** Buckets we sweep for orphaned (unreferenced) uploads. */
 const SWEEP_BUCKETS = ['profile-images', 'store-images', 'product-images'];
 
+/**
+ * Folders that must NEVER be touched by the cleanup, even when no database row
+ * points at them: admin payment QR codes and the public landing/marketing art.
+ */
+const PROTECTED_PREFIXES: Record<string, string[]> = {
+  'store-images': ['admin-qr/', 'landing/'],
+  'profile-images': ['affiliate-qr/'],
+  'product-images': [],
+};
+
+function isProtected(bucket: string, path: string): boolean {
+  return (PROTECTED_PREFIXES[bucket] || []).some(p => path.startsWith(p));
+}
+
 const URL_RE = /\/storage\/v1\/object\/public\/([^/"'\s]+)\/([^"'\s?\\]+)/g;
+
 
 function collect(rows: any, out: Map<string, Set<string>>) {
   if (!rows) return;
@@ -75,16 +90,21 @@ export async function scanOrphanStorage(): Promise<OrphanScan> {
     'profiles',
     'stores',
     'products',
+    'categories',
     'messages',
     'admin_messages',
     'affiliate_messages',
     'orders',
+    'order_items',
     'reviews',
     'affiliates',
+    'affiliate_transactions',
     'fee_payments',
     'rider_fee_payments',
     'video_credit_purchases',
     'announcements',
+    'platform_qr_codes',
+    'platform_settings',
     'tutorials',
     'marketing_materials',
     'campaigns',
@@ -107,12 +127,13 @@ export async function scanOrphanStorage(): Promise<OrphanScan> {
     }
     totalFiles += paths.length;
     const used = referenced.get(bucket) || new Set<string>();
-    const unused = paths.filter(p => !used.has(p));
+    const unused = paths.filter(p => !used.has(p) && !isProtected(bucket, p));
     if (unused.length) {
       orphans.set(bucket, unused);
       totalOrphans += unused.length;
     }
   }
+
 
   return { orphans, totalFiles, totalOrphans };
 }
@@ -120,9 +141,12 @@ export async function scanOrphanStorage(): Promise<OrphanScan> {
 /** Deletes the files reported by scanOrphanStorage. Returns how many were actually removed. */
 export async function deleteOrphanStorage(scan: OrphanScan): Promise<number> {
   let removed = 0;
-  for (const [bucket, paths] of scan.orphans) {
+  for (const [bucket, allPaths] of scan.orphans) {
+    // Final safety net: never delete a protected folder, whatever the scan said.
+    const paths = allPaths.filter(p => !isProtected(bucket, p));
     for (let i = 0; i < paths.length; i += 100) {
       const batch = paths.slice(i, i + 100);
+
       const { data, error } = await supabase.storage.from(bucket).remove(batch);
       if (error) throw new Error(`Hindi mabura sa "${bucket}": ${error.message}`);
       removed += data?.length || 0;
