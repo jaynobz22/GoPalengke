@@ -16,6 +16,7 @@ import { RiderStageBanner } from '../components/RiderStageBanner';
 import { Avatar } from '../components/Avatar';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { InactiveBanner } from '../components/InactiveBanner';
+import { GpsPermissionModal } from '../components/GpsPermissionModal';
 import { ReviewSection } from '../components/Reviews';
 import { OrderStepTracker, type StepInfo } from '../components/OrderStepTracker';
 import { AdminVideoCall } from '../components/AdminVideoCall';
@@ -587,6 +588,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const [currentOrder, setCurrentOrder] = useState(order);
   const [updating, setUpdating] = useState(false);
   const [gpsActive, setGpsActive] = useState(false);
+  const [showGpsPrompt, setShowGpsPrompt] = useState(false);
   const [liveRiderCoords, setLiveRiderCoords] = useState<Coords | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const [siblingOrders, setSiblingOrders] = useState<(Order & { store: Store })[]>([]);
@@ -619,36 +621,43 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
     });
   }, [order.id, order.delivery_group_id]);
 
+  const startRiderGps = useCallback(() => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) { setShowGpsPrompt(true); return; }
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    setGpsActive(true);
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setLiveRiderCoords({ lat, lng });
+        setShowGpsPrompt(false);
+        if (currentOrder.delivery_group_id) {
+          supabase.from('orders').update({ rider_lat: lat, rider_lng: lng }).eq('delivery_group_id', currentOrder.delivery_group_id);
+        } else {
+          supabase.from('orders').update({ rider_lat: lat, rider_lng: lng }).eq('id', currentOrder.id);
+        }
+      },
+      () => { setGpsActive(false); setShowGpsPrompt(true); },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+    );
+  }, [currentOrder.id, currentOrder.delivery_group_id]);
+
   useEffect(() => {
     if ((currentOrder.status !== 'ready_for_pickup' && currentOrder.status !== 'picked_up') || !profile) return;
 
-    function startGps() {
-      if (!navigator.geolocation) return;
-      setGpsActive(true);
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          setLiveRiderCoords({ lat, lng });
-          if (currentOrder.delivery_group_id) {
-            supabase.from('orders').update({ rider_lat: lat, rider_lng: lng }).eq('delivery_group_id', currentOrder.delivery_group_id);
-          } else {
-            supabase.from('orders').update({ rider_lat: lat, rider_lng: lng }).eq('id', currentOrder.id);
-          }
-        },
-        () => { setGpsActive(false); },
-        { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
-      );
-    }
-    startGps();
+    startRiderGps();
 
     return () => {
-      if (watchIdRef.current !== null && navigator.geolocation) {
+      if (watchIdRef.current !== null && typeof navigator !== 'undefined' && navigator.geolocation) {
         navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
       }
       setGpsActive(false);
     };
-  }, [currentOrder.status, currentOrder.id, currentOrder.delivery_group_id, profile]);
+  }, [currentOrder.status, currentOrder.id, currentOrder.delivery_group_id, profile, startRiderGps]);
 
   async function markDelivered() {
     setUpdating(true);
@@ -893,6 +902,13 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           <p className="text-sm text-green-700 font-medium">Na-tanggap na ng seller ang COD payment. Tapos na ang transaction!</p>
         </div>
       )}
+
+      <GpsPermissionModal
+        open={showGpsPrompt}
+        role="rider"
+        onRetry={startRiderGps}
+        onClose={() => setShowGpsPrompt(false)}
+      />
 
       {/* Live ETA Timer — shown from pickup phase; hidden for livestock (pickup/meetup) orders */}
       {(currentOrder.status === 'ready_for_pickup' || currentOrder.status === 'picked_up') && currentOrder.delivery_method !== 'pickup' && currentOrder.delivery_method !== 'meetup' && store && (() => {
