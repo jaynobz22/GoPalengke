@@ -1,18 +1,27 @@
 // @ts-nocheck
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './supabase';
-import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
-import type { Session } from '@supabase/supabase-js';
-import { supabase } from './supabase';
-import type { Profile, UserRole, VehicleType } from './types';
-import { isAccountBanned, isAccountSuspended, getAccountStatusLabel, checkDeviceFingerprint } from './security';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { supabase } from "./supabase";
+import type { Profile, UserRole, VehicleType } from "./types";
+import { isAccountBanned, isAccountSuspended, getAccountStatusLabel, checkDeviceFingerprint } from "./security";
+import { sendWelcomeEmail as sendWelcomeEmailFn } from "../../lib/welcome-email.functions";
 
 interface AuthContextValue {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
   pendingVerification: boolean;
-  signUp: (email: string, password: string, fullName: string, role: UserRole, location: { barangay: string; district: string; city: string; region: string; phone: string }) => Promise<{ error: string | null; userId?: string }>;
-  signIn: (email: string, password: string) => Promise<{ error: string | null; needsVerification?: boolean; userId?: string }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string,
+    role: UserRole,
+    location: { barangay: string; district: string; city: string; region: string; phone: string },
+  ) => Promise<{ error: string | null; userId?: string }>;
+  signIn: (
+    email: string,
+    password: string,
+  ) => Promise<{ error: string | null; needsVerification?: boolean; userId?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   sendEmailOtp: (email: string) => Promise<{ error: string | null }>;
@@ -34,11 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function fetchProfile(userId: string) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
+    const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
     const prof = data as Profile | null;
     if (prof) {
       if (isAccountBanned(prof.account_status) || isAccountSuspended(prof.account_status)) {
@@ -62,7 +67,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (pendingVerificationRef.current) {
         setSession(null);
         setProfile(null);
@@ -89,10 +96,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ): Promise<{ error: string | null; userId?: string }> {
     setPendingVerif(true);
     const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) { setPendingVerif(false); return { error: error.message }; }
-    if (!data.user) { setPendingVerif(false); return { error: 'Hindi makapag-sign up. Subukan ulit.' }; }
+    if (error) {
+      setPendingVerif(false);
+      return { error: error.message };
+    }
+    if (!data.user) {
+      setPendingVerif(false);
+      return { error: "Hindi makapag-sign up. Subukan ulit." };
+    }
 
-    const { error: profileError } = await supabase.from('profiles').insert({
+    const { error: profileError } = await supabase.from("profiles").insert({
       id: data.user.id,
       email,
       full_name: fullName,
@@ -104,29 +117,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       region: location.region || null,
       email_verified: false,
       phone_verified: true,
-      is_approved: role === 'buyer',
-      vehicle_type: role === 'rider' ? (vehicleType || 'motorcycle') : null,
+      is_approved: role === "buyer",
+      vehicle_type: role === "rider" ? vehicleType || "motorcycle" : null,
     });
 
-    if (profileError) { setPendingVerif(false); return { error: profileError.message }; }
+    if (profileError) {
+      setPendingVerif(false);
+      return { error: profileError.message };
+    }
 
     await supabase.auth.signOut();
     return { error: null, userId: data.user.id };
   }
 
-  async function signIn(email: string, password: string): Promise<{ error: string | null; needsVerification?: boolean; userId?: string }> {
+  async function signIn(
+    email: string,
+    password: string,
+  ): Promise<{ error: string | null; needsVerification?: boolean; userId?: string }> {
     pendingVerificationRef.current = true;
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { pendingVerificationRef.current = false; return { error: error.message }; }
-    if (!data.user) { pendingVerificationRef.current = false; return { error: 'Hindi makapag-sign in. Subukan ulit.' }; }
+    if (error) {
+      pendingVerificationRef.current = false;
+      return { error: error.message };
+    }
+    if (!data.user) {
+      pendingVerificationRef.current = false;
+      return { error: "Hindi makapag-sign in. Subukan ulit." };
+    }
 
     const { data: prof } = await supabase
-      .from('profiles')
-      .select('email_verified, phone_verified, role, is_test_account')
-      .eq('id', data.user.id)
+      .from("profiles")
+      .select("email_verified, phone_verified, role, is_test_account")
+      .eq("id", data.user.id)
       .maybeSingle();
 
-    const p = prof as { email_verified: boolean; phone_verified: boolean; role: string; is_test_account: boolean } | null;
+    const p = prof as {
+      email_verified: boolean;
+      phone_verified: boolean;
+      role: string;
+      is_test_account: boolean;
+    } | null;
     if (p && !p.email_verified) {
       await supabase.auth.signOut();
       setPendingVerif(true);
@@ -139,47 +169,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Security: check device fingerprint for botnet detection
     // Skip for admin accounts and test accounts (used for testing the app)
-    const skipDeviceCheck = p && (p.role === 'admin' || p.is_test_account);
+    const skipDeviceCheck = p && (p.role === "admin" || p.is_test_account);
     if (!skipDeviceCheck) {
       try {
         const deviceCheck = await checkDeviceFingerprint(data.user.id);
         if (deviceCheck.banned) {
-          alert('This device has been blacklisted for suspicious activity. Please contact support.');
+          alert("This device has been blacklisted for suspicious activity. Please contact support.");
           await supabase.auth.signOut();
           setProfile(null);
           setSession(null);
-          return { error: 'Device blacklisted.' };
+          return { error: "Device blacklisted." };
         }
         if (deviceCheck.flagged) {
-          alert('Multiple accounts detected on this device. Account banned for security.');
+          alert("Multiple accounts detected on this device. Account banned for security.");
           await supabase.auth.signOut();
           setProfile(null);
           setSession(null);
-          return { error: 'Account banned due to botnet detection.' };
+          return { error: "Account banned due to botnet detection." };
         }
-      } catch { /* best-effort */ }
-    }
-
-    // Send welcome email (idempotent — only sends once per user)
-    if (p && p.role !== 'admin') {
-      sendWelcomeEmail(data.user.id);
+      } catch {
+        /* best-effort */
+      }
     }
 
     return { error: null };
   }
 
-  async function sendWelcomeEmail(userId: string) {
+  // Welcome email — ipinapadala pagkatapos ma-verify ang 8-digit code.
+  // May role-specific checklist, paalala sa admin approval, GPS location access, at tutorial link.
+  async function sendWelcomeEmail(accessToken: string) {
     try {
-      const apiUrl = `${SUPABASE_URL}/functions/v1/send-welcome-email`;
-      await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId }),
-      });
-    } catch { /* best-effort */ }
+      await sendWelcomeEmailFn({ data: { accessToken } });
+    } catch (e) {
+      console.error("Welcome email error:", e);
+    }
   }
 
   async function signOut() {
@@ -198,8 +221,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const sub = supabase
       .channel(`account-status-${profile.id}`)
       .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${profile.id}` },
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${profile.id}` },
         (payload: any) => {
           const newStatus = payload.new?.account_status;
           if (isAccountBanned(newStatus) || isAccountSuspended(newStatus)) {
@@ -213,37 +236,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
       )
       .subscribe();
-    return () => { supabase.removeChannel(sub); };
+    return () => {
+      supabase.removeChannel(sub);
+    };
   }, [profile?.id]);
 
+  // 1. Function para mag-send o mag-resend ng 8-digit OTP code sa email ng user
   async function sendEmailOtp(email: string): Promise<{ error: string | null }> {
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false,
+      },
+    });
+
     if (error) return { error: error.message };
     return { error: null };
   }
 
+  // 2. Ang verifyOtp function para mag-verify ng 8-digit code na tinype ng user
   async function verifyEmailOtp(email: string, token: string): Promise<{ error: string | null }> {
-    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
-    if (error) return { error: error.message };
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: "magiclink",
+    });
 
-    const userId = data.user?.id;
-    if (userId) {
-      await supabase.from('profiles').update({ email_verified: true }).eq('id', userId);
+    if (error) {
+      return { error: error.message };
     }
-    await supabase.auth.signOut();
-    setPendingVerif(false);
+
+    // Kapag tama ang code, i-update ang custom 'profiles' table para maging true ang email_verified
+    if (data?.user) {
+      await supabase.from("profiles").update({ email_verified: true }).eq("id", data.user.id);
+
+      pendingVerificationRef.current = false;
+      setPendingVerification(false);
+      setSession(data.session);
+      await fetchProfile(data.user.id);
+
+      // Agad na magpadala ng welcome email pagkatapos ma-verify ang code.
+      if (data.session?.access_token) {
+        sendWelcomeEmail(data.session.access_token);
+      }
+    }
+
     return { error: null };
   }
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, pendingVerification, signUp, signIn, signOut, refreshProfile, sendEmailOtp, verifyEmailOtp }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        profile,
+        loading,
+        pendingVerification,
+        signUp,
+        signIn,
+        signOut,
+        refreshProfile,
+        sendEmailOtp,
+        verifyEmailOtp,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 }
