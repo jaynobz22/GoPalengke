@@ -3218,6 +3218,7 @@ function TutorialsTab() {
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [targetRole, setTargetRole] = useState<string>('all');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -3237,6 +3238,7 @@ function TutorialsTab() {
     setUrl('');
     setTitle('');
     setDescription('');
+    setTargetRole('all');
     setEditingId(null);
     setError(null);
     setShowForm(false);
@@ -3246,6 +3248,7 @@ function TutorialsTab() {
     setUrl(v.youtube_url);
     setTitle(v.title);
     setDescription(v.description || '');
+    setTargetRole((v as any).target_role || 'all');
     setEditingId(v.id);
     setError(null);
     setShowForm(true);
@@ -3267,28 +3270,35 @@ function TutorialsTab() {
     setError(null);
 
     if (editingId) {
-      const { error: err } = await supabase
-        .from('tutorial_videos')
-        .update({
-          youtube_url: trimmedUrl,
-          youtube_id: ytId,
-          title: trimmedTitle,
-          description: description.trim(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', editingId);
+      const payload: any = {
+        youtube_url: trimmedUrl,
+        youtube_id: ytId,
+        title: trimmedTitle,
+        description: description.trim(),
+        updated_at: new Date().toISOString(),
+        target_role: targetRole,
+      };
+      let { error: err } = await supabase.from('tutorial_videos').update(payload).eq('id', editingId);
+      if (err && /target_role/.test(err.message)) {
+        delete payload.target_role;
+        ({ error: err } = await supabase.from('tutorial_videos').update(payload).eq('id', editingId));
+      }
       if (err) setError('Error: ' + err.message);
     } else {
       const maxSort = videos.length > 0 ? Math.max(...videos.map(v => v.sort_order)) : 0;
-      const { error: err } = await supabase
-        .from('tutorial_videos')
-        .insert({
-          youtube_url: trimmedUrl,
-          youtube_id: ytId,
-          title: trimmedTitle,
-          description: description.trim(),
-          sort_order: maxSort + 1,
-        });
+      const payload: any = {
+        youtube_url: trimmedUrl,
+        youtube_id: ytId,
+        title: trimmedTitle,
+        description: description.trim(),
+        sort_order: maxSort + 1,
+        target_role: targetRole,
+      };
+      let { error: err } = await supabase.from('tutorial_videos').insert(payload);
+      if (err && /target_role/.test(err.message)) {
+        delete payload.target_role;
+        ({ error: err } = await supabase.from('tutorial_videos').insert(payload));
+      }
       if (err) setError('Error: ' + err.message);
     }
 
@@ -3378,6 +3388,19 @@ function TutorialsTab() {
                 />
               </div>
               <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Para kanino ang video?</label>
+                <select
+                  value={targetRole}
+                  onChange={e => setTargetRole(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500 bg-white"
+                >
+                  <option value="all">Lahat (Pangkalahatan)</option>
+                  <option value="buyer">Buyer</option>
+                  <option value="seller">Seller</option>
+                  <option value="rider">Rider</option>
+                </select>
+              </div>
+              <div>
                 <label className="text-xs font-medium text-gray-500 mb-1 block">Description (optional)</label>
                 <textarea
                   value={description}
@@ -3429,6 +3452,9 @@ function TutorialsTab() {
                   />
                   <span className="absolute top-1.5 left-1.5 text-[10px] font-bold text-white bg-black/60 rounded-lg px-2 py-0.5">
                     #{idx + 1}
+                  </span>
+                  <span className="absolute top-1.5 right-1.5 text-[10px] font-bold text-white bg-brand-600 rounded-lg px-2 py-0.5 capitalize">
+                    {(v as any).target_role && (v as any).target_role !== 'all' ? (v as any).target_role : 'Lahat'}
                   </span>
                 </div>
 
