@@ -39,7 +39,7 @@ export function LegalPages({ type, onBack }: { type: LegalPageType; onBack: () =
             {type === 'antiscam' && <ShieldCheck size={28} className="text-white" />}
             <h1 className="text-2xl font-bold">{titles[type]}</h1>
           </div>
-          <p className="text-brand-100 text-sm mt-2">Last updated: September 22, 2026</p>
+          <p className="text-brand-100 text-sm mt-2">Last updated: October 2, 2026</p>
         </div>
       </div>
 
@@ -176,7 +176,8 @@ function TermsContent() {
           Video calls require credits. Each user starts with a limited number of free video call credits.
           Additional credits can be purchased in the Profile tab by uploading a screenshot of payment
           (GCash/Maya) to the admin's QR code. Credits are reviewed and approved by the admin before
-          being added to your account.
+          being added to your account. Credits are non-refundable and exist to prevent prank calls and
+          abuse of the video call feature.
         </p>
       </Section>
 
@@ -199,6 +200,33 @@ function TermsContent() {
           per rider milestone) from their referrals. Commissions are credited to your wallet and can be
           withdrawn via payout request once your balance reaches ₱1,000. Affiliate accounts are
           separate from buyer/seller/rider accounts and have their own dashboard.
+        </p>
+      </Section>
+
+      <Section title="13.1 Orders, Weight Limits and Delivery">
+        <ul className="list-disc pl-5 space-y-2">
+          <li><strong>Minimum order</strong> — The minimum purchase is ₱150 per cart total.</li>
+          <li><strong>Per-kilo buying</strong> — Per-kilo products may be ordered in fractions such as 1/4 kg and 1/2 kg.</li>
+          <li><strong>25 kg limit</strong> — A single checkout cannot exceed 25 kg for rider safety.</li>
+          <li><strong>Multi-store orders</strong> — Carts are grouped by store. Nearby stores (about 1 km apart, up to 20 kg total) may be delivered by one rider in a single trip with a single delivery fee.</li>
+          <li><strong>Free Delivery</strong> — Sellers may offer free delivery above a minimum amount they set. The seller covers the delivery fee; the rider is still paid in full.</li>
+          <li><strong>Saved location</strong> — Checkout uses your saved delivery location. Keep it accurate.</li>
+        </ul>
+      </Section>
+
+      <Section title="13.2 Approval, Onboarding and Rider Fee">
+        <p>
+          New seller and rider accounts are reviewed by the admin before going live. Riders pay a
+          one-time ₱300 onboarding and verification fee before activation. Users are asked to complete
+          their profile (store setup and photos for sellers, profile and house photo for buyers,
+          requirements for riders) and to allow location access.
+        </p>
+      </Section>
+
+      <Section title="13.3 Demo Stores and Products">
+        <p>
+          Stores and products marked with a 🧪 DEMO label are for testing and demonstration only and
+          are not real items for sale. GoPalengke is not liable for any payment made for DEMO items.
         </p>
       </Section>
 
@@ -465,6 +493,32 @@ function PrivacyContent() {
           The rider's live location is collected and displayed to the buyer during active delivery for
           tracking purposes. After the order is delivered, live location is no longer collected. The
           seller's store coordinates are static and used for delivery fee computation and map display.
+        </p>
+      </Section>
+
+      <Section title="10.1 Device Location (GPS) Permission">
+        <p>
+          GoPalengke asks for your phone's location permission only for distance calculation —
+          computing delivery fees, finding nearby palengke and sellers, rider navigation, and live
+          delivery tracking. If permission is denied, the app will remind you and attempt to request
+          it again when location is needed. Your location is never sold or used for advertising.
+        </p>
+      </Section>
+
+      <Section title="10.2 Account Emails and Reminders">
+        <p>
+          After you verify your email, we send a welcome email with a checklist to complete your
+          profile. If your registration is still incomplete after 24 hours, we may send onboarding
+          reminders. These emails relate only to your account and platform use.
+        </p>
+      </Section>
+
+      <Section title="10.3 Account Deletion and File Removal">
+        <p>
+          When an account is deleted, its data and all files uploaded by that user — including profile
+          photos, valid IDs, house photos, vehicle documents, store banners, product photos, and QR
+          codes — are automatically removed from our storage, in line with your right to erasure under
+          the Data Privacy Act of 2012.
         </p>
       </Section>
 
@@ -1059,6 +1113,62 @@ function FaqContent() {
     {
       q: 'Can I order products by weight (per kilo)?',
       a: 'Yes. Some products are sold per kilo and allow fractional quantities. For example, you can order 0.5 kilo of fish or 1.25 kilos of meat. The system will compute the total price based on the exact weight you choose. Products that are sold per piece still require whole-number quantities.',
+    },
+    {
+      q: 'Can I buy 1/4 kilo or 1/2 kilo?',
+      a: 'Yes. Products sold per kilo have quick buttons for 1/4 kg (250g) and 1/2 kg (500g), so you can buy just the amount you need. The price is computed automatically based on the weight you choose.',
+    },
+    {
+      q: 'Is there a minimum purchase?',
+      a: 'Yes. The minimum order is ₱150 per cart total. This keeps each order worth the seller\'s preparation time and the rider\'s trip.',
+    },
+    {
+      q: 'Why is there a 25 kg limit per cart?',
+      a: 'Riders use motorcycles, so for their safety and to keep fresh goods in good condition, a single checkout is limited to 25 kg. If you need more, split your purchase into separate orders.',
+    },
+    {
+      q: 'Can I order from multiple stores at once?',
+      a: 'Yes. Your cart groups items by store. Nearby stores (within about 1 km of each other, up to 20 kg total) can be picked up by one rider in a single trip, so you only pay one delivery fee for that trip.',
+    },
+    {
+      q: 'How does Free Delivery work?',
+      a: 'Some sellers offer Free Delivery when your order reaches their minimum amount (for example ₱500 and above). You will see a "Free Delivery" badge on the store and a progress bar in your cart. At checkout, the delivery fee shows as LIBRE. The seller covers the fee, and the rider is still paid in full.',
+    },
+    {
+      q: 'Are video calls free?',
+      a: 'Video calls use credits. Every new account receives a limited number of free starter credits. When they run out, you can buy more credits in the Profile tab by paying through the admin\'s QR code and uploading your payment screenshot. Credits help prevent prank calls and abuse of the video call feature.',
+    },
+    {
+      q: 'Why do I need to allow Location (GPS) access?',
+      a: 'GoPalengke uses your phone\'s location only for distance calculation — to compute the correct delivery fee, find palengke and sellers near you, guide riders, and show live delivery tracking. If location access is blocked, the app will show a reminder and help you turn it on in your browser or phone settings.',
+    },
+    {
+      q: 'What are the rider\'s delivery steps?',
+      a: 'Riders follow 4 steps in the app: (1) Tanggapin — accept the order, (2) Nandito na ako sa Tindahan — arrived at the store, (3) Na Pick Up ko na — order picked up, (4) Going to Buyer — heading to the buyer. The buyer is updated in real time at each step.',
+    },
+    {
+      q: 'Is there a fee to become a Rider?',
+      a: 'Yes. There is a one-time ₱300 onboarding and verification fee. After your requirements are reviewed and approved by the admin, your rider account becomes active.',
+    },
+    {
+      q: 'Why do new seller and rider accounts need approval?',
+      a: 'To keep the platform safe, every seller and rider is reviewed by the admin before going live. After email verification you will receive a welcome email with a checklist of what to complete. If you have not finished after 24 hours, you will receive a friendly reminder.',
+    },
+    {
+      q: 'What does the 🧪 DEMO label mean?',
+      a: 'Products and stores marked with a 🧪 DEMO label are for testing and demonstration only. They are not real items for sale. Please do not order or pay for DEMO products.',
+    },
+    {
+      q: 'How do affiliate payouts work?',
+      a: 'Once your affiliate wallet reaches ₱1,000, a "Request Payout" button appears in your History tab. The admin sends your payout via your GCash/Maya QR code. When it is sent, you will see a "Payout Sent" notice and a message in the Admin tab of your dashboard. You can also chat directly with the admin there.',
+    },
+    {
+      q: 'Where can I find video tutorials?',
+      a: 'Visit the Tutorial page. Videos are grouped into tabs — Lahat (All), Buyer, Seller, and Rider — so you can quickly find the guides for your role.',
+    },
+    {
+      q: 'What happens to my data if my account is deleted?',
+      a: 'When an account is deleted, its records and all uploaded photos (profile picture, valid ID, house photo, store banner, product photos, and QR codes) are permanently removed from our storage, in line with the Data Privacy Act of 2012.',
     },
   ];
 
