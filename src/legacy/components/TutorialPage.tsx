@@ -13,7 +13,27 @@ type TutorialVideo = {
   sort_order: number;
   is_active: boolean;
   created_at: string;
+  target_role?: string | null;
 };
+
+type RoleTab = 'all' | 'buyer' | 'seller' | 'rider';
+const TABS: { id: RoleTab; label: string }[] = [
+  { id: 'all', label: 'Lahat' },
+  { id: 'buyer', label: 'Buyer' },
+  { id: 'seller', label: 'Seller' },
+  { id: 'rider', label: 'Rider' },
+];
+
+function roleOf(v: TutorialVideo): RoleTab {
+  const r = (v.target_role || '').toLowerCase();
+  if (r === 'buyer' || r === 'seller' || r === 'rider') return r;
+  if (r === 'all') return 'all';
+  const t = `${v.title} ${v.description || ''}`.toLowerCase();
+  if (/rider/.test(t)) return 'rider';
+  if (/seller|tindahan|magtinda|vendor/.test(t)) return 'seller';
+  if (/buyer|mamimili|mag-order|bumili/.test(t)) return 'buyer';
+  return 'all';
+}
 
 function extractYouTubeId(url: string): string {
   const patterns = [
@@ -33,6 +53,8 @@ export function TutorialPage() {
   const [videos, setVideos] = useState<TutorialVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [tab, setTab] = useState<RoleTab>('all');
+  const shown = tab === 'all' ? videos : videos.filter(v => { const r = roleOf(v); return r === tab || r === 'all'; });
 
   useEffect(() => {
     async function load() {
@@ -75,13 +97,27 @@ export function TutorialPage() {
       </div>
 
       {/* Content */}
+      <div className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur border-b border-gray-100">
+        <div className="px-5 py-3 max-w-3xl mx-auto grid grid-cols-4 gap-2">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => { setTab(t.id); setPlayingId(null); }}
+              className={`py-2 rounded-xl text-sm font-semibold transition ${tab === t.id ? 'bg-brand-600 text-white shadow' : 'bg-white text-gray-600 border border-gray-200'}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="px-5 py-6 max-w-3xl mx-auto">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 size={32} className="animate-spin text-brand-500" />
             <p className="text-gray-400 text-sm mt-3">Naglo-load ng mga video...</p>
           </div>
-        ) : videos.length === 0 ? (
+        ) : shown.length === 0 ? (
           <div className="text-center py-20">
             <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
               <PlayCircle size={28} className="text-gray-300" />
@@ -91,7 +127,7 @@ export function TutorialPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {videos.map((video, idx) => (
+            {shown.map((video, idx) => (
               <div key={video.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
                 {/* Video */}
                 <div className="relative aspect-video bg-black">
