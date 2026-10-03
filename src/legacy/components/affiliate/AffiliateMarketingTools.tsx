@@ -205,7 +205,7 @@ export function AffiliateMarketingTools({ affiliate }: { affiliate: Affiliate })
             )}
 
             {/* Action Buttons */}
-            <div className="flex flex-col gap-2 p-4 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex flex-col items-center gap-2 p-4 sm:flex-row sm:flex-wrap sm:justify-center">
               {/* Copy Caption/Text */}
               {mat.caption && (
                 <button
