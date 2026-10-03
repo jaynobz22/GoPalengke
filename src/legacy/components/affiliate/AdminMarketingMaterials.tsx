@@ -196,11 +196,11 @@ export function AdminMarketingMaterials() {
 
               {/* Preview */}
               {mat.type === 'video' && mat.youtube_url ? (
-                <div className="mb-2 rounded-xl overflow-hidden bg-gray-100 max-w-md">
+                <div className="mb-2 max-w-2xl overflow-hidden rounded-xl bg-gray-100">
                   <img
                     src={getYouTubeThumb(mat.youtube_url) || ''}
                     alt={mat.title}
-                    className="w-full h-32 object-cover"
+                    className="aspect-video w-full object-cover"
                   />
                   <div className="flex items-center gap-1.5 px-3 py-2 bg-red-50">
                     <Youtube size={14} className="text-red-600 flex-shrink-0" />
@@ -215,11 +215,13 @@ export function AdminMarketingMaterials() {
                   </div>
                 </div>
               ) : mat.media_url ? (
-                <img
-                  src={mat.media_url}
-                  alt={mat.title}
-                  className="max-w-md w-full h-32 object-cover rounded-xl mb-2"
-                />
+                <div className={`mb-2 flex overflow-hidden rounded-xl bg-gray-50 ${mat.type === 'banner' ? 'max-w-4xl' : 'max-w-2xl'}`}>
+                  <img
+                    src={mat.media_url}
+                    alt={mat.title}
+                    className={`h-auto max-w-full object-contain ${mat.type === 'banner' ? 'w-full max-h-[28rem]' : 'max-h-[32rem]'}`}
+                  />
+                </div>
               ) : mat.caption ? (
                 <div className="bg-gray-50 rounded-xl p-3 mb-2">
                   <p className="text-xs text-gray-600 whitespace-pre-wrap">{mat.caption}</p>
@@ -312,8 +314,9 @@ export function AdminMarketingMaterials() {
                   onChange={setMediaUrl}
                   bucket="affiliate-marketing"
                   folder="marketing"
-                  aspectClass="h-32"
-                  cropAspect={4 / 3}
+                  aspectClass={type === 'banner' ? 'aspect-[3/1]' : 'aspect-[4/3]'}
+                  cropAspect={type === 'banner' ? 3 : 4 / 3}
+                  objectFit="contain"
                 />
               )}
 
