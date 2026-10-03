@@ -205,24 +205,24 @@ export function AffiliateMarketingTools({ affiliate }: { affiliate: Affiliate })
             )}
 
             {/* Action Buttons */}
-            <div className="p-4 space-y-2">
+            <div className="flex flex-col gap-2 p-4 sm:flex-row sm:flex-wrap sm:items-center">
               {/* Copy Caption/Text */}
               {mat.caption && (
                 <button
                   onClick={() => copyToClipboard(shareText, `caption_${mat.id}`)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-brand-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-semibold text-white transition active:scale-95 sm:w-auto"
                 >
                   {copiedId === `caption_${mat.id}` ? <CheckCheck size={16} /> : <Copy size={16} />}
                   {copiedId === `caption_${mat.id}` ? 'Na-copy na!' : 'Copy Caption + Referral Link'}
                 </button>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 sm:w-auto">
                 {/* Download uploaded banner/image */}
                 {mat.media_url && (
                   <button
                     onClick={() => downloadImage(mat.media_url!, mat.title)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 bg-brand-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-semibold text-white transition active:scale-95 sm:w-auto"
                   >
                     <Download size={14} /> Download
                   </button>
@@ -245,7 +245,7 @@ export function AffiliateMarketingTools({ affiliate }: { affiliate: Affiliate })
               {!mat.caption && (
                 <button
                   onClick={() => copyToClipboard(referralLink, shareId)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-brand-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-semibold text-white transition active:scale-95 sm:w-auto"
                 >
                   {copiedId === shareId ? <CheckCheck size={16} /> : <Copy size={16} />}
                   {copiedId === shareId ? 'Na-copy na!' : 'Copy Referral Link'}
