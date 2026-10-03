@@ -9,7 +9,7 @@ type Activity = { id: string; kind: Kind; message: string; isSample: boolean };
 
 const SHOW_MS = 10000;
 const GAP_MS = 10000;
-const FADE_MS = 700;
+const FADE_MS = 1000;
 
 // Rotation: gulay → karne → rider → isda (never same kind twice in a row)
 const SAMPLES: Omit<Activity, 'id' | 'isSample'>[] = [
@@ -28,10 +28,10 @@ const SAMPLES: Omit<Activity, 'id' | 'isSample'>[] = [
 ];
 
 const STYLE: Record<Kind, { box: string; icon: string; label: string; Icon: any }> = {
-  gulay: { box: 'border-emerald-300 bg-gradient-to-br from-emerald-50 to-emerald-100', icon: 'bg-emerald-500 text-white', label: 'text-emerald-700', Icon: Leaf },
-  karne: { box: 'border-rose-300 bg-gradient-to-br from-rose-50 to-rose-100', icon: 'bg-rose-500 text-white', label: 'text-rose-700', Icon: Beef },
-  isda: { box: 'border-sky-300 bg-gradient-to-br from-sky-50 to-sky-100', icon: 'bg-sky-500 text-white', label: 'text-sky-700', Icon: Fish },
-  rider: { box: 'border-amber-300 bg-gradient-to-br from-amber-50 to-amber-100', icon: 'bg-amber-500 text-white', label: 'text-amber-700', Icon: Bike },
+  gulay: { box: 'border-emerald-400 bg-gradient-to-br from-emerald-500 to-green-700', icon: 'bg-white text-emerald-600', label: 'text-emerald-100', Icon: Leaf },
+  karne: { box: 'border-rose-400 bg-gradient-to-br from-rose-500 to-red-700', icon: 'bg-white text-rose-600', label: 'text-rose-100', Icon: Beef },
+  isda: { box: 'border-sky-400 bg-gradient-to-br from-sky-500 to-blue-700', icon: 'bg-white text-sky-600', label: 'text-sky-100', Icon: Fish },
+  rider: { box: 'border-amber-300 bg-gradient-to-br from-amber-400 to-orange-600', icon: 'bg-white text-orange-600', label: 'text-amber-50', Icon: Bike },
 };
 
 function formatQuantity(quantity: number, unit?: string | null) {
@@ -138,14 +138,14 @@ export function LiveActivityToast() {
   return (
     <aside
       aria-live="polite"
-      className={`fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] left-3 z-40 w-[calc(100vw-1.5rem)] max-w-[280px] transition-all duration-700 ease-in-out md:bottom-5 md:left-5 ${visible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-3 opacity-0'}`}
+      className={`fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] left-3 z-40 w-[calc(100vw-1.5rem)] max-w-[280px] transition-transform duration-1000 ease-in-out md:bottom-5 md:left-5 ${visible ? 'translate-y-0' : 'pointer-events-none translate-y-[calc(100%+3rem)]'}`}
     >
-      <div className={`relative flex items-center gap-2 rounded-xl border p-2.5 pr-7 shadow-md ${s.box}`}>
-        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${s.icon}`}>
+      <div className={`relative flex items-center gap-2 rounded-xl border p-2.5 pr-7 shadow-lg ${s.box}`}>
+        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow ${s.icon}`}>
           <Icon size={14} aria-hidden="true" />
         </div>
         <div className="min-w-0">
-          <p className="text-[11px] leading-4 text-gray-800">{activity.message}</p>
+          <p className="text-[11px] font-medium leading-4 text-white">{activity.message}</p>
           <p className={`mt-0.5 text-[9px] font-semibold uppercase tracking-wide ${s.label}`}>
             {activity.isSample ? 'Sample activity' : '● Live activity'}
           </p>
@@ -154,7 +154,7 @@ export function LiveActivityToast() {
           type="button"
           aria-label="Itago ang activity notifications"
           onClick={() => setDismissed(true)}
-          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-white/70 hover:text-gray-700"
+          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full text-white/70 hover:bg-white/20 hover:text-white"
         >
           <X size={12} aria-hidden="true" />
         </button>
