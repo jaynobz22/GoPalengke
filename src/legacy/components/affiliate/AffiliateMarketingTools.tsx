@@ -139,7 +139,7 @@ export function AffiliateMarketingTools({ affiliate }: { affiliate: Affiliate })
         return (
           <div key={mat.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             {/* Type Badge */}
-            <div className="flex items-center gap-2 px-4 pt-3">
+            <div className="flex items-center justify-center gap-2 px-4 pt-3 text-center">
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${
                 mat.type === 'banner' ? 'bg-orange-100 text-orange-700' :
                 mat.type === 'image' ? 'bg-green-100 text-green-700' :
