@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { lazyWithReload } from "../lib/chunk-reload";
 import { lazy, Suspense } from "react";
 
-const LegacyApp = lazy(() => import("../legacy/App"));
+const LegacyApp = lazy(lazyWithReload(() => import("../legacy/App")));
 
 export const Route = createFileRoute("/")({
   ssr: false,
