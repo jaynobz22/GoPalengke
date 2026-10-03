@@ -61,3 +61,4 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 - [x] Sender set to GoPalengke Admin
 - [x] Push welcome email redesign to GitHub
 - [x] Activity pop-up: homepage visitors only, smooth fade, colored per category, 10s show / 10s gap
+- [x] Preserve uploaded affiliate banner and marketing-image proportions on phone and laptop
