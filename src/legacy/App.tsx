@@ -18,6 +18,7 @@ import { TutorialPage } from './components/TutorialPage';
 import { AffiliateApp } from './pages/AffiliateApp';
 import { NotificationPermissionPrompt } from './components/NotificationPermissionPrompt';
 import { GlobalIncomingCall } from './components/GlobalIncomingCall';
+import { LiveActivityToast } from './components/LiveActivityToast';
 import { getRegistration, initPushNotifications } from './lib/pushNotifications';
 
 function AppContent() {
@@ -139,6 +140,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppContent />
+      <LiveActivityToast />
     </AuthProvider>
   );
 }
