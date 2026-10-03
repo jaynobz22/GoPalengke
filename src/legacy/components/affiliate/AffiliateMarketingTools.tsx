@@ -157,12 +157,12 @@ export function AffiliateMarketingTools({ affiliate }: { affiliate: Affiliate })
 
             {/* Media Preview */}
             {mat.type === 'video' && mat.youtube_url && (
-              <div className="mt-3 mx-4 rounded-xl overflow-hidden bg-gray-100">
+              <div className="mt-3 mx-4 overflow-hidden rounded-xl bg-gray-100">
                 <a href={mat.youtube_url} target="_blank" rel="noopener noreferrer" className="block relative">
                   <img
                     src={getYouTubeThumb(mat.youtube_url) || ''}
                     alt={mat.title}
-                    className="w-full h-40 object-cover"
+                    className="aspect-video w-full object-cover"
                   />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                     <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center">
@@ -174,14 +174,18 @@ export function AffiliateMarketingTools({ affiliate }: { affiliate: Affiliate })
             )}
 
             {mat.type === 'banner' && mat.media_url && (
-              <div className="mt-3 mx-4 rounded-xl overflow-hidden bg-gray-100">
-                <img src={mat.media_url} alt={mat.title} className="w-full h-40 object-cover" />
+              <div className="mt-3 mx-4 overflow-hidden rounded-xl bg-gray-50">
+                <img
+                  src={mat.media_url}
+                  alt={mat.title}
+                  className="block h-auto max-h-[28rem] w-full object-contain"
+                />
               </div>
             )}
 
             {mat.type === 'image' && mat.media_url && (
-              <div className="mt-3 mx-4 rounded-xl overflow-hidden bg-gray-100">
-                <img src={mat.media_url} alt={mat.title} className="w-full h-40 object-cover" />
+              <div className="mt-3 mx-4 flex max-h-[32rem] justify-center overflow-hidden rounded-xl bg-gray-50">
+                <img src={mat.media_url} alt={mat.title} className="h-auto max-h-[32rem] max-w-full object-contain" />
               </div>
             )}
 
