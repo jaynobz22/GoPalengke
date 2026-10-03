@@ -107,6 +107,10 @@ body {
 }
 .animate-slide-up { animation: slideUp 0.3s ease-out; }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-up { animation: none; }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
