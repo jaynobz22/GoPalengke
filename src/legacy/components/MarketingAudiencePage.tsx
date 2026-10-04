@@ -143,7 +143,7 @@ const CONFIGS: Record<Audience, PageConfig> = {
     benefitsTitle: 'Magkano ang puwede mong kitain?',
     benefits: [
       { icon: Store, title: '₱150 kada seller milestone', description: 'Kada ₱1,000 na ma-collect mula sa seller na nirefer mo, ₱200 ang commission — ₱150 sa iyo (Tier 1). Halimbawa: ₱50,000 sales = ₱330 sa iyo.' },
-      { icon: Bike, title: '₱35 kada rider milestone', description: 'Kada ₱500 na ma-collect mula sa rider na nirefer mo, ₱50 ang commission — ₱35 sa iyo (Tier 1). Halimbawa: 500 trips = ₱350 sa iyo.' },
+      { icon: Bike, title: '₱35 kada rider milestone', description: 'Kada ₱500 na ma-collect mula sa rider na nirefer mo, ₱50 ang commission — ₱35 sa iyo (Tier 1). Halimbawa: 500 trips sa ₱70 delivery fee (3% = ₱2.10/trip) = ₱1,050 collected = ₱70 sa iyo kada buwan.' },
       { icon: Users, title: '₱50 + ₱15 Tier 2 override', description: 'Kapag nag-invite ka ng kapwa affiliate, kikita ka ng ₱50 kada seller milestone at ₱15 kada rider milestone ng mga referral nila.' },
       { icon: InfinityIcon, title: 'Lifetime at walang limit', description: 'Habang aktibo ang mga nirefer mo sa GoPalengke, tuloy-tuloy ang commission mo — kahit minsan mo lang silang na-refer.' },
       { icon: Share2, title: 'Handa nang marketing pages', description: 'May ready-to-share pages para sa sellers, riders, at buyers na awtomatikong may referral code mo at Facebook share button.' },
