@@ -14,9 +14,9 @@ export function AffiliateLanding() {
   // Tier 1 (Direct): Seller ₱150/milestone, Rider ₱35/milestone
   // Tier 2 (Sponsor override): Seller ₱50/milestone, Rider ₱15/milestone
   // Seller: ₱2,200 collected / ₱1,000 = 2.2 milestones × ₱150 = ₱330 per seller (Tier 1)
-  // Rider: ₱5,000 collected / ₱500 = 10 milestones × ₱35 = ₱350 per rider (Tier 1)
+  // Rider: 500 trips × ₱70 fee × 3% = ₱1,050 collected / ₱500 = 2 milestones × ₱35 = ₱70 per rider (Tier 1)
   const sellerIncome = sellers * 330;
-  const riderIncome = riders * 350;
+  const riderIncome = riders * 70;
   const totalIncome = sellerIncome + riderIncome;
 
   return (
@@ -146,8 +146,9 @@ export function AffiliateLanding() {
               </div>
               <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-500">
                 <p className="font-medium text-gray-600 mb-1">Halimbawa:</p>
-                <p>20 trips/day × 25 days = 500 trips × ₱10 fee = <strong>₱5,000 collected</strong></p>
-                <p>₱5,000 / ₱500 = 10 milestones × ₱35 = <strong>₱350 sa'yo (Tier 1)</strong></p>
+                <p>₱70 delivery fee (2–3 km, magkatabing barangay) × 3% = <strong>₱2.10 kada trip</strong></p>
+                <p>20 trips/day × 25 days = 500 trips × ₱2.10 = <strong>₱1,050 collected</strong></p>
+                <p>₱1,050 / ₱500 = 2 milestones × ₱35 = <strong>₱70 sa'yo (Tier 1)</strong> kada buwan</p>
               </div>
             </div>
           </div>
@@ -210,7 +211,7 @@ export function AffiliateLanding() {
                 <div className="flex justify-between text-[10px] text-gray-400 mt-1">
                   <span>1</span><span>100</span><span>200</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">₱350 per rider / month (Tier 1) + ₱15 Tier 2 override</p>
+                <p className="text-xs text-gray-400 mt-1">₱70 per rider / month (Tier 1, 20 trips/day @ ₱70 fee) + ₱30 Tier 2 override</p>
               </div>
             </div>
 
