@@ -98,10 +98,10 @@ export function GpsPermissionModal({ open, role = 'buyer', onRetry, onClose }: P
                 <p className="text-[13px] font-semibold text-amber-800">Kung naka-block na dati:</p>
               </div>
               <ul className="text-[12px] text-amber-800 leading-relaxed list-disc pl-5 space-y-1">
-                <li>Sa phone/laptop browser: pindutin ang lock icon sa tabi ng address bar.</li>
-                <li>Piliin ang Permissions o Site settings, hanapin ang Location.</li>
-                <li>Palitan ito ng Allow, tapos i-reload ang page.</li>
-                <li>Siguraduhin ding naka-ON ang Location Services ng phone mo.</li>
+                <li>Sa phone/laptop browser: pindutin ang lock icon sa tabi ng address bar ➔ Permissions/Site settings ➔ Location ➔ Allow, tapos i-reload.</li>
+                <li>Naka-install na app (Android): Settings ➔ Apps ➔ GoPalengke (o Chrome) ➔ Permissions ➔ Location ➔ "Allow only while using the app".</li>
+                <li>Naka-install na app (iPhone): Settings ➔ Privacy & Security ➔ Location Services ➔ Safari Websites ➔ "While Using the App".</li>
+                <li>Siguraduhing naka-ON ang Location/GPS ng phone mo.</li>
               </ul>
             </div>
           )}
