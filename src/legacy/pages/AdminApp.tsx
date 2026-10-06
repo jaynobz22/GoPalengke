@@ -103,6 +103,15 @@ export function AdminApp() {
     if (!error) setPendingRiderFeeCount(count ?? 0);
   }, []);
 
+  // Auto-delete: ordinaryong chat images na lampas 24 oras (verification images ay hindi kasama)
+  useEffect(() => {
+    if (!profile) return;
+    const run = () => import('../lib/chatImageCleanup').then(m => m.cleanupExpiredChatImages()).catch(() => {});
+    run();
+    const t = setInterval(run, 60 * 60 * 1000);
+    return () => clearInterval(t);
+  }, [profile?.id]);
+
   const loadUnreadMessageCount = useCallback(async () => {
     if (!profile) return;
     const { count, error } = await supabase
@@ -454,6 +463,8 @@ function OverviewTab() {
                     const { error } = await supabase.rpc('admin_verify_store', { p_store_id: s.id });
                     if (!error) {
                       setStats(prev => ({ ...prev, unverifiedStores: prev.unverifiedStores.filter((st: any) => st.id !== s.id) }));
+                      const { purgeVerificationImages } = await import('../lib/chatImageCleanup');
+                      await purgeVerificationImages(s.seller_id);
                     }
                   }}
                   className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold active:scale-95 transition"
@@ -666,6 +677,10 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
     await supabase.from('profiles').update({ is_approved: next }).eq('id', user.id);
     if (user.role === 'seller') {
       await supabase.from('stores').update({ is_verified: next }).eq('seller_id', user.id);
+    }
+    if (next) {
+      const { purgeVerificationImages } = await import('../lib/chatImageCleanup');
+      await purgeVerificationImages(user.id);
     }
     load();
   }
