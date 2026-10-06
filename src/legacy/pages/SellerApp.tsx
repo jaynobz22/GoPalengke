@@ -19,6 +19,7 @@ import { RiderStageBanner } from '../components/RiderStageBanner';
 import { Avatar } from '../components/Avatar';
 import { InactiveBanner } from '../components/InactiveBanner';
 import { GpsPermissionModal } from '../components/GpsPermissionModal';
+import { ensureGps } from '../lib/gpsGate';
 import { SellerBilling } from '../components/SellerBilling';
 import { ReviewSection } from '../components/Reviews';
 import { OrderStepTracker, type StepInfo } from '../components/OrderStepTracker';
@@ -612,7 +613,12 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
   async function toggleStoreOpen() {
     setToggling(true);
     const newValue = !isOpen;
-    await supabase.from('stores').update({ is_open: newValue }).eq('id', store.id);
+    let coords = null;
+    if (newValue) {
+      coords = await ensureGps('seller');
+      if (!coords) { setToggling(false); return; }
+    }
+    await supabase.from('stores').update(coords ? { is_open: newValue, latitude: coords.lat, longitude: coords.lng } : { is_open: newValue }).eq('id', store.id);
     setIsOpen(newValue);
     setToggling(false);
   }
@@ -1913,6 +1919,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
 
   async function updateStatus(status: OrderStatus) {
     setUpdating(true);
+    if (status === 'accepted' && !(await ensureGps('seller'))) { setUpdating(false); return; }
     await supabase.from('orders').update({ status }).eq('id', currentOrder.id);
     setCurrentOrder(prev => ({ ...prev, status }));
     setUpdating(false);
