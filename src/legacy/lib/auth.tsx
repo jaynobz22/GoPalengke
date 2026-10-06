@@ -279,6 +279,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.session?.access_token) {
         sendWelcomeEmail(data.session.access_token);
       }
+      // Seller: ipadala rin ang verification requirements sa Admin chat.
+      supabase.rpc("send_seller_welcome_message", { p_user_id: data.user.id }).then(() => {}, () => {});
     }
 
     return { error: null };
