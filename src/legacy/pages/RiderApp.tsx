@@ -17,6 +17,7 @@ import { Avatar } from '../components/Avatar';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { InactiveBanner } from '../components/InactiveBanner';
 import { GpsPermissionModal } from '../components/GpsPermissionModal';
+import { ensureGps } from '../lib/gpsGate';
 import { ReviewSection } from '../components/Reviews';
 import { OrderStepTracker, type StepInfo } from '../components/OrderStepTracker';
 import { AdminVideoCall } from '../components/AdminVideoCall';
@@ -271,6 +272,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
     if (!profile) return;
     setToggling(true);
     const newValue = !isAvailable;
+    if (newValue && !(await ensureGps('rider'))) { setToggling(false); return; }
     setIsAvailable(newValue);
     await supabase.from('profiles').update({ is_available: newValue }).eq('id', profile.id);
     setToggling(false);
@@ -283,6 +285,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
       return;
     }
     setAccepting(order.id);
+    if (!(await ensureGps('rider'))) { setAccepting(null); return; }
     const batch = await checkRiderBatch(profile.id, order);
     if (!batch.ok) {
       setAccepting(null);
