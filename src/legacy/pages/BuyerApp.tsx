@@ -12,6 +12,7 @@ import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '../lib/types';
 import { LocationSelector, type LocationData } from '../components/LocationSelector';
 import { InactiveBanner } from '../components/InactiveBanner';
 import { GpsPermissionModal } from '../components/GpsPermissionModal';
+import { ensureGps } from '../lib/gpsGate';
 import {
   computeDeliveryFee, estimateDistanceKm,
   haversineKm, getStoreCoords, getDeliveryCoords,
@@ -2007,6 +2008,15 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
     if (!profile.house_photo_url) {
       alert('Kailangan mag-upload ng larawan ng bahay mo sa Profile bago mag-order. Para makilala ng rider kung aling bahay ang pupuntahan.');
       return;
+    }
+    // Kailangang naka-ON ang location para tama ang distansya at delivery fee
+    if (!deliveryPin) {
+      const pos = await ensureGps('buyer');
+      if (!pos) return;
+      setDeliveryPin(pos);
+      setGpsStatus('found');
+      alert('Nakuha na ang lokasyon mo. Pakisuri ang delivery fee at pindutin ulit ang I-place ang Order.');
+      return; // i-recompute muna ang fee bago i-submit
     }
 
     // Require road distance for all stores before placing order — no straight-line fallback
