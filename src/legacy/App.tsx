@@ -137,10 +137,14 @@ function AppContent() {
 }
 
 export default function App() {
+  // Naka-wrap sa ErrorBoundary para kung may luma/patched na module sa cache
+  // (bagong deploy), magre-reload ang app imbes na blankong screen.
   return (
-    <AuthProvider>
-      <AppContent />
-      <LiveActivityToast />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+        <LiveActivityToast />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
