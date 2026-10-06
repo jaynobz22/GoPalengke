@@ -4,6 +4,9 @@ import { supabase } from './supabase';
 import { useAuth } from './auth';
 import type { AdminConversation } from './types';
 
+const welcomeTried = new Set<string>();
+const cleanupTried = new Set<string>();
+
 export function useAdminConversations() {
   const { profile } = useAuth();
   const [conversations, setConversations] = useState<AdminConversation[]>([]);
@@ -19,12 +22,18 @@ export function useAdminConversations() {
       .eq('user_id', profile.id)
       .limit(1);
 
-    if (!existing || existing.length === 0) {
+    // Unverified sellers: siguraduhing natanggap ang verification message (isang beses lang ipinapadala ng DB)
+    if (profile.role === 'seller' && !profile.is_approved && !welcomeTried.has(profile.id)) {
+      welcomeTried.add(profile.id);
+      await supabase.rpc('send_seller_welcome_message', { p_user_id: profile.id });
+    } else if (!existing || existing.length === 0) {
       await supabase.rpc('get_or_create_admin_conversation');
-      // Send pre-built verification welcome message for new sellers
-      if (profile.role === 'seller') {
-        await supabase.rpc('send_seller_welcome_message', { p_user_id: profile.id });
-      }
+    }
+
+    // Best-effort: linisin ang mga ordinaryong chat images na lampas 24 oras
+    if (!cleanupTried.has(profile.id)) {
+      cleanupTried.add(profile.id);
+      import('./chatImageCleanup').then(m => m.cleanupExpiredChatImages()).catch(() => {});
     }
 
     const { data } = await supabase
