@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { Component, type ReactNode } from 'react';
+import { reloadOnce } from '../../lib/chunk-reload';
 
 interface Props {
   children: ReactNode;
@@ -23,10 +24,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error) {
     console.error('ErrorBoundary caught:', error);
+    // Kadalasan ang dahilan ng render error ay lumang/patched na module
+    // (bagong deploy, luma ang cache ng browser). Isang beses lang magre-reload,
+    // may 10-second guard na lang sa loob ng reloadOnce.
+    reloadOnce();
   }
 
-  handleReset = () => {
-    this.setState({ hasError: false, error: null });
+  handleReload = () => {
+    if (!reloadOnce()) window.location.reload();
   };
 
   render() {
@@ -46,10 +51,10 @@ export class ErrorBoundary extends Component<Props, State> {
             {this.state.error?.message || 'Hindi ma-load ang seksyong ito.'}
           </p>
           <button
-            onClick={this.handleReset}
+            onClick={this.handleReload}
             className="px-5 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-semibold active:scale-95 transition"
           >
-            Subukang Muli
+            I-reload ang App
           </button>
         </div>
       );
