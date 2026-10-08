@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { AuthProvider, useAuth } from './lib/auth';
-import { navigate, useRoute, useLegalRoute, useTutorialRoute, useAffiliateRoute } from './lib/router';
+import { navigate, usePath, useRoute, useLegalRoute, useTutorialRoute, useAffiliateRoute } from './lib/router';
+import { ContactPage } from './components/ContactPage';
 import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 import { BuyerApp } from './pages/BuyerApp';
@@ -27,6 +28,7 @@ function AppContent() {
   const [showAuth, setShowAuth] = useState(() => new URLSearchParams(window.location.search).has('signup'));
   const publicRoute = useRoute();
   const legalRoute = useLegalRoute();
+  const path = usePath();
   const tutorialRoute = useTutorialRoute();
   const affiliateRoute = useAffiliateRoute();
 
@@ -69,6 +71,11 @@ function AppContent() {
   // Tutorial page — visible even without login
   if (tutorialRoute) {
     return <TutorialPage />;
+  }
+
+  // Contact + account deletion — visible even without login
+  if (path === '/contact') {
+    return <ContactPage onBack={() => navigate('/')} />;
   }
 
   // Legal pages — visible even without login

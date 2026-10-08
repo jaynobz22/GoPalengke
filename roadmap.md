@@ -62,3 +62,8 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 - [x] Push welcome email redesign to GitHub
 - [x] Activity pop-up: homepage visitors only, smooth fade, colored per category, 10s show / 10s gap
 - [x] Preserve uploaded affiliate banner and marketing-image proportions on phone and laptop
+
+## Current: Blank-screen crash guard
+- [x] Wrap the whole app in an error boundary so a stale/cached module auto-reloads instead of blanking the screen
+- [x] Verify normal load, forced render-error recovery, and build
+- [x] Push the crash guard to GitHub

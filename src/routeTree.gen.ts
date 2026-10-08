@@ -11,11 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as ParaSaAffiliateRouteImport } from './routes/para-sa-affiliate'
 import { Route as ParaSaBuyerRouteImport } from './routes/para-sa-buyer'
 import { Route as ParaSaRiderRouteImport } from './routes/para-sa-rider'
 import { Route as ParaSaSellerRouteImport } from './routes/para-sa-seller'
 import { Route as SSlugRouteImport } from './routes/s.$slug'
+import { Route as ApiPublicCronOnboardingRemindersRouteImport } from './routes/api/public/cron/onboarding-reminders'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -25,6 +27,11 @@ const IndexRoute = IndexRouteImport.update({
 const SplatRoute = SplatRouteImport.update({
   id: '/$',
   path: '/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ParaSaAffiliateRoute = ParaSaAffiliateRouteImport.update({
@@ -52,73 +59,93 @@ const SSlugRoute = SSlugRouteImport.update({
   path: '/s/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronOnboardingRemindersRoute =
+  ApiPublicCronOnboardingRemindersRouteImport.update({
+    id: '/api/public/cron/onboarding-reminders',
+    path: '/api/public/cron/onboarding-reminders',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/contact': typeof ContactRoute
   '/para-sa-affiliate': typeof ParaSaAffiliateRoute
   '/para-sa-buyer': typeof ParaSaBuyerRoute
   '/para-sa-rider': typeof ParaSaRiderRoute
   '/para-sa-seller': typeof ParaSaSellerRoute
   '/s/$slug': typeof SSlugRoute
+  '/api/public/cron/onboarding-reminders': typeof ApiPublicCronOnboardingRemindersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/contact': typeof ContactRoute
   '/para-sa-affiliate': typeof ParaSaAffiliateRoute
   '/para-sa-buyer': typeof ParaSaBuyerRoute
   '/para-sa-rider': typeof ParaSaRiderRoute
   '/para-sa-seller': typeof ParaSaSellerRoute
   '/s/$slug': typeof SSlugRoute
+  '/api/public/cron/onboarding-reminders': typeof ApiPublicCronOnboardingRemindersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/contact': typeof ContactRoute
   '/para-sa-affiliate': typeof ParaSaAffiliateRoute
   '/para-sa-buyer': typeof ParaSaBuyerRoute
   '/para-sa-rider': typeof ParaSaRiderRoute
   '/para-sa-seller': typeof ParaSaSellerRoute
   '/s/$slug': typeof SSlugRoute
+  '/api/public/cron/onboarding-reminders': typeof ApiPublicCronOnboardingRemindersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/$'
+    | '/contact'
     | '/para-sa-affiliate'
     | '/para-sa-buyer'
     | '/para-sa-rider'
     | '/para-sa-seller'
     | '/s/$slug'
+    | '/api/public/cron/onboarding-reminders'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$'
+    | '/contact'
     | '/para-sa-affiliate'
     | '/para-sa-buyer'
     | '/para-sa-rider'
     | '/para-sa-seller'
     | '/s/$slug'
+    | '/api/public/cron/onboarding-reminders'
   id:
     | '__root__'
     | '/'
     | '/$'
+    | '/contact'
     | '/para-sa-affiliate'
     | '/para-sa-buyer'
     | '/para-sa-rider'
     | '/para-sa-seller'
     | '/s/$slug'
+    | '/api/public/cron/onboarding-reminders'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  ContactRoute: typeof ContactRoute
   ParaSaAffiliateRoute: typeof ParaSaAffiliateRoute
   ParaSaBuyerRoute: typeof ParaSaBuyerRoute
   ParaSaRiderRoute: typeof ParaSaRiderRoute
   ParaSaSellerRoute: typeof ParaSaSellerRoute
   SSlugRoute: typeof SSlugRoute
+  ApiPublicCronOnboardingRemindersRoute: typeof ApiPublicCronOnboardingRemindersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -135,6 +162,13 @@ declare module '@tanstack/react-router' {
       path: '/$'
       fullPath: '/$'
       preLoaderRoute: typeof SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/para-sa-affiliate': {
@@ -172,17 +206,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/onboarding-reminders': {
+      id: '/api/public/cron/onboarding-reminders'
+      path: '/api/public/cron/onboarding-reminders'
+      fullPath: '/api/public/cron/onboarding-reminders'
+      preLoaderRoute: typeof ApiPublicCronOnboardingRemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  ContactRoute: ContactRoute,
   ParaSaAffiliateRoute: ParaSaAffiliateRoute,
   ParaSaBuyerRoute: ParaSaBuyerRoute,
   ParaSaRiderRoute: ParaSaRiderRoute,
   ParaSaSellerRoute: ParaSaSellerRoute,
   SSlugRoute: SSlugRoute,
+  ApiPublicCronOnboardingRemindersRoute: ApiPublicCronOnboardingRemindersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
