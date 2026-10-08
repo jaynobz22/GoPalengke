@@ -726,7 +726,6 @@ function Footer() {
     { label: 'Anti Scam & Spam Policy', hash: '/legal/antiscam' },
     { label: 'FAQ', hash: '/legal/faq' },
     { label: 'Contact Us', hash: '/contact' },
-    { label: 'Delete Account', hash: '/contact#delete-account' },
     { label: 'Tutorials', hash: '/tutorial' },
     { label: 'Affiliate', hash: '/affiliate' },
   ];
