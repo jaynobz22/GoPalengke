@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "net.gopalengke.twa",
+      "sha256_cert_fingerprints": ["B5:F9:2D:4A:C8:9B:65:00:9B:C6:46:0D:66:E8:FB:A6:3E:6A:B0:5A:48:4E:9D:73:6C:D8:26:A9:33:2B:40:07"]
+    }
+  }
+]
