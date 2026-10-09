@@ -1,15 +1,63 @@
-// GoPalengke Service Worker — handles background push notifications
-// Registered from src/lib/pushNotifications.ts
+// GoPalengke Service Worker — offline app shell + background push notifications
+// Registered from src/lib/register-sw.ts (production only) and pushNotifications.ts
 
 const NOTIFICATION_ICON = '/icon-192.png';
 const NOTIFICATION_BADGE = '/icon-192.png';
 
+const CACHE_NAME = 'gopalengke-shell-v1';
+const CORE_FILES = ['/', '/manifest.json', '/favicon.png', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png'];
+
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => Promise.allSettled(CORE_FILES.map((f) => cache.add(f))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil((async () => {
+    const names = await caches.keys();
+    await Promise.all(
+      names.filter((n) => n.startsWith('gopalengke-shell-') && n !== CACHE_NAME).map((n) => caches.delete(n))
+    );
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return; // never touch database/API calls
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/~oauth')) return;
+
+  // Pages: always try the network first, fall back to cache when offline
+  if (req.mode === 'navigate') {
+    event.respondWith((async () => {
+      try {
+        const fresh = await fetch(req);
+        const cache = await caches.open(CACHE_NAME);
+        cache.put('/', fresh.clone()).catch(() => {});
+        return fresh;
+      } catch {
+        return (await caches.match(req)) || (await caches.match('/')) ||
+          new Response('<h1>Offline</h1><p>Walang internet. Subukan ulit mamaya.</p>', { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      }
+    })());
+    return;
+  }
+
+  // Hashed build files + icons: cache first
+  if (url.pathname.startsWith('/assets/') || CORE_FILES.includes(url.pathname)) {
+    event.respondWith((async () => {
+      const hit = await caches.match(req);
+      if (hit) return hit;
+      const res = await fetch(req);
+      if (res.ok) (await caches.open(CACHE_NAME)).put(req, res.clone()).catch(() => {});
+      return res;
+    })());
+  }
 });
 
 self.addEventListener('push', (event) => {

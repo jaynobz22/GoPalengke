@@ -1,8 +1,12 @@
 {
+  "id": "/",
   "name": "GoPalengke — Online Wet Market",
   "short_name": "GoPalengke",
   "description": "Order fresh fish, meat, vegetables, and more from your local palengke. Verified vendors, live tracking delivery.",
   "start_url": "/",
+  "scope": "/",
+  "lang": "fil",
+  "categories": ["shopping", "food"],
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ea580c",
