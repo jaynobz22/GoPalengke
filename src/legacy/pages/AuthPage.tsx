@@ -19,7 +19,9 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
   const { signIn, signUp, sendEmailOtp, verifyEmailOtp } = useAuth();
   const requestedRole = new URLSearchParams(window.location.search).get('signup');
   const targetedRole: UserRole | null = requestedRole === 'seller' || requestedRole === 'rider' || requestedRole === 'buyer' ? requestedRole : null;
-  const [mode, setMode] = useState<'welcome' | 'signin' | 'signup-role' | 'signup-form' | 'verify-email'>(needsProfile ? 'signup-role' : targetedRole ? 'signup-form' : 'welcome');
+  const [mode, setMode] = useState<'welcome' | 'signin' | 'signup-role' | 'signup-form' | 'verify-email' | 'forgot'>(needsProfile ? 'signup-role' : targetedRole ? 'signup-form' : 'welcome');
+  const [resetStep, setResetStep] = useState<'email' | 'code'>('email');
+  const [newPassword, setNewPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>(targetedRole || 'buyer');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -132,6 +134,42 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
     }
   }
 
+  async function handleSendResetCode(e?: any) {
+    e?.preventDefault?.();
+    if (resendCooldown > 0 && resetStep === 'code') return;
+    setError(null);
+    setInfo(null);
+    setSubmitting(true);
+    const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: false } });
+    setSubmitting(false);
+    if (error) {
+      setError(/not found|signups not allowed/i.test(error.message) ? 'Walang account na naka-rehistro sa email na ito.' : error.message);
+      return;
+    }
+    setResetStep('code');
+    setInfo('Nagpadala kami ng code sa email mo. I-check ang inbox at spam folder.');
+    startResendCooldown();
+  }
+
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (newPassword.length < 6) { setError('Dapat hindi bababa sa 6 character ang password.'); return; }
+    setSubmitting(true);
+    const { error: vErr } = await supabase.auth.verifyOtp({ email: email.trim(), token: otpCode, type: 'magiclink' });
+    if (vErr) { setSubmitting(false); setError('Mali o expired na ang code. Subukan ulit.'); return; }
+    const { error: uErr } = await supabase.auth.updateUser({ password: newPassword });
+    if (uErr) { setSubmitting(false); setError(uErr.message); return; }
+    await supabase.auth.signOut();
+    setSubmitting(false);
+    setPassword('');
+    setNewPassword('');
+    setOtpCode('');
+    setResetStep('email');
+    setMode('signin');
+    setInfo('Napalitan na ang password mo! Mag-sign in gamit ang bagong password.');
+  }
+
   // Auto-fill affiliate code from referral link
   useEffect(() => {
     const refCode = sessionStorage.getItem('gopalengke_ref_code');
@@ -146,6 +184,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
           <button
             onClick={() => {
               if (mode === 'signin') setMode('welcome');
+              else if (mode === 'forgot') setMode('signin');
               else if (mode === 'signup-form') setMode('signup-role');
               else if (mode === 'verify-email') setMode('signup-form');
               else setMode('welcome');
@@ -293,6 +332,15 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+              <div className="text-right mt-2">
+                <button
+                  type="button"
+                  onClick={() => { setError(null); setInfo(null); setResetStep('email'); setOtpCode(''); setNewPassword(''); setMode('forgot'); }}
+                  className="text-sm font-semibold text-brand-600 hover:underline"
+                >
+                  Nakalimutan ang password?
+                </button>
+              </div>
             </div>
             {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
             {info && <p className="text-brand-600 text-sm bg-brand-50 px-4 py-2 rounded-lg">{info}</p>}
@@ -302,6 +350,68 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
               className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50"
             >
               {submitting ? 'Naglo-load...' : 'Mag-sign In'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* Forgot Password */}
+      {mode === 'forgot' && (
+        <div className="flex-1 px-5 flex flex-col">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Gumawa ng Bagong Password</h2>
+          <p className="text-gray-500 mb-6 text-sm">
+            {resetStep === 'email'
+              ? 'Ilagay ang email ng account mo. Padadalhan ka namin ng verification code.'
+              : `Ilagay ang code na ipinadala sa ${email} at ang bago mong password.`}
+          </p>
+          <form onSubmit={resetStep === 'email' ? handleSendResetCode : handleResetPassword} className="space-y-4">
+            {resetStep === 'email' ? (
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email@example.com"
+                required
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
+              />
+            ) : (
+              <>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                  placeholder="Verification code"
+                  required
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-center tracking-[0.3em] text-lg font-bold focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
+                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Bagong password (min. 6 characters)"
+                    minLength={6}
+                    required
+                    className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
+                  />
+                  <button type="button" onClick={() => setShowPassword(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" aria-label="Ipakita ang password">
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
+                <button type="button" onClick={handleSendResetCode} disabled={resendCooldown > 0} className="text-sm text-brand-600 font-medium disabled:text-gray-400">
+                  {resendCooldown > 0 ? `Magpadala ulit sa ${resendCooldown}s` : 'Magpadala ulit ng code'}
+                </button>
+              </>
+            )}
+            {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
+            {info && <p className="text-brand-600 text-sm bg-brand-50 px-4 py-2 rounded-lg">{info}</p>}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50"
+            >
+              {submitting ? 'Naglo-load...' : resetStep === 'email' ? 'Ipadala ang Code' : 'I-save ang Bagong Password'}
             </button>
           </form>
         </div>
