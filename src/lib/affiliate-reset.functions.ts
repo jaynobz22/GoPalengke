@@ -28,7 +28,7 @@ async function codeFor(email: string, pwHash: string, win: number) {
   const secret = process.env["GOPALENGKE_SERVICE_ROLE_KEY"] || "";
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`aff-reset|${email}|${pwHash}|${win}`)));
-  const n = ((sig[0] << 24) | (sig[1] << 16) | (sig[2] << 8) | sig[3]) >>> 0;
+  const n = new DataView(sig.buffer).getUint32(0);
   return String(n % 1000000).padStart(6, "0");
 }
 
