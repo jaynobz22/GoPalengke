@@ -7,6 +7,63 @@ import {
   Check, Loader2, AlertCircle, QrCode, Phone,
 } from 'lucide-react';
 import { ImageUploadField } from '../../components/ImageUploadField';
+import { sendAffiliateResetCode, resetAffiliatePassword } from '@/lib/affiliate-reset.functions';
+
+function AffiliateForgot({ initialEmail, onDone }: { initialEmail: string; onDone: () => void }) {
+  const [step, setStep] = useState<'email' | 'code' | 'done'>('email');
+  const [email, setEmail] = useState(initialEmail);
+  const [code, setCode] = useState('');
+  const [pw, setPw] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function sendCode() {
+    setErr(null);
+    if (!email.trim()) return setErr('Ilagay ang email mo.');
+    setBusy(true);
+    try { await sendAffiliateResetCode({ data: { email: email.trim() } }); setStep('code'); }
+    catch (e: any) { setErr(e?.message || 'May problema. Subukan ulit.'); }
+    setBusy(false);
+  }
+  async function save() {
+    setErr(null);
+    if (!/^\d{6}$/.test(code.trim())) return setErr('Ilagay ang 6-digit na code.');
+    if (pw.length < 6) return setErr('Dapat hindi bababa sa 6 character ang password.');
+    setBusy(true);
+    try { await resetAffiliatePassword({ data: { email: email.trim(), code: code.trim(), password: pw } }); setStep('done'); }
+    catch (e: any) { setErr(e?.message || 'Mali o expired na ang code.'); }
+    setBusy(false);
+  }
+  const input = 'w-full px-4 py-3 rounded-xl border border-gray-200 outline-none text-sm focus:border-brand-500';
+  const btn = 'w-full py-3.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-2xl font-bold text-sm shadow-lg active:scale-95 transition disabled:opacity-50 flex items-center justify-center gap-2';
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex flex-col">
+      <div className="px-5 pt-12 pb-6 flex items-center gap-3">
+        <button onClick={onDone} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-600 active:scale-95 transition"><ArrowLeft size={20} /></button>
+        <h1 className="text-lg font-bold text-gray-800">Bagong Password</h1>
+      </div>
+      <div className="flex-1 px-5 pb-8"><div className="max-w-md mx-auto bg-white rounded-3xl shadow-lg p-6 space-y-4">
+        {err && <div className="flex items-center gap-2 bg-red-50 text-red-600 text-sm p-3 rounded-xl"><AlertCircle size={16} />{err}</div>}
+        {step === 'email' && (<>
+          <p className="text-sm text-gray-600">Ilagay ang email ng affiliate account mo. Padadalhan ka namin ng 6-digit na code.</p>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" className={input} />
+          <button onClick={sendCode} disabled={busy} className={btn}>{busy ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}Ipadala ang Code</button>
+        </>)}
+        {step === 'code' && (<>
+          <p className="text-sm text-gray-600">Kung may account ang <b>{email}</b>, may code na sa email mo (tingnan din ang Spam).</p>
+          <input inputMode="numeric" maxLength={6} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} placeholder="6-digit code" className={input + ' tracking-widest text-center'} />
+          <input type="password" value={pw} onChange={e => setPw(e.target.value)} placeholder="Bagong password (6+ character)" className={input} />
+          <button onClick={save} disabled={busy} className={btn}>{busy ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}I-save ang Bagong Password</button>
+          <button onClick={sendCode} disabled={busy} className="w-full text-xs text-brand-600 font-semibold">Ipadala ulit ang code</button>
+        </>)}
+        {step === 'done' && (<>
+          <p className="text-sm text-gray-700">Napalitan na ang password mo! Mag-login na gamit ang bagong password.</p>
+          <button onClick={onDone} className={btn}><Check size={18} />Bumalik sa Login</button>
+        </>)}
+      </div></div>
+    </div>
+  );
+}
 
 export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
   const { signIn, signUp } = useAffiliateAuth();
@@ -20,6 +77,7 @@ export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -70,6 +128,8 @@ export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
     setPayoutQrUrl('');
     setPromoCode('');
   }
+
+  if (showForgot) return <AffiliateForgot initialEmail={email} onDone={() => setShowForgot(false)} />;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex flex-col">
@@ -178,6 +238,13 @@ export function AffiliateAuth({ mode }: { mode: 'register' | 'login' }) {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              {isLogin && (
+                <div className="text-right mt-1.5">
+                  <button type="button" onClick={() => setShowForgot(true)} className="text-xs text-brand-600 font-semibold hover:underline">
+                    Nakalimutan ang password?
+                  </button>
+                </div>
+              )}
             </div>
 
             {!isLogin && (
