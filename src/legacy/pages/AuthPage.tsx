@@ -8,6 +8,7 @@ import { navigate } from '../lib/router';
 import { supabase } from '../lib/supabase';
 import type { VehicleType } from '../lib/types';
 import { VEHICLE_TIERS } from '../lib/deliveryFee';
+import { sendUserResetCode, resetUserPassword } from '../../lib/user-reset.functions';
 
 const ROLES = [
   { id: 'buyer' as UserRole, name: 'Mamimili', desc: 'Bumili ng sariwang paninda online', icon: ShoppingCart, color: 'bg-brand-500' },
@@ -140,14 +141,17 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
     setError(null);
     setInfo(null);
     setSubmitting(true);
-    const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: false } });
-    setSubmitting(false);
-    if (error) {
-      setError(/not found|signups not allowed/i.test(error.message) ? 'Walang account na naka-rehistro sa email na ito.' : error.message);
+    try {
+      const r = await sendUserResetCode({ data: { email: email.trim() } });
+      setSubmitting(false);
+      if (r?.notFound) { setError('Walang account na naka-rehistro sa email na ito.'); return; }
+    } catch (err: any) {
+      setSubmitting(false);
+      setError(err?.message || 'Hindi maipadala ang code. Subukan ulit.');
       return;
     }
     setResetStep('code');
-    setInfo('Nagpadala kami ng code sa email mo. I-check ang inbox at spam folder.');
+    setInfo('Nagpadala kami ng 6-digit code sa email mo. I-check ang inbox at spam folder.');
     startResendCooldown();
   }
 
@@ -155,12 +159,15 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
     e.preventDefault();
     setError(null);
     if (newPassword.length < 6) { setError('Dapat hindi bababa sa 6 character ang password.'); return; }
+    if (!/^\d{6}$/.test(otpCode)) { setError('Ilagay ang 6-digit code.'); return; }
     setSubmitting(true);
-    const { error: vErr } = await supabase.auth.verifyOtp({ email: email.trim(), token: otpCode, type: 'magiclink' });
-    if (vErr) { setSubmitting(false); setError('Mali o expired na ang code. Subukan ulit.'); return; }
-    const { error: uErr } = await supabase.auth.updateUser({ password: newPassword });
-    if (uErr) { setSubmitting(false); setError(uErr.message); return; }
-    await supabase.auth.signOut();
+    try {
+      await resetUserPassword({ data: { email: email.trim(), code: otpCode, password: newPassword } });
+    } catch (err: any) {
+      setSubmitting(false);
+      setError(err?.message || 'Mali o expired na ang code. Subukan ulit.');
+      return;
+    }
     setSubmitting(false);
     setPassword('');
     setNewPassword('');
@@ -380,8 +387,8 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
                   type="text"
                   inputMode="numeric"
                   value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                  placeholder="Verification code"
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="6-digit code"
                   required
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-center tracking-[0.3em] text-lg font-bold focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
                 />
