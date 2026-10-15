@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import heroImg from "@/assets/beta-hero.jpg";
 
 const GROUP_URL = "https://play.google.com/apps/internaltest/4700781488049509792";
 const ANDROID_URL = "https://play.google.com/store/apps/details?id=net.gopalengke";
@@ -63,8 +64,17 @@ const faqs = [
 function BetaTesterPage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <section className="bg-primary text-primary-foreground">
-        <div className="mx-auto max-w-3xl px-5 py-14 text-center">
+      <section className="relative overflow-hidden bg-primary text-primary-foreground">
+        <img
+          src={heroImg}
+          alt=""
+          aria-hidden="true"
+          width={1600}
+          height={912}
+          className="absolute inset-0 h-full w-full scale-110 object-cover blur-[3px]"
+        />
+        <div className="absolute inset-0 bg-primary-deep/75" />
+        <div className="relative mx-auto max-w-3xl px-5 py-14 text-center">
           <span className="inline-block rounded-full bg-primary-foreground/15 px-3 py-1 text-xs font-semibold tracking-wide">
             GOOGLE PLAY CLOSED TESTING
           </span>
