@@ -4,6 +4,9 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 
 ## Tasks
 - [x] Closed testing beta-tester page (/beta-tester)
+- [x] Add "Beta Testers" link to the homepage footer
+- [x] Push page and footer link to GitHub, verify the live site opens the page
+
 - [x] Add a privacy-safe live/sample buyer and rider activity pop-up across public and user screens
 - [ ] 1. Enable Lovable Cloud (DB, auth, storage)
 - [ ] 2. Schema: port all 50+ Supabase migrations into Lovable Cloud (tables, RLS, grants, triggers, seed data)
