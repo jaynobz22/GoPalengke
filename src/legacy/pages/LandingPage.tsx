@@ -728,7 +728,9 @@ function Footer() {
     { label: 'Contact Us', hash: '/contact' },
     { label: 'Tutorials', hash: '/tutorial' },
     { label: 'Affiliate', hash: '/affiliate' },
+    { label: 'Beta Testers', href: '/beta-tester' },
   ];
+
 
   return (
     <footer className="bg-gray-900 text-gray-400 px-5 py-8 md:py-12">
@@ -742,14 +744,25 @@ function Footer() {
         {/* Legal links */}
         <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 mb-5">
           {legalLinks.map((link) => (
-            <button
-              key={link.hash}
-              onClick={() => navigate(link.hash.replace('#', ''))}
-              className="text-xs md:text-sm text-gray-400 hover:text-white transition"
-            >
-              {link.label}
-            </button>
+            link.href ? (
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-xs md:text-sm text-gray-400 hover:text-white transition"
+              >
+                {link.label}
+              </a>
+            ) : (
+              <button
+                key={link.hash}
+                onClick={() => navigate(link.hash.replace('#', ''))}
+                className="text-xs md:text-sm text-gray-400 hover:text-white transition"
+              >
+                {link.label}
+              </button>
+            )
           ))}
+
         </div>
 
         <p className="text-xs text-center text-gray-500">© 2026 GoPalengke. All rights reserved.</p>
