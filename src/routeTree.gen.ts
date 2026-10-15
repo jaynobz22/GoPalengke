@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
+import { Route as BetaTesterRouteImport } from './routes/beta-tester'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as ParaSaAffiliateRouteImport } from './routes/para-sa-affiliate'
 import { Route as ParaSaBuyerRouteImport } from './routes/para-sa-buyer'
@@ -27,6 +28,11 @@ const IndexRoute = IndexRouteImport.update({
 const SplatRoute = SplatRouteImport.update({
   id: '/$',
   path: '/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BetaTesterRoute = BetaTesterRouteImport.update({
+  id: '/beta-tester',
+  path: '/beta-tester',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContactRoute = ContactRouteImport.update({
@@ -69,6 +75,7 @@ const ApiPublicCronOnboardingRemindersRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/beta-tester': typeof BetaTesterRoute
   '/contact': typeof ContactRoute
   '/para-sa-affiliate': typeof ParaSaAffiliateRoute
   '/para-sa-buyer': typeof ParaSaBuyerRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/beta-tester': typeof BetaTesterRoute
   '/contact': typeof ContactRoute
   '/para-sa-affiliate': typeof ParaSaAffiliateRoute
   '/para-sa-buyer': typeof ParaSaBuyerRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/beta-tester': typeof BetaTesterRoute
   '/contact': typeof ContactRoute
   '/para-sa-affiliate': typeof ParaSaAffiliateRoute
   '/para-sa-buyer': typeof ParaSaBuyerRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$'
+    | '/beta-tester'
     | '/contact'
     | '/para-sa-affiliate'
     | '/para-sa-buyer'
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$'
+    | '/beta-tester'
     | '/contact'
     | '/para-sa-affiliate'
     | '/para-sa-buyer'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$'
+    | '/beta-tester'
     | '/contact'
     | '/para-sa-affiliate'
     | '/para-sa-buyer'
@@ -139,6 +151,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  BetaTesterRoute: typeof BetaTesterRoute
   ContactRoute: typeof ContactRoute
   ParaSaAffiliateRoute: typeof ParaSaAffiliateRoute
   ParaSaBuyerRoute: typeof ParaSaBuyerRoute
@@ -162,6 +175,13 @@ declare module '@tanstack/react-router' {
       path: '/$'
       fullPath: '/$'
       preLoaderRoute: typeof SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/beta-tester': {
+      id: '/beta-tester'
+      path: '/beta-tester'
+      fullPath: '/beta-tester'
+      preLoaderRoute: typeof BetaTesterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contact': {
@@ -219,6 +239,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  BetaTesterRoute: BetaTesterRoute,
   ContactRoute: ContactRoute,
   ParaSaAffiliateRoute: ParaSaAffiliateRoute,
   ParaSaBuyerRoute: ParaSaBuyerRoute,
