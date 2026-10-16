@@ -71,9 +71,15 @@ function BetaTesterPage() {
           aria-hidden="true"
           width={1600}
           height={912}
-          className="absolute inset-0 h-full w-full scale-110 object-cover blur-[3px]"
+          className="absolute inset-0 h-full w-full object-cover object-right"
         />
-        <div className="absolute inset-0 bg-primary-deep/75" />
+        <img
+          src={heroImg}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover object-right blur-md [mask-image:linear-gradient(to_right,black_35%,transparent_80%)]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-deep/95 via-primary-deep/75 to-primary-deep/30" />
         <div className="relative mx-auto max-w-3xl px-5 py-14 text-center">
           <span className="inline-block rounded-full bg-primary-foreground/15 px-3 py-1 text-xs font-semibold tracking-wide">
             GOOGLE PLAY CLOSED TESTING
