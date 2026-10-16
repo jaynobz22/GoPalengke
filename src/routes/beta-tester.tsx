@@ -71,23 +71,24 @@ function BetaTesterPage() {
           aria-hidden="true"
           width={1600}
           height={912}
-          className="absolute inset-0 h-full w-full object-cover object-right"
+          className="absolute inset-0 h-full w-full object-cover object-[33%_center]"
         />
         <img
           src={heroImg}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover object-right blur-md [mask-image:linear-gradient(to_right,black_35%,transparent_80%)]"
+          className="absolute inset-0 h-full w-full object-cover object-[33%_center] blur-[6px] [mask-image:linear-gradient(to_right,black_0%,black_10%,transparent_38%)]"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-primary-deep/95 via-primary-deep/75 to-primary-deep/30" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-deep/92 via-primary-deep/60 to-primary-deep/20" />
         <div className="relative mx-auto max-w-3xl px-5 py-14 text-center">
           <span className="inline-block rounded-full bg-primary-foreground/15 px-3 py-1 text-xs font-semibold tracking-wide">
             GOOGLE PLAY CLOSED TESTING
           </span>
-          <h1 className="mt-4 text-3xl font-extrabold leading-tight md:text-5xl">
+          <h1 className="mt-4 text-3xl font-extrabold leading-tight [text-shadow:0_2px_18px_rgb(0_0_0/0.5)] md:text-5xl">
             Maging Opisyal na GoPalengke Beta Tester!
           </h1>
-          <p className="mx-auto mt-4 max-w-xl text-base opacity-90 md:text-lg">
+          <p className="mx-auto mt-4 max-w-xl text-base opacity-90 [text-shadow:0_1px_10px_rgb(0_0_0/0.5)] md:text-lg">
+
             Kailangan namin ng hindi bababa sa 12 testers na gagamit ng app sa loob ng 14 na araw para
             mailabas ang GoPalengke sa Google Play Store para sa buong Pilipinas.
           </p>

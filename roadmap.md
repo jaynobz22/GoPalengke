@@ -71,3 +71,11 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 - [x] Wrap the whole app in an error boundary so a stale/cached module auto-reloads instead of blanking the screen
 - [x] Verify normal load, forced render-error recovery, and build
 - [x] Push the crash guard to GitHub
+
+## Current: Beta tester hero background
+- [x] Use the uploaded GoPalengke phone screenshot as the hero background
+- [x] Replace the flat blur with a left-to-right fade so the headline stays readable
+- [x] Thin the blur and re-position the image so the phone with the app is visible
+- [x] Verify phone and laptop rendering and build
+- [ ] Push to GitHub (blocked: the GitHub connector token now returns "Bad credentials" — needs a new Personal Access Token)
+
