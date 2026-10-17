@@ -362,7 +362,9 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
             <Bike size={24} />
             <span className="text-xl font-bold">GoPalengke Rider</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-center gap-1">
+
+
             <button
               type="button"
               onClick={onGoToProfile}

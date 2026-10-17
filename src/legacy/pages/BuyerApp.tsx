@@ -620,7 +620,9 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
             <img src="/images/Copilot_20260907_183703.jpg" alt="GoPalengke" className="w-8 h-8 rounded-lg object-cover" />
             <span className="text-xl font-bold">GoPalengke</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-center gap-1">
+
+
             <button
               type="button"
               onClick={onGoToProfile}
