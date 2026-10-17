@@ -91,3 +91,4 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 - [x] Verify phone and laptop rendering and build
 - [ ] Push to GitHub (blocked: the GitHub connector token now returns "Bad credentials" — needs a new Personal Access Token)
 
+- [x] Admin-user video call fix: polling fallback sa useIncomingAdminCall (5s), "Subukan muli" retry sa AdminVideoCall error banner, database/admin-calls.sql RLS policies (kailangang patakbuhin ng user sa database SQL Editor)

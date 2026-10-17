@@ -28,6 +28,11 @@ export function useIncomingAdminCall() {
     }
     checkExisting();
 
+    // Polling fallback: kung hindi gumana ang realtime subscription (mabagal na
+    // koneksyon o naka-block ang websocket), sisiguraduhing makikita pa rin ng
+    // user ang papasok na tawag mula sa admin.
+    const poll = setInterval(checkExisting, 5000);
+
     const sub = supabase.channel(`admin-call-${userId}`)
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'admin_calls', filter: `target_user_id=eq.${userId}` },
@@ -49,7 +54,7 @@ export function useIncomingAdminCall() {
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(sub); };
+    return () => { clearInterval(poll); supabase.removeChannel(sub); };
   }, [profile]);
 
   function clearCall() {

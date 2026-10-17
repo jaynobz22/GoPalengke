@@ -18,7 +18,10 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
   const [phase, setPhase] = useState<CallPhase>(isCaller ? 'outgoing' : 'incoming');
   const [joined, setJoined] = useState(isCaller);
   const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
   const apiRef = useRef<any>(null);
+
+  const retry = () => { setError(null); setRetryKey(k => k + 1); };
 
   const updateCallStatus = async (status: string) => {
     if (!callId) return;
@@ -47,6 +50,7 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
 
       {joined && phase !== 'ended' && (
         <JitsiStage
+          key={retryKey}
           roomId={roomId}
           apiRef={apiRef}
           displayName={isCaller ? 'Admin' : undefined}
@@ -126,8 +130,12 @@ export function AdminVideoCall({ roomId, isCaller, otherName, callId, onEnd }: A
 
       {/* ── ERROR BANNER ── */}
       {error && phase !== 'incoming' && phase !== 'ended' && (
-        <div className="absolute top-4 left-4 right-4 bg-red-500/90 text-white text-sm px-4 py-2 rounded-xl flex items-start gap-2" style={{ zIndex: 25 }}>
-          <AlertCircle size={16} className="flex-shrink-0 mt-0.5" /> {error}
+        <div className="absolute top-4 left-4 right-4 bg-red-500/90 text-white text-sm px-4 py-2 rounded-xl flex items-center gap-2" style={{ zIndex: 25 }}>
+          <AlertCircle size={16} className="flex-shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button onClick={retry} className="flex-shrink-0 bg-white text-red-600 text-xs font-semibold px-3 py-1.5 rounded-full active:scale-95 transition">
+            Subukan muli
+          </button>
         </div>
       )}
 
