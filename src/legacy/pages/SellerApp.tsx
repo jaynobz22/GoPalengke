@@ -683,8 +683,8 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
               </span>
             )}
           </button>
-          <button onClick={onSignOut} aria-label="Mag-sign out" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md transition active:scale-90">
-            <LogOut size={20} className="text-gray-700" />
+          <button onClick={onSignOut} aria-label="Mag-logout" className="flex h-10 gap-1.5 px-3 items-center justify-center rounded-full bg-white/90 shadow-md text-xs font-semibold text-gray-700 transition active:scale-90">
+            <LogOut size={18} className="text-gray-700" /> <span>Logout</span>
           </button>
         </div>
       </div>
@@ -705,7 +705,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
             )}
           </div>
         )}
-        <div className="absolute right-6 top-6 z-20 grid grid-cols-2 gap-2">
+        <div className="absolute right-6 top-6 z-20 flex items-center gap-2">
           <button onClick={onOpenMessages} aria-label="Mga notification" className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md transition active:scale-90">
             <Bell size={20} className="text-gray-700" />
             {unreadMessages > 0 && (
@@ -714,8 +714,8 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
               </span>
             )}
           </button>
-          <button onClick={onSignOut} aria-label="Mag-sign out" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md transition active:scale-90">
-            <LogOut size={20} className="text-gray-700" />
+          <button onClick={onSignOut} aria-label="Mag-logout" className="flex h-10 gap-1.5 px-3 items-center justify-center rounded-full bg-white/90 shadow-md text-xs font-semibold text-gray-700 transition active:scale-90">
+            <LogOut size={18} className="text-gray-700" /> <span>Logout</span>
           </button>
         </div>
       </div>
@@ -2004,8 +2004,8 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   return (
     <div className="px-5 py-4">
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={onBack} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
-          <ArrowLeft size={20} className="text-gray-600" />
+        <button onClick={onBack} aria-label="Bumalik" className="h-10 px-3 gap-1 rounded-full bg-white shadow-sm flex items-center justify-center text-sm font-semibold text-gray-600 shrink-0">
+          <ArrowLeft size={18} className="text-gray-600" /> <span>Bumalik</span>
         </button>
         <h2 className="text-xl font-bold text-gray-800">Order Details</h2>
       </div>

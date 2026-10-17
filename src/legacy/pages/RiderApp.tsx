@@ -371,8 +371,8 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
             >
               <Avatar src={profile?.avatar_url} name={profile?.full_name} size={44} className="!bg-blue-100 !text-blue-600" />
             </button>
-            <button onClick={onSignOut} aria-label="Mag-logout" className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition">
-              <LogOut size={18} className="text-white" />
+            <button onClick={onSignOut} aria-label="Mag-logout" className="h-10 px-3 gap-1.5 rounded-full bg-white/15 flex items-center justify-center text-xs font-semibold text-white active:scale-90 transition">
+              <LogOut size={16} className="text-white" /> <span>Logout</span>
             </button>
           </div>
         </div>
@@ -760,8 +760,8 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   return (
     <div className="px-5 py-4">
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={onBack} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center">
-          <ArrowLeft size={20} className="text-gray-600" />
+        <button onClick={onBack} aria-label="Bumalik" className="h-10 px-3 gap-1 rounded-full bg-white shadow-sm flex items-center justify-center text-sm font-semibold text-gray-600 shrink-0">
+          <ArrowLeft size={18} className="text-gray-600" /> <span>Bumalik</span>
         </button>
         <h2 className="text-xl font-bold text-gray-800">Delivery Details</h2>
       </div>

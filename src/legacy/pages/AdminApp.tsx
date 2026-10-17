@@ -211,9 +211,10 @@ export function AdminApp() {
         </div>
         <button
           onClick={signOut}
-          className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center active:scale-95 transition"
+          aria-label="Mag-logout"
+          className="h-10 px-3 gap-1.5 rounded-xl bg-white/10 flex items-center justify-center text-xs font-semibold active:scale-95 transition"
         >
-          <LogOut size={20} />
+          <LogOut size={18} /> <span>Logout</span>
         </button>
       </div>
 
