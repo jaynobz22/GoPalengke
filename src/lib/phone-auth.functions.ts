@@ -133,3 +133,41 @@ export const completePhoneSignup = createServerFn({ method: "POST" })
     }
     return { ok: true, email };
   });
+
+async function findPhoneAccount(sb: any, e164: string): Promise<string | null> {
+  const local = "0" + e164.slice(3);
+  const digits = e164.slice(3);
+  const { data: rows, error } = await sb.from("profiles").select("id")
+    .or(`phone.eq.${e164},phone.eq.${local},phone.eq.${e164.slice(1)},phone.eq.${digits},email.eq.${phoneLoginEmail(e164)}`).limit(2);
+  if (error || rows?.length !== 1) return null;
+  return rows[0]?.id ?? null;
+}
+
+// Forgot password via SMS (Twilio Verify) for accounts linked to a phone number.
+export const sendPhoneResetCode = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ phone: z.string().max(30) }).parse(d))
+  .handler(async ({ data }) => {
+    const e164 = normalizePhone(data.phone);
+    if (!e164) throw new Error("Ilagay ang tamang cellphone number (hal. 09171234567).");
+    const sb = await adminClient();
+    if (!(await findPhoneAccount(sb, e164))) return { ok: false, notFound: true };
+    await twilio("Verifications", { To: e164, Channel: "sms" });
+    return { ok: true };
+  });
+
+export const resetPhonePassword = createServerFn({ method: "POST" })
+  .inputValidator((d) =>
+    z.object({ phone: z.string().max(30), code: z.string().regex(/^\d{4,8}$/), password: z.string().min(6).max(100) }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const e164 = normalizePhone(data.phone);
+    if (!e164) throw new Error("Hindi valid ang cellphone number.");
+    const sb = await adminClient();
+    const id = await findPhoneAccount(sb, e164);
+    if (!id) throw new Error("Mali o expired na ang code.");
+    const check = await twilio("VerificationCheck", { To: e164, Code: data.code });
+    if (check?.status !== "approved") throw new Error("Mali o expired na ang code.");
+    const { error } = await sb.auth.admin.updateUserById(id, { password: data.password });
+    if (error) throw new Error("Hindi ma-save ang bagong password.");
+    return { ok: true };
+  });

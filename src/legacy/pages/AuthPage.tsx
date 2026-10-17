@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase';
 import type { VehicleType } from '../lib/types';
 import { VEHICLE_TIERS } from '../lib/deliveryFee';
 import { sendUserResetCode, resetUserPassword } from '../../lib/user-reset.functions';
-import { sendPhoneSignupCode, completePhoneSignup, normalizePhone } from '../../lib/phone-auth.functions';
+import { sendPhoneSignupCode, completePhoneSignup, normalizePhone, sendPhoneResetCode, resetPhonePassword } from '../../lib/phone-auth.functions';
 
 const ROLES = [
   { id: 'buyer' as UserRole, name: 'Mamimili', desc: 'Bumili ng sariwang paninda online', icon: ShoppingCart, color: 'bg-brand-500' },
@@ -193,16 +193,20 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
     setInfo(null);
     setSubmitting(true);
     try {
-      const r = await sendUserResetCode({ data: { email: email.trim() } });
+      const isPhone = !email.includes('@');
+      if (isPhone && !normalizePhone(email)) { setSubmitting(false); setError('Ilagay ang tamang email o cellphone number (hal. 09171234567).'); return; }
+      const r = isPhone
+        ? await sendPhoneResetCode({ data: { phone: email.trim() } })
+        : await sendUserResetCode({ data: { email: email.trim() } });
       setSubmitting(false);
-      if (r?.notFound) { setError('Walang account na naka-rehistro sa email na ito.'); return; }
+      if (r?.notFound) { setError(isPhone ? 'Walang account na naka-rehistro sa number na ito.' : 'Walang account na naka-rehistro sa email na ito.'); return; }
     } catch (err: any) {
       setSubmitting(false);
       setError(err?.message || 'Hindi maipadala ang code. Subukan ulit.');
       return;
     }
     setResetStep('code');
-    setInfo('Nagpadala kami ng 6-digit code sa email mo. I-check ang inbox at spam folder.');
+    setInfo(email.includes('@') ? 'Nagpadala kami ng 6-digit code sa email mo. I-check ang inbox at spam folder.' : 'Nagpadala kami ng 6-digit code sa cellphone mo via SMS.');
     startResendCooldown();
   }
 
@@ -213,7 +217,8 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
     if (!/^\d{6}$/.test(otpCode)) { setError('Ilagay ang 6-digit code.'); return; }
     setSubmitting(true);
     try {
-      await resetUserPassword({ data: { email: email.trim(), code: otpCode, password: newPassword } });
+      if (email.includes('@')) await resetUserPassword({ data: { email: email.trim(), code: otpCode, password: newPassword } });
+      else await resetPhonePassword({ data: { phone: email.trim(), code: otpCode, password: newPassword } });
     } catch (err: any) {
       setSubmitting(false);
       setError(err?.message || 'Mali o expired na ang code. Subukan ulit.');
@@ -420,16 +425,16 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Gumawa ng Bagong Password</h2>
           <p className="text-gray-500 mb-6 text-sm">
             {resetStep === 'email'
-              ? 'Ilagay ang email ng account mo. Padadalhan ka namin ng verification code.'
+              ? 'Ilagay ang email o cellphone number ng account mo. Padadalhan ka namin ng 6-digit code.'
               : `Ilagay ang code na ipinadala sa ${email} at ang bago mong password.`}
           </p>
           <form onSubmit={resetStep === 'email' ? handleSendResetCode : handleResetPassword} className="space-y-4">
             {resetStep === 'email' ? (
               <input
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@example.com"
+                placeholder="Email o cellphone (09...)"
                 required
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
               />
