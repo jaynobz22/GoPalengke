@@ -13,3 +13,5 @@
 - Public store shares use the dedicated `/s/$slug` SSR data route with optional `?p=<product-id>`; social crawlers need server-readable store/product metadata and images.
 - Seller recognition uses the shared SellerRankBadge module and a public stores.seller_rank snapshot; exact seller_fees.total_sales remains private.
 - Cross-screen social proof uses one global privacy-safe activity component; real order events take priority and simulated fallback events must be labeled as samples.
+- Phone/password login resolves existing account identifiers only on the server and returns a password-validated session through the shared auth provider; this prevents anonymous email disclosure and preserves verification/device/account checks.
+- Keep phone normalization in a browser-safe utility shared by signup and server login; this keeps accepted phone formats consistent and independently testable.

@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase';
 import type { VehicleType } from '../lib/types';
 import { VEHICLE_TIERS } from '../lib/deliveryFee';
 import { sendUserResetCode, resetUserPassword } from '../../lib/user-reset.functions';
-import { sendPhoneSignupCode, completePhoneSignup, normalizePhone, phoneLoginEmail } from '../../lib/phone-auth.functions';
+import { sendPhoneSignupCode, completePhoneSignup, normalizePhone } from '../../lib/phone-auth.functions';
 
 const ROLES = [
   { id: 'buyer' as UserRole, name: 'Mamimili', desc: 'Bumili ng sariwang paninda online', icon: ShoppingCart, color: 'bg-brand-500' },
@@ -72,23 +72,23 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
     setError(null);
     setInfo(null);
     const id = email.trim();
-    let loginEmail = id;
     if (!id.includes('@')) {
       const e164 = normalizePhone(id);
       if (!e164) { setError('Ilagay ang tamang email o cellphone number.'); return; }
-      loginEmail = phoneLoginEmail(e164);
     }
     setSubmitting(true);
-    const result = await signIn(loginEmail, password);
+    const result = await signIn(id, password);
     setSubmitting(false);
     if (result.error) {
       setError(/invalid/i.test(result.error) ? 'Mali ang email/cellphone o password.' : result.error);
     } else if (result.needsVerification && result.userId) {
       setMethod('email');
+      const verificationEmail = result.verificationEmail || id;
+      setEmail(verificationEmail);
       setUserId(result.userId);
       setMode('verify-email');
       setInfo('Kailangan i-verify ang email mo bago makapag-login.');
-      await sendEmailOtp(loginEmail);
+      await sendEmailOtp(verificationEmail);
       startResendCooldown();
     }
   }

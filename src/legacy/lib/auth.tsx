@@ -5,6 +5,7 @@ import { supabase } from "./supabase";
 import type { Profile, UserRole, VehicleType } from "./types";
 import { isAccountBanned, isAccountSuspended, getAccountStatusLabel, checkDeviceFingerprint } from "./security";
 import { sendWelcomeEmail as sendWelcomeEmailFn } from "../../lib/welcome-email.functions";
+import { signInWithPhonePassword } from "../../lib/phone-auth.functions";
 
 interface AuthContextValue {
   session: Session | null;
@@ -21,7 +22,7 @@ interface AuthContextValue {
   signIn: (
     email: string,
     password: string,
-  ) => Promise<{ error: string | null; needsVerification?: boolean; userId?: string }>;
+  ) => Promise<{ error: string | null; needsVerification?: boolean; userId?: string; verificationEmail?: string }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   sendEmailOtp: (email: string) => Promise<{ error: string | null }>;
@@ -133,9 +134,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signIn(
     email: string,
     password: string,
-  ): Promise<{ error: string | null; needsVerification?: boolean; userId?: string }> {
+  ): Promise<{ error: string | null; needsVerification?: boolean; userId?: string; verificationEmail?: string }> {
     pendingVerificationRef.current = true;
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    let response;
+    try {
+      if (email.includes("@")) {
+        response = await supabase.auth.signInWithPassword({ email, password });
+      } else {
+        const tokens = await signInWithPhonePassword({ data: { phone: email, password } });
+        response = await supabase.auth.setSession({ access_token: tokens.access_token, refresh_token: tokens.refresh_token });
+      }
+    } catch (error) {
+      pendingVerificationRef.current = false;
+      return { error: error instanceof Error ? error.message : "Hindi makapag-sign in. Subukan ulit." };
+    }
+    const { data, error } = response;
     if (error) {
       pendingVerificationRef.current = false;
       return { error: error.message };
@@ -160,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (p && !p.email_verified) {
       await supabase.auth.signOut();
       setPendingVerif(true);
-      return { error: null, needsVerification: true, userId: data.user.id };
+      return { error: null, needsVerification: true, userId: data.user.id, verificationEmail: data.user.email };
     }
 
     pendingVerificationRef.current = false;

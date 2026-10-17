@@ -1,22 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { normalizePhone, phoneLoginEmail } from "./phone";
+export { normalizePhone, phoneLoginEmail } from "./phone";
 
 // Phone sign-up via Twilio Verify. Phone accounts get a synthetic login email
 // (<digits>@phone.gopalengke.net) so the existing email/password auth keeps working.
-
-export function normalizePhone(raw: string): string | null {
-  const d = raw.replace(/\D/g, "");
-  let local = "";
-  if (d.startsWith("63") && d.length === 12) local = d.slice(2);
-  else if (d.startsWith("0") && d.length === 11) local = d.slice(1);
-  else if (d.startsWith("9") && d.length === 10) local = d;
-  if (!/^9\d{9}$/.test(local)) return null;
-  return `+63${local}`;
-}
-
-export function phoneLoginEmail(e164: string) {
-  return `${e164.replace(/\D/g, "")}@phone.gopalengke.net`;
-}
 
 async function adminClient() {
   const { createClient } = await import("@supabase/supabase-js");
@@ -55,6 +43,35 @@ async function phoneTaken(sb: any, e164: string) {
   const { data } = await sb.from("profiles").select("id").or(`phone.eq.${e164},phone.eq.${local},email.eq.${phoneLoginEmail(e164)}`).limit(1);
   return (data?.length ?? 0) > 0;
 }
+
+export const signInWithPhonePassword = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ phone: z.string().max(30), password: z.string().min(1).max(100) }).parse(d))
+  .handler(async ({ data }) => {
+    const { authenticatePhonePassword, PHONE_LOGIN_ERROR } = await import("./phone-login.server");
+    const { createClient } = await import("@supabase/supabase-js");
+    const { GP_URL, GP_ANON } = await import("./onboarding-reminders.server");
+    const admin = await adminClient();
+    const auth = createClient(GP_URL, GP_ANON, { auth: { persistSession: false, autoRefreshToken: false } });
+    try {
+      return await authenticatePhonePassword(data.phone, data.password, {
+        findLoginEmail: async (e164) => {
+          const local = "0" + e164.slice(3);
+          const digits = e164.slice(3);
+          const { data: rows, error } = await admin.from("profiles").select("id")
+            .or(`phone.eq.${e164},phone.eq.${local},phone.eq.${e164.slice(1)},phone.eq.${digits},email.eq.${phoneLoginEmail(e164)}`).limit(2);
+          if (error || rows?.length !== 1) return null;
+          const { data: account, error: accountError } = await admin.auth.admin.getUserById(rows[0].id);
+          return accountError ? null : account.user?.email ?? null;
+        },
+        verifyPassword: async (email, password) => {
+          const { data: result, error } = await auth.auth.signInWithPassword({ email, password });
+          return error ? null : result.session;
+        },
+      });
+    } catch {
+      throw new Error(PHONE_LOGIN_ERROR);
+    }
+  });
 
 export const sendPhoneSignupCode = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ phone: z.string().max(20) }).parse(d))
