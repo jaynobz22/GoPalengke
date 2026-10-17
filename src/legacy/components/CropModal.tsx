@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { useCallback, useState, useRef, useEffect } from 'react';
-import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
+import ReactCrop, { convertToPixelCrop, type Crop, type PixelCrop } from 'react-image-crop';
+import { makeCrop } from '../lib/imageCrop';
+import { Button } from '@/components/ui/button';
 import 'react-image-crop/dist/ReactCrop.css';
 import { X, Check, ZoomIn, ZoomOut } from 'lucide-react';
 
@@ -9,29 +11,17 @@ interface CropModalProps {
   onCancel: () => void;
   onConfirm: (croppedFile: File) => void;
   defaultAspect?: number;
+  originalFile?: File;
 }
 
-function makeCrop(natW: number, natH: number, aspect?: number): Crop {
-  if (!aspect || !natW || !natH) {
-    return { unit: '%', x: 0, y: 0, width: 100, height: 100 };
-  }
-  const imgAspect = natW / natH;
-  if (imgAspect > aspect) {
-    // Larawan ay mas pahiga kaysa sa target — buong taas ang gamitin
-    const widthPct = (aspect / imgAspect) * 100;
-    return { unit: '%', x: (100 - widthPct) / 2, y: 0, width: widthPct, height: 100 };
-  }
-  const heightPct = (imgAspect / aspect) * 100;
-  return { unit: '%', x: 0, y: (100 - heightPct) / 2, width: 100, height: heightPct };
-}
-
-export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect }: CropModalProps) {
+export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect, originalFile }: CropModalProps) {
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [zoom, setZoom] = useState(1);
   const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
   const [processing, setProcessing] = useState(false);
-  const [aspect, setAspect] = useState<number | undefined>(defaultAspect);
+  const [aspect, setAspect] = useState<number | undefined>();
+  const [error, setError] = useState<string | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [displaySize, setDisplaySize] = useState({ w: 0, h: 0 });
@@ -41,8 +31,8 @@ export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect }: Crop
     const natW = img.naturalWidth;
     const natH = img.naturalHeight;
     setImgSize({ w: natW, h: natH });
-    setCrop(makeCrop(natW, natH, defaultAspect));
-  }, [defaultAspect]);
+    setCrop(makeCrop(natW, natH));
+  }, []);
 
   function applyAspect(next: number | undefined) {
     setAspect(next);
@@ -64,12 +54,15 @@ export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect }: Crop
   }, [imgSize, zoom]);
 
   async function handleConfirm() {
-    if (!completedCrop || !imgRef.current) return;
+    const img = imgRef.current;
+    if (!crop || !img) return;
     setProcessing(true);
+    setError(null);
     try {
-      const file = await cropImage(imgRef.current, completedCrop);
+      const file = await cropImage(img, convertToPixelCrop(crop, img.width, img.height));
       onConfirm(file);
     } catch {
+      setError('Hindi ma-process ang larawan. Subukan muli.');
       setProcessing(false);
     }
   }
@@ -85,10 +78,10 @@ export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect }: Crop
         >
           <X size={20} /> Kanselahin
         </button>
-        <span className="text-sm font-semibold">I-crop ang Larawan</span>
+        <span className="text-sm font-semibold">Ayusin ang Larawan</span>
         <button
           onClick={handleConfirm}
-          disabled={processing}
+          disabled={processing || !imgSize.w}
           className="flex items-center gap-1.5 text-sm font-medium bg-green-600 px-3 py-1.5 rounded-lg active:scale-95 transition disabled:opacity-50"
         >
           {processing ? (
@@ -100,6 +93,15 @@ export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect }: Crop
           )}
         </button>
       </div>
+
+      {originalFile && (
+        <div className="flex justify-center px-4 pb-3">
+          <Button type="button" disabled={processing} onClick={() => { setProcessing(true); onConfirm(originalFile); }}>
+            <Check /> I-upload nang walang crop
+          </Button>
+        </div>
+      )}
+      {error && <p role="alert" className="px-4 text-center text-destructive">{error}</p>}
 
       {/* Hint */}
       <div className="px-4 pb-1 text-center">
@@ -143,6 +145,7 @@ export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect }: Crop
         {displaySize.w > 0 && (
           <div style={{ width: displaySize.w, height: displaySize.h }} className="relative">
             <ReactCrop
+              style={{ maxWidth: 'none' }}
               crop={crop}
               aspect={aspect}
               onChange={(_, percent) => setCrop(percent)}
@@ -158,7 +161,7 @@ export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect }: Crop
                 onLoad={onImageLoad}
                 alt="I-crop"
                 style={{ width: displaySize.w, height: displaySize.h }}
-                className="select-none pointer-events-none"
+                className="select-none pointer-events-none !max-w-none"
               />
             </ReactCrop>
           </div>

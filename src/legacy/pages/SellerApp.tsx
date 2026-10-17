@@ -18,6 +18,7 @@ import { ImageUploadField } from '../components/ImageUploadField';
 import { ChatView, getOrCreateConversation } from '../components/ChatView';
 import { RiderStageBanner } from '../components/RiderStageBanner';
 import { Avatar } from '../components/Avatar';
+import { Button } from '@/components/ui/button';
 import { InactiveBanner } from '../components/InactiveBanner';
 import { GpsPermissionModal } from '../components/GpsPermissionModal';
 import { ensureGps } from '../lib/gpsGate';
@@ -721,9 +722,10 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
 
       <div className="relative bg-white px-5 pt-4">
         <div className="flex items-start gap-3">
-          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border-2 border-white bg-brand-50 shadow-md">
+          <Button type="button" variant="ghost" onClick={onEditStore} aria-label="Palitan ang profile picture" title="Palitan ang profile picture" className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full p-0">
             <Avatar src={profile?.avatar_url} name={profile?.full_name || store.name} size={64} />
-          </div>
+            <span className="absolute bottom-0 right-0 rounded-full bg-primary p-1 text-primary-foreground"><Camera size={14} /></span>
+          </Button>
           <div className="min-w-0 flex-1 pt-1">
             <h1 className="break-words text-xl font-bold text-gray-800">{store.name}</h1>
             <div className="mt-1"><SellerRankBadge totalSales={totalSales} /></div>
@@ -1343,6 +1345,7 @@ function ProductFormModal({ store, product, onClose, onSaved }: { store: Store; 
 
 // ============= STORE FORM =============
 function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: () => void; onSaved: () => void }) {
+  const { profile, refreshProfile } = useAuth();
   const [name, setName] = useState(store.name);
   const [description, setDescription] = useState(store.description || '');
   const [location, setLocation] = useState<LocationData>({
@@ -1404,6 +1407,20 @@ function StoreFormModal({ store, onClose, onSaved }: { store: Store; onClose: ()
           </button>
         </div>
         <form onSubmit={save} className="px-5 py-4 space-y-4 pb-28">
+          <ImageUploadField
+            label="Profile Picture ng May-ari"
+            value={profile?.avatar_url || ''}
+            bucket="profile-images"
+            folder={`avatars/${profile?.id}`}
+            aspectClass="aspect-square max-w-40"
+            cropAspect={1}
+            onChange={async (url) => {
+              if (!profile) throw new Error('Mag-login muna para palitan ang larawan.');
+              const { error } = await supabase.from('profiles').update({ avatar_url: url || null }).eq('id', profile.id);
+              if (error) throw error;
+              await refreshProfile();
+            }}
+          />
           <div>
             <label className="text-sm font-medium text-gray-600 mb-1 block">Pangalan</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)} required

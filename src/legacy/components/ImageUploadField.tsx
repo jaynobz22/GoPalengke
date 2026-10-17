@@ -4,11 +4,12 @@ import { Camera, Loader2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { compressImage } from '../lib/imageCompress';
 import { CropModal } from '../components/CropModal';
+import { Button } from '@/components/ui/button';
 
 interface ImageUploadFieldProps {
   label: string;
   value: string;
-  onChange: (url: string) => void;
+  onChange: (url: string) => void | Promise<void>;
   bucket?: string;
   folder?: string;
   aspectClass?: string;
@@ -26,7 +27,7 @@ export function ImageUploadField({
   folder = 'store',
   aspectClass = 'h-40',
   icon,
-  hint = 'Pumili ng larawan mula sa gallery o camera, tapos i-crop ang mahalagang bahagi.',
+  hint = '',
   cropAspect,
   objectFit = 'cover',
 }: ImageUploadFieldProps) {
@@ -34,11 +35,13 @@ export function ImageUploadField({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [originalFile, setOriginalFile] = useState<File | undefined>();
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setError(null);
+    setOriginalFile(file);
     const reader = new FileReader();
     reader.onload = () => setCropSrc(reader.result as string);
     reader.onerror = () => setError('Hindi mabasa ang larawan.');
@@ -57,12 +60,20 @@ export function ImageUploadField({
       const { error: uploadError } = await supabase.storage.from(bucket).upload(fileName, compressed);
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName);
-      onChange(publicUrl);
+      await onChange(publicUrl);
     } catch (err: any) {
       setError(err.message || 'Hindi ma-upload ang larawan.');
     } finally {
       setUploading(false);
     }
+  }
+
+  async function removeImage() {
+    setUploading(true);
+    setError(null);
+    try { await onChange(''); }
+    catch (err: any) { setError(err.message || 'Hindi maalis ang larawan.'); }
+    finally { setUploading(false); }
   }
 
   return (
@@ -80,32 +91,32 @@ export function ImageUploadField({
             className={`w-full h-full rounded-xl ${objectFit === 'contain' ? 'object-contain bg-gray-50' : 'object-cover'}`}
           />
           <div className="absolute bottom-2 right-2 flex gap-1.5">
-            <button type="button" onClick={() => fileRef.current?.click()}
-              className="bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-1">
+            <Button type="button" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
               <Camera size={14} /> Palitan
-            </button>
-            <button type="button" onClick={() => onChange('')}
-              className="bg-black/60 text-white px-2 py-1.5 rounded-lg text-xs flex items-center gap-1">
+            </Button>
+            <Button type="button" size="sm" variant="secondary" disabled={uploading} onClick={removeImage}>
               <X size={14} /> Alisin
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
-        <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
-          className={`w-full ${aspectClass} rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 text-gray-400 active:scale-[0.98] transition disabled:opacity-50`}>
+        <Button type="button" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}
+          className={`w-full ${aspectClass} h-auto whitespace-normal rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-2 text-muted-foreground transition disabled:opacity-50`}>
           {uploading ? (
             <><Loader2 size={28} className="animate-spin" /><span className="text-sm">Nagco-compress at nag-uupload...</span></>
           ) : (
             <><Camera size={28} /><span className="text-sm">Mag-upload ng larawan mula sa gallery o camera</span></>
           )}
-        </button>
+        </Button>
       )}
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+      {uploading && value && <p role="status" className="mt-1 text-xs text-muted-foreground">Sine-save ang larawan...</p>}
+      {error && <p role="alert" className="text-destructive text-xs mt-1">{error}</p>}
       <p className="text-xs text-gray-400 mt-1">{hint}</p>
 
       {cropSrc && (
         <CropModal
           imageSrc={cropSrc}
+          originalFile={originalFile}
           onCancel={() => setCropSrc(null)}
           onConfirm={handleCropConfirm}
           defaultAspect={cropAspect}

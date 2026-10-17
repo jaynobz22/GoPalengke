@@ -16,3 +16,4 @@
 - Phone/password login resolves existing account identifiers only on the server and returns a password-validated session through the shared auth provider; this prevents anonymous email disclosure and preserves verification/device/account checks.
 - Keep phone normalization in a browser-safe utility shared by signup and server login; this keeps accepted phone formats consistent and independently testable.
 - Keep admin tab definitions and grouped navigation in the shared AdminNavigation module; this preserves every existing content view and its notification counts across desktop sidebar and phone drawer.
+- Shared image uploads offer original-file upload and optional crop editing, await profile persistence, and report save errors; this keeps all role screens consistent without duplicating upload flows.

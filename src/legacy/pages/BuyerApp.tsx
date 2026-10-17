@@ -4199,9 +4199,11 @@ function ProfileView({ onSignOut }: { onSignOut: () => void }) {
           onChange={async (url) => {
             if (!profile) return;
             setAvatarUploading(true);
-            await supabase.from('profiles').update({ avatar_url: url || null }).eq('id', profile.id);
-            await refreshProfile();
-            setAvatarUploading(false);
+            try {
+              const { error } = await supabase.from('profiles').update({ avatar_url: url || null }).eq('id', profile.id);
+              if (error) throw error;
+              await refreshProfile();
+            } finally { setAvatarUploading(false); }
           }}
         />
         {avatarUploading && <p className="text-xs text-brand-500 mt-1">Nag-a-upload...</p>}
