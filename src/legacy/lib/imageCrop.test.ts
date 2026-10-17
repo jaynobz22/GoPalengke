@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { makeCrop } from './imageCrop';
 
 test('an untouched image keeps the entire image, regardless of shape', () => {
-  for (const [width, height] of [[1200, 630], [600, 1000], [800, 800]]) {
+  const sizes: [number, number][] = [[1200, 630], [600, 1000], [800, 800]];
+  for (const [width, height] of sizes) {
     assert.deepEqual(makeCrop(width, height), { unit: '%', x: 0, y: 0, width: 100, height: 100 });
   }
 });
