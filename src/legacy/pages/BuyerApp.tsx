@@ -88,6 +88,25 @@ function storeSubtotal(items?: { product?: { price: number } | null; quantity: n
   return (items || []).reduce((s, i) => s + Number(i.product?.price || 0) * Number(i.quantity), 0);
 }
 
+/** Tantiyang bigat (kg) ng cart items base sa unit. */
+function cartWeightKg(items: { product?: { unit?: string | null } | null; quantity: number | string }[]): number {
+  return (items || []).reduce((sum, i) => {
+    const qty = Number(i.quantity);
+    if (!Number.isFinite(qty) || qty <= 0) return sum;
+    const unit = i.product?.unit?.toLowerCase() || '';
+    if (unit === 'kilo' || unit === 'kg' || unit === 'kilogram') return sum + qty;
+    if (unit === 'gram' || unit === 'g') return sum + qty / 1000;
+    if (unit === 'pack' || unit === 'sachet') return sum + qty * 0.5;
+    if (unit === 'bundle' || unit === 'bugkos') return sum + qty * 2;
+    if (unit === 'tray' || unit === 'itlog') return sum + qty * 1;
+    if (unit === 'piece' || unit === 'pc' || unit === 'piraso') return sum + qty * 0.3;
+    if (unit === 'dozen' || unit === 'dosen') return sum + qty * 1.5;
+    if (unit === 'sack' || unit === 'sako') return sum + qty * 25;
+    if (unit === 'liter' || unit === 'litro' || unit === 'l') return sum + qty;
+    return sum + qty * 0.5;
+  }, 0);
+}
+
 function FreeDeliveryBadge({ store, className = '' }: { store: Store; className?: string }) {
   const min = freeDeliveryMin(store);
   if (min === null) return null;
@@ -1797,6 +1816,24 @@ function CartView({ onCheckout, refreshKey }: { onCheckout: () => void; refreshK
         <div className="flex justify-between text-sm text-gray-600 mb-1">
           <span>Subtotal</span><span>₱{total.toFixed(2)}</span>
         </div>
+        {(() => {
+          const kg = cartWeightKg(cartItems);
+          const excess = kg - FREE_WEIGHT_KG;
+          return (
+            <div className="mb-1">
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>⚖️ Kabuuang Bigat</span><span className="font-semibold">{kg.toFixed(2)} kg</span>
+              </div>
+              {excess > 0 ? (
+                <p className="text-xs text-orange-600 bg-orange-50 rounded-lg px-2 py-1 mt-1">
+                  Sobra ng {excess.toFixed(2)} kg sa {FREE_WEIGHT_KG} kg na libre — may dagdag na singil ang rider kada kilo (₱1.50–₱2/kg depende sa lugar).
+                </p>
+              ) : (
+                <p className="text-xs text-brand-700 mt-0.5">Pasok sa {FREE_WEIGHT_KG} kg na libreng karga.</p>
+              )}
+            </div>
+          );
+        })()}
         <div className="flex justify-between text-sm text-gray-600 mb-1">
           <span>Delivery fee</span><span className="text-gray-400">Ica-calculate sa checkout</span>
         </div>
@@ -1972,21 +2009,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
 
   // Estimate cargo weight in kg for a set of cart items based on unit type
   function estimateWeightKg(items: (CartItem & { product: Product; store: Store })[]): number {
-    return items.reduce((sum, i) => {
-      const qty = Number(i.quantity);
-      if (!Number.isFinite(qty) || qty <= 0) return sum;
-      const unit = i.product.unit?.toLowerCase() || '';
-      if (unit === 'kilo' || unit === 'kg' || unit === 'kilogram') return sum + qty;
-      if (unit === 'gram' || unit === 'g') return sum + qty / 1000;
-      if (unit === 'pack' || unit === 'sachet') return sum + qty * 0.5;
-      if (unit === 'bundle' || unit === 'bugkos') return sum + qty * 2;
-      if (unit === 'tray' || unit === 'itlog') return sum + qty * 1;
-      if (unit === 'piece' || unit === 'pc' || unit === 'piraso') return sum + qty * 0.3;
-      if (unit === 'dozen' || unit === 'dosen') return sum + qty * 1.5;
-      if (unit === 'sack' || unit === 'sako') return sum + qty * 25;
-      if (unit === 'liter' || unit === 'litro' || unit === 'l') return sum + qty;
-      return sum + qty * 0.5;
-    }, 0);
+    return cartWeightKg(items);
   }
 
   // Multi-store checkout: only the FIRST deliverable store (Store A) carries the base fee
@@ -2460,6 +2483,16 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
               </div>
             ) : freeDelivery ? (
               <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5">
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>⚖️ Kabuuang Bigat</span>
+                  <span>{totalWeightKg.toFixed(2)} kg {totalWeightKg <= FREE_WEIGHT_KG ? `(libre ≤ ${FREE_WEIGHT_KG} kg)` : `(${(totalWeightKg - FREE_WEIGHT_KG).toFixed(2)} kg sobra)`}</span>
+                </div>
+                {weightSurcharge > 0 && (
+                  <div className="flex justify-between text-xs text-orange-600">
+                    <span>Dagdag sa rider ({(totalWeightKg - FREE_WEIGHT_KG).toFixed(2)} kg × ₱{rates.weightSurchargeRate}/kg)</span>
+                    <span>₱{weightSurcharge.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm font-semibold text-brand-700">
                   <span>Delivery Fee</span>
                   <span>LIBRE (₱0.00)</span>
