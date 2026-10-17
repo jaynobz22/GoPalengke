@@ -58,12 +58,12 @@ export function AdminNavigation({ tab, onSelect, counts, mobileOpen, onClose }: 
 
   return <>
     {mobileOpen && <Button variant="ghost" aria-label="Isara ang admin menu" onClick={onClose} className="fixed inset-0 z-30 h-full w-full rounded-none bg-backdrop/60 hover:bg-backdrop/60 md:hidden" />}
-    <aside aria-label="Admin sidebar" className={cn('fixed inset-y-0 left-0 z-40 w-64 shrink-0 border-r border-border bg-card text-card-foreground md:sticky md:top-0 md:z-10 md:block md:h-dvh md:w-60', mobileOpen ? 'block' : 'hidden')}>
-      <div className="flex h-14 items-center justify-between border-b border-border px-4">
+    <aside aria-label="Admin sidebar" className={cn('fixed inset-y-0 left-0 z-40 w-64 shrink-0 flex-col border-r border-border bg-card text-card-foreground md:sticky md:top-0 md:z-10 md:flex md:h-dvh md:w-60', mobileOpen ? 'flex' : 'hidden')}>
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
         <span className="text-xs font-bold uppercase tracking-normal text-muted-foreground">Admin Panel</span>
         <Button variant="ghost" size="icon" onClick={onClose} aria-label="Isara ang menu" className="md:hidden"><X /></Button>
       </div>
-      <nav aria-label="Admin navigation" className="h-[calc(100%-3.5rem)] overflow-y-auto p-3">
+      <nav aria-label="Admin navigation" className="min-h-0 flex-1 overflow-y-auto p-3">
         {adminNavigationGroups.map(group => {
           const activeGroup = group.tabs.some(item => item.id === tab);
           const expanded = !collapsed.includes(group.id);
