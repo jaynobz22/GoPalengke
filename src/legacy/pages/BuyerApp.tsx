@@ -1848,6 +1848,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   const [paymentMethod, setPaymentMethod] = useState<'qr_code' | 'cod'>('qr_code');
   const [note, setNote] = useState('');
   const [deliveryPin, setDeliveryPin] = useState<Coords | null>(null);
+  const [agreedFees, setAgreedFees] = useState<Record<string, string>>({});
   const [showMap, setShowMap] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'found' | 'denied' | 'unavailable' | 'timeout'>('idle');
   const [showGpsPrompt, setShowGpsPrompt] = useState(false);
@@ -1991,7 +1992,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   // Multi-store checkout: only the FIRST deliverable store (Store A) carries the base fee
   // and distance charge. Other stores (B, C...) have ₱0 delivery fee — their cargo weight
   // is added to Store A's weight surcharge. Store A receives the rider's fee (non-COD).
-  function getFeeForStore(store: Store, items?: (CartItem & { product: Product; store: Store })[]): ReturnType<typeof getBaseFeeForStore> & { isPrimary: boolean; primaryStoreName: string | null; combinedStores: number; freeDelivery: boolean; sellerSubsidy: number } {
+  function getFeeForStore(store: Store, items?: (CartItem & { product: Product; store: Store })[]): ReturnType<typeof computeBaseFee> & { isPrimary: boolean; primaryStoreName: string | null; combinedStores: number; freeDelivery: boolean; sellerSubsidy: number } {
     const deliverable = Object.values(grouped).filter(its => !isLivestockOrder(its));
     const applyFree = (base: ReturnType<typeof getBaseFeeForStore>, extra: { isPrimary: boolean; primaryStoreName: string | null; combinedStores: number }) => {
       const sub = storeSubtotal(items);
@@ -2017,7 +2018,16 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   }
 
   // Calculate tiered fee per store: distance charge + weight surcharge
-  function getBaseFeeForStore(store: Store, items?: (CartItem & { product: Product; store: Store })[]): { fee: number; distanceKm: number; isEstimated: boolean; distanceCharge: number; weightSurcharge: number; totalWeightKg: number; isNcr: boolean; tier: VehicleTier; riderNet: number; commission: number } {
+  function getBaseFeeForStore(store: Store, items?: (CartItem & { product: Product; store: Store })[]) {
+    const r = computeBaseFee(store, items);
+    if (r.tier === 'motorcycle') return r;
+    (getFeeForStore as any).suggested = { ...((getFeeForStore as any).suggested || {}), [store.id]: r.fee };
+    const agreed = Number(agreedFees[store.id]);
+    const fee = agreed > 0 ? Math.round(agreed * 100) / 100 : 0;
+    return { ...r, fee, distanceCharge: fee, weightSurcharge: 0, riderNet: fee, commission: 0 };
+  }
+
+  function computeBaseFee(store: Store, items?: (CartItem & { product: Product; store: Store })[]): { fee: number; distanceKm: number; isEstimated: boolean; distanceCharge: number; weightSurcharge: number; totalWeightKg: number; isNcr: boolean; tier: VehicleTier; riderNet: number; commission: number } {
     const sCoords = getStoreCoords(store);
     const totalWeightKg = items ? estimateWeightKg(items) : 0;
     const tier = getRequiredTier(totalWeightKg);
@@ -2041,6 +2051,14 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
 
   async function placeOrder() {
     if (!profile) return;
+    for (const its of Object.values(grouped)) {
+      if (isLivestockOrder(its)) continue;
+      const f = getFeeForStore(its[0].store, its);
+      if (f.isPrimary && f.tier !== 'motorcycle' && !(Number(agreedFees[its[0].store.id]) > 0)) {
+        alert('Mabigat ang karga kaya bao-bao o minivan ang kailangan. Pakilagay muna ang napagkasunduang delivery fee ninyo ng driver.');
+        return;
+      }
+    }
     const itemsSubtotal = cartItems.reduce((s, i) => s + Number(i.product?.price || 0) * Number(i.quantity), 0);
     if (itemsSubtotal < MIN_ORDER_AMOUNT) {
       alert(`Minimum order ay ₱${MIN_ORDER_AMOUNT} (subtotal ng paninda). Kulang pa ng ₱${(MIN_ORDER_AMOUNT - itemsSubtotal).toFixed(2)}.`);
@@ -2473,6 +2491,23 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                 </div>
                 {totalWeightKg > 20 && (
                   <p className="text-xs text-blue-700 bg-blue-50 rounded-lg p-2 mt-1">Standard motorcycle is not eligible for this load. A {tier === 'tricycle' ? 'Tricycle / Bao-Bao' : 'Minivan'} is required.</p>
+                )}
+                {tier !== 'motorcycle' && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-1 space-y-2">
+                    <p className="text-xs font-semibold text-amber-800">🤝 Napagkasunduang Delivery Fee ({tier === 'tricycle' ? 'Bao-Bao' : 'Minivan'})</p>
+                    <p className="text-xs text-amber-700">
+                      Makipag-usap muna sa driver tungkol sa bayad base sa bigat ({totalWeightKg.toFixed(1)} kg) at layo ({distanceKm.toFixed(1)} km). Gabay lang: mga ₱{Number((getFeeForStore as any).suggested?.[store.id] ?? 0) > 0 ? Number((getFeeForStore as any).suggested[store.id]).toFixed(0) : '—'}.
+                    </p>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      placeholder="Ilagay ang napagkasunduang halaga (₱)"
+                      value={agreedFees[store.id] ?? ''}
+                      onChange={e => setAgreedFees(prev => ({ ...prev, [store.id]: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-white text-sm outline-none focus:ring-2 focus:ring-amber-200"
+                    />
+                  </div>
                 )}
                 <div className="flex justify-between text-xs text-gray-500">
                   <span>Cargo Weight</span>
