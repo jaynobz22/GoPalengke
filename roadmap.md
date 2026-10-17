@@ -3,6 +3,8 @@
 Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked out at /tmp/gopalengke-src)
 
 ## Tasks
+- [ ] Group all admin tabs into left-side navigation and verify desktop/phone behavior
+- [ ] Push admin navigation changes to the existing GitHub repo
 - [x] Fix registered-phone login for existing email accounts without public email lookup
 - [x] Test phone login safeguards and push the fix to GitHub
 - [ ] Verify real-account phone login (requires the user's own sign-in on the external account system)

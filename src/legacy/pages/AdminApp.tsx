@@ -17,20 +17,23 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { UserProfileReview } from '../components/UserProfileReview';
 import { AdminMarketingMaterials } from '../components/affiliate/AdminMarketingMaterials';
 import { OnboardingReminders } from '../components/OnboardingReminders';
+import { AdminNavigation, adminNavigationGroups, type AdminTab } from '../components/AdminNavigation';
+import { Button } from '@/components/ui/button';
 import { formatRegionForDisplay } from '../lib/philippineLocations';
 import {
   Megaphone, Plus, Trash2, Power, Check, Loader2, LogOut, Eye,
   Store as StoreIcon, ShoppingBag, Bike, Users, Wallet, Settings,
   AlertCircle, X, UserCheck, UserX, DollarSign, TrendingUp, Receipt,
   Lock, Unlock, Video, MessageCircle, Shield, QrCode, MapPin, Mail, Send, Coins,
-  ChevronUp, ChevronDown, BarChart3, PlayCircle, ArrowUp, ArrowDown, Clock,
+  ChevronUp, ChevronDown, BarChart3, PlayCircle, ArrowUp, ArrowDown, Clock, Menu,
 } from 'lucide-react';
 
-type Tab = 'overview' | 'users' | 'geographic' | 'campaigns' | 'messages' | 'fees' | 'rider_fees' | 'announcements' | 'security' | 'video_credits' | 'tutorials' | 'settings' | 'analytics' | 'affiliates' | 'marketing';
+type Tab = AdminTab;
 
 export function AdminApp() {
   const { profile, signOut } = useAuth();
   const [tab, setTab] = useState<Tab>('overview');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingCreditCount, setPendingCreditCount] = useState(0);
   const [pendingUserCount, setPendingUserCount] = useState(0);
   const [pendingFeeCount, setPendingFeeCount] = useState(0);
@@ -187,23 +190,9 @@ export function AdminApp() {
     setActiveChat(null);
   }
 
-  const tabs: { id: Tab; label: string; icon: typeof Users }[] = [
-    { id: 'overview', label: 'Overview', icon: Users },
-    { id: 'users', label: 'Users', icon: UserCheck },
-    { id: 'geographic', label: 'Areas', icon: MapPin },
-    { id: 'campaigns', label: 'Campaigns', icon: Mail },
-    { id: 'messages', label: 'Messages', icon: MessageCircle },
-    { id: 'fees', label: 'Fees', icon: Wallet },
-    { id: 'rider_fees', label: 'Rider Fees', icon: Bike },
-    { id: 'announcements', label: 'Announcements', icon: Megaphone },
-    { id: 'settings', label: 'Settings', icon: Settings },
-    { id: 'security', label: 'Security', icon: Shield },
-    { id: 'video_credits', label: 'Credits', icon: Coins },
-    { id: 'tutorials', label: 'Tutorials', icon: PlayCircle },
-    { id: 'analytics', label: 'Stats', icon: BarChart3 },
-    { id: 'affiliates', label: 'Affiliates', icon: Users },
-    { id: 'marketing', label: 'Marketing', icon: Megaphone },
-  ];
+  const activeGroup = adminNavigationGroups.find(group => group.tabs.some(item => item.id === tab));
+  const activeTab = activeGroup?.tabs.find(item => item.id === tab);
+  const badgeCounts = { users: pendingUserCount, fees: pendingFeeCount, rider_fees: pendingRiderFeeCount, video_credits: pendingCreditCount, messages: unreadMessageCount, affiliates: affiliateAlertCount };
 
   return (
     <div className="min-h-screen bg-gray-50 w-full max-w-7xl mx-auto">
@@ -224,42 +213,17 @@ export function AdminApp() {
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200 bg-white sticky top-0 z-10 overflow-x-auto md:px-4">
-        {tabs.map(t => {
-          const Icon = t.icon;
-          const active = tab === t.id;
-          const badgeCount =
-            t.id === 'video_credits' ? pendingCreditCount :
-            t.id === 'users' ? pendingUserCount :
-            t.id === 'fees' ? pendingFeeCount :
-            t.id === 'rider_fees' ? pendingRiderFeeCount :
-            t.id === 'messages' ? unreadMessageCount :
-            t.id === 'affiliates' ? affiliateAlertCount : 0;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex-1 min-w-[80px] flex flex-col items-center justify-center gap-1 py-3 text-xs font-medium transition ${
-                active ? 'text-brand-600 border-b-2 border-brand-600' : 'text-gray-400'
-              }`}
-            >
-              <span className="relative inline-flex">
-                <Icon size={18} />
-                {badgeCount > 0 && (
-                  <span
-                    className="absolute -right-3 -top-3 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-600 px-1 text-[10px] font-bold leading-none text-white"
-                    aria-label={`${badgeCount} bagong update sa ${t.label}`}
-                  >
-                    {badgeCount > 99 ? '99+' : badgeCount}
-                  </span>
-                )}
-              </span>
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
+      <div className="flex items-start">
+        <AdminNavigation tab={tab} onSelect={setTab} counts={badgeCounts} mobileOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+        <main className="min-w-0 flex-1" id="admin-content">
+          <div className="flex min-h-14 items-center gap-3 border-b border-border bg-card px-5">
+            <Button variant="ghost" size="icon" aria-label="Buksan ang admin menu" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(true)} className="shrink-0 md:hidden"><Menu /></Button>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 text-sm">
+              <span className="text-muted-foreground">{activeGroup?.label}</span>
+              <span className="text-muted-foreground" aria-hidden="true">/</span>
+              <h1 className="font-semibold text-foreground">{activeTab?.label}</h1>
+            </div>
+          </div>
 
       {tab === 'overview' && <ErrorBoundary><OverviewTab /></ErrorBoundary>}
       {tab === 'users' && <ErrorBoundary><UsersTab onStartCall={startAdminCall} onStartChat={startAdminChat} /></ErrorBoundary>}
@@ -276,6 +240,8 @@ export function AdminApp() {
       {tab === 'settings' && <ErrorBoundary><SettingsTab /></ErrorBoundary>}
       {tab === 'affiliates' && <ErrorBoundary><AffiliatesTab /></ErrorBoundary>}
       {tab === 'marketing' && <ErrorBoundary><AdminMarketingMaterials /></ErrorBoundary>}
+        </main>
+      </div>
 
       {activeChat && profile && (
         <AdminChat
