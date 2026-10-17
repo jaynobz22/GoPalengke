@@ -8,6 +8,14 @@ const LegacyApp = lazy(lazyWithReload(() => import("../legacy/App")));
 // (/s/:slug, /u/:slug, /legal/*, /tutorial, /affiliate/*, role dashboards).
 export const Route = createFileRoute("/$")({
   ssr: false,
+  head: () => ({ meta: [
+    { title: "GoPalengke — Account at Komunidad" },
+    { name: "description", content: "Buksan ang iyong GoPalengke account, mga gabay, at komunidad ng online palengke." },
+    { property: "og:title", content: "GoPalengke — Account at Komunidad" },
+    { property: "og:description", content: "Mga account, gabay, at komunidad ng GoPalengke online palengke." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary_large_image" },
+  ] }),
   component: () => (
     <Suspense
       fallback={

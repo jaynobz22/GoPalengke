@@ -3,8 +3,8 @@
 Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked out at /tmp/gopalengke-src)
 
 ## Tasks
-- [ ] Fix registered-phone login for existing email accounts without public email lookup
-- [ ] Test phone login safeguards and push the fix to GitHub
+- [x] Fix registered-phone login for existing email accounts without public email lookup
+- [x] Test phone login safeguards and push the fix to GitHub
 - [ ] Verify real-account phone login (requires the user's own sign-in on the external account system)
 - [x] Closed testing beta-tester page (/beta-tester)
 - [x] Add "Beta Testers" link to the homepage footer
