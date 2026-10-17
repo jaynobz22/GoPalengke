@@ -264,7 +264,7 @@ export function BuyerApp() {
           <BrowseView onProductClick={navigateToProduct} onStoreClick={navigateToStore} orderUpdates={orderUpdates} onOpenOrders={() => { setTab('orders'); setView('browse'); }} onSignOut={signOut} onGoToProfile={() => setTab('profile')} />
         )}
         {tab === 'home' && view === 'product' && selectedProduct && (
-          <ProductView product={selectedProduct} store={selectedStore!} onBack={() => { setView('store'); setSelectedProduct(null); }} onAddToCart={refreshCart} onGoToStore={(s, pid) => { setSelectedStore(s); setHighlightProductId(pid); setSelectedProduct(null); setView('store'); }} />
+          <ProductView product={selectedProduct} store={selectedStore!} onBack={() => { setView('store'); setSelectedProduct(null); }} onAddToCart={refreshCart} onGoToStore={(s, pid) => { setSelectedStore(s); setHighlightProductId(pid); setSelectedProduct(null); setView('store'); }} onChat={openStoreInquiry} />
         )}
         {tab === 'home' && view === 'store' && selectedStore && (
           <StoreView store={selectedStore} highlightProductId={highlightProductId} onProductClick={(p) => navigateToProductDetail(p)} onBack={backToBrowse} onChat={openStoreInquiry} />
@@ -1071,8 +1071,9 @@ function WheatIcon({ className }: { className?: string }) {
 }
 
 // ============= PRODUCT VIEW =============
-function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { product: Product; store: Store; onBack: () => void; onAddToCart: () => void; onGoToStore: (store: Store, productId: string) => void }) {
+function ProductView({ product, store, onBack, onAddToCart, onGoToStore, onChat }: { product: Product; store: Store; onBack: () => void; onAddToCart: () => void; onGoToStore: (store: Store, productId: string) => void; onChat?: (s: Store, sellerName: string) => Promise<void> }) {
   const { profile } = useAuth();
+  const [chatBusy, setChatBusy] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [sizeMultiplier, setSizeMultiplier] = useState(1);
   const [adding, setAdding] = useState(false);
@@ -1238,6 +1239,17 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
       </div>
       <div className="px-5 py-4">
         <p className="text-sm text-gray-400 mb-1">{store.name}</p>
+        {onChat && (
+          <button
+            type="button"
+            onClick={async () => { setChatBusy(true); try { await onChat(store, store.name); } finally { setChatBusy(false); } }}
+            disabled={chatBusy}
+            className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-brand-600 bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700 active:scale-[0.98] disabled:opacity-60"
+          >
+            <MessageCircle size={14} />
+            {chatBusy ? 'Binubuksan...' : 'Mag-chat sa Tindahan'}
+          </button>
+        )}
         <h1 className="text-2xl font-bold text-gray-800 mb-2">{product.name}</h1>
         <div className="flex items-center gap-3 mb-4">
           <p className="text-2xl font-bold text-brand-600">₱{(Number(product.price) * (isKilo ? sizeMultiplier : 1)).toFixed(2)}</p>
