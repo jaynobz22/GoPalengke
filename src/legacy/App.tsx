@@ -6,7 +6,7 @@ import { AuthProvider, useAuth } from './lib/auth';
 import { navigate, usePath, useRoute, useLegalRoute, useTutorialRoute, useAffiliateRoute } from './lib/router';
 import { ContactPage } from './components/ContactPage';
 import { LandingPage } from './pages/LandingPage';
-import { CompleteProfilePage } from './pages/CompleteProfilePage';
+import { CompleteProfilePage, needsProfileCompletion } from './pages/CompleteProfilePage';
 import { AuthPage } from './pages/AuthPage';
 import { BuyerApp } from './pages/BuyerApp';
 import { SellerApp } from './pages/SellerApp';
@@ -113,7 +113,7 @@ function AppContent() {
     return <AuthPage needsProfile onBack={() => navigate('/')} />;
   }
 
-  if (profile.role !== 'admin' && !(profile.full_name || '').trim()) {
+  if (profile.role !== 'admin' && (!(profile.full_name || '').trim() || needsProfileCompletion(profile))) {
     return <CompleteProfilePage />;
   }
 
