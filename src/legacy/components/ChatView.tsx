@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import type { Message, Conversation } from '../lib/types';
 import { scanMessageLocally, scanChatMessage } from '../lib/security';
-import { ArrowLeft, Send, Video, PhoneOff, Phone, ImagePlus, Trash2, X, ShieldAlert, AlertCircle, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Send, Video, PhoneOff, Phone, ImagePlus, Trash2, X, ShieldAlert, AlertCircle, ExternalLink, MapPin, Calendar } from 'lucide-react';
 import { Avatar } from '../components/Avatar';
 import { VideoCall } from '../components/VideoCall';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -409,6 +409,20 @@ export function ChatView({
   const [preWarmedStream, setPreWarmedStream] = useState<MediaStream | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showOtherProfile, setShowOtherProfile] = useState(false);
+  const [otherProfile, setOtherProfile] = useState<any>(null);
+  const [loadingOtherProfile, setLoadingOtherProfile] = useState(false);
+  const otherIdRef = useRef<string | null>(null);
+
+  async function openOtherProfile() {
+    const otherId = otherIdRef.current;
+    if (!otherId) return;
+    setShowOtherProfile(true);
+    setLoadingOtherProfile(true);
+    const { data } = await supabase.from('profiles').select('id, full_name, avatar_url, role, barangay, city, region, created_at').eq('id', otherId).maybeSingle();
+    setOtherProfile(data || null);
+    setLoadingOtherProfile(false);
+  }
 
   const videoCallSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices && !!navigator.mediaDevices.getUserMedia;
   const { start: startRing, stop: stopRing } = useRingtone();
@@ -427,6 +441,7 @@ export function ChatView({
       const otherId = conv.type === 'buyer_seller'
         ? (conv.seller_id === profile.id ? conv.buyer_id : conv.seller_id)
         : (conv.buyer_id === profile.id ? conv.rider_id : conv.buyer_id);
+      otherIdRef.current = otherId || null;
       if (otherId) {
         const { data } = await supabase.from('profiles').select('avatar_url').eq('id', otherId).maybeSingle();
         setOtherAvatar(data?.avatar_url || null);
@@ -700,11 +715,13 @@ export function ChatView({
         <button onClick={onBack} aria-label="Bumalik" className="h-8 gap-1 px-2.5 shrink-0 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600 active:scale-95 transition">
           <ArrowLeft size={14} className="text-gray-600" /> <span>Bumalik</span>
         </button>
-        <Avatar src={otherAvatar} name={otherName} size={40} />
-        <div className="flex-1 min-w-0">
+        <button onClick={openOtherProfile} aria-label={`Tingnan ang profile ni ${otherName}`} className="shrink-0 rounded-full active:scale-90 transition">
+          <Avatar src={otherAvatar} name={otherName} size={40} />
+        </button>
+        <button onClick={openOtherProfile} className="flex-1 min-w-0 text-left">
           <p className="font-semibold text-gray-800 text-sm truncate">{otherName}</p>
           <p className="text-xs text-gray-400">{otherRole}</p>
-        </div>
+        </button>
         <button
           onClick={startVideoCall}
           className={`w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition flex-shrink-0 ${videoCallSupported ? 'bg-blue-50' : 'bg-gray-100'}`}
@@ -969,6 +986,51 @@ export function ChatView({
           <Send size={18} />
         </button>
       </form>
+
+      {/* Profile popup ng ka-chat */}
+      {showOtherProfile && (
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-end sm:items-center justify-center" onClick={() => setShowOtherProfile(false)}>
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="relative bg-brand-600 px-5 pt-6 pb-14">
+              <button onClick={() => setShowOtherProfile(false)} aria-label="Isara" className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center active:scale-90 transition">
+                <X size={16} className="text-white" />
+              </button>
+              <p className="text-white/80 text-xs font-medium">Profile ng ka-chat</p>
+            </div>
+            <div className="px-5 pb-6 -mt-10">
+              {loadingOtherProfile ? (
+                <div className="flex justify-center py-10">
+                  <div className="w-7 h-7 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-center">
+                    <div className="rounded-full ring-4 ring-white shadow-lg">
+                      <Avatar src={otherProfile?.avatar_url || otherAvatar} name={otherProfile?.full_name || otherName} size={88} />
+                    </div>
+                  </div>
+                  <p className="mt-3 text-center text-lg font-bold text-gray-800">{otherProfile?.full_name || otherName}</p>
+                  <p className="text-center text-xs text-gray-400 capitalize">{otherProfile?.role || otherRole}</p>
+                  <div className="mt-4 bg-gray-50 rounded-2xl p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <MapPin size={14} className="text-gray-400 shrink-0" />
+                      <p className="text-xs text-gray-600">
+                        {[otherProfile?.barangay, otherProfile?.city, otherProfile?.region].filter(Boolean).join(', ') || <span className="text-gray-300 italic">Walang nakalagay na address</span>}
+                      </p>
+                    </div>
+                    {otherProfile?.created_at && (
+                      <div className="flex items-center gap-2">
+                        <Calendar size={14} className="text-gray-400 shrink-0" />
+                        <p className="text-xs text-gray-600">Member mula {new Date(otherProfile.created_at).toLocaleDateString('en-PH', { dateStyle: 'medium' })}</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Image upload error toast */}
       {imageError && (
