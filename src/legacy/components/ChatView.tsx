@@ -989,8 +989,8 @@ export function ChatView({
 
       {/* Profile popup ng ka-chat */}
       {showOtherProfile && (
-        <div className="fixed inset-0 z-[100] bg-black/50 flex items-end sm:items-center justify-center" onClick={() => setShowOtherProfile(false)}>
-          <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setShowOtherProfile(false)}>
+          <div className="bg-white rounded-3xl w-full max-w-sm max-h-[85dvh] overflow-y-auto my-auto" onClick={e => e.stopPropagation()}>
             <div className="relative bg-brand-600 px-5 pt-6 pb-14">
               <button onClick={() => setShowOtherProfile(false)} aria-label="Isara" className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center active:scale-90 transition">
                 <X size={16} className="text-white" />
