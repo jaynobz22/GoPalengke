@@ -188,11 +188,14 @@ export function BuyerApp() {
     setActiveConversationId(conv.id);
     setChatPartnerName(s.name || sellerName);
     setChatPartnerRole('Seller');
+    setChatReturnView(view);
     setView('chat');
   }
 
+  const [chatReturnView, setChatReturnView] = useState<any>(null);
   function backFromChat() {
-    setView('browse');
+    setView(chatReturnView || 'browse');
+    setChatReturnView(null);
     setActiveConversationId(null);
   }
 
