@@ -17,3 +17,4 @@
 - Keep phone normalization in a browser-safe utility shared by signup and server login; this keeps accepted phone formats consistent and independently testable.
 - Keep admin tab definitions and grouped navigation in the shared AdminNavigation module; this preserves every existing content view and its notification counts across desktop sidebar and phone drawer.
 - Shared image uploads offer original-file upload and optional crop editing, await profile persistence, and report save errors; this keeps all role screens consistent without duplicating upload flows.
+- Admin profile photos use the existing profiles.avatar_url and shared upload field; AdminChat resolves the conversation participant's photo with a narrow profile read so all user roles see the assigned admin without duplicate storage.

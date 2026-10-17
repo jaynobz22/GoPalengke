@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import type { AdminMessage } from '../lib/types';
 import { ArrowLeft, Send, Shield, ImagePlus, Trash2, X, Video } from 'lucide-react';
 import { compressImage } from '../lib/imageCompress';
+import { Avatar } from './Avatar';
 
 interface AdminChatProps {
   conversationId: string;
@@ -21,8 +22,35 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [chatProfile, setChatProfile] = useState<{ avatar_url: string | null; full_name: string | null } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let profileChannel: ReturnType<typeof supabase.channel> | undefined;
+    setChatProfile(null);
+    async function loadChatProfile() {
+      const { data: conversation } = await supabase.from('admin_conversations')
+        .select('admin_id,user_id').eq('id', conversationId).maybeSingle();
+      const profileId = isAdmin ? conversation?.user_id : conversation?.admin_id;
+      if (!profileId || cancelled) return;
+      const refresh = async () => {
+        const { data } = await supabase.from('profiles')
+          .select('avatar_url,full_name').eq('id', profileId).maybeSingle();
+        if (!cancelled) setChatProfile(data || null);
+      };
+      profileChannel = supabase.channel(`admin-chat-profile-${conversationId}-${profileId}`)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${profileId}` }, refresh)
+        .subscribe();
+      await refresh();
+    }
+    void loadChatProfile();
+    return () => {
+      cancelled = true;
+      if (profileChannel) void supabase.removeChannel(profileChannel);
+    };
+  }, [conversationId, isAdmin]);
 
   const loadMessages = useCallback(async () => {
     const { data } = await supabase
@@ -151,9 +179,7 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
           <ArrowLeft size={20} className="text-white" />
         </button>
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isAdmin ? 'bg-white/10' : 'bg-white/15'}`}>
-            <Shield size={20} className="text-white" />
-          </div>
+          <Avatar src={chatProfile?.avatar_url} name={chatProfile?.full_name || (isAdmin ? otherName : 'Admin')} size={40} />
           <div className="min-w-0">
             <p className="text-white font-semibold text-sm truncate">{isAdmin ? otherName : 'Admin'}</p>
             <p className="text-white/60 text-xs">{isAdmin ? 'Admin Support' : 'GoPalengke Admin'}</p>

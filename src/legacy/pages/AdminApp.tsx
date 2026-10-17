@@ -7,6 +7,8 @@ import { useAuth } from '../lib/auth';
 import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall, AdminConversation, Store, VideoCreditPurchase, RiderFee, RiderFeePayment } from '../lib/types';
 import { SUBSCRIPTION_THRESHOLD } from '../lib/types';
 import { ImageUploadField } from '../components/ImageUploadField';
+import { AdminProfilePhoto } from '../components/AdminProfilePhoto';
+import { Avatar } from '../components/Avatar';
 import { rotateBillingQr, getVideoCreditQr, ROTATION_DAILY_LIMIT } from '../lib/qrRotation';
 import { AdminDevicesSettings } from '../components/AdminDeviceLock';
 import { SecurityDashboardTab } from '../components/SecurityDashboard';
@@ -199,7 +201,9 @@ export function AdminApp() {
       {/* Header */}
       <div className="bg-gray-900 text-white px-5 py-4 flex items-center justify-between md:px-8">
         <div className="flex items-center gap-3">
-          <img src="/images/Copilot_20260907_183703.jpg" alt="GoPalengke" className="w-10 h-10 rounded-xl object-cover" />
+          <Button variant="ghost" size="icon" aria-label="Palitan ang admin profile picture" title="Palitan ang admin profile picture" onClick={() => setTab('settings')} className="shrink-0 rounded-full">
+            <Avatar src={profile?.avatar_url} name={profile?.full_name || 'Admin'} size={40} />
+          </Button>
           <div>
             <p className="font-bold text-lg leading-tight">GoPalengke Admin</p>
             <p className="text-xs text-gray-400">{profile?.email}</p>
@@ -2512,6 +2516,7 @@ function SettingsTab() {
     <div className="px-5 py-4">
       <h2 className="text-lg font-bold text-gray-800 mb-4">Platform Settings</h2>
 
+      <AdminProfilePhoto />
       <AdminDevicesSettings />
 
       {/* Email Sending Toggle */}

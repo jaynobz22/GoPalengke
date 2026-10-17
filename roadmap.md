@@ -3,6 +3,8 @@
 Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked out at /tmp/gopalengke-src)
 
 ## Tasks
+- [ ] Add admin profile-photo editing and display the assigned admin's picture in user chats
+- [ ] Verify admin photo controls/chat display and push to GitHub
 - [x] Restore seller profile-photo editing and check existing buyer/rider controls
 - [x] Allow original-image upload without cropping; browser-check original/cropped dimensions, replace/remove/cancel on phone and desktop; push changes
 - [ ] Verify profile-picture persistence inside real seller/buyer/rider accounts (blocked: no session for the existing external account system)
