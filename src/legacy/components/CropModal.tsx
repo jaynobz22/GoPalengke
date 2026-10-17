@@ -16,7 +16,6 @@ interface CropModalProps {
 
 export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect, originalFile }: CropModalProps) {
   const [crop, setCrop] = useState<Crop>();
-  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [zoom, setZoom] = useState(1);
   const [imgSize, setImgSize] = useState({ w: 0, h: 0 });
   const [processing, setProcessing] = useState(false);
@@ -68,21 +67,21 @@ export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect, origin
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col">
+    <div className="fixed inset-0 z-[100] bg-foreground text-primary-foreground flex flex-col">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-3 text-white">
-        <button
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+        <Button variant="ghost"
           onClick={onCancel}
           disabled={processing}
           className="flex items-center gap-1.5 text-sm font-medium active:scale-95 transition disabled:opacity-50"
         >
           <X size={20} /> Kanselahin
-        </button>
-        <span className="text-sm font-semibold">Ayusin ang Larawan</span>
-        <button
+        </Button>
+        <span className="order-first w-full text-center text-sm font-semibold sm:order-none sm:w-auto">Ayusin ang Larawan</span>
+        <Button
           onClick={handleConfirm}
           disabled={processing || !imgSize.w}
-          className="flex items-center gap-1.5 text-sm font-medium bg-green-600 px-3 py-1.5 rounded-lg active:scale-95 transition disabled:opacity-50"
+          className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg active:scale-95 transition disabled:opacity-50"
         >
           {processing ? (
             <span className="animate-pulse">Nagpro-proseso...</span>
@@ -91,7 +90,7 @@ export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect, origin
               <Check size={18} /> I-upload
             </>
           )}
-        </button>
+        </Button>
       </div>
 
       {originalFile && (
@@ -103,38 +102,26 @@ export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect, origin
       )}
       {error && <p role="alert" className="px-4 text-center text-destructive">{error}</p>}
 
-      {/* Hint */}
-      <div className="px-4 pb-1 text-center">
-        <p className="text-xs text-white/60">
-          {aspect
-            ? 'Igalaw ang kahon para mapasok ang pangalan o karatula sa loob. Naka-lock na ito sa tamang pahigang sukat.'
-            : 'I-drag ang mga gilid o sulok ng kahon para ayusin ang crop. Libreng sukat ito.'}
-        </p>
-      </div>
-
       {/* Mga preset na sukat */}
       <div className="flex items-center justify-center gap-2 px-4 pb-2">
-        <button
+        <Button variant={aspect === 16 / 9 ? 'default' : 'secondary'} size="sm"
           type="button"
           onClick={() => applyAspect(16 / 9)}
-          className={`rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-95 ${aspect === 16 / 9 ? 'bg-green-600 text-white' : 'bg-white/10 text-white/70'}`}
         >
           Pahiga (banner)
-        </button>
-        <button
+        </Button>
+        <Button variant={aspect === 1 ? 'default' : 'secondary'} size="sm"
           type="button"
           onClick={() => applyAspect(1)}
-          className={`rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-95 ${aspect === 1 ? 'bg-green-600 text-white' : 'bg-white/10 text-white/70'}`}
         >
           Parisukat
-        </button>
-        <button
+        </Button>
+        <Button variant={aspect === undefined ? 'default' : 'secondary'} size="sm"
           type="button"
           onClick={() => applyAspect(undefined)}
-          className={`rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-95 ${aspect === undefined ? 'bg-green-600 text-white' : 'bg-white/10 text-white/70'}`}
         >
           Libreng sukat
-        </button>
+        </Button>
       </div>
 
       {/* Crop area */}
@@ -149,7 +136,6 @@ export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect, origin
               crop={crop}
               aspect={aspect}
               onChange={(_, percent) => setCrop(percent)}
-              onComplete={(c) => setCompletedCrop(c)}
               minWidth={5}
               minHeight={5}
               keepSelection
@@ -177,9 +163,9 @@ export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect, origin
       </div>
 
       {/* Zoom control */}
-      <div className="bg-black px-4 py-3 space-y-3">
+      <div className="bg-foreground px-4 py-3 space-y-3">
         <div className="flex items-center gap-3">
-          <ZoomOut size={20} className="text-white/70 flex-shrink-0" />
+          <ZoomOut size={20} className="opacity-70 flex-shrink-0" />
           <input
             type="range"
             min={0.5}
@@ -187,15 +173,15 @@ export function CropModal({ imageSrc, onCancel, onConfirm, defaultAspect, origin
             step={0.05}
             value={zoom}
             onChange={(e) => setZoom(Number(e.target.value))}
-            className="flex-1 accent-green-500"
+            aria-label="Zoom"
+            className="min-w-0 flex-1 accent-primary"
           />
-          <ZoomIn size={20} className="text-white/70 flex-shrink-0" />
-          <button
+          <ZoomIn size={20} className="opacity-70 flex-shrink-0" />
+          <Button variant="secondary" size="sm"
             onClick={() => setZoom(1)}
-            className="ml-1 text-xs text-white/60 px-2 py-1 rounded-lg bg-white/10 active:scale-95"
           >
             Reset
-          </button>
+          </Button>
         </div>
       </div>
     </div>

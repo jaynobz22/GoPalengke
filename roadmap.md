@@ -3,8 +3,9 @@
 Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked out at /tmp/gopalengke-src)
 
 ## Tasks
-- [ ] Restore seller profile-photo editing and check buyer/rider controls
-- [ ] Allow original-image upload without cropping; verify and push changes
+- [x] Restore seller profile-photo editing and check existing buyer/rider controls
+- [x] Allow original-image upload without cropping; browser-check original/cropped dimensions, replace/remove/cancel on phone and desktop; push changes
+- [ ] Verify profile-picture persistence inside real seller/buyer/rider accounts (blocked: no session for the existing external account system)
 - [x] Group all admin tabs into left-side navigation; all 15 selections, group toggles, and phone drawer verified in an isolated browser check
 - [x] Push admin navigation changes to the existing GitHub repo
 - [ ] Verify grouped navigation inside the real admin account (blocked: no session for the existing external account system)
