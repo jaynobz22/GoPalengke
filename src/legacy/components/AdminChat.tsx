@@ -182,8 +182,8 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
     <div className="fixed inset-x-0 top-0 z-[70] mx-auto flex h-[100dvh] w-full max-w-4xl min-w-0 flex-col overflow-hidden bg-gray-50">
       {/* Header */}
       <div className={`safe-top flex w-full min-w-0 shrink-0 items-center gap-2 px-3 py-2.5 shadow-sm ${isAdmin ? 'bg-gray-900' : 'bg-blue-600'}`}>
-        <button onClick={onBack} className="w-9 h-9 shrink-0 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition">
-          <ArrowLeft size={20} className="text-white" />
+        <button onClick={onBack} aria-label="Bumalik" className="h-8 gap-1 px-2.5 shrink-0 rounded-full bg-white/15 flex items-center justify-center text-xs font-semibold text-white active:scale-90 transition">
+          <ArrowLeft size={14} className="text-white" /> <span>Bumalik</span>
         </button>
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Avatar src={chatProfile?.avatar_url} name={chatProfile?.full_name || (isAdmin ? otherName : 'Admin')} size={40} />

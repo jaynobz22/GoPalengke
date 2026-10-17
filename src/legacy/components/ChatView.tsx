@@ -697,8 +697,8 @@ export function ChatView({
     <div className="fixed inset-x-0 top-0 z-[60] mx-auto flex h-[100dvh] w-full max-w-4xl min-w-0 flex-col overflow-hidden bg-gray-50">
       {/* Header */}
       <div className="safe-top z-10 flex w-full min-w-0 shrink-0 items-center gap-2 border-b border-gray-100 bg-white px-3 py-2.5">
-        <button onClick={onBack} className="w-10 h-10 shrink-0 rounded-full bg-gray-100 flex items-center justify-center active:scale-95 transition">
-          <ArrowLeft size={20} className="text-gray-600" />
+        <button onClick={onBack} aria-label="Bumalik" className="h-8 gap-1 px-2.5 shrink-0 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600 active:scale-95 transition">
+          <ArrowLeft size={14} className="text-gray-600" /> <span>Bumalik</span>
         </button>
         <Avatar src={otherAvatar} name={otherName} size={40} />
         <div className="flex-1 min-w-0">

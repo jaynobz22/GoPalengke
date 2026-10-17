@@ -683,8 +683,8 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
               </span>
             )}
           </button>
-          <button onClick={onSignOut} aria-label="Mag-logout" className="flex h-10 gap-1.5 px-3 items-center justify-center rounded-full bg-white/90 shadow-md text-xs font-semibold text-gray-700 transition active:scale-90">
-            <LogOut size={18} className="text-gray-700" /> <span>Logout</span>
+          <button onClick={onSignOut} aria-label="Mag-logout" className="flex h-8 gap-1 px-2 items-center justify-center rounded-full bg-white/90 shadow-md text-xs font-semibold text-gray-700 transition active:scale-90">
+            <LogOut size={14} className="text-gray-700" /> <span className="text-[11px]">Logout</span>
           </button>
         </div>
       </div>
@@ -714,8 +714,8 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
               </span>
             )}
           </button>
-          <button onClick={onSignOut} aria-label="Mag-logout" className="flex h-10 gap-1.5 px-3 items-center justify-center rounded-full bg-white/90 shadow-md text-xs font-semibold text-gray-700 transition active:scale-90">
-            <LogOut size={18} className="text-gray-700" /> <span>Logout</span>
+          <button onClick={onSignOut} aria-label="Mag-logout" className="flex h-8 gap-1 px-2 items-center justify-center rounded-full bg-white/90 shadow-md text-xs font-semibold text-gray-700 transition active:scale-90">
+            <LogOut size={14} className="text-gray-700" /> <span className="text-[11px]">Logout</span>
           </button>
         </div>
       </div>
@@ -2004,8 +2004,8 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   return (
     <div className="px-5 py-4">
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={onBack} aria-label="Bumalik" className="h-10 px-3 gap-1 rounded-full bg-white shadow-sm flex items-center justify-center text-sm font-semibold text-gray-600 shrink-0">
-          <ArrowLeft size={18} className="text-gray-600" /> <span>Bumalik</span>
+        <button onClick={onBack} aria-label="Bumalik" className="h-8 px-2.5 gap-1 rounded-full bg-white shadow-sm flex items-center justify-center text-xs font-semibold text-gray-600 shrink-0">
+          <ArrowLeft size={14} className="text-gray-600" /> <span>Bumalik</span>
         </button>
         <h2 className="text-xl font-bold text-gray-800">Order Details</h2>
       </div>

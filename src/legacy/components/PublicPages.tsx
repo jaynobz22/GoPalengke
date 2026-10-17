@@ -248,9 +248,9 @@ function PublicStorePage({ slug }: { slug: string }) {
           href="/"
           onClick={clearSellerPreviewFlag}
           aria-label="Bumalik sa dashboard"
-          className="absolute left-3 top-3 z-[9999] flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-white shadow-lg transition active:scale-95 md:h-11 md:w-11"
+          className="absolute left-3 top-3 z-[9999] flex h-8 gap-1 px-2.5 cursor-pointer items-center justify-center rounded-full bg-white shadow-lg text-xs font-semibold text-gray-800 transition active:scale-95"
         >
-          <ArrowLeft size={20} className="pointer-events-none text-gray-800" />
+          <ArrowLeft size={14} className="pointer-events-none text-gray-800" /> <span className="pointer-events-none">Bumalik</span>
         </a>
 
       </div>
@@ -424,8 +424,8 @@ function PublicUserPage({ slug }: { slug: string }) {
       {/* Header */}
       <div className="relative bg-gradient-to-br from-brand-600 to-brand-700 px-5 pt-12 pb-6 text-white">
         <div className="absolute top-3 left-3">
-          <button onClick={() => navigate('/')} className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center active:scale-95 transition">
-            <ArrowLeft size={20} className="text-white" />
+          <button onClick={() => navigate('/')} aria-label="Bumalik" className="h-8 gap-1 px-2.5 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-xs font-semibold text-white active:scale-95 transition">
+            <ArrowLeft size={14} className="text-white" /> <span>Bumalik</span>
           </button>
         </div>
         <div className="absolute top-3 right-3">

@@ -629,8 +629,8 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
             >
               <Avatar src={profile?.avatar_url} name={profile?.full_name} size={44} />
             </button>
-            <button onClick={onSignOut} aria-label="Mag-logout" className="h-10 px-3 gap-1.5 rounded-full bg-white/15 flex items-center justify-center text-xs font-semibold text-white active:scale-90 transition">
-              <LogOut size={16} className="text-white" /> <span>Logout</span>
+            <button onClick={onSignOut} aria-label="Mag-logout" className="h-7 px-2 gap-1 rounded-full bg-white/15 flex items-center justify-center text-xs font-semibold text-white active:scale-90 transition">
+              <LogOut size={12} className="text-white" /> <span className="text-[11px]">Logout</span>
             </button>
           </div>
         </div>
@@ -1255,8 +1255,8 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore, onChat 
       <div className="relative h-64 bg-gray-100">
         {product.image_url && <img src={product.image_url} alt={product.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
         <DemoBadge storeId={product.store_id} size="lg" />
-        <button onClick={onBack} aria-label="Bumalik" className="absolute top-12 left-4 h-10 px-3 gap-1 rounded-full bg-white/90 shadow-md flex items-center justify-center text-sm font-semibold text-gray-700">
-          <ArrowLeft size={18} className="text-gray-700" /> <span>Bumalik</span>
+        <button onClick={onBack} aria-label="Bumalik" className="absolute top-12 left-4 h-8 px-2.5 gap-1 rounded-full bg-white/90 shadow-md flex items-center justify-center text-xs font-semibold text-gray-700">
+          <ArrowLeft size={14} className="text-gray-700" /> <span>Bumalik</span>
         </button>
       </div>
       <div className="px-5 py-4">
@@ -1513,8 +1513,8 @@ function StoreView({ store, highlightProductId, onProductClick, onBack, onChat }
             </div>
           )}
         </div>
-        <button onClick={onBack} aria-label="Bumalik" className="absolute top-12 left-4 z-10 h-10 px-3 gap-1 rounded-full bg-white/90 shadow-md flex items-center justify-center text-sm font-semibold text-gray-700">
-          <ArrowLeft size={18} className="text-gray-700" /> <span>Bumalik</span>
+        <button onClick={onBack} aria-label="Bumalik" className="absolute top-12 left-4 z-10 h-8 px-2.5 gap-1 rounded-full bg-white/90 shadow-md flex items-center justify-center text-xs font-semibold text-gray-700">
+          <ArrowLeft size={14} className="text-gray-700" /> <span>Bumalik</span>
         </button>
       </div>
       <div className="px-5 pt-4 relative bg-white">
@@ -2205,8 +2205,8 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   return (
     <div className="px-5 py-4 pb-8">
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={onBack} aria-label="Bumalik" className="h-10 px-3 gap-1 rounded-full bg-white shadow-sm flex items-center justify-center text-sm font-semibold text-gray-600 shrink-0">
-          <ArrowLeft size={18} className="text-gray-600" /> <span>Bumalik</span>
+        <button onClick={onBack} aria-label="Bumalik" className="h-8 px-2.5 gap-1 rounded-full bg-white shadow-sm flex items-center justify-center text-xs font-semibold text-gray-600 shrink-0">
+          <ArrowLeft size={14} className="text-gray-600" /> <span>Bumalik</span>
         </button>
         <h2 className="text-xl font-bold text-gray-800">Checkout</h2>
       </div>
@@ -2796,8 +2796,8 @@ function PaymentSummaryView({ orders, onDone, onBack }: { orders: Order[]; onDon
   return (
     <div className="px-5 py-4 pb-8">
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={onBack} aria-label="Bumalik" className="h-10 px-3 gap-1 rounded-full bg-white shadow-sm flex items-center justify-center text-sm font-semibold text-gray-600 shrink-0">
-          <ArrowLeft size={18} className="text-gray-600" /> <span>Bumalik</span>
+        <button onClick={onBack} aria-label="Bumalik" className="h-8 px-2.5 gap-1 rounded-full bg-white shadow-sm flex items-center justify-center text-xs font-semibold text-gray-600 shrink-0">
+          <ArrowLeft size={14} className="text-gray-600" /> <span>Bumalik</span>
         </button>
         <h2 className="text-xl font-bold text-gray-800">Payment Summary</h2>
       </div>
@@ -3307,8 +3307,8 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
   return (
     <div className="px-5 py-4">
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={onBack} aria-label="Bumalik" className="h-10 px-3 gap-1 rounded-full bg-white shadow-sm flex items-center justify-center text-sm font-semibold text-gray-600 shrink-0">
-          <ArrowLeft size={18} className="text-gray-600" /> <span>Bumalik</span>
+        <button onClick={onBack} aria-label="Bumalik" className="h-8 px-2.5 gap-1 rounded-full bg-white shadow-sm flex items-center justify-center text-xs font-semibold text-gray-600 shrink-0">
+          <ArrowLeft size={14} className="text-gray-600" /> <span>Bumalik</span>
         </button>
         <h2 className="text-xl font-bold text-gray-800">Order Details</h2>
       </div>
