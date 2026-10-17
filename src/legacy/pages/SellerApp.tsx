@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, deleteStorageObject } from '../lib/supabase';
+import { notifyOrderSms } from '../lib/orderSms';
 import { watchOrders } from '../lib/liveOrders';
 import { checkRiderBatch } from '../lib/riderBatch';
 import { useAuth } from '../lib/auth';
@@ -1910,6 +1911,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
     } else {
       await supabase.from('orders').update({ rider_id: riderId, vehicle_type: fleetTier }).eq('id', currentOrder.id);
     }
+    notifyOrderSms(currentOrder.id, 'rider_assigned');
     setCurrentOrder(prev => ({ ...prev, rider_id: riderId }));
     setRiderAssigned(true);
     setAssigningRider(null);

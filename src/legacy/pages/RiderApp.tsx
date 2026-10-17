@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { watchOrders } from '../lib/liveOrders';
 import { supabase } from '../lib/supabase';
+import { notifyOrderSms } from '../lib/orderSms';
 import { checkRiderBatch } from '../lib/riderBatch';
 import { useAuth } from '../lib/auth';
 import { navigate } from '../lib/router';
@@ -1088,6 +1089,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
             } else {
               await supabase.from('orders').update({ status: 'picked_up', picked_up_at: now }).eq('id', currentOrder.id);
             }
+            notifyOrderSms(currentOrder.id, 'on_the_way');
             setCurrentOrder((p: any) => ({ ...p, status: 'picked_up', picked_up_at: now }));
             setUpdating(false);
           }}

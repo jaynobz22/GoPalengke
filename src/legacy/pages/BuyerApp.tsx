@@ -4,6 +4,7 @@ import { shareToMessenger } from '../lib/messengerShare';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { watchOrders } from '../lib/liveOrders';
 import { supabase } from '../lib/supabase';
+import { notifyOrderSms } from '../lib/orderSms';
 import { useAuth } from '../lib/auth';
 import { navigate } from '../lib/router';
 import { checkOrderFlood, checkIpMismatch } from '../lib/security';
@@ -2106,6 +2107,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
 
       if (error) { setPlacing(false); return; }
       createdOrders.push(order as Order);
+      notifyOrderSms(order.id, 'new_order');
 
       const orderItems = items.map(i => ({
         order_id: order.id,
@@ -2626,6 +2628,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                   }).select('*').single();
                   if (error) { setPlacing(false); return; }
                   createdOrders.push(order as Order);
+                  notifyOrderSms(order.id, 'new_order');
                   const orderItems = items.map(i => ({ order_id: order.id, product_id: i.product_id, product_name: i.product.name, product_image: i.product.image_url, price: i.product.price, quantity: i.quantity, unit: i.product.unit }));
                   await supabase.from('order_items').insert(orderItems);
                   await supabase.from('cart_items').delete().eq('buyer_id', profile!.id).eq('store_id', storeId);
