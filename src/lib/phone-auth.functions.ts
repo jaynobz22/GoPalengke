@@ -60,7 +60,9 @@ export const signInWithPhonePassword = createServerFn({ method: "POST" })
           const { data: rows, error } = await admin.from("profiles").select("id")
             .or(`phone.eq.${e164},phone.eq.${local},phone.eq.${e164.slice(1)},phone.eq.${digits},email.eq.${phoneLoginEmail(e164)}`).limit(2);
           if (error || rows?.length !== 1) return null;
-          const { data: account, error: accountError } = await admin.auth.admin.getUserById(rows[0].id);
+          const row = rows[0];
+          if (!row) return null;
+          const { data: account, error: accountError } = await admin.auth.admin.getUserById(row.id);
           return accountError ? null : account.user?.email ?? null;
         },
         verifyPassword: async (email, password) => {
