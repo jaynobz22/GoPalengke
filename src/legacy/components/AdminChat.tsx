@@ -23,34 +23,41 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
   const [deleting, setDeleting] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [chatProfile, setChatProfile] = useState<{ avatar_url: string | null; full_name: string | null } | null>(null);
+  const [ownProfile, setOwnProfile] = useState<{ avatar_url: string | null; full_name: string | null } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
-    let profileChannel: ReturnType<typeof supabase.channel> | undefined;
+    const profileChannels: ReturnType<typeof supabase.channel>[] = [];
     setChatProfile(null);
+    setOwnProfile(null);
     async function loadChatProfile() {
       const { data: conversation } = await supabase.from('admin_conversations')
         .select('admin_id,user_id').eq('id', conversationId).maybeSingle();
       const profileId = isAdmin ? conversation?.user_id : conversation?.admin_id;
       if (!profileId || cancelled) return;
-      const refresh = async () => {
-        const { data } = await supabase.from('profiles')
-          .select('avatar_url,full_name').eq('id', profileId).maybeSingle();
-        if (!cancelled) setChatProfile(data || null);
-      };
-      profileChannel = supabase.channel(`admin-chat-profile-${conversationId}-${profileId}`)
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${profileId}` }, refresh)
-        .subscribe();
-      await refresh();
+      await Promise.all([profileId, currentUserId].map(async (id) => {
+        const refresh = async () => {
+          const { data } = await supabase.from('profiles')
+            .select('avatar_url,full_name').eq('id', id).maybeSingle();
+          if (!cancelled) {
+            if (id === currentUserId) setOwnProfile(data || null);
+            else setChatProfile(data || null);
+          }
+        };
+        profileChannels.push(supabase.channel(`admin-chat-profile-${conversationId}-${id}`)
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${id}` }, refresh)
+          .subscribe());
+        await refresh();
+      }));
     }
     void loadChatProfile();
     return () => {
       cancelled = true;
-      if (profileChannel) void supabase.removeChannel(profileChannel);
+      profileChannels.forEach(channel => { void supabase.removeChannel(channel); });
     };
-  }, [conversationId, isAdmin]);
+  }, [conversationId, isAdmin, currentUserId]);
 
   const loadMessages = useCallback(async () => {
     const { data } = await supabase
@@ -215,11 +222,18 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
         )}
         {messages.map(msg => {
           const isMine = msg.sender_id === currentUserId;
+          const senderProfile = isMine ? ownProfile : chatProfile;
+          const senderAvatar = <Avatar
+            src={senderProfile?.avatar_url}
+            name={senderProfile?.full_name || (isMine ? (isAdmin ? 'Admin' : 'Ikaw') : (isAdmin ? otherName : 'Admin'))}
+            size={32}
+          />;
 
           if (msg.image_url) {
             return (
-              <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[75%] rounded-2xl overflow-hidden ${isMine ? (isAdmin ? 'rounded-br-md' : 'rounded-br-md') : 'rounded-bl-md border border-gray-200'}`}>
+              <div key={msg.id} className={`flex min-w-0 items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                {!isMine && senderAvatar}
+                <div className={`min-w-0 max-w-[75%] rounded-2xl overflow-hidden ${isMine ? (isAdmin ? 'rounded-br-md' : 'rounded-br-md') : 'rounded-bl-md border border-gray-200'}`}>
                   <img
                     src={msg.image_url}
                     alt="Chat image"
@@ -240,18 +254,20 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
                     )}
                   </div>
                 </div>
+                {isMine && senderAvatar}
               </div>
             );
           }
 
           return (
-            <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
+            <div key={msg.id} className={`flex min-w-0 items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
+              {!isMine && senderAvatar}
+              <div className={`min-w-0 max-w-[75%] rounded-2xl px-4 py-2.5 ${
                 isMine
                   ? (isAdmin ? 'bg-gray-800 text-white' : 'bg-blue-600 text-white')
                   : 'bg-white border border-gray-200 text-gray-800'
               }`}>
-                <p className="text-sm whitespace-pre-wrap break-words">{msg.body}</p>
+                <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.body}</p>
                 <div className="flex items-center justify-between gap-2">
                   <p className={`text-[10px] mt-1 ${isMine ? 'text-white/50' : 'text-gray-400'}`}>
                     {new Date(msg.created_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
@@ -266,6 +282,7 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
                   )}
                 </div>
               </div>
+              {isMine && senderAvatar}
             </div>
           );
         })}
