@@ -1647,21 +1647,6 @@ function StoreView({ store, highlightProductId, onProductClick, onBack, onChat }
 }
 
 // ============= CART VIEW =============
-function cartWeightKg(items: any[]): number {
-  return items.reduce((sum, i) => {
-    const qty = Number(i.quantity);
-    if (!Number.isFinite(qty) || qty <= 0) return sum;
-    const u = i.product?.unit?.toLowerCase() || '';
-    if (['kilo','kg','kilogram','liter','litro','l'].includes(u)) return sum + qty;
-    if (u === 'gram' || u === 'g') return sum + qty / 1000;
-    if (u === 'bundle' || u === 'bugkos') return sum + qty * 2;
-    if (u === 'tray' || u === 'itlog') return sum + qty;
-    if (['piece','pc','piraso'].includes(u)) return sum + qty * 0.3;
-    if (u === 'dozen' || u === 'dosen') return sum + qty * 1.5;
-    if (u === 'sack' || u === 'sako') return sum + qty * 25;
-    return sum + qty * 0.5;
-  }, 0);
-}
 
 function MultiStoreWeightNotice({ items, storeCount }: { items: any[]; storeCount: number }) {
   if (storeCount < 2) return null;
