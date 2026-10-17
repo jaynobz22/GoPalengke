@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import type { VehicleType } from '../lib/types';
 import { VEHICLE_TIERS } from '../lib/deliveryFee';
 import { sendUserResetCode, resetUserPassword } from '../../lib/user-reset.functions';
+import { sendPhoneSignupCode, completePhoneSignup, normalizePhone, phoneLoginEmail } from '../../lib/phone-auth.functions';
 
 const ROLES = [
   { id: 'buyer' as UserRole, name: 'Mamimili', desc: 'Bumili ng sariwang paninda online', icon: ShoppingCart, color: 'bg-brand-500' },
@@ -21,6 +22,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
   const requestedRole = new URLSearchParams(window.location.search).get('signup');
   const targetedRole: UserRole | null = requestedRole === 'seller' || requestedRole === 'rider' || requestedRole === 'buyer' ? requestedRole : null;
   const [mode, setMode] = useState<'welcome' | 'signin' | 'signup-role' | 'signup-form' | 'verify-email' | 'forgot'>(needsProfile ? 'signup-role' : targetedRole ? 'signup-form' : 'welcome');
+  const [method, setMethod] = useState<'phone' | 'email'>('phone');
   const [resetStep, setResetStep] = useState<'email' | 'code'>('email');
   const [newPassword, setNewPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>(targetedRole || 'buyer');
@@ -58,20 +60,35 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
     }, 1000);
   }
 
+  function rememberRefCode() {
+    if (selectedRole === 'seller' || selectedRole === 'rider') {
+      const code = affiliateCode.trim();
+      if (code) sessionStorage.setItem('gopalengke_ref_code', code);
+    }
+  }
+
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setInfo(null);
+    const id = email.trim();
+    let loginEmail = id;
+    if (!id.includes('@')) {
+      const e164 = normalizePhone(id);
+      if (!e164) { setError('Ilagay ang tamang email o cellphone number.'); return; }
+      loginEmail = phoneLoginEmail(e164);
+    }
     setSubmitting(true);
-    const result = await signIn(email, password);
+    const result = await signIn(loginEmail, password);
     setSubmitting(false);
     if (result.error) {
-      setError(result.error);
+      setError(/invalid/i.test(result.error) ? 'Mali ang email/cellphone o password.' : result.error);
     } else if (result.needsVerification && result.userId) {
+      setMethod('email');
       setUserId(result.userId);
       setMode('verify-email');
       setInfo('Kailangan i-verify ang email mo bago makapag-login.');
-      await sendEmailOtp(email);
+      await sendEmailOtp(loginEmail);
       startResendCooldown();
     }
   }
@@ -81,30 +98,64 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
     setError(null);
     setInfo(null);
     setSubmitting(true);
-    const result = await signUp(email, password, fullName, selectedRole, { barangay: location.barangay, district: location.district, city: location.city, region: location.region, phone }, vehicleType);
+    rememberRefCode();
+    const result = await signUp(email.trim(), password, '', selectedRole, { barangay: '', district: '', city: '', region: '', phone: '' }, 'motorcycle');
     setSubmitting(false);
     if (result.error) {
       setError(result.error);
     } else if (result.userId) {
-      // Link affiliate referral for all seller/rider signups.
-      // If no code provided, the DB function defaults to admin affiliate (5F7249C1).
-      if (selectedRole === 'seller' || selectedRole === 'rider') {
-        const refCode = (affiliateCode.trim() || sessionStorage.getItem('gopalengke_ref_code') || '').trim();
-        try {
-          await supabase.rpc('link_affiliate_referral', {
-            p_referral_code: refCode || null,
-            p_user_id: result.userId,
-            p_role: selectedRole,
-            p_full_name: fullName,
-          });
-        } catch { /* best-effort */ }
-        sessionStorage.removeItem('gopalengke_ref_code');
-      }
       setUserId(result.userId);
       setMode('verify-email');
       setInfo('Nagpadala kami ng verification code sa email mo. I-check ang inbox at spam folder.');
-      await sendEmailOtp(email);
+      await sendEmailOtp(email.trim());
       startResendCooldown();
+    }
+  }
+
+  async function handlePhoneSignUp(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setInfo(null);
+    if (password.length < 6) { setError('Dapat hindi bababa sa 6 character ang password.'); return; }
+    setSubmitting(true);
+    try {
+      await sendPhoneSignupCode({ data: { phone } });
+    } catch (err: any) {
+      setSubmitting(false);
+      setError(err?.message || 'Hindi maipadala ang SMS.');
+      return;
+    }
+    setSubmitting(false);
+    rememberRefCode();
+    setOtpCode('');
+    setMode('verify-email');
+    startResendCooldown();
+  }
+
+  async function handleResendSms() {
+    if (resendCooldown > 0) return;
+    setError(null);
+    try {
+      await sendPhoneSignupCode({ data: { phone } });
+      setInfo('Nagpadala ulit ng bagong code via SMS.');
+      startResendCooldown();
+    } catch (err: any) {
+      setError(err?.message || 'Hindi maipadala ang SMS.');
+    }
+  }
+
+  async function handleVerifyPhone(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      const r = await completePhoneSignup({ data: { phone, code: otpCode, password, role: selectedRole } });
+      const res = await signIn(r.email, password);
+      setSubmitting(false);
+      if (res.error) { setMode('signin'); setEmail(phone); setError(res.error); }
+    } catch (err: any) {
+      setSubmitting(false);
+      setError(err?.message || 'Mali o expired na ang code.');
     }
   }
 
@@ -309,12 +360,13 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
           <h2 className="text-2xl font-bold text-gray-800 mb-6">Mag-sign In</h2>
           <form onSubmit={handleSignIn} className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-gray-600 mb-1 block">Email</label>
+              <label className="text-sm font-medium text-gray-600 mb-1 block">Email o Cellphone Number</label>
               <input
-                type="email"
+                type="text"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@example.com"
+                placeholder="email@example.com o 09171234567"
                 required
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
               />
@@ -429,41 +481,47 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
         <div className="flex-1 px-5 flex flex-col overflow-y-auto pb-8">
           <h2 className="text-2xl font-bold text-gray-800 mb-1">Gumawa ng Account</h2>
           <p className="text-gray-500 mb-6">Role: {ROLES.find(r => r.id === selectedRole)?.name}</p>
-          <form onSubmit={handleSignUp} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-gray-600 mb-1 block">Buong Pangalan</label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Juan dela Cruz"
-                required
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-600 mb-1 block">Numero ng Telepono</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="09171234567"
-                required
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-600 mb-1 block">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@example.com"
-                required
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
-              />
-              <p className="text-xs text-gray-400 mt-1">Kailangan i-verify ang email mo gamit ang verification code.</p>
-            </div>
+          <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-2xl mb-5">
+            {(['phone', 'email'] as const).map(m => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => { setMethod(m); setError(null); setInfo(null); }}
+                className={`py-2.5 rounded-xl text-sm font-semibold transition ${method === m ? 'bg-white shadow text-brand-700' : 'text-gray-500'}`}
+              >
+                {m === 'phone' ? '📱 Cellphone' : '✉️ Email'}
+              </button>
+            ))}
+          </div>
+          <form onSubmit={method === 'phone' ? handlePhoneSignUp : handleSignUp} className="space-y-4">
+            {method === 'phone' ? (
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">Cellphone Number</label>
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="09171234567"
+                  required
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
+                />
+                <p className="text-xs text-gray-400 mt-1">Padadalhan ka ng 6-digit code via SMS.</p>
+              </div>
+            ) : (
+              <div>
+                <label className="text-sm font-medium text-gray-600 mb-1 block">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="email@example.com"
+                  required
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition"
+                />
+                <p className="text-xs text-gray-400 mt-1">Padadalhan ka ng verification code sa email.</p>
+              </div>
+            )}
             <div>
               <label className="text-sm font-medium text-gray-600 mb-1 block">Password</label>
               <div className="relative">
@@ -502,45 +560,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
                 </p>
               </div>
             )}
-
-            {selectedRole === 'rider' && (
-              <div>
-                <label className="text-sm font-medium text-gray-600 mb-1 block">Klase ng Sasakyan</label>
-                <p className="text-xs text-gray-400 mb-2">Piliin ang sasakyan na gagamitin mo para sa pag-deliver.</p>
-                <div className="space-y-2">
-                  {VEHICLE_TIERS.map(vt => {
-                    const Icon = vt.id === 'motorcycle' ? Motorcycle : vt.id === 'tricycle' ? Bike : Store;
-                    const selected = vehicleType === vt.id;
-                    return (
-                      <button
-                        key={vt.id}
-                        type="button"
-                        onClick={() => setVehicleType(vt.id)}
-                        className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 transition ${selected ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white'}`}
-                      >
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${selected ? 'bg-brand-500' : 'bg-gray-100'}`}>
-                          <Icon size={20} className={selected ? 'text-white' : 'text-gray-500'} />
-                        </div>
-                        <div className="text-left flex-1">
-                          <p className="text-sm font-semibold text-gray-800">{vt.label}</p>
-                          <p className="text-xs text-gray-500">Max Load: {vt.maxLoadKg}kg</p>
-                        </div>
-                        {selected && <Check size={20} className="text-brand-600" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="pt-2">
-              <LocationSelector
-                value={location}
-                onChange={setLocation}
-                label={`Location ng ${selectedRole === 'seller' ? 'tindahan' : 'bahay'}`}
-                compact
-              />
-            </div>
+            <p className="text-xs text-gray-400">Ang pangalan, address at iba pang detalye ay ilalagay mo pagka-verify ng account.</p>
 
             {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
             {info && <p className="text-brand-600 text-sm bg-brand-50 px-4 py-2 rounded-lg">{info}</p>}
@@ -563,21 +583,24 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
               <Mail size={32} className="text-brand-600" />
             </div>
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">I-verify ang Email</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">{method === 'phone' ? 'I-verify ang Cellphone' : 'I-verify ang Email'}</h2>
           <p className="text-gray-500 text-center mb-6">
-            Nagpadala kami ng verification code sa <strong>{email}</strong>. I-check ang inbox at spam folder.
+            {method === 'phone'
+              ? <>Nagpadala kami ng 6-digit code via SMS sa <strong>{phone}</strong>.</>
+              : <>Nagpadala kami ng verification code sa <strong>{email}</strong>. I-check ang inbox at spam folder.</>}
           </p>
-          <form onSubmit={handleVerifyEmail} className="space-y-4">
+          <form onSubmit={method === 'phone' ? handleVerifyPhone : handleVerifyEmail} className="space-y-4">
             <div>
               <label className="text-sm font-medium text-gray-600 mb-1 block">Verification Code</label>
               <input
                 type="text"
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-                placeholder="00000000"
+                placeholder={method === 'phone' ? '000000' : '00000000'}
                 required
                 maxLength={8}
                 inputMode="numeric"
+                autoComplete="one-time-code"
                 className="w-full px-4 py-4 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition text-center text-2xl font-bold tracking-[0.4em]"
               />
             </div>
@@ -588,11 +611,11 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
               disabled={submitting || otpCode.length < 6}
               className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50"
             >
-              {submitting ? 'Nagve-verify...' : 'I-verify ang Email'}
+              {submitting ? 'Nagve-verify...' : 'I-verify'}
             </button>
             <button
               type="button"
-              onClick={handleResendEmail}
+              onClick={method === 'phone' ? handleResendSms : handleResendEmail}
               disabled={resendCooldown > 0}
               className="w-full py-3 text-brand-600 font-medium text-sm disabled:text-gray-400"
             >
