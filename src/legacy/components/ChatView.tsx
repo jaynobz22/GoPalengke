@@ -357,6 +357,27 @@ export function getOrCreateConversation(
   })();
 }
 
+/** Direct buyer→seller inquiry chat (walang order pa). Isang usapan lang kada buyer+seller. */
+export async function getOrCreateStoreInquiry(buyerId: string, sellerId: string): Promise<{ conv: Conversation | null; error?: string }> {
+  const { data: existing } = await supabase
+    .from('conversations')
+    .select('*')
+    .is('order_id', null)
+    .eq('type', 'buyer_seller')
+    .eq('buyer_id', buyerId)
+    .eq('seller_id', sellerId)
+    .limit(1)
+    .maybeSingle();
+  if (existing) return { conv: existing as Conversation };
+  const { data, error } = await supabase
+    .from('conversations')
+    .insert({ order_id: null, buyer_id: buyerId, seller_id: sellerId, type: 'buyer_seller' })
+    .select('*')
+    .maybeSingle();
+  if (error) return { conv: null, error: error.message };
+  return { conv: data as Conversation | null };
+}
+
 function generateRoomId() {
   return `call-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
