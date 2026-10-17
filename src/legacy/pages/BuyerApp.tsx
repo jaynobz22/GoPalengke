@@ -178,6 +178,19 @@ export function BuyerApp() {
     }
   }
 
+  async function openStoreInquiry(s: Store, sellerName: string) {
+    if (!profile) return;
+    const { conv, error } = await getOrCreateStoreInquiry(profile.id, s.seller_id);
+    if (!conv) {
+      alert('Hindi mabuksan ang chat ngayon. Subukan muli mamaya.' + (error ? `\n(${error})` : ''));
+      return;
+    }
+    setActiveConversationId(conv.id);
+    setChatPartnerName(s.name || sellerName);
+    setChatPartnerRole('Seller');
+    setView('chat');
+  }
+
   function backFromChat() {
     setView('browse');
     setActiveConversationId(null);
@@ -254,7 +267,7 @@ export function BuyerApp() {
           <ProductView product={selectedProduct} store={selectedStore!} onBack={() => { setView('store'); setSelectedProduct(null); }} onAddToCart={refreshCart} onGoToStore={(s, pid) => { setSelectedStore(s); setHighlightProductId(pid); setSelectedProduct(null); setView('store'); }} />
         )}
         {tab === 'home' && view === 'store' && selectedStore && (
-          <StoreView store={selectedStore} highlightProductId={highlightProductId} onProductClick={(p) => navigateToProductDetail(p)} onBack={backToBrowse} />
+          <StoreView store={selectedStore} highlightProductId={highlightProductId} onProductClick={(p) => navigateToProductDetail(p)} onBack={backToBrowse} onChat={openStoreInquiry} />
         )}
         {tab === 'home' && view === 'checkout' && (
           <ErrorBoundary fallback={
@@ -1403,9 +1416,10 @@ function ProductView({ product, store, onBack, onAddToCart, onGoToStore }: { pro
 }
 
 // ============= STORE VIEW =============
-function StoreView({ store, highlightProductId, onProductClick, onBack }: { store: Store; highlightProductId?: string | null; onProductClick: (p: Product) => void; onBack: () => void }) {
+function StoreView({ store, highlightProductId, onProductClick, onBack, onChat }: { store: Store; highlightProductId?: string | null; onProductClick: (p: Product) => void; onBack: () => void; onChat?: (s: Store, sellerName: string) => Promise<void> }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [chatBusy, setChatBusy] = useState(false);
   const [sellerAvatar, setSellerAvatar] = useState<string | null>(null);
   const [sellerName, setSellerName] = useState<string>('');
   const [sellerRank, setSellerRank] = useState<string | null>(store.seller_rank || null);
@@ -1511,6 +1525,17 @@ function StoreView({ store, highlightProductId, onProductClick, onBack }: { stor
           <MapPin size={16} />
           <span>{[store.barangay, store.city, formatRegionForDisplay(store.region)].filter(Boolean).join(', ')}</span>
         </div>
+        {onChat && (
+          <button
+            type="button"
+            onClick={async () => { setChatBusy(true); try { await onChat(store, sellerName || store.name); } finally { setChatBusy(false); } }}
+            disabled={chatBusy}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-brand-600 bg-brand-50 py-2.5 text-sm font-semibold text-brand-700 active:scale-[0.98] disabled:opacity-60"
+          >
+            <MessageCircle size={18} />
+            {chatBusy ? 'Binubuksan ang chat...' : 'Mag-chat sa Tindahan'}
+          </button>
+        )}
       </div>
 
       {freeDeliveryMin(storeInfo) !== null && (
