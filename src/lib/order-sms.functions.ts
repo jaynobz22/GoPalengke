@@ -1,9 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { normalizePhone } from "./phone";
 
-// One SMS per order event via Twilio Messaging. The server checks the caller is part of the
-// order and that the order is really in the matching fresh state, so it can't be replayed freely.
+// Free phone push notification per order event (SMS for orders is on hold to save cost).
+// The server checks the caller is part of the order and that the order is really in the
+// matching fresh state, so it can't be replayed freely.
 const FRESH_MS = 10 * 60 * 1000;
 
 export const sendOrderSms = createServerFn({ method: "POST" })
@@ -15,13 +15,11 @@ export const sendOrderSms = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data }) => {
-    const sid = process.env["TWILIO_ACCOUNT_SID"];
-    const authTok = process.env["TWILIO_AUTH_TOKEN"];
-    const from = process.env["TWILIO_SMS_FROM"];
     const key = process.env["GOPALENGKE_SERVICE_ROLE_KEY"];
-    if (!sid || !authTok || !from || !key) return { ok: false, skipped: "not_configured" };
+    if (!key) return { ok: false, skipped: "not_configured" };
     const { createClient } = await import("@supabase/supabase-js");
     const { GP_URL } = await import("./onboarding-reminders.server");
+    const { sendWebPush } = await import("./web-push.server");
     const sb = createClient(GP_URL, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
     const { data: u } = await sb.auth.getUser(data.token);
@@ -35,38 +33,38 @@ export const sendOrderSms = createServerFn({ method: "POST" })
     const store: any = Array.isArray((o as any).store) ? (o as any).store[0] : (o as any).store;
     const now = Date.now();
     const fresh = (t?: string | null) => !!t && now - new Date(t).getTime() < FRESH_MS;
+    const storeName = store?.name || "isang tindahan";
 
     let to: string | null = null;
+    let title = "";
     let body = "";
-    const storeName = store?.name || "isang tindahan";
+    let url = "/";
     if (data.event === "new_order") {
       if (caller !== o.buyer_id || o.status !== "pending" || !fresh(o.created_at)) return { ok: false, skipped: "state" };
       to = store?.seller_id;
-      body = `GoPalengke: May bagong order sa ${storeName} (P${Number(o.total).toFixed(2)}). Buksan ang app para i-confirm.`;
+      title = "May bagong order! 🛒";
+      body = `Bagong order sa ${storeName} (₱${Number(o.total).toFixed(2)}). I-confirm na.`;
     } else if (data.event === "rider_assigned") {
       if (caller !== store?.seller_id || !o.rider_id || !fresh(o.updated_at)) return { ok: false, skipped: "state" };
       to = o.rider_id;
-      body = `GoPalengke: May bagong delivery na naka-assign sa iyo mula sa ${storeName}. Buksan ang app para tanggapin.`;
+      title = "May bagong delivery para sa iyo! 🏍️";
+      body = `In-assign ka ng ${storeName}. Buksan ang GoPalengke para tanggapin.`;
     } else {
       if (caller !== o.rider_id || o.status !== "picked_up" || !fresh(o.picked_up_at)) return { ok: false, skipped: "state" };
       to = o.buyer_id;
-      body = `GoPalengke: On the way na ang rider dala ang order mo mula sa ${storeName}. Ihanda ang bayad kung COD.`;
+      title = "On the way na ang order mo! 🚚";
+      body = `Dala na ng rider ang order mo mula sa ${storeName}.`;
     }
+    if (!to) return { ok: false, skipped: "no_target" };
 
-    const { data: p } = await sb.from("profiles").select("phone").eq("id", to).maybeSingle();
-    const e164 = p?.phone ? normalizePhone(p.phone) : null;
-    if (!e164) return { ok: false, skipped: "no_phone" };
-
-    const params = new URLSearchParams({ To: e164, Body: body });
-    params.set(from.startsWith("MG") ? "MessagingServiceSid" : "From", from);
-    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
-      method: "POST",
-      headers: { Authorization: `Basic ${btoa(`${sid}:${authTok}`)}`, "Content-Type": "application/x-www-form-urlencoded" },
-      body: params,
-    });
-    if (!res.ok) {
-      console.error(`Twilio SMS failed [${res.status}]`, await res.text());
-      return { ok: false, skipped: "twilio" };
+    const { data: subs } = await sb.from("push_subscriptions")
+      .select("id, endpoint, p256dh_key, auth_key").eq("user_id", to).eq("is_active", true);
+    let sent = 0;
+    for (const s of subs || []) {
+      const status = await sendWebPush({ endpoint: s.endpoint, p256dh: s.p256dh_key, auth: s.auth_key },
+        { title, body, url, tag: `order-${data.orderId}-${data.event}` }, key);
+      if (status === 404 || status === 410) await sb.from("push_subscriptions").update({ is_active: false }).eq("id", s.id);
+      else if (status < 300) sent++;
     }
-    return { ok: true };
+    return { ok: sent > 0, sent };
   });

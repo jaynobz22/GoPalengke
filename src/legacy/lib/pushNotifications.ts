@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import type { UserRole } from './types';
 
 // VAPID public key — generated server-side, safe to expose in client
-const VAPID_PUBLIC_KEY = 'BAIF5pzeNIQJzYltOzA7xaCzLCZKE1EY5bIDmvKe4HwTwTFRCDA0vxyHY6ch9sHJqRoCP2UuZMBqnMs52z0XidY';
+const VAPID_PUBLIC_KEY = 'BLohcxeCuFRIC5qTLZJjpCFRfg8FZAu-9wYQlKBomWkDKv3WSmq9eE0yng6E5cNB73k8BIMDlfxp0jCGAbZxTYM';
 
 const SW_PATH = '/sw.js';
 const SUBSCRIPTIONS_TABLE = 'push_subscriptions';
@@ -53,6 +53,17 @@ export async function subscribeToPush(
 
   try {
     let subscription = await reg.pushManager.getSubscription();
+
+    // Subscription made with an old server key can't receive our pushes — renew it.
+    if (subscription) {
+      const cur = subscription.options?.applicationServerKey;
+      const want = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      const curArr = cur ? new Uint8Array(cur) : null;
+      if (!curArr || curArr.length !== want.length || curArr.some((v, i) => v !== want[i])) {
+        await subscription.unsubscribe().catch(() => {});
+        subscription = null;
+      }
+    }
 
     if (!subscription) {
       subscription = await reg.pushManager.subscribe({
