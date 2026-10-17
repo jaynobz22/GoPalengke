@@ -41,18 +41,25 @@ export function NotificationPermissionPrompt() {
       return () => clearTimeout(timer);
     }
 
-    // GPS hasn't fired yet — poll until it does, then wait 10 seconds
+    // GPS hasn't fired yet — poll until it does, then wait 10 seconds.
+    // Buyers/riders may never set the GPS flag, so fall back after 15s.
     let cleanupTimer: ReturnType<typeof setTimeout> | undefined;
+    const fallback = setTimeout(() => {
+      clearInterval(interval);
+      setVisible(true);
+    }, 15000);
     const interval = setInterval(() => {
       const fired = sessionStorage.getItem(gpsKey);
       if (fired) {
         clearInterval(interval);
+        clearTimeout(fallback);
         cleanupTimer = schedulePrompt(10000);
       }
     }, 500);
 
     return () => {
       clearInterval(interval);
+      clearTimeout(fallback);
       if (cleanupTimer) clearTimeout(cleanupTimer);
     };
   }, [profile]);
