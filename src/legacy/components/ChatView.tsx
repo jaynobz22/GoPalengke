@@ -411,6 +411,7 @@ export function ChatView({
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showOtherProfile, setShowOtherProfile] = useState(false);
   const [otherProfile, setOtherProfile] = useState<any>(null);
+  const [otherStore, setOtherStore] = useState<any>(null);
   const [loadingOtherProfile, setLoadingOtherProfile] = useState(false);
   const otherIdRef = useRef<string | null>(null);
 
@@ -419,8 +420,13 @@ export function ChatView({
     if (!otherId) return;
     setShowOtherProfile(true);
     setLoadingOtherProfile(true);
-    const { data } = await supabase.from('profiles').select('id, full_name, avatar_url, role, barangay, city, region, created_at').eq('id', otherId).maybeSingle();
+    setOtherStore(null);
+    const { data } = await supabase.from('profiles').select('id, full_name, avatar_url, role, phone, barangay, city, region, complete_address, house_photo_url, rider_age, rider_family_status, rider_residence_address, rider_plate_number, rider_motor_model, created_at').eq('id', otherId).maybeSingle();
     setOtherProfile(data || null);
+    if (data?.role === 'seller') {
+      const { data: store } = await supabase.from('stores').select('name, logo_url, palengke_name, barangay, city, rating, seller_type').eq('seller_id', otherId).maybeSingle();
+      setOtherStore(store || null);
+    }
     setLoadingOtherProfile(false);
   }
 
@@ -1011,12 +1017,23 @@ export function ChatView({
                   </div>
                   <p className="mt-3 text-center text-lg font-bold text-gray-800">{otherProfile?.full_name || otherName}</p>
                   <p className="text-center text-xs text-gray-400 capitalize">{otherProfile?.role || otherRole}</p>
+
+                  {/* Contact at address */}
                   <div className="mt-4 bg-gray-50 rounded-2xl p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <MapPin size={14} className="text-gray-400 shrink-0" />
-                      <p className="text-xs text-gray-600">
-                        {[otherProfile?.barangay, otherProfile?.city, otherProfile?.region].filter(Boolean).join(', ') || <span className="text-gray-300 italic">Walang nakalagay na address</span>}
-                      </p>
+                    {otherProfile?.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone size={14} className="text-gray-400 shrink-0" />
+                        <a href={`tel:${otherProfile.phone}`} className="text-xs text-brand-600 font-medium underline">{otherProfile.phone}</a>
+                      </div>
+                    )}
+                    <div className="flex items-start gap-2">
+                      <MapPin size={14} className="text-gray-400 shrink-0 mt-0.5" />
+                      <div>
+                        {otherProfile?.complete_address && <p className="text-xs text-gray-700 font-medium">{otherProfile.complete_address}</p>}
+                        <p className="text-xs text-gray-600">
+                          {[otherProfile?.barangay, otherProfile?.city, otherProfile?.region].filter(Boolean).join(', ') || <span className="text-gray-300 italic">Walang nakalagay na address</span>}
+                        </p>
+                      </div>
                     </div>
                     {otherProfile?.created_at && (
                       <div className="flex items-center gap-2">
@@ -1025,6 +1042,72 @@ export function ChatView({
                       </div>
                     )}
                   </div>
+
+                  {/* Buyer: larawan ng bahay */}
+                  {otherProfile?.role === 'buyer' && otherProfile?.house_photo_url && (
+                    <div className="mt-3">
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Larawan ng Bahay</p>
+                      <button type="button" onClick={() => setPreviewImage(otherProfile.house_photo_url)} className="block w-full rounded-2xl overflow-hidden border border-gray-200">
+                        <img src={otherProfile.house_photo_url} alt="Bahay ng buyer" className="w-full h-40 object-cover" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Rider: detalye ng sasakyan */}
+                  {otherProfile?.role === 'rider' && (
+                    <div className="mt-3 bg-gray-50 rounded-2xl p-3">
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Detalye ng Rider</p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <p className="text-[10px] text-gray-400">Plate Number</p>
+                          <p className="font-medium text-gray-700">{otherProfile?.rider_plate_number || <span className="text-gray-300 italic">Wala</span>}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-400">Motor Model</p>
+                          <p className="font-medium text-gray-700">{otherProfile?.rider_motor_model || <span className="text-gray-300 italic">Wala</span>}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-400">Edad</p>
+                          <p className="font-medium text-gray-700">{otherProfile?.rider_age ? otherProfile.rider_age + ' taon' : <span className="text-gray-300 italic">Wala</span>}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-400">Family Status</p>
+                          <p className="font-medium text-gray-700">{otherProfile?.rider_family_status || <span className="text-gray-300 italic">Wala</span>}</p>
+                        </div>
+                      </div>
+                      {otherProfile?.rider_residence_address && (
+                        <p className="text-xs text-gray-600 mt-2"><span className="text-[10px] text-gray-400 block">Tirahan</span>{otherProfile.rider_residence_address}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Seller: tindahan */}
+                  {otherProfile?.role === 'seller' && otherStore && (
+                    <div className="mt-3 bg-gray-50 rounded-2xl p-3">
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2">Tindahan</p>
+                      <div className="flex items-center gap-2">
+                        {otherStore.logo_url ? (
+                          <img src={otherStore.logo_url} alt={otherStore.name} className="w-10 h-10 rounded-xl object-cover" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-xl bg-gray-200 flex items-center justify-center text-gray-400 text-xs font-bold">{(otherStore.name || 'T').charAt(0)}</div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-gray-800 truncate">{otherStore.name}</p>
+                          <p className="text-[10px] text-gray-400">{[otherStore.palengke_name || otherStore.barangay, otherStore.city].filter(Boolean).join(', ')}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs mt-2">
+                        <div>
+                          <p className="text-[10px] text-gray-400">Uri ng Seller</p>
+                          <p className="font-medium text-gray-700 capitalize">{otherStore.seller_type || 'Regular'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-gray-400">Rating</p>
+                          <p className="font-medium text-gray-700">{otherStore.rating > 0 ? Number(otherStore.rating).toFixed(1) + ' / 5' : 'Wala pa'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
