@@ -890,7 +890,7 @@ export function ChatView({
 
       {/* Image Preview Modal */}
       {previewImage && (
-        <div className="fixed inset-0 z-[90] bg-black/80 flex items-center justify-center" onClick={() => setPreviewImage(null)}>
+        <div className="fixed inset-0 z-[120] bg-black/90 flex items-center justify-center p-2" onClick={() => setPreviewImage(null)}>
           <button className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
             <X size={24} className="text-white" />
           </button>
@@ -995,15 +995,15 @@ export function ChatView({
 
       {/* Profile popup ng ka-chat */}
       {showOtherProfile && (
-        <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setShowOtherProfile(false)}>
-          <div className="bg-white rounded-3xl w-full max-w-sm max-h-[85dvh] overflow-y-auto my-auto" onClick={e => e.stopPropagation()}>
-            <div className="relative bg-brand-600 px-5 pt-6 pb-14">
-              <button onClick={() => setShowOtherProfile(false)} aria-label="Isara" className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center active:scale-90 transition">
+        <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4" onClick={() => setShowOtherProfile(false)}>
+          <div className="relative bg-white rounded-3xl w-full max-w-sm max-h-[88dvh] flex flex-col overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between bg-brand-600 px-4 py-3 shrink-0">
+              <p className="text-white text-sm font-semibold">Profile ng ka-chat</p>
+              <button onClick={() => setShowOtherProfile(false)} aria-label="Isara" className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center active:scale-90 transition">
                 <X size={16} className="text-white" />
               </button>
-              <p className="text-white/80 text-xs font-medium">Profile ng ka-chat</p>
             </div>
-            <div className="px-5 pb-6 -mt-10">
+            <div className="flex-1 overflow-y-auto overscroll-contain px-5 pt-5 pb-6">
               {loadingOtherProfile ? (
                 <div className="flex justify-center py-10">
                   <div className="w-7 h-7 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
@@ -1011,12 +1011,18 @@ export function ChatView({
               ) : (
                 <>
                   <div className="flex justify-center">
-                    <div className="rounded-full ring-4 ring-white shadow-lg">
-                      <Avatar src={otherProfile?.avatar_url || otherAvatar} name={otherProfile?.full_name || otherName} size={88} />
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { const src = otherProfile?.avatar_url || otherAvatar; if (src) setPreviewImage(src); }}
+                      className="rounded-full ring-4 ring-brand-100 shadow-lg active:scale-95 transition"
+                      aria-label="Tingnan ang profile pic"
+                    >
+                      <Avatar src={otherProfile?.avatar_url || otherAvatar} name={otherProfile?.full_name || otherName} size={112} />
+                    </button>
                   </div>
                   <p className="mt-3 text-center text-lg font-bold text-gray-800">{otherProfile?.full_name || otherName}</p>
                   <p className="text-center text-xs text-gray-400 capitalize">{otherProfile?.role || otherRole}</p>
+
 
                   {/* Contact at address */}
                   <div className="mt-4 bg-gray-50 rounded-2xl p-3 space-y-2">
@@ -1048,7 +1054,7 @@ export function ChatView({
                     <div className="mt-3">
                       <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Larawan ng Bahay</p>
                       <button type="button" onClick={() => setPreviewImage(otherProfile.house_photo_url)} className="block w-full rounded-2xl overflow-hidden border border-gray-200">
-                        <img src={otherProfile.house_photo_url} alt="Bahay ng buyer" className="w-full h-40 object-cover" />
+                        <img src={otherProfile.house_photo_url} alt="Bahay ng buyer" className="w-full h-48 object-cover" />
                       </button>
                     </div>
                   )}
