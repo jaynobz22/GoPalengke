@@ -89,8 +89,20 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
   }, []);
 
   useEffect(() => {
-    setShowAnnouncementModal(Boolean(announcement?.id));
+    if (!announcement?.id) return;
+    try {
+      if (localStorage.getItem('gopalengke_beta_joined') === '1') return;
+      if (localStorage.getItem('gopalengke_announcement_seen') === String(announcement.id)) return;
+    } catch {}
+    setShowAnnouncementModal(true);
   }, [announcement?.id]);
+
+  const handleAnnouncementOpenChange = (open: boolean) => {
+    setShowAnnouncementModal(open);
+    if (!open && announcement?.id) {
+      try { localStorage.setItem('gopalengke_announcement_seen', String(announcement.id)); } catch {}
+    }
+  };
 
   return (
     <div className="relative overflow-hidden bg-gradient-to-br from-brand-600 via-brand-700 to-brand-800">
@@ -117,7 +129,7 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
             <span className="text-[10px] text-amber-900/70 flex-shrink-0 hidden sm:inline">I-tap para basahin</span>
           </button>
 
-          <Dialog.Root open={showAnnouncementModal} onOpenChange={setShowAnnouncementModal}>
+          <Dialog.Root open={showAnnouncementModal} onOpenChange={handleAnnouncementOpenChange}>
             <Dialog.Portal>
               <Dialog.Overlay className="fixed inset-0 z-[100] bg-foreground/60 backdrop-blur-sm" />
               <Dialog.Content className="fixed left-1/2 top-1/2 z-[101] flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg border border-border bg-card p-5 text-card-foreground shadow-xl">
@@ -136,7 +148,7 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
                   {announcement.message}
                 </Dialog.Description>
                 <Button asChild className="mt-5 h-11 w-full shrink-0 font-bold">
-                  <a href="/beta-tester">JOIN AS BETA TESTER <ArrowRight /></a>
+                  <a href="/beta-tester" onClick={() => { try { localStorage.setItem('gopalengke_beta_joined', '1'); } catch {} }}>JOIN AS BETA TESTER <ArrowRight /></a>
                 </Button>
               </Dialog.Content>
             </Dialog.Portal>
