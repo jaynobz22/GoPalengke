@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { navigate } from '../../lib/router';
 import {
   TrendingUp, Store, Bike, Wallet, ArrowRight, Users, Calculator,
-  Sparkles, Check, ChevronRight, DollarSign, PiggyBank, Copy, CheckCheck,
+  Sparkles, Check, ChevronRight, DollarSign, PiggyBank, Copy, CheckCheck, PlayCircle,
 } from 'lucide-react';
 
 export function AffiliateLanding() {
@@ -152,6 +152,28 @@ export function AffiliateLanding() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Video Tutorial */}
+      <section className="max-w-3xl mx-auto px-5 pb-12">
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-2 bg-brand-50 rounded-full px-4 py-1.5 mb-3">
+            <PlayCircle size={16} className="text-brand-600" />
+            <span className="text-brand-700 text-sm font-medium">Video Tutorial</span>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800">📹 Panoorin ang Video Tutorial</h2>
+          <p className="text-gray-500 text-sm mt-1">Paano magsimula at kumita bilang GoPalengke affiliate partner</p>
+        </div>
+        <div className="aspect-video w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-lg">
+          <iframe
+            className="h-full w-full"
+            src="https://www.youtube-nocookie.com/embed/YiPLQ8c7D2g"
+            title="GoPalengke Affiliate Tutorial"
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
         </div>
       </section>
 
