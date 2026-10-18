@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { DemoBadge } from '../components/DemoBadge';
 import { useState, useEffect } from 'react';
+import * as Dialog from '@radix-ui/react-dialog';
+import { Button } from '@/components/ui/button';
 import { supabase } from '../lib/supabase';
 import { navigate } from '../lib/router';
 import type { Store, Product, Category, Announcement, Review } from '../lib/types';
@@ -86,6 +88,10 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
     return () => { supabase.removeChannel(sub); };
   }, []);
 
+  useEffect(() => {
+    setShowAnnouncementModal(Boolean(announcement?.id));
+  }, [announcement?.id]);
+
   return (
     <div className="relative overflow-hidden bg-gradient-to-br from-brand-600 via-brand-700 to-brand-800">
       <div className="absolute top-10 left-10 w-40 h-40 bg-brand-400/20 rounded-full blur-3xl animate-float" />
@@ -111,43 +117,30 @@ function HeroSection({ onGetStarted }: { onGetStarted?: () => void }) {
             <span className="text-[10px] text-amber-900/70 flex-shrink-0 hidden sm:inline">I-tap para basahin</span>
           </button>
 
-          {showAnnouncementModal && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
-              onClick={() => setShowAnnouncementModal(false)}
-            >
-              <div
-                className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-5 animate-scale-pop"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between mb-3">
+          <Dialog.Root open={showAnnouncementModal} onOpenChange={setShowAnnouncementModal}>
+            <Dialog.Portal>
+              <Dialog.Overlay className="fixed inset-0 z-[100] bg-foreground/60 backdrop-blur-sm" />
+              <Dialog.Content className="fixed left-1/2 top-1/2 z-[101] flex max-h-[85dvh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg border border-border bg-card p-5 text-card-foreground shadow-xl">
+                <div className="mb-4 flex shrink-0 items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
-                      <Megaphone size={16} className="text-amber-600" />
-                    </div>
-                    <h3 className="font-bold text-gray-800 text-sm">Announcement</h3>
+                    <Megaphone size={20} className="shrink-0 text-primary" />
+                    <Dialog.Title className="text-base font-bold">Announcement</Dialog.Title>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowAnnouncementModal(false)}
-                    className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:scale-90 transition"
-                  >
-                    <X size={16} />
-                  </button>
+                  <Dialog.Close asChild>
+                    <Button variant="ghost" size="icon" aria-label="Isara ang announcement" className="shrink-0">
+                      <X />
+                    </Button>
+                  </Dialog.Close>
                 </div>
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
+                <Dialog.Description className="min-h-0 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">
                   {announcement.message}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowAnnouncementModal(false)}
-                  className="w-full mt-4 py-2.5 bg-brand-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition"
-                >
-                  Got it
-                </button>
-              </div>
-            </div>
-          )}
+                </Dialog.Description>
+                <Button asChild className="mt-5 h-11 w-full shrink-0 font-bold">
+                  <a href="/beta-tester">JOIN AS BETA TESTER <ArrowRight /></a>
+                </Button>
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog.Root>
         </>
       )}
 
