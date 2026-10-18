@@ -33,7 +33,10 @@ function fixture(options: { storageError?: boolean; insertError?: boolean; profi
           if (table === 'admin_conversations' && action === 'select') data = [{ id: 'conversation', admin_id: 'admin' }];
           if (table === 'admin_messages' && action === 'select') data = messages.map(m => ({ ...m }));
           if (table === 'admin_messages' && action === 'delete') {
-            for (let i = messages.length - 1; i >= 0; i--) if (ids.includes(messages[i].id)) messages.splice(i, 1);
+            for (let i = messages.length - 1; i >= 0; i--) {
+              const message = messages[i];
+              if (message && ids.includes(message.id)) messages.splice(i, 1);
+            }
           }
           if (table === 'admin_messages' && action === 'insert') {
             if (failInsert) { error = { message: 'Insert denied' }; failInsert = false; }

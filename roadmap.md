@@ -3,6 +3,8 @@
 Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked out at /tmp/gopalengke-src)
 
 ## Tasks
+- [x] Complete seller approval: remove verification request/documents, send Congratulations and location reminder, test and push
+- [ ] Verify seller approval cleanup and congratulations inside a real admin/seller chat (blocked: no authenticated session for the existing external account system)
 - [x] Add admin profile-photo editing and display the assigned admin's picture in user chats
 - [x] Verify admin photo controls/chat display with mocked storage/profile reads and push to GitHub
 - [ ] Verify admin photo persistence and user-chat profile access on real accounts (blocked: no session or privileged access to the existing external account system)

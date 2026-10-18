@@ -836,14 +836,14 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
               {/* Actions */}
               <div className="flex gap-2">
                 {subtab === 'pending' ? (
-                  <button
+                  <Button
                     onClick={() => toggleApproved(user)}
-                    disabled={user.id === adminProfile?.id}
+                    disabled={user.id === adminProfile?.id || !!approving}
                     className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-medium bg-green-600 text-white active:scale-95 transition disabled:opacity-30"
                   >
-                    <UserCheck size={14} />
-                    Approve
-                  </button>
+                    {approving === user.id ? <Loader2 size={14} className="animate-spin" /> : <UserCheck size={14} />}
+                    {approvalRetry === user.id ? 'Subukan muli' : 'Approve'}
+                  </Button>
                 ) : (
                   <button
                     onClick={() => toggleActive(user)}
