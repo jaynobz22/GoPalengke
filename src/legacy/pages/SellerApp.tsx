@@ -1018,33 +1018,47 @@ function ProductFormModal({ store, product, onClose, onSaved }: { store: Store; 
     supabase.from('categories').select('id, name_fil').order('sort_order').then(({ data }) => setCategories(data || []));
   }, []);
 
+  async function uploadWithRetry(fileName: string, file: File, attempts = 3): Promise<void> {
+    let lastErr: any = null;
+    for (let i = 0; i < attempts; i++) {
+      const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, file);
+      if (!uploadError) return;
+      lastErr = uploadError;
+      // Sandaling hintay bago ulitin (para sa mahinang koneksyon)
+      await new Promise(r => setTimeout(r, 800 * (i + 1)));
+    }
+    throw lastErr || new Error('Hindi ma-upload ang larawan.');
+  }
+
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      // Use CropModal via ImageUploadField-like flow: compress and upload directly
-      (async () => {
-        setSaving(true);
-        setError(null);
-        try {
-          const compressed = await compressImage(file);
-          const ext = compressed.name.split('.').pop() || 'webp';
-          const fileName = `${store.id}/${Date.now()}.${ext}`;
-          const { error: uploadError } = await supabase.storage.from('product-images').upload(fileName, compressed);
-          if (uploadError) throw uploadError;
-          const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(fileName);
-          setImageUrl(publicUrl);
-        } catch (err: any) {
-          setError(err.message || 'Hindi ma-upload ang larawan.');
-        } finally {
-          setSaving(false);
-          if (fileRef.current) fileRef.current.value = '';
-        }
-      })();
-    };
-    reader.onerror = () => setError('Hindi mabasa ang larawan.');
-    reader.readAsDataURL(file);
+    if (fileRef.current) fileRef.current.value = '';
+    setSaving(true);
+    setError(null);
+    // Ipakita agad ang preview habang nag-uupload
+    const localPreview = URL.createObjectURL(file);
+    setImageUrl(localPreview);
+    try {
+      // Subukan i-compress; kapag hindi kaya (hal. HEIC mula sa iPhone), gamitin ang orihinal
+      let toUpload: File = file;
+      try {
+        toUpload = await compressImage(file);
+      } catch {
+        toUpload = file;
+      }
+      const ext = (toUpload.name.split('.').pop() || file.name.split('.').pop() || 'webp').toLowerCase();
+      const fileName = `${store.id}/${Date.now()}.${ext}`;
+      await uploadWithRetry(fileName, toUpload);
+      const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(fileName);
+      setImageUrl(publicUrl);
+    } catch (err: any) {
+      setImageUrl('');
+      setError('Hindi na-upload ang larawan. Subukan muli — puwede ring pumili ng ibang larawan o maghanap ng existing.');
+    } finally {
+      URL.revokeObjectURL(localPreview);
+      setSaving(false);
+    }
   }
 
   async function searchExistingImages(query: string) {
@@ -1246,6 +1260,12 @@ function ProductFormModal({ store, product, onClose, onSaved }: { store: Store; 
             {imageUrl ? (
               <div className="relative">
                 <img src={imageUrl} alt="Preview" loading="lazy" decoding="async" className="w-full aspect-[4/3] max-w-md rounded-xl object-cover" />
+                {saving && (
+                  <div className="absolute inset-0 bg-black/50 rounded-xl flex flex-col items-center justify-center gap-1 text-white">
+                    <Loader2 size={24} className="animate-spin" />
+                    <span className="text-xs font-medium">Nag-uupload... sandali lang</span>
+                  </div>
+                )}
                 <div className="absolute bottom-2 right-2 flex gap-1.5">
                   <button type="button" onClick={() => setShowImagePicker(true)}
                     className="bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-1">
