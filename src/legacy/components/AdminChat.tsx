@@ -136,12 +136,19 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
         .upload(fileName, compressed, { contentType: 'image/jpeg' });
       if (uploadError) { setSending(false); return; }
       const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(fileName);
+      let isVerificationImage = false;
+      if (!isAdmin) {
+        const { data: sender, error: senderError } = await supabase.from('profiles')
+          .select('role,is_approved').eq('id', currentUserId).single();
+        if (senderError) throw senderError;
+        isVerificationImage = sender?.role === 'seller' && !sender.is_approved;
+      }
       const { error } = await supabase.from('admin_messages').insert({
         conversation_id: conversationId,
         sender_id: currentUserId,
         body: null,
         image_url: urlData.publicUrl,
-        is_verification_image: !isAdmin,
+        is_verification_image: isVerificationImage,
       });
       if (!error) {
         await supabase.from('admin_conversations').update({ updated_at: new Date().toISOString() }).eq('id', conversationId);

@@ -8,6 +8,7 @@ import type { Announcement, Profile, FeePayment, UserRole, SellerFee, AdminCall,
 import { SUBSCRIPTION_THRESHOLD } from '../lib/types';
 import { ImageUploadField } from '../components/ImageUploadField';
 import { AdminProfilePhoto } from '../components/AdminProfilePhoto';
+import { approveSellerAccount } from '../lib/sellerApproval';
 import { Avatar } from '../components/Avatar';
 import { rotateBillingQr, getVideoCreditQr, ROTATION_DAILY_LIMIT } from '../lib/qrRotation';
 import { AdminDevicesSettings } from '../components/AdminDeviceLock';
@@ -291,6 +292,8 @@ export function AdminApp() {
 
 // ============= OVERVIEW =============
 function OverviewTab() {
+  const { profile: adminProfile } = useAuth();
+  const [verifying, setVerifying] = useState<string | null>(null);
   const [stats, setStats] = useState({
     stores: 0, products: 0, buyers: 0, riders: 0, sellers: 0, orders: 0,
     pendingApprovals: 0, pendingPayments: 0, pendingRiderPayments: 0, frozenSellers: 0, frozenRiders: 0,
@@ -429,19 +432,24 @@ function OverviewTab() {
                   <p className="font-semibold text-sm text-gray-800 truncate">{s.name}</p>
                   <p className="text-xs text-gray-400 truncate">{s.seller?.full_name} · {s.seller?.email}</p>
                 </div>
-                <button
+                <Button
                   onClick={async () => {
-                    const { error } = await supabase.rpc('admin_verify_store', { p_store_id: s.id });
-                    if (!error) {
+                    if (!adminProfile || verifying) return;
+                    setVerifying(s.id);
+                    try {
+                      await approveSellerAccount(supabase, s.seller_id, adminProfile.id);
                       setStats(prev => ({ ...prev, unverifiedStores: prev.unverifiedStores.filter((st: any) => st.id !== s.id) }));
-                      const { purgeVerificationImages } = await import('../lib/chatImageCleanup');
-                      await purgeVerificationImages(s.seller_id);
+                    } catch (error) {
+                      alert(error instanceof Error ? error.message : 'Hindi matapos ang seller approval.');
+                    } finally {
+                      setVerifying(null);
                     }
                   }}
+                  disabled={!!verifying}
                   className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold active:scale-95 transition"
                 >
-                  <Check size={14} /> Verify
-                </button>
+                  {verifying === s.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Verify
+                </Button>
               </div>
             ))}
           </div>
@@ -632,6 +640,8 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
   const [deleting, setDeleting] = useState<string | null>(null);
   const [reviewingUser, setReviewingUser] = useState<Profile | null>(null);
+  const [approving, setApproving] = useState<string | null>(null);
+  const [approvalRetry, setApprovalRetry] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     let q = supabase.from('profiles').select('*').order('created_at', { ascending: false });
@@ -644,16 +654,32 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
   useEffect(() => { load(); }, [load]);
 
   async function toggleApproved(user: Profile) {
-    const next = !user.is_approved;
-    await supabase.from('profiles').update({ is_approved: next }).eq('id', user.id);
-    if (user.role === 'seller') {
-      await supabase.from('stores').update({ is_verified: next }).eq('seller_id', user.id);
+    if (!adminProfile || approving) return;
+    const next = approvalRetry === user.id || !user.is_approved;
+    setApproving(user.id);
+    try {
+      if (next && user.role === 'seller') {
+        await approveSellerAccount(supabase, user.id, adminProfile.id);
+      } else {
+        const { error } = await supabase.from('profiles').update({ is_approved: next }).eq('id', user.id);
+        if (error) throw error;
+        if (user.role === 'seller') {
+          const { error } = await supabase.from('stores').update({ is_verified: next }).eq('seller_id', user.id);
+          if (error) throw error;
+        }
+        if (next) {
+          const { purgeVerificationImages } = await import('../lib/chatImageCleanup');
+          await purgeVerificationImages(user.id);
+        }
+      }
+      setApprovalRetry(null);
+      await load();
+    } catch (error) {
+      if (next && user.role === 'seller') setApprovalRetry(user.id);
+      alert(error instanceof Error ? error.message : error?.message || 'Hindi matapos ang approval.');
+    } finally {
+      setApproving(null);
     }
-    if (next) {
-      const { purgeVerificationImages } = await import('../lib/chatImageCleanup');
-      await purgeVerificationImages(user.id);
-    }
-    load();
   }
 
   async function toggleDemo(user: Profile) {
@@ -832,18 +858,18 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
                     {user.is_active ? 'Deactivate' : 'Activate'}
                   </button>
                 )}
-                <button
+                <Button
                   onClick={() => toggleApproved(user)}
-                  disabled={user.id === adminProfile?.id}
+                  disabled={user.id === adminProfile?.id || !!approving}
                   className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-medium transition disabled:opacity-30 ${
                     user.is_approved
                       ? 'bg-gray-100 text-gray-600'
                       : 'bg-green-600 text-white'
                   }`}
                 >
-                  {user.is_approved ? <UserX size={14} /> : <UserCheck size={14} />}
-                  {user.is_approved ? 'Disapprove' : 'Approve'}
-                </button>
+                  {approving === user.id ? <Loader2 size={14} className="animate-spin" /> : user.is_approved ? <UserX size={14} /> : <UserCheck size={14} />}
+                  {approvalRetry === user.id ? 'Subukan muli' : user.is_approved ? 'Disapprove' : 'Approve'}
+                </Button>
               </div>
 
               {/* View Profile Button */}
