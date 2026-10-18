@@ -104,6 +104,21 @@ function BetaTesterPage() {
         </div>
       </section>
 
+      <section className="mx-auto max-w-3xl px-5 pt-12">
+        <h2 className="text-center text-2xl font-bold">📹 Panoorin ang Video Tutorial</h2>
+        <p className="mt-2 text-center text-sm text-muted-foreground">Paano sumali at mag-install ng GoPalengke app</p>
+        <div className="mt-6 aspect-video w-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <iframe
+            className="h-full w-full"
+            src="https://www.youtube-nocookie.com/embed/AFlOqeelY3U"
+            title="GoPalengke Beta Tester Tutorial"
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      </section>
+
       <section className="mx-auto max-w-3xl px-5 py-12">
         <h2 className="text-center text-2xl font-bold">Paano Sumali</h2>
         <ol className="mt-8 space-y-4">
