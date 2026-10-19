@@ -23,15 +23,38 @@ import { GlobalIncomingCall } from './components/GlobalIncomingCall';
 import { LiveActivityToast } from './components/LiveActivityToast';
 import { GlobalGpsGate } from './lib/gpsGate';
 import { getRegistration, initPushNotifications } from './lib/pushNotifications';
+import { isAuthLocation, updateAuthLocation } from './lib/authNavigation';
 
 function AppContent() {
-  const { session, profile, loading, pendingVerification } = useAuth();
-  const [showAuth, setShowAuth] = useState(() => new URLSearchParams(window.location.search).has('signup'));
+  const { session, profile, loading, pendingVerification, cancelVerification, signOut } = useAuth();
+  const [showAuth, setShowAuth] = useState(() => isAuthLocation(window.location.search));
   const publicRoute = useRoute();
   const legalRoute = useLegalRoute();
   const path = usePath();
   const tutorialRoute = useTutorialRoute();
   const affiliateRoute = useAffiliateRoute();
+
+  useEffect(() => {
+    const syncAuth = () => {
+      const open = isAuthLocation(window.location.search);
+      setShowAuth(open);
+      if (!open) cancelVerification();
+    };
+    window.addEventListener('popstate', syncAuth);
+    return () => window.removeEventListener('popstate', syncAuth);
+  }, []);
+
+  async function returnHome() {
+    cancelVerification();
+    if (session && !profile) await signOut();
+    setShowAuth(false);
+    updateAuthLocation(false);
+  }
+
+  function openAuth() {
+    setShowAuth(true);
+    updateAuthLocation(true);
+  }
 
   // Capture referral code from URL (?ref=CODE for seller/rider, ?aff_ref=CODE for affiliate invite) and clean the URL
   useEffect(() => {
@@ -101,16 +124,16 @@ function AppContent() {
   }
 
   if (pendingVerification) {
-    return <AuthPage onBack={() => navigate('/')} />;
+    return <AuthPage onBack={returnHome} />;
   }
 
   if (!session) {
-    if (showAuth) return <AuthPage onBack={() => setShowAuth(false)} />;
-    return <LandingPage onGetStarted={() => setShowAuth(true)} />;
+    if (showAuth) return <AuthPage onBack={returnHome} />;
+    return <LandingPage onGetStarted={openAuth} />;
   }
 
   if (!profile) {
-    return <AuthPage needsProfile onBack={() => navigate('/')} />;
+    return <AuthPage needsProfile onBack={returnHome} />;
   }
 
   if (profile.role !== 'admin' && (!(profile.full_name || '').trim() || needsProfileCompletion(profile))) {
@@ -146,7 +169,7 @@ function AppContent() {
   if (profile.role === 'rider') return <><RiderApp /><GlobalIncomingCall /><NotificationPermissionPrompt /></>;
   if (profile.role === 'admin') return <ErrorBoundary><AdminDeviceGate><AdminApp /></AdminDeviceGate></ErrorBoundary>;
 
-  return <LandingPage onGetStarted={() => setShowAuth(true)} />;
+  return <LandingPage onGetStarted={openAuth} />;
 }
 
 export default function App() {

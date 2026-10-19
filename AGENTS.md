@@ -19,3 +19,4 @@
 - Shared image uploads offer original-file upload and optional crop editing, await profile persistence, and report save errors; this keeps all role screens consistent without duplicating upload flows.
 - Admin profile photos use the existing profiles.avatar_url and shared upload field; AdminChat resolves the conversation participant's photo with a narrow profile read so all user roles see the assigned admin without duplicate storage.
 - Both admin seller-approval controls use the shared sellerApproval module; it preserves unrelated chats, checks cleanup errors, and reuses an existing approval message on retries.
+- Legacy login visibility is synchronized with URL history; confirmed missing profiles clear only the local session, while failed profile reads preserve existing accounts.

@@ -245,8 +245,10 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
       <div className="px-5 pt-12 pb-6 flex items-center gap-3">
         {mode !== 'welcome' && (
           <button
+            aria-label="Bumalik"
             onClick={() => {
-              if (mode === 'signin') setMode('welcome');
+              if ((mode === 'signin' || mode === 'signup-role' || needsProfile) && onBack) onBack();
+              else if (mode === 'signin') setMode('welcome');
               else if (mode === 'forgot') setMode('signin');
               else if (mode === 'signup-form') setMode('signup-role');
               else if (mode === 'verify-email') setMode('signup-form');
@@ -261,6 +263,7 @@ export function AuthPage({ needsProfile = false, onBack }: { needsProfile?: bool
         )}
         {mode === 'welcome' && onBack && (
           <button
+            aria-label="Bumalik sa homepage"
             onClick={onBack}
             className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-600 active:scale-95 transition"
           >

@@ -3,6 +3,8 @@
 Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked out at /tmp/gopalengke-src)
 
 ## Tasks
+- [x] Fix login Back/homepage navigation; phone/desktop app Back, browser Back, signup exit/reload and missing-profile tests pass
+- [ ] Verify deleted-account session recovery on a real account (blocked: no session for the existing external account system)
 - [x] Complete seller approval: remove verification request/documents, send Congratulations and location reminder, test and push
 - [ ] Verify seller approval cleanup and congratulations inside a real admin/seller chat (blocked: no authenticated session for the existing external account system)
 - [x] Add admin profile-photo editing and display the assigned admin's picture in user chats

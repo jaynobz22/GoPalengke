@@ -6,12 +6,14 @@ import type { Profile, UserRole, VehicleType } from "./types";
 import { isAccountBanned, isAccountSuspended, getAccountStatusLabel, checkDeviceFingerprint } from "./security";
 import { sendWelcomeEmail as sendWelcomeEmailFn } from "../../lib/welcome-email.functions";
 import { signInWithPhonePassword } from "../../lib/phone-auth.functions";
+import { readAccountProfile } from './accountProfile';
 
 interface AuthContextValue {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
   pendingVerification: boolean;
+  cancelVerification: () => void;
   signUp: (
     email: string,
     password: string,
@@ -44,7 +46,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function fetchProfile(userId: string) {
-    const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+    const { data, error } = await readAccountProfile(supabase, userId);
+    if (error) return;
+    if (!data) {
+      setPendingVerif(false);
+      setSession(null);
+      setProfile(null);
+      return;
+    }
     const prof = data as Profile | null;
     if (prof) {
       if (isAccountBanned(prof.account_status) || isAccountSuspended(prof.account_status)) {
@@ -78,7 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setSession(newSession);
       if (newSession?.user) {
-        fetchProfile(newSession.user.id);
+        // Leave the auth callback before making another auth request.
+        setTimeout(() => fetchProfile(newSession.user.id), 0);
       } else {
         setProfile(null);
       }
@@ -306,6 +316,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         loading,
         pendingVerification,
+        cancelVerification: () => setPendingVerif(false),
         signUp,
         signIn,
         signOut,
