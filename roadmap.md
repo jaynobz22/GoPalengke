@@ -4,6 +4,7 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 
 ## Tasks
 - [x] Add talipapa/neighborhood seller option and location-based market choices with manual entry to create/edit store forms; four tests and isolated form interactions pass; pushed
+- [x] Tint buyer/seller, admin and affiliate chat panels soft green with a visible edge so the chat box reads apart from the white page; desktop and phone screenshots checked and pushed
 - [ ] Verify new seller-location choices save/read back on a real seller account (blocked: existing external account system has no available authenticated session)
 - [x] Rename the profile-completion submit button to "I-save at Simulang Gamitin ang GoPalengke" and keep it on one line on phone
 - [x] Fix login Back/homepage navigation; phone/desktop app Back, browser Back, signup exit/reload and missing-profile tests pass
@@ -96,6 +97,6 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 - [x] Replace the flat blur with a left-to-right fade so the headline stays readable
 - [x] Thin the blur and re-position the image so the phone with the app is visible
 - [x] Verify phone and laptop rendering and build
-- [ ] Push to GitHub (blocked: the GitHub connector token now returns "Bad credentials" — needs a new Personal Access Token)
+- [x] Push to GitHub
 
 - [x] Admin-user video call fix: polling fallback sa useIncomingAdminCall (5s), "Subukan muli" retry sa AdminVideoCall error banner, database/admin-calls.sql RLS policies (kailangang patakbuhin ng user sa database SQL Editor)
