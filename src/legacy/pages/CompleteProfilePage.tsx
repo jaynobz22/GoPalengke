@@ -1,1 +1,199 @@
-Ly8gQHRzLW5vY2hlY2sKaW1wb3J0IHsgdXNlU3RhdGUgfSBmcm9tICdyZWFjdCc7CmltcG9ydCB7IENoZWNrLCBCaWtlLCBTdG9yZSB9IGZyb20gJ2x1Y2lkZS1yZWFjdCc7CmltcG9ydCB7IHVzZUF1dGggfSBmcm9tICcuLi9saWIvYXV0aCc7CmltcG9ydCB7IHN1cGFiYXNlIH0gZnJvbSAnLi4vbGliL3N1cGFiYXNlJzsKaW1wb3J0IHsgTG9jYXRpb25TZWxlY3RvciwgdHlwZSBMb2NhdGlvbkRhdGEgfSBmcm9tICcuLi9jb21wb25lbnRzL0xvY2F0aW9uU2VsZWN0b3InOwppbXBvcnQgeyBJbWFnZVVwbG9hZEZpZWxkIH0gZnJvbSAnLi4vY29tcG9uZW50cy9JbWFnZVVwbG9hZEZpZWxkJzsKaW1wb3J0IHsgVkVISUNMRV9USUVSUyB9IGZyb20gJy4uL2xpYi9kZWxpdmVyeUZlZSc7Cgpjb25zdCBmaWxsZWQgPSAodjogdW5rbm93bikgPT4gdiAhPT0gbnVsbCAmJiB2ICE9PSB1bmRlZmluZWQgJiYgU3RyaW5nKHYpLnRyaW0oKSAhPT0gJyc7CgovKiogVHJ1ZSBrYXBhZyBrdWxhbmcgcGEgYW5nIHJlcXVpcmVkIG5hIHByb2ZpbGUgZGV0YWlscyBiYWdvIG1hLWFjY2VzcyBhbmcgZGFzaGJvYXJkLiAqLwpleHBvcnQgZnVuY3Rpb24gbmVlZHNQcm9maWxlQ29tcGxldGlvbihwOiBhbnkpOiBib29sZWFuIHsKICBpZiAoIXAgfHwgcC5yb2xlID09PSAnYWRtaW4nKSByZXR1cm4gZmFsc2U7CiAgaWYgKCFmaWxsZWQocC5mdWxsX25hbWUpKSByZXR1cm4gdHJ1ZTsKICBpZiAocC5yb2xlID09PSAnYnV5ZXInKSB7CiAgICByZXR1cm4gIShmaWxsZWQocC5hdmF0YXJfdXJsKSAmJiBmaWxsZWQocC5ob3VzZV9waG90b191cmwpICYmIGZpbGxlZChwLmNvbXBsZXRlX2FkZHJlc3MpICYmIGZpbGxlZChwLmNpdHkpICYmIGZpbGxlZChwLmJhcmFuZ2F5KSk7CiAgfQogIGlmIChwLnJvbGUgPT09ICdyaWRlcicpIHsKICAgIHJldHVybiAhWwogICAgICBwLmF2YXRhcl91cmwsIHAudmVoaWNsZV90eXBlLCBwLnJpZGVyX2FnZSwgcC5yaWRlcl9mYW1pbHlfc3RhdHVzLCBwLnJpZGVyX3Jlc2lkZW5jZV9hZGRyZXNzLAogICAgICBwLnJpZGVyX3BsYXRlX251bWJlciwgcC5yaWRlcl9tb3Rvcl9tb2RlbCwgcC5yaWRlcl92YWxpZF9pZF91cmwsIHAucmlkZXJfbHRvX29yX2NyX3VybCwgcC5jaXR5LCBwLmJhcmFuZ2F5LAogICAgXS5ldmVyeShmaWxsZWQpOwogIH0KICByZXR1cm4gZmFsc2U7Cn0KCi8vIElwaW5hcGFraXRhIHBhZ2thdGFwb3MgbWEtdmVyaWZ5IGFuZyBhY2NvdW50IGhhbmdnYSd0IGhpbmRpIGt1bXBsZXRvIGFuZyBwcm9maWxlLgpleHBvcnQgZnVuY3Rpb24gQ29tcGxldGVQcm9maWxlUGFnZSgpIHsKICBjb25zdCB7IHByb2ZpbGUsIHJlZnJlc2hQcm9maWxlLCBzaWduT3V0IH0gPSB1c2VBdXRoKCk7CiAgY29uc3QgaXNQaG9uZUFjY291bnQgPSAocHJvZmlsZT8uZW1haWwgfHwgJycpLmVuZHNXaXRoKCdAcGhvbmUuZ29wYWxlbmdrZS5uZXQnKTsKICBjb25zdCByb2xlID0gcHJvZmlsZT8ucm9sZTsKICBjb25zdCBbZnVsbE5hbWUsIHNldEZ1bGxOYW1lXSA9IHVzZVN0YXRlKHByb2ZpbGU/LmZ1bGxfbmFtZSB8fCAnJyk7CiAgY29uc3QgW3Bob25lLCBzZXRQaG9uZV0gPSB1c2VTdGF0ZShwcm9maWxlPy5waG9uZSB8fCAnJyk7CiAgY29uc3QgW3ZlaGljbGVUeXBlLCBzZXRWZWhpY2xlVHlwZV0gPSB1c2VTdGF0ZShwcm9maWxlPy52ZWhpY2xlX3R5cGUgfHwgJ21vdG9yY3ljbGUnKTsKICBjb25zdCBbbG9jYXRpb24sIHNldExvY2F0aW9uXSA9IHVzZVN0YXRlPExvY2F0aW9uRGF0YT4oewogICAgYmFyYW5nYXk6IHByb2ZpbGU/LmJhcmFuZ2F5IHx8ICcnLCBkaXN0cmljdDogcHJvZmlsZT8uZGlzdHJpY3QgfHwgJycsIGNpdHk6IHByb2ZpbGU/LmNpdHkgfHwgJycsIHJlZ2lvbjogcHJvZmlsZT8ucmVnaW9uIHx8ICcxMzAwMDAwMDAwJywKICB9KTsKICBjb25zdCBbYXZhdGFyLCBzZXRBdmF0YXJdID0gdXNlU3RhdGUocHJvZmlsZT8uYXZhdGFyX3VybCB8fCAnJyk7CiAgY29uc3QgW2hvdXNlUGhvdG8sIHNldEhvdXNlUGhvdG9dID0gdXNlU3RhdGUocHJvZmlsZT8uaG91c2VfcGhvdG9fdXJsIHx8ICcnKTsKICBjb25zdCBbYWRkcmVzcywgc2V0QWRkcmVzc10gPSB1c2VTdGF0ZShwcm9maWxlPy5jb21wbGV0ZV9hZGRyZXNzIHx8IHByb2ZpbGU/LnJpZGVyX3Jlc2lkZW5jZV9hZGRyZXNzIHx8ICcnKTsKICBjb25zdCBbYWdlLCBzZXRBZ2VdID0gdXNlU3RhdGUocHJvZmlsZT8ucmlkZXJfYWdlPy50b1N0cmluZygpIHx8ICcnKTsKICBjb25zdCBbZmFtaWx5LCBzZXRGYW1pbHldID0gdXNlU3RhdGUocHJvZmlsZT8ucmlkZXJfZmFtaWx5X3N0YXR1cyB8fCAnJyk7CiAgY29uc3QgW3BsYXRlLCBzZXRQbGF0ZV0gPSB1c2VTdGF0ZShwcm9maWxlPy5yaWRlcl9wbGF0ZV9udW1iZXIgfHwgJycpOwogIGNvbnN0IFttb2RlbCwgc2V0TW9kZWxdID0gdXNlU3RhdGUocHJvZmlsZT8ucmlkZXJfbW90b3JfbW9kZWwgfHwgJycpOwogIGNvbnN0IFtsaWNlbnNlLCBzZXRMaWNlbnNlXSA9IHVzZVN0YXRlKHByb2ZpbGU/LnJpZGVyX3ZhbGlkX2lkX3VybCB8fCAnJyk7CiAgY29uc3QgW29yY3IsIHNldE9yY3JdID0gdXNlU3RhdGUocHJvZmlsZT8ucmlkZXJfbHRvX29yX2NyX3VybCB8fCAnJyk7CiAgY29uc3QgW2Vycm9yLCBzZXRFcnJvcl0gPSB1c2VTdGF0ZTxzdHJpbmcgfCBudWxsPihudWxsKTsKICBjb25zdCBbc2F2aW5nLCBzZXRTYXZpbmddID0gdXNlU3RhdGUoZmFsc2UpOwoKICBhc3luYyBmdW5jdGlvbiBzYXZlKGU6IFJlYWN0LkZvcm1FdmVudCkgewogICAgZS5wcmV2ZW50RGVmYXVsdCgpOwogICAgc2V0RXJyb3IobnVsbCk7CiAgICBpZiAoZnVsbE5hbWUudHJpbSgpLmxlbmd0aCA8IDIpIHJldHVybiBzZXRFcnJvcignSWxhZ2F5IGFuZyBidW9uZyBwYW5nYWxhbi4nKTsKICAgIGlmICghYXZhdGFyKSByZXR1cm4gc2V0RXJyb3IoJ01hZy11cGxvYWQgbmcgcHJvZmlsZSBwaWN0dXJlLicpOwogICAgaWYgKCFsb2NhdGlvbi5jaXR5IHx8ICFsb2NhdGlvbi5iYXJhbmdheSkgcmV0dXJuIHNldEVycm9yKCdQaWxpaW4gYW5nIGx1bmdzb2QgYXQgYmFyYW5nYXkuJyk7CiAgICBpZiAoYWRkcmVzcy50cmltKCkubGVuZ3RoIDwgNSkgcmV0dXJuIHNldEVycm9yKCdJbGFnYXkgYW5nIGt1bXBsZXRvbmcgYWRkcmVzcyAoaG91c2Ugbm8uLCBzdHJlZXQsIHB1cm9rKS4nKTsKICAgIGlmICghaXNQaG9uZUFjY291bnQgJiYgIS9eKDA5fFwrNjM5KVxkezl9JC8udGVzdChwaG9uZS5yZXBsYWNlKC9ccy9nLCAnJykpKSByZXR1cm4gc2V0RXJyb3IoJ0lsYWdheSBhbmcgdGFtYW5nIGNlbGxwaG9uZSBudW1iZXIuJyk7CiAgICBpZiAocm9sZSA9PT0gJ2J1eWVyJyAmJiAhaG91c2VQaG90bykgcmV0dXJuIHNldEVycm9yKCdNYWctdXBsb2FkIG5nIGxhcmF3YW4gbmcgYmFoYXkgcGFyYSBtYWRhbGluZyBtYWhhbmFwIG5nIHJpZGVyLicpOwogICAgaWYgKHJvbGUgPT09ICdyaWRlcicpIHsKICAgICAgY29uc3QgbiA9IHBhcnNlSW50KGFnZSk7CiAgICAgIGlmICghbiB8fCBuIDwgMTggfHwgbiA+IDgwKSByZXR1cm4gc2V0RXJyb3IoJ0lsYWdheSBhbmcgdGFtYW5nIGVkYWQgKDE4IHBhdGFhcykuJyk7CiAgICAgIGlmICghZmFtaWx5LnRyaW0oKSkgcmV0dXJuIHNldEVycm9yKCdJbGFnYXkgYW5nIGZhbWlseSBzdGF0dXMuJyk7CiAgICAgIGlmICghcGxhdGUudHJpbSgpKSByZXR1cm4gc2V0RXJyb3IoJ0lsYWdheSBhbmcgcGxhdGUgbnVtYmVyLicpOwogICAgICBpZiAoIW1vZGVsLnRyaW0oKSkgcmV0dXJuIHNldEVycm9yKCdJbGFnYXkgYW5nIG1vZGVsIG5nIHNhc2FreWFuLicpOwogICAgICBpZiAoIWxpY2Vuc2UpIHJldHVybiBzZXRFcnJvcigiTWFnLXVwbG9hZCBuZyBEcml2ZXIncyBMaWNlbnNlLiIpOwogICAgICBpZiAoIW9yY3IpIHJldHVybiBzZXRFcnJvcignTWFnLXVwbG9hZCBuZyBMVE8gT1IvQ1IuJyk7CiAgICB9CiAgICBzZXRTYXZpbmcodHJ1ZSk7CiAgICBjb25zdCB1cGRhdGU6IGFueSA9IHsKICAgICAgZnVsbF9uYW1lOiBmdWxsTmFtZS50cmltKCksCiAgICAgIGF2YXRhcl91cmw6IGF2YXRhciwKICAgICAgYmFyYW5nYXk6IGxvY2F0aW9uLmJhcmFuZ2F5LCBkaXN0cmljdDogbG9jYXRpb24uZGlzdHJpY3QgfHwgbnVsbCwgY2l0eTogbG9jYXRpb24uY2l0eSwgcmVnaW9uOiBsb2NhdGlvbi5yZWdpb24sCiAgICAgIGNvbXBsZXRlX2FkZHJlc3M6IGFkZHJlc3MudHJpbSgpLAogICAgfTsKICAgIGlmICghaXNQaG9uZUFjY291bnQpIHVwZGF0ZS5waG9uZSA9IHBob25lLnRyaW0oKTsKICAgIGlmIChyb2xlID09PSAnYnV5ZXInKSB1cGRhdGUuaG91c2VfcGhvdG9fdXJsID0gaG91c2VQaG90bzsKICAgIGlmIChyb2xlID09PSAncmlkZXInKSBPYmplY3QuYXNzaWduKHVwZGF0ZSwgewogICAgICB2ZWhpY2xlX3R5cGU6IHZlaGljbGVUeXBlLCByaWRlcl9hZ2U6IHBhcnNlSW50KGFnZSksIHJpZGVyX2ZhbWlseV9zdGF0dXM6IGZhbWlseS50cmltKCksCiAgICAgIHJpZGVyX3Jlc2lkZW5jZV9hZGRyZXNzOiBhZGRyZXNzLnRyaW0oKSwgcmlkZXJfcGxhdGVfbnVtYmVyOiBwbGF0ZS50cmltKCksIHJpZGVyX21vdG9yX21vZGVsOiBtb2RlbC50cmltKCksCiAgICAgIHJpZGVyX3ZhbGlkX2lkX3VybDogbGljZW5zZSwgcmlkZXJfbHRvX29yX2NyX3VybDogb3JjciwKICAgIH0pOwogICAgY29uc3QgeyBlcnJvcjogZXJyIH0gPSBhd2FpdCBzdXBhYmFzZS5mcm9tKCdwcm9maWxlcycpLnVwZGF0ZSh1cGRhdGUpLmVxKCdpZCcsIHByb2ZpbGUuaWQpOwogICAgaWYgKGVycikgeyBzZXRTYXZpbmcoZmFsc2UpOyByZXR1cm4gc2V0RXJyb3IoZXJyLm1lc3NhZ2UpOyB9CiAgICBpZiAocm9sZSA9PT0gJ3NlbGxlcicgfHwgcm9sZSA9PT0gJ3JpZGVyJykgewogICAgICBjb25zdCByZWYgPSBzZXNzaW9uU3RvcmFnZS5nZXRJdGVtKCdnb3BhbGVuZ2tlX3JlZl9jb2RlJykgfHwgbnVsbDsKICAgICAgdHJ5IHsKICAgICAgICBhd2FpdCBzdXBhYmFzZS5ycGMoJ2xpbmtfYWZmaWxpYXRlX3JlZmVycmFsJywgeyBwX3JlZmVycmFsX2NvZGU6IHJlZiwgcF91c2VyX2lkOiBwcm9maWxlLmlkLCBwX3JvbGU6IHJvbGUsIHBfZnVsbF9uYW1lOiBmdWxsTmFtZS50cmltKCkgfSk7CiAgICAgIH0gY2F0Y2ggeyAvKiBiZXN0LWVmZm9ydCAqLyB9CiAgICAgIHNlc3Npb25TdG9yYWdlLnJlbW92ZUl0ZW0oJ2dvcGFsZW5na2VfcmVmX2NvZGUnKTsKICAgIH0KICAgIGlmIChpc1Bob25lQWNjb3VudCAmJiByb2xlID09PSAnc2VsbGVyJykgc3VwYWJhc2UucnBjKCdzZW5kX3NlbGxlcl93ZWxjb21lX21lc3NhZ2UnLCB7IHBfdXNlcl9pZDogcHJvZmlsZS5pZCB9KS50aGVuKCgpID0+IHt9LCAoKSA9PiB7fSk7CiAgICBhd2FpdCByZWZyZXNoUHJvZmlsZSgpOwogICAgc2V0U2F2aW5nKGZhbHNlKTsKICB9CgogIGNvbnN0IGlucHV0ID0gJ3ctZnVsbCBweC00IHB5LTMgcm91bmRlZC14bCBib3JkZXIgYm9yZGVyLWdyYXktMjAwIGJnLXdoaXRlIGZvY3VzOmJvcmRlci1icmFuZC01MDAgZm9jdXM6cmluZy0yIGZvY3VzOnJpbmctYnJhbmQtMTAwIG91dGxpbmUtbm9uZSB0cmFuc2l0aW9uJzsKICBjb25zdCBsYWJlbCA9ICd0ZXh0LXNtIGZvbnQtbWVkaXVtIHRleHQtZ3JheS02MDAgbWItMSBibG9jayc7CiAgY29uc3QgY2FyZCA9ICdiZy13aGl0ZSByb3VuZGVkLTJ4bCBib3JkZXIgYm9yZGVyLWdyYXktMTAwIHAtNCBzcGFjZS15LTQnOwogIHJldHVybiAoCiAgICA8ZGl2IGNsYXNzTmFtZT0ibWluLWgtc2NyZWVuIGJnLWdyYWRpZW50LXRvLWJyIGZyb20tYnJhbmQtNTAgdmlhLXdoaXRlIHRvLW9yYW5nZS01MCBweC01IHB0LTEyIHBiLTEwIj4KICAgICAgPGRpdiBjbGFzc05hbWU9Im1heC13LW1kIG14LWF1dG8iPgogICAgICAgIDxoMSBjbGFzc05hbWU9InRleHQtMnhsIGZvbnQtYm9sZCB0ZXh0LWdyYXktODAwIj5LdW1wbGV0dWhpbiBhbmcgUHJvZmlsZTwvaDE+CiAgICAgICAgPHAgY2xhc3NOYW1lPSJ0ZXh0LWdyYXktNTAwIHRleHQtc20gbWItNiI+CiAgICAgICAgICBWZXJpZmllZCBuYSBhbmcgYWNjb3VudCBtbyEgS3VtcGxldHVoaW4gbXVuYSBhbmcgbWdhIGRldGFseWUgYmFnbyBtYWthcGFzb2sgc2EgZGFzaGJvYXJkCiAgICAgICAgICB7cm9sZSA9PT0gJ3JpZGVyJyA/ICcg4oCUIGthaWxhbmdhbiBpdG8gcGFyYSBtYS12ZXJpZnkga2EgYmlsYW5nIHJpZGVyLicgOiAnLid9CiAgICAgICAgPC9wPgogICAgICAgIDxmb3JtIG9uU3VibWl0PXtzYXZlfSBjbGFzc05hbWU9InNwYWNlLXktNCI+CiAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT17Y2FyZH0+CiAgICAgICAgICAgIDxwIGNsYXNzTmFtZT0iZm9udC1zZW1pYm9sZCB0ZXh0LWdyYXktODAwIj5QZXJzb25hbCBuYSBEZXRhbHllPC9wPgogICAgICAgICAgICA8SW1hZ2VVcGxvYWRGaWVsZCBsYWJlbD0iUHJvZmlsZSBQaWN0dXJlIChtYWxpbmF3IG5hIG11a2hhKSIgdmFsdWU9e2F2YXRhcn0gb25DaGFuZ2U9e3NldEF2YXRhcn0KICAgICAgICAgICAgICBidWNrZXQ9InByb2ZpbGUtaW1hZ2VzIiBmb2xkZXI9e2BhdmF0YXJzLyR7cHJvZmlsZT8uaWR9YH0gYXNwZWN0Q2xhc3M9ImFzcGVjdC1zcXVhcmUgbWF4LXctNDAgbXgtYXV0byIgY3JvcEFzcGVjdD17MX0gLz4KICAgICAgICAgICAgPGRpdj4KICAgICAgICAgICAgICA8bGFiZWwgY2xhc3NOYW1lPXtsYWJlbH0+QnVvbmcgUGFuZ2FsYW48L2xhYmVsPgogICAgICAgICAgICAgIDxpbnB1dCBjbGFzc05hbWU9e2lucHV0fSB2YWx1ZT17ZnVsbE5hbWV9IG9uQ2hhbmdlPXtlID0+IHNldEZ1bGxOYW1lKGUudGFyZ2V0LnZhbHVlKX0gcGxhY2Vob2xkZXI9Ikp1YW4gZGVsYSBDcnV6IiByZXF1aXJlZCAvPgogICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgeyFpc1Bob25lQWNjb3VudCAmJiAoCiAgICAgICAgICAgICAgPGRpdj4KICAgICAgICAgICAgICAgIDxsYWJlbCBjbGFzc05hbWU9e2xhYmVsfT5DZWxscGhvbmUgTnVtYmVyPC9sYWJlbD4KICAgICAgICAgICAgICAgIDxpbnB1dCBjbGFzc05hbWU9e2lucHV0fSB0eXBlPSJ0ZWwiIHZhbHVlPXtwaG9uZX0gb25DaGFuZ2U9e2UgPT4gc2V0UGhvbmUoZS50YXJnZXQudmFsdWUpfSBwbGFjZWhvbGRlcj0iMDkxNzEyMzQ1NjciIHJlcXVpcmVkIC8+CiAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgICl9CiAgICAgICAgICAgIHtyb2xlID09PSAncmlkZXInICYmICgKICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0iZ3JpZCBncmlkLWNvbHMtMiBnYXAtMyI+CiAgICAgICAgICAgICAgICA8ZGl2PgogICAgICAgICAgICAgICAgICA8bGFiZWwgY2xhc3NOYW1lPXtsYWJlbH0+RWRhZDwvbGFiZWw+CiAgICAgICAgICAgICAgICAgIDxpbnB1dCBjbGFzc05hbWU9e2lucHV0fSB0eXBlPSJudW1iZXIiIGlucHV0TW9kZT0ibnVtZXJpYyIgdmFsdWU9e2FnZX0gb25DaGFuZ2U9e2UgPT4gc2V0QWdlKGUudGFyZ2V0LnZhbHVlKX0gcGxhY2Vob2xkZXI9IjI1IiAvPgogICAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgICAgICA8ZGl2PgogICAgICAgICAgICAgICAgICA8bGFiZWwgY2xhc3NOYW1lPXtsYWJlbH0+RmFtaWx5IFN0YXR1czwvbGFiZWw+CiAgICAgICAgICAgICAgICAgIDxzZWxlY3QgY2xhc3NOYW1lPXtpbnB1dH0gdmFsdWU9e2ZhbWlseX0gb25DaGFuZ2U9e2UgPT4gc2V0RmFtaWx5KGUudGFyZ2V0LnZhbHVlKX0+CiAgICAgICAgICAgICAgICAgICAgPG9wdGlvbiB2YWx1ZT0iIj5QaWxpaW48L29wdGlvbj4KICAgICAgICAgICAgICAgICAgICA8b3B0aW9uIHZhbHVlPSJTaW5nbGUiPlNpbmdsZTwvb3B0aW9uPgogICAgICAgICAgICAgICAgICAgIDxvcHRpb24gdmFsdWU9Ik1heSBhc2F3YSI+TWF5IGFzYXdhPC9vcHRpb24+CiAgICAgICAgICAgICAgICAgICAgPG9wdGlvbiB2YWx1ZT0iTWF5IGFzYXdhIGF0IGFuYWsiPk1heSBhc2F3YSBhdCBhbmFrPC9vcHRpb24+CiAgICAgICAgICAgICAgICAgICAgPG9wdGlvbiB2YWx1ZT0iU2luZ2xlIHBhcmVudCI+U2luZ2xlIHBhcmVudDwvb3B0aW9uPgogICAgICAgICAgICAgICAgICA8L3NlbGVjdD4KICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICApfQogICAgICAgICAgPC9kaXY+CgogICAgICAgICAgPGRpdiBjbGFzc05hbWU9e2NhcmR9PgogICAgICAgICAgICA8cCBjbGFzc05hbWU9ImZvbnQtc2VtaWJvbGQgdGV4dC1ncmF5LTgwMCI+e3JvbGUgPT09ICdzZWxsZXInID8gJ0xvY2F0aW9uIG5nIFRpbmRhaGFuJyA6ICdUaXJhaGFuJ308L3A+CiAgICAgICAgICAgIDxMb2NhdGlvblNlbGVjdG9yIHZhbHVlPXtsb2NhdGlvbn0gb25DaGFuZ2U9e3NldExvY2F0aW9ufSBsYWJlbD17cm9sZSA9PT0gJ3NlbGxlcicgPyAnTG9jYXRpb24gbmcgdGluZGFoYW4nIDogJ0x1bmdzb2QgYXQgYmFyYW5nYXknfSBjb21wYWN0IC8+CiAgICAgICAgICAgIDxkaXY+CiAgICAgICAgICAgICAgPGxhYmVsIGNsYXNzTmFtZT17bGFiZWx9Pkt1bXBsZXRvbmcgQWRkcmVzczwvbGFiZWw+CiAgICAgICAgICAgICAgPHRleHRhcmVhIGNsYXNzTmFtZT17aW5wdXR9IHJvd3M9ezJ9IHZhbHVlPXthZGRyZXNzfSBvbkNoYW5nZT17ZSA9PiBzZXRBZGRyZXNzKGUudGFyZ2V0LnZhbHVlKX0gcGxhY2Vob2xkZXI9IkhvdXNlIG5vLiwgc3RyZWV0LCBwdXJvay9zdWJkaXZpc2lvbiwgbGFuZG1hcmsiIC8+CiAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICB7cm9sZSA9PT0gJ2J1eWVyJyAmJiAoCiAgICAgICAgICAgICAgPEltYWdlVXBsb2FkRmllbGQgbGFiZWw9IkxhcmF3YW4gbmcgQmFoYXkiIHZhbHVlPXtob3VzZVBob3RvfSBvbkNoYW5nZT17c2V0SG91c2VQaG90b30KICAgICAgICAgICAgICAgIGJ1Y2tldD0icHJvZmlsZS1pbWFnZXMiIGZvbGRlcj17YGhvdXNlcy8ke3Byb2ZpbGU/LmlkfWB9IGhpbnQ9IlBhcmEgbWFkYWxpbmcgbWFoYW5hcCBuZyByaWRlciBhbmcgYmFoYXkgbW8uIiAvPgogICAgICAgICAgICApfQogICAgICAgICAgPC9kaXY+CgogICAgICAgICAge3JvbGUgPT09ICdyaWRlcicgJiYgKAogICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT17Y2FyZH0+CiAgICAgICAgICAgICAgPHAgY2xhc3NOYW1lPSJmb250LXNlbWlib2xkIHRleHQtZ3JheS04MDAiPlNhc2FreWFuIGF0IERva3VtZW50bzwvcD4KICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0ic3BhY2UteS0yIj4KICAgICAgICAgICAgICAgIHtWRUhJQ0xFX1RJRVJTLm1hcCh2dCA9PiB7CiAgICAgICAgICAgICAgICAgIGNvbnN0IHNlbCA9IHZlaGljbGVUeXBlID09PSB2dC5pZDsKICAgICAgICAgICAgICAgICAgY29uc3QgSWNvbiA9IHZ0LmlkID09PSAnbWluaXZhbicgPyBTdG9yZSA6IEJpa2U7CiAgICAgICAgICAgICAgICAgIHJldHVybiAoCiAgICAgICAgICAgICAgICAgICAgPGJ1dHRvbiBrZXk9e3Z0LmlkfSB0eXBlPSJidXR0b24iIG9uQ2xpY2s9eygpID0+IHNldFZlaGljbGVUeXBlKHZ0LmlkKX0KICAgICAgICAgICAgICAgICAgICAgIGNsYXNzTmFtZT17YHctZnVsbCBwLTMgcm91bmRlZC14bCBib3JkZXItMiBmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMyAke3NlbCA/ICdib3JkZXItYnJhbmQtNTAwIGJnLWJyYW5kLTUwJyA6ICdib3JkZXItZ3JheS0yMDAgYmctd2hpdGUnfWB9PgogICAgICAgICAgICAgICAgICAgICAgPEljb24gc2l6ZT17MjB9IGNsYXNzTmFtZT17c2VsID8gJ3RleHQtYnJhbmQtNjAwJyA6ICd0ZXh0LWdyYXktNTAwJ30gLz4KICAgICAgICAgICAgICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT0iZmxleC0xIHRleHQtbGVmdCB0ZXh0LXNtIGZvbnQtc2VtaWJvbGQgdGV4dC1ncmF5LTgwMCI+e3Z0LmxhYmVsfSA8c3BhbiBjbGFzc05hbWU9InRleHQteHMgdGV4dC1ncmF5LTUwMCBmb250LW5vcm1hbCI+wrcge3Z0Lm1heExvYWRLZ31rZzwvc3Bhbj48L3NwYW4+CiAgICAgICAgICAgICAgICAgICAgICB7c2VsICYmIDxDaGVjayBzaXplPXsxOH0gY2xhc3NOYW1lPSJ0ZXh0LWJyYW5kLTYwMCIgLz59CiAgICAgICAgICAgICAgICAgICAgPC9idXR0b24+CiAgICAgICAgICAgICAgICAgICk7CiAgICAgICAgICAgICAgICB9KX0KICAgICAgICAgICAgICA8L2Rpdj4KICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT0iZ3JpZCBncmlkLWNvbHMtMiBnYXAtMyI+CiAgICAgICAgICAgICAgICA8ZGl2PgogICAgICAgICAgICAgICAgICA8bGFiZWwgY2xhc3NOYW1lPXtsYWJlbH0+UGxhdGUgTnVtYmVyPC9sYWJlbD4KICAgICAgICAgICAgICAgICAgPGlucHV0IGNsYXNzTmFtZT17aW5wdXR9IHZhbHVlPXtwbGF0ZX0gb25DaGFuZ2U9e2UgPT4gc2V0UGxhdGUoZS50YXJnZXQudmFsdWUudG9VcHBlckNhc2UoKSl9IHBsYWNlaG9sZGVyPSJBQkMgMTIzNCIgLz4KICAgICAgICAgICAgICAgIDwvZGl2PgogICAgICAgICAgICAgICAgPGRpdj4KICAgICAgICAgICAgICAgICAgPGxhYmVsIGNsYXNzTmFtZT17bGFiZWx9Pk1vZGVsPC9sYWJlbD4KICAgICAgICAgICAgICAgICAgPGlucHV0IGNsYXNzTmFtZT17aW5wdXR9IHZhbHVlPXttb2RlbH0gb25DaGFuZ2U9e2UgPT4gc2V0TW9kZWwoZS50YXJnZXQudmFsdWUpfSBwbGFjZWhvbGRlcj0iSG9uZGEgQ2xpY2sgMTI1IiAvPgogICAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICAgICAgPEltYWdlVXBsb2FkRmllbGQgbGFiZWw9IkRyaXZlcidzIExpY2Vuc2UiIHZhbHVlPXtsaWNlbnNlfSBvbkNoYW5nZT17c2V0TGljZW5zZX0KICAgICAgICAgICAgICAgIGJ1Y2tldD0icHJvZmlsZS1pbWFnZXMiIGZvbGRlcj17YHZhbGlkLWlkcy8ke3Byb2ZpbGU/LmlkfWB9IG9iamVjdEZpdD0iY29udGFpbiIgLz4KICAgICAgICAgICAgICA8SW1hZ2VVcGxvYWRGaWVsZCBsYWJlbD0iTFRPIE9SL0NSIiB2YWx1ZT17b3Jjcn0gb25DaGFuZ2U9e3NldE9yY3J9CiAgICAgICAgICAgICAgICBidWNrZXQ9InByb2ZpbGUtaW1hZ2VzIiBmb2xkZXI9e2BsdG8tb3Jjci8ke3Byb2ZpbGU/LmlkfWB9IG9iamVjdEZpdD0iY29udGFpbiIgLz4KICAgICAgICAgICAgPC9kaXY+CiAgICAgICAgICApfQoKICAgICAgICAgIHtlcnJvciAmJiA8cCBjbGFzc05hbWU9InRleHQtcmVkLTUwMCB0ZXh0LXNtIGJnLXJlZC01MCBweC00IHB5LTIgcm91bmRlZC1sZyI+e2Vycm9yfTwvcD59CiAgICAgICAgICA8YnV0dG9uIHR5cGU9InN1Ym1pdCIgZGlzYWJsZWQ9e3NhdmluZ30gY2xhc3NOYW1lPSJ3LWZ1bGwgcHktMy41IHB4LTMgYmctYnJhbmQtNjAwIHRleHQtd2hpdGUgcm91bmRlZC0yeGwgZm9udC1zZW1pYm9sZCB0ZXh0LXNtIHNtOnRleHQtbGcgbGVhZGluZy10aWdodCB0ZXh0LWNlbnRlciBzaGFkb3ctbGcgc2hhZG93LWJyYW5kLTYwMC8yMCBhY3RpdmU6c2NhbGUtWzAuOThdIHRyYW5zaXRpb24gZGlzYWJsZWQ6b3BhY2l0eS01MCI+CiAgICAgICAgICAgIHtzYXZpbmcgPyAnU2luZS1zYXZlLi4uJyA6ICdJLXNhdmUgYXQgU2ltdWxhbmcgR2FtaXRpbiBhbmcgR29QYWxlbmdrZSd9CiAgICAgICAgICA8L2J1dHRvbj4KICAgICAgICAgIDxidXR0b24gdHlwZT0iYnV0dG9uIiBvbkNsaWNrPXtzaWduT3V0fSBjbGFzc05hbWU9InctZnVsbCBweS0yIHRleHQtc20gdGV4dC1ncmF5LTQwMCI+TWFnLXNpZ24gb3V0PC9idXR0b24+CiAgICAgICAgPC9mb3JtPgogICAgICA8L2Rpdj4KICAgIDwvZGl2PgogICk7Cn0K
+// @ts-nocheck
+import { useState } from 'react';
+import { Check, Bike, Store } from 'lucide-react';
+import { useAuth } from '../lib/auth';
+import { supabase } from '../lib/supabase';
+import { LocationSelector, type LocationData } from '../components/LocationSelector';
+import { ImageUploadField } from '../components/ImageUploadField';
+import { VEHICLE_TIERS } from '../lib/deliveryFee';
+
+const filled = (v: unknown) => v !== null && v !== undefined && String(v).trim() !== '';
+
+/** True kapag kulang pa ang required na profile details bago ma-access ang dashboard. */
+export function needsProfileCompletion(p: any): boolean {
+  if (!p || p.role === 'admin') return false;
+  if (!filled(p.full_name)) return true;
+  if (p.role === 'buyer') {
+    return !(filled(p.avatar_url) && filled(p.house_photo_url) && filled(p.complete_address) && filled(p.city) && filled(p.barangay));
+  }
+  if (p.role === 'rider') {
+    return ![
+      p.avatar_url, p.vehicle_type, p.rider_age, p.rider_family_status, p.rider_residence_address,
+      p.rider_plate_number, p.rider_motor_model, p.rider_valid_id_url, p.rider_lto_or_cr_url, p.city, p.barangay,
+    ].every(filled);
+  }
+  return false;
+}
+
+// Ipinapakita pagkatapos ma-verify ang account hangga't hindi kumpleto ang profile.
+export function CompleteProfilePage() {
+  const { profile, refreshProfile, signOut } = useAuth();
+  const isPhoneAccount = (profile?.email || '').endsWith('@phone.gopalengke.net');
+  const role = profile?.role;
+  const [fullName, setFullName] = useState(profile?.full_name || '');
+  const [phone, setPhone] = useState(profile?.phone || '');
+  const [vehicleType, setVehicleType] = useState(profile?.vehicle_type || 'motorcycle');
+  const [location, setLocation] = useState<LocationData>({
+    barangay: profile?.barangay || '', district: profile?.district || '', city: profile?.city || '', region: profile?.region || '1300000000',
+  });
+  const [avatar, setAvatar] = useState(profile?.avatar_url || '');
+  const [housePhoto, setHousePhoto] = useState(profile?.house_photo_url || '');
+  const [address, setAddress] = useState(profile?.complete_address || profile?.rider_residence_address || '');
+  const [age, setAge] = useState(profile?.rider_age?.toString() || '');
+  const [family, setFamily] = useState(profile?.rider_family_status || '');
+  const [plate, setPlate] = useState(profile?.rider_plate_number || '');
+  const [model, setModel] = useState(profile?.rider_motor_model || '');
+  const [license, setLicense] = useState(profile?.rider_valid_id_url || '');
+  const [orcr, setOrcr] = useState(profile?.rider_lto_or_cr_url || '');
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (fullName.trim().length < 2) return setError('Ilagay ang buong pangalan.');
+    if (!avatar) return setError('Mag-upload ng profile picture.');
+    if (!location.city || !location.barangay) return setError('Piliin ang lungsod at barangay.');
+    if (address.trim().length < 5) return setError('Ilagay ang kumpletong address (house no., street, purok).');
+    if (!isPhoneAccount && !/^(09|\+639)\d{9}$/.test(phone.replace(/\s/g, ''))) return setError('Ilagay ang tamang cellphone number.');
+    if (role === 'buyer' && !housePhoto) return setError('Mag-upload ng larawan ng bahay para madaling mahanap ng rider.');
+    if (role === 'rider') {
+      const n = parseInt(age);
+      if (!n || n < 18 || n > 80) return setError('Ilagay ang tamang edad (18 pataas).');
+      if (!family.trim()) return setError('Ilagay ang family status.');
+      if (!plate.trim()) return setError('Ilagay ang plate number.');
+      if (!model.trim()) return setError('Ilagay ang model ng sasakyan.');
+      if (!license) return setError("Mag-upload ng Driver's License.");
+      if (!orcr) return setError('Mag-upload ng LTO OR/CR.');
+    }
+    setSaving(true);
+    const update: any = {
+      full_name: fullName.trim(),
+      avatar_url: avatar,
+      barangay: location.barangay, district: location.district || null, city: location.city, region: location.region,
+      complete_address: address.trim(),
+    };
+    if (!isPhoneAccount) update.phone = phone.trim();
+    if (role === 'buyer') update.house_photo_url = housePhoto;
+    if (role === 'rider') Object.assign(update, {
+      vehicle_type: vehicleType, rider_age: parseInt(age), rider_family_status: family.trim(),
+      rider_residence_address: address.trim(), rider_plate_number: plate.trim(), rider_motor_model: model.trim(),
+      rider_valid_id_url: license, rider_lto_or_cr_url: orcr,
+    });
+    const { error: err } = await supabase.from('profiles').update(update).eq('id', profile.id);
+    if (err) { setSaving(false); return setError(err.message); }
+    if (role === 'seller' || role === 'rider') {
+      const ref = sessionStorage.getItem('gopalengke_ref_code') || null;
+      try {
+        await supabase.rpc('link_affiliate_referral', { p_referral_code: ref, p_user_id: profile.id, p_role: role, p_full_name: fullName.trim() });
+      } catch { /* best-effort */ }
+      sessionStorage.removeItem('gopalengke_ref_code');
+    }
+    if (isPhoneAccount && role === 'seller') supabase.rpc('send_seller_welcome_message', { p_user_id: profile.id }).then(() => {}, () => {});
+    await refreshProfile();
+    setSaving(false);
+  }
+
+  const input = 'w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-100 outline-none transition';
+  const label = 'text-sm font-medium text-gray-600 mb-1 block';
+  const card = 'bg-white rounded-2xl border border-gray-100 p-4 space-y-4';
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-orange-50 px-5 pt-12 pb-10">
+      <div className="max-w-md mx-auto">
+        <h1 className="text-2xl font-bold text-gray-800">Kumpletuhin ang Profile</h1>
+        <p className="text-gray-500 text-sm mb-6">
+          Verified na ang account mo! Kumpletuhin muna ang mga detalye bago makapasok sa dashboard
+          {role === 'rider' ? ' — kailangan ito para ma-verify ka bilang rider.' : '.'}
+        </p>
+        <form onSubmit={save} className="space-y-4">
+          <div className={card}>
+            <p className="font-semibold text-gray-800">Personal na Detalye</p>
+            <ImageUploadField label="Profile Picture (malinaw na mukha)" value={avatar} onChange={setAvatar}
+              bucket="profile-images" folder={`avatars/${profile?.id}`} aspectClass="aspect-square max-w-40 mx-auto" cropAspect={1} />
+            <div>
+              <label className={label}>Buong Pangalan</label>
+              <input className={input} value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Juan dela Cruz" required />
+            </div>
+            {!isPhoneAccount && (
+              <div>
+                <label className={label}>Cellphone Number</label>
+                <input className={input} type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="09171234567" required />
+              </div>
+            )}
+            {role === 'rider' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={label}>Edad</label>
+                  <input className={input} type="number" inputMode="numeric" value={age} onChange={e => setAge(e.target.value)} placeholder="25" />
+                </div>
+                <div>
+                  <label className={label}>Family Status</label>
+                  <select className={input} value={family} onChange={e => setFamily(e.target.value)}>
+                    <option value="">Piliin</option>
+                    <option value="Single">Single</option>
+                    <option value="May asawa">May asawa</option>
+                    <option value="May asawa at anak">May asawa at anak</option>
+                    <option value="Single parent">Single parent</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className={card}>
+            <p className="font-semibold text-gray-800">{role === 'seller' ? 'Location ng Tindahan' : 'Tirahan'}</p>
+            <LocationSelector value={location} onChange={setLocation} label={role === 'seller' ? 'Location ng tindahan' : 'Lungsod at barangay'} compact />
+            <div>
+              <label className={label}>Kumpletong Address</label>
+              <textarea className={input} rows={2} value={address} onChange={e => setAddress(e.target.value)} placeholder="House no., street, purok/subdivision, landmark" />
+            </div>
+            {role === 'buyer' && (
+              <ImageUploadField label="Larawan ng Bahay" value={housePhoto} onChange={setHousePhoto}
+                bucket="profile-images" folder={`houses/${profile?.id}`} hint="Para madaling mahanap ng rider ang bahay mo." />
+            )}
+          </div>
+
+          {role === 'rider' && (
+            <div className={card}>
+              <p className="font-semibold text-gray-800">Sasakyan at Dokumento</p>
+              <div className="space-y-2">
+                {VEHICLE_TIERS.map(vt => {
+                  const sel = vehicleType === vt.id;
+                  const Icon = vt.id === 'minivan' ? Store : Bike;
+                  return (
+                    <button key={vt.id} type="button" onClick={() => setVehicleType(vt.id)}
+                      className={`w-full p-3 rounded-xl border-2 flex items-center gap-3 ${sel ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white'}`}>
+                      <Icon size={20} className={sel ? 'text-brand-600' : 'text-gray-500'} />
+                      <span className="flex-1 text-left text-sm font-semibold text-gray-800">{vt.label} <span className="text-xs text-gray-500 font-normal">· {vt.maxLoadKg}kg</span></span>
+                      {sel && <Check size={18} className="text-brand-600" />}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={label}>Plate Number</label>
+                  <input className={input} value={plate} onChange={e => setPlate(e.target.value.toUpperCase())} placeholder="ABC 1234" />
+                </div>
+                <div>
+                  <label className={label}>Model</label>
+                  <input className={input} value={model} onChange={e => setModel(e.target.value)} placeholder="Honda Click 125" />
+                </div>
+              </div>
+              <ImageUploadField label="Driver's License" value={license} onChange={setLicense}
+                bucket="profile-images" folder={`valid-ids/${profile?.id}`} objectFit="contain" />
+              <ImageUploadField label="LTO OR/CR" value={orcr} onChange={setOrcr}
+                bucket="profile-images" folder={`lto-orcr/${profile?.id}`} objectFit="contain" />
+            </div>
+          )}
+
+          {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
+          <button type="submit" disabled={saving} className="w-full py-3.5 px-3 bg-brand-600 text-white rounded-2xl font-semibold text-sm sm:text-lg leading-tight text-center shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50">
+            {saving ? 'Sine-save...' : 'I-save at Simulang Gamitin ang GoPalengke'}
+          </button>
+          <button type="button" onClick={signOut} className="w-full py-2 text-sm text-gray-400">Mag-sign out</button>
+        </form>
+      </div>
+    </div>
+  );
+}
