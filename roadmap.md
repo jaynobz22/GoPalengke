@@ -3,7 +3,8 @@
 Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked out at /tmp/gopalengke-src)
 
 ## Tasks
-- [ ] Add talipapa/neighborhood seller option and location-based market choices with manual entry to create/edit store forms; test and push
+- [x] Add talipapa/neighborhood seller option and location-based market choices with manual entry to create/edit store forms; four tests and isolated form interactions pass; pushed
+- [ ] Verify new seller-location choices save/read back on a real seller account (blocked: existing external account system has no available authenticated session)
 - [x] Rename the profile-completion submit button to "I-save at Simulang Gamitin ang GoPalengke" and keep it on one line on phone
 - [x] Fix login Back/homepage navigation; phone/desktop app Back, browser Back, signup exit/reload and missing-profile tests pass
 - [ ] Verify deleted-account session recovery on a real account (blocked: no session for the existing external account system)
