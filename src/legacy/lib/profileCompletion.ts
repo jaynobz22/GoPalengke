@@ -10,7 +10,7 @@ export function needsProfileCompletion(p: any): boolean {
   if (p.role === 'rider') {
     return ![
       p.avatar_url, p.vehicle_type, p.rider_age, p.rider_family_status, p.rider_residence_address,
-      p.rider_plate_number, p.rider_motor_model, p.rider_valid_id_url, p.rider_lto_or_cr_url, p.city, p.barangay,
+      p.rider_plate_number, p.rider_motor_model, p.rider_valid_id_url, p.rider_lto_or_cr_url, p.rider_qr_code_url, p.city, p.barangay,
     ].every(filled);
   }
   return false;

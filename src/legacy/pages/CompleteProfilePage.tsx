@@ -29,6 +29,7 @@ export function CompleteProfilePage() {
   const [model, setModel] = useState(profile?.rider_motor_model || '');
   const [license, setLicense] = useState(profile?.rider_valid_id_url || '');
   const [orcr, setOrcr] = useState(profile?.rider_lto_or_cr_url || '');
+  const [riderQr, setRiderQr] = useState(profile?.rider_qr_code_url || '');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -49,6 +50,7 @@ export function CompleteProfilePage() {
       if (!model.trim()) return setError('Ilagay ang model ng sasakyan.');
       if (!license) return setError("Mag-upload ng Driver's License.");
       if (!orcr) return setError('Mag-upload ng LTO OR/CR.');
+      if (!riderQr) return setError('Mag-upload ng QR code (GCash/Maya) para sa delivery fee.');
     }
     setSaving(true);
     const update: any = {
@@ -62,7 +64,7 @@ export function CompleteProfilePage() {
     if (role === 'rider') Object.assign(update, {
       vehicle_type: vehicleType, rider_age: parseInt(age), rider_family_status: family.trim(),
       rider_residence_address: address.trim(), rider_plate_number: plate.trim(), rider_motor_model: model.trim(),
-      rider_valid_id_url: license, rider_lto_or_cr_url: orcr,
+      rider_valid_id_url: license, rider_lto_or_cr_url: orcr, rider_qr_code_url: riderQr,
     });
     const { error: err } = await supabase.from('profiles').update(update).eq('id', profile.id);
     if (err) { setSaving(false); return setError(err.message); }
@@ -168,6 +170,9 @@ export function CompleteProfilePage() {
                 bucket="profile-images" folder={`valid-ids/${profile?.id}`} objectFit="contain" />
               <ImageUploadField label="LTO OR/CR" value={orcr} onChange={setOrcr}
                 bucket="profile-images" folder={`lto-orcr/${profile?.id}`} objectFit="contain" />
+              <ImageUploadField label="QR Code (GCash/Maya)" value={riderQr} onChange={setRiderQr}
+                bucket="profile-images" folder={`rider-qr/${profile?.id}`} objectFit="contain"
+                hint="Para mabayaran ka ng seller ng delivery fee kapag hindi COD ang order." />
             </div>
           )}
 

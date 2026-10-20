@@ -224,11 +224,9 @@ function RiderReminderBanner() {
           </div>
           <div className="space-y-1">
             <p className="font-bold text-sm">Paalala, Rider!</p>
-            <ul className="text-xs text-blue-50 space-y-0.5 leading-relaxed">
-              <li>- Inga'tan ang mga parcel lagi. Huwag sirain o mabasa.</li>
-              <li>- Maging magalang sa seller at buyer para tumaas ang rating mo.</li>
-              <li>- Kung hindi COD ang order, kunin ang delivery fee sa seller bago umalis.</li>
-            </ul>
+            <p className="text-xs text-blue-50 leading-relaxed">
+              Ingatan lagi ang mga parcel at huwag sirain o mabasa. Maging magalang sa seller at buyer para tumaas ang rating mo. At kung hindi COD ang order, kunin muna ang delivery fee sa seller bago umalis.
+            </p>
           </div>
         </div>
       </div>

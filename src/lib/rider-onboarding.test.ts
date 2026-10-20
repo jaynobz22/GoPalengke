@@ -8,7 +8,7 @@ const completeRider = {
   role: 'rider', full_name: 'Test Rider', avatar_url: 'avatar', vehicle_type: 'motorcycle',
   rider_age: 25, rider_family_status: 'Single', rider_residence_address: '123 Test Street',
   rider_plate_number: 'ABC 123', rider_motor_model: 'Honda', rider_valid_id_url: 'license',
-  rider_lto_or_cr_url: 'orcr', city: 'Davao', barangay: 'Test',
+  rider_lto_or_cr_url: 'orcr', rider_qr_code_url: 'qr', city: 'Davao', barangay: 'Test',
 };
 
 test('a rider with all required submitted details can enter the dashboard', () => {
@@ -17,6 +17,10 @@ test('a rider with all required submitted details can enter the dashboard', () =
 
 test('incomplete rider details still prevent dashboard access', () => {
   assert.equal(needsProfileCompletion({ ...completeRider, rider_valid_id_url: '' }), true);
+});
+
+test('a rider without an uploaded QR code still needs profile completion', () => {
+  assert.equal(needsProfileCompletion({ ...completeRider, rider_qr_code_url: '' }), true);
 });
 
 test('concurrent reminder loads and retries create only one admin message', async () => {
