@@ -63,12 +63,12 @@ export function AffiliateChat({ affiliateId, viewer, title }: { affiliateId: str
   }
 
   return (
-    <div className="flex flex-col h-[60vh] min-h-[360px] bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="flex flex-col h-[60vh] min-h-[360px] bg-white rounded-2xl border border-brand-200 shadow-sm overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3 bg-green-700 text-white">
         <Shield size={18} />
         <p className="font-semibold text-sm truncate">{title || (viewer === 'affiliate' ? 'GoPalengke Admin' : 'Affiliate')}</p>
       </div>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-gray-50">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-brand-100">
         {messages.length === 0 && (
           <p className="text-center text-sm text-gray-400 py-10">
             {viewer === 'affiliate' ? 'May tanong? Mag-message lang sa admin dito.' : 'Wala pang mensahe.'}
@@ -87,7 +87,7 @@ export function AffiliateChat({ affiliateId, viewer, title }: { affiliateId: str
           }
           return (
             <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[78%] rounded-2xl px-3.5 py-2 ${mine ? 'bg-green-600 text-white rounded-br-md' : 'bg-white border border-gray-200 text-gray-800 rounded-bl-md'}`}>
+              <div className={`max-w-[78%] rounded-2xl px-3.5 py-2 ${mine ? 'bg-green-600 text-white rounded-br-md' : 'bg-white border border-brand-200 text-gray-800 rounded-bl-md'}`}>
                 <p className="text-sm whitespace-pre-wrap break-words">{m.body}</p>
                 <p className={`text-[10px] mt-0.5 ${mine ? 'text-white/60' : 'text-gray-400'}`}>
                   {new Date(m.created_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
@@ -98,12 +98,12 @@ export function AffiliateChat({ affiliateId, viewer, title }: { affiliateId: str
         })}
       </div>
       {error && <p className="px-3 py-1 text-xs text-red-600 bg-red-50">{error}</p>}
-      <form onSubmit={send} className="flex items-center gap-2 border-t border-gray-100 p-2.5">
+      <form onSubmit={send} className="flex items-center gap-2 border-t border-brand-200 p-2.5">
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder="Mag-type ng mensahe..."
-          className="flex-1 min-w-0 h-11 px-4 rounded-full bg-gray-100 border border-gray-200 outline-none text-sm focus:border-green-400"
+          className="flex-1 min-w-0 h-11 px-4 rounded-full bg-brand-50 border border-brand-200 outline-none text-sm focus:border-green-400"
         />
         <button type="submit" disabled={!input.trim() || sending} aria-label="Ipadala" className="w-11 h-11 rounded-full bg-green-600 flex items-center justify-center disabled:opacity-40">
           {sending ? <Loader2 size={18} className="animate-spin text-white" /> : <Send size={18} className="text-white" />}

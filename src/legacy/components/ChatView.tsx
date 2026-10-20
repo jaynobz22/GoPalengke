@@ -715,9 +715,9 @@ export function ChatView({
   }
 
   return (
-    <div className="fixed inset-x-0 top-0 z-[60] mx-auto flex h-[100dvh] w-full max-w-4xl min-w-0 flex-col overflow-hidden bg-gray-50">
+    <div className="fixed inset-x-0 top-0 z-[60] mx-auto flex h-[100dvh] w-full max-w-4xl min-w-0 flex-col overflow-hidden border-x border-brand-300 bg-brand-100 shadow-2xl">
       {/* Header */}
-      <div className="safe-top z-10 flex w-full min-w-0 shrink-0 items-center gap-2 border-b border-gray-100 bg-white px-3 py-2.5">
+      <div className="safe-top z-10 flex w-full min-w-0 shrink-0 items-center gap-2 border-b border-brand-200 bg-brand-50 px-3 py-2.5">
         <button onClick={onBack} aria-label="Bumalik" className="h-8 gap-1 px-2.5 shrink-0 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600 active:scale-95 transition">
           <ArrowLeft size={14} className="text-gray-600" /> <span>Bumalik</span>
         </button>
@@ -767,7 +767,7 @@ export function ChatView({
                 <div className={`max-w-[80%] px-4 py-3 rounded-2xl ${
                   isMine
                     ? 'bg-brand-600 text-white rounded-br-md'
-                    : 'bg-white text-gray-800 border border-gray-100 rounded-bl-md'
+                    : 'bg-white text-gray-800 border border-brand-200 rounded-bl-md'
                 }`}>
                   <div className="flex items-center gap-2 mb-1">
                     <Video size={16} className={isMine ? 'text-brand-200' : 'text-blue-500'} />
@@ -817,7 +817,7 @@ export function ChatView({
             return (
               <div key={msg.id} className={`flex items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
                 {!isMine && <Avatar src={otherAvatar} name={otherName} size={28} />}
-                <div className={`max-w-[75%] rounded-2xl overflow-hidden ${isMine ? 'rounded-br-md' : 'rounded-bl-md bg-white border border-gray-100'}`}>
+                <div className={`max-w-[75%] rounded-2xl overflow-hidden ${isMine ? 'rounded-br-md' : 'rounded-bl-md bg-white border border-brand-200'}`}>
                   <img
                     src={msg.image_url}
                     alt="Chat image"
@@ -848,7 +848,7 @@ export function ChatView({
             return (
               <div key={msg.id} className={`flex items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
                 {!isMine && <Avatar src={otherAvatar} name={otherName} size={28} />}
-                <div className={`max-w-[75%] rounded-2xl overflow-hidden ${isMine ? 'rounded-br-md bg-brand-600' : 'rounded-bl-md bg-white border border-gray-100'}`}>
+                <div className={`max-w-[75%] rounded-2xl overflow-hidden ${isMine ? 'rounded-br-md bg-brand-600' : 'rounded-bl-md bg-white border border-brand-200'}`}>
                   <div className="w-48 h-40 flex flex-col items-center justify-center gap-2 bg-gray-100">
                     <div className="w-6 h-6 border-2 border-gray-300 border-t-brand-500 rounded-full animate-spin" />
                     <span className="text-xs text-gray-500 font-medium">Sending photo...</span>
@@ -865,7 +865,7 @@ export function ChatView({
               <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl ${
                 isMine
                   ? 'bg-brand-600 text-white rounded-br-md'
-                  : 'bg-white text-gray-800 border border-gray-100 rounded-bl-md'
+                  : 'bg-white text-gray-800 border border-brand-200 rounded-bl-md'
               }`}>
                 <p className="text-sm whitespace-pre-wrap break-words">{msg.body}</p>
                 <div className="flex items-center justify-between gap-2">
@@ -957,7 +957,7 @@ export function ChatView({
       )}
 
       {/* Input */}
-      <form onSubmit={handleSend} className="chat-composer grid w-full min-w-0 shrink-0 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 border-t border-blue-100 bg-blue-50 px-3 pt-3">
+      <form onSubmit={handleSend} className="chat-composer grid w-full min-w-0 shrink-0 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 border-t border-brand-200 bg-brand-50 px-3 pt-3">
         <input
           ref={fileInputRef}
           type="file"
@@ -969,7 +969,7 @@ export function ChatView({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={sending || uploadingImage}
-          className="w-11 h-11 rounded-full bg-white flex items-center justify-center active:scale-90 transition disabled:opacity-40 flex-shrink-0 shadow-sm"
+          className="w-11 h-11 rounded-full bg-white border border-brand-200 flex items-center justify-center active:scale-90 transition disabled:opacity-40 flex-shrink-0 shadow-sm"
         >
           {uploadingImage ? (
             <div className="w-5 h-5 border-2 border-gray-200 border-t-brand-500 rounded-full animate-spin" />
@@ -982,7 +982,7 @@ export function ChatView({
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder="Mag-type ng mensahe..."
-          className="h-11 w-full min-w-0 px-4 py-2.5 rounded-full bg-white text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-200 transition shadow-sm"
+          className="h-11 w-full min-w-0 px-4 py-2.5 rounded-full bg-white border border-brand-200 text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-200 transition shadow-sm"
         />
         <button
           type="submit"

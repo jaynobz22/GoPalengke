@@ -186,7 +186,7 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
   }
 
   return (
-    <div className="fixed inset-x-0 top-0 z-[70] mx-auto flex h-[100dvh] w-full max-w-4xl min-w-0 flex-col overflow-hidden bg-gray-50">
+    <div className="fixed inset-x-0 top-0 z-[70] mx-auto flex h-[100dvh] w-full max-w-4xl min-w-0 flex-col overflow-hidden border-x border-brand-300 bg-brand-100 shadow-2xl">
       {/* Header */}
       <div className={`safe-top flex w-full min-w-0 shrink-0 items-center gap-2 px-3 py-2.5 shadow-sm ${isAdmin ? 'bg-gray-900' : 'bg-blue-600'}`}>
         <button onClick={onBack} aria-label="Bumalik" className="h-8 gap-1 px-2.5 shrink-0 rounded-full bg-white/15 flex items-center justify-center text-xs font-semibold text-white active:scale-90 transition">
@@ -240,7 +240,7 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
             return (
               <div key={msg.id} className={`flex min-w-0 items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
                 {!isMine && senderAvatar}
-                <div className={`min-w-0 max-w-[75%] rounded-2xl overflow-hidden ${isMine ? (isAdmin ? 'rounded-br-md' : 'rounded-br-md') : 'rounded-bl-md border border-gray-200'}`}>
+                <div className={`min-w-0 max-w-[75%] rounded-2xl overflow-hidden ${isMine ? (isAdmin ? 'rounded-br-md' : 'rounded-br-md') : 'rounded-bl-md border border-brand-200'}`}>
                   <img
                     src={msg.image_url}
                     alt="Chat image"
@@ -272,7 +272,7 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
               <div className={`min-w-0 max-w-[75%] rounded-2xl px-4 py-2.5 ${
                 isMine
                   ? (isAdmin ? 'bg-gray-800 text-white' : 'bg-blue-600 text-white')
-                  : 'bg-white border border-gray-200 text-gray-800'
+                  : 'bg-white border border-brand-200 text-gray-800'
               }`}>
                 <p className="text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{msg.body}</p>
                 <div className="flex items-center justify-between gap-2">
@@ -334,7 +334,7 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
       )}
 
       {/* Input */}
-      <form onSubmit={send} className="chat-composer grid w-full min-w-0 shrink-0 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 border-t border-gray-200 bg-white px-3 pt-3">
+      <form onSubmit={send} className="chat-composer grid w-full min-w-0 shrink-0 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2 border-t border-brand-200 bg-brand-50 px-3 pt-3">
         <input
           ref={fileInputRef}
           type="file"
@@ -346,7 +346,7 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={sending}
-          className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center active:scale-90 transition disabled:opacity-40 flex-shrink-0"
+          className="w-11 h-11 rounded-full bg-white border border-brand-200 flex items-center justify-center active:scale-90 transition disabled:opacity-40 flex-shrink-0"
         >
           <ImagePlus size={20} className={isAdmin ? 'text-gray-700' : 'text-blue-600'} />
         </button>
@@ -355,7 +355,7 @@ export function AdminChat({ conversationId, currentUserId, otherName, isAdmin, o
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder="Mag-type ng mensahe..."
-          className="h-11 w-full min-w-0 px-4 py-2.5 rounded-full bg-gray-100 border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none text-sm transition"
+          className="h-11 w-full min-w-0 px-4 py-2.5 rounded-full bg-white border border-brand-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none text-sm transition"
         />
         <button
           type="submit"
