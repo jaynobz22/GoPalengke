@@ -3,12 +3,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabase';
 import { useAuth } from './auth';
 import type { AdminConversation } from './types';
+import { useServerFn } from '@tanstack/react-start';
+import { ensureRiderApprovalReminder } from '../../lib/rider-onboarding.functions';
 
 const welcomeTried = new Set<string>();
 const cleanupTried = new Set<string>();
 
 export function useAdminConversations() {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
+  const sendRiderReminder = useServerFn(ensureRiderApprovalReminder);
   const [conversations, setConversations] = useState<AdminConversation[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -28,6 +31,17 @@ export function useAdminConversations() {
       await supabase.rpc('send_seller_welcome_message', { p_user_id: profile.id });
     } else if (!existing || existing.length === 0) {
       await supabase.rpc('get_or_create_admin_conversation');
+    }
+
+    if (profile.role === 'rider' && !profile.is_approved && session?.access_token && !welcomeTried.has(profile.id)) {
+      welcomeTried.add(profile.id);
+      try {
+        const result = await sendRiderReminder({ data: { accessToken: session.access_token } });
+        if (!result.sent) welcomeTried.delete(profile.id);
+      } catch {
+        welcomeTried.delete(profile.id);
+        console.error('Hindi maipadala ang rider approval reminder.');
+      }
     }
 
     // Best-effort: linisin ang mga ordinaryong chat images na lampas 24 oras
@@ -56,7 +70,7 @@ export function useAdminConversations() {
       .neq('sender_id', profile.id)
       .is('read_at', null);
     setUnreadCount(count || 0);
-  }, [profile]);
+  }, [profile, session?.access_token, sendRiderReminder]);
 
   useEffect(() => {
     load();

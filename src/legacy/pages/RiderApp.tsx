@@ -113,7 +113,7 @@ export function RiderApp() {
       {!canAct && <InactiveBanner reason={freezeReason || undefined} />}
       {profile && !profile.is_approved && (
         <div className="bg-amber-50 border-b border-amber-200 px-5 py-3 text-xs text-amber-700 font-medium">
-          Naghihintay pa ng approval ng admin — hindi ka pa makakatanggap ng delivery. Pwede mo munang kumpletuhin ang iyong profile.
+          Naghihintay pa ng approval ng admin — hindi ka pa makakatanggap ng delivery. Piliin ang Allow / Payagan kapag humingi ang system ng location access.
         </div>
       )}
       <div className="flex-1 pb-24 overflow-y-auto">
@@ -282,7 +282,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
   async function acceptOrder(order: Order) {
     if (!profile) return;
     if (!profile.is_approved) {
-      alert('Naghihintay pa ng approval ng admin ang iyong account. Hindi ka pa makakatanggap ng delivery — pwede mo munang ayusin ang iyong profile.');
+      alert('Naghihintay pa ng approval ng admin ang iyong account. Hindi ka pa makakatanggap ng delivery. Piliin ang Allow / Payagan kapag humingi ang system ng location access.');
       return;
     }
     setAccepting(order.id);

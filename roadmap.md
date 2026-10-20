@@ -3,6 +3,7 @@
 Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked out at /tmp/gopalengke-src)
 
 ## Tasks
+- [ ] Update the automatic rider admin message to approval/location reminders only, verify and push
 - [x] Add talipapa/neighborhood seller option and location-based market choices with manual entry to create/edit store forms; four tests and isolated form interactions pass; pushed
 - [x] Tint buyer/seller, admin and affiliate chat panels soft green with a visible edge so the chat box reads apart from the white page; desktop and phone screenshots checked and pushed
 - [ ] Verify new seller-location choices save/read back on a real seller account (blocked: existing external account system has no available authenticated session)

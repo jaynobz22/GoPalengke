@@ -7,23 +7,7 @@ import { LocationSelector, type LocationData } from '../components/LocationSelec
 import { ImageUploadField } from '../components/ImageUploadField';
 import { VEHICLE_TIERS } from '../lib/deliveryFee';
 
-const filled = (v: unknown) => v !== null && v !== undefined && String(v).trim() !== '';
-
-/** True kapag kulang pa ang required na profile details bago ma-access ang dashboard. */
-export function needsProfileCompletion(p: any): boolean {
-  if (!p || p.role === 'admin') return false;
-  if (!filled(p.full_name)) return true;
-  if (p.role === 'buyer') {
-    return !(filled(p.avatar_url) && filled(p.house_photo_url) && filled(p.complete_address) && filled(p.city) && filled(p.barangay));
-  }
-  if (p.role === 'rider') {
-    return ![
-      p.avatar_url, p.vehicle_type, p.rider_age, p.rider_family_status, p.rider_residence_address,
-      p.rider_plate_number, p.rider_motor_model, p.rider_valid_id_url, p.rider_lto_or_cr_url, p.city, p.barangay,
-    ].every(filled);
-  }
-  return false;
-}
+export { needsProfileCompletion } from '../lib/profileCompletion';
 
 // Ipinapakita pagkatapos ma-verify ang account hangga't hindi kumpleto ang profile.
 export function CompleteProfilePage() {

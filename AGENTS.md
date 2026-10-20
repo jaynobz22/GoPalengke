@@ -21,3 +21,4 @@
 - Both admin seller-approval controls use the shared sellerApproval module; it preserves unrelated chats, checks cleanup errors, and reuses an existing approval message on retries.
 - Legacy login visibility is synchronized with URL history; confirmed missing profiles clear only the local session, while failed profile reads preserve existing accounts.
 - Seller create/edit forms share SellerLocationFields and sellerLocation market filtering; reuse the existing market directory with GPS/city fallback so suggestions and manual entries stay consistent without adding a paid lookup service.
+- Profile dashboard gating and rider onboarding use the shared profileCompletion rules; rider admin reminders validate the existing account session server-side and use a stable message ID to prevent duplicates on concurrent loads or retries.
