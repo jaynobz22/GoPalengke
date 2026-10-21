@@ -101,3 +101,10 @@ Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked ou
 - [x] Push to GitHub
 
 - [x] Admin-user video call fix: polling fallback sa useIncomingAdminCall (5s), "Subukan muli" retry sa AdminVideoCall error banner, database/admin-calls.sql RLS policies (kailangang patakbuhin ng user sa database SQL Editor)
+
+## Current: Buyer bao-bao/minivan finder
+- [x] Add "Maramihan ang bibilhin?" card sa buyer home na nagbubukas ng listahan ng available na bao-bao/minivan riders (malapit na city muna)
+- [x] Buyer-to-rider inquiry chat bago mag-order (getOrCreateRiderInquiry, null-order buyer_rider conversation)
+- [x] fleetRiders filter/sort module + 5 tests pass
+- [ ] Apply `database/rider-inquiry-chat.sql` sa existing GoPalengke database (blocked: kailangang i-run ng user sa kanilang database SQL Editor — walang privileged access ang workspace na ito)
+- [ ] Verify buyer-to-rider inquiry chat sa real buyer at rider accounts (blocked: no authenticated session for the existing external account system)

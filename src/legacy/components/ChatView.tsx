@@ -378,6 +378,27 @@ export async function getOrCreateStoreInquiry(buyerId: string, sellerId: string)
   return { conv: data as Conversation | null };
 }
 
+/** Direct buyer→rider inquiry chat (walang order pa) para sa bao-bao/minivan. Isang usapan lang kada buyer+rider. */
+export async function getOrCreateRiderInquiry(buyerId: string, riderId: string): Promise<{ conv: Conversation | null; error?: string }> {
+  const { data: existing } = await supabase
+    .from('conversations')
+    .select('*')
+    .is('order_id', null)
+    .eq('type', 'buyer_rider')
+    .eq('buyer_id', buyerId)
+    .eq('rider_id', riderId)
+    .limit(1)
+    .maybeSingle();
+  if (existing) return { conv: existing as Conversation };
+  const { data, error } = await supabase
+    .from('conversations')
+    .insert({ order_id: null, buyer_id: buyerId, rider_id: riderId, type: 'buyer_rider' })
+    .select('*')
+    .maybeSingle();
+  if (error) return { conv: null, error: error.message };
+  return { conv: data as Conversation | null };
+}
+
 function generateRoomId() {
   return `call-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }

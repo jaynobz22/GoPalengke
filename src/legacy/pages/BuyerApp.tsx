@@ -40,7 +40,8 @@ import { BuyerLiveTrackingMap } from '../components/BuyerLiveTrackingMap';
 import { LiveETATimer } from '../components/LiveETATimer';
 import { DeliveryMap } from '../components/DeliveryMap';
 import { COMMISSION_RATE } from '../lib/types';
-import { ChatView, getOrCreateConversation, getOrCreateStoreInquiry } from '../components/ChatView';
+import { ChatView, getOrCreateConversation, getOrCreateStoreInquiry, getOrCreateRiderInquiry } from '../components/ChatView';
+import { FLEET_VEHICLE_LABELS, sortFleetRiders, type FleetRider } from '../lib/fleetRiders';
 import { RiderStageBanner } from '../components/RiderStageBanner';
 import { Avatar } from '../components/Avatar';
 import { ImageUploadField } from '../components/ImageUploadField';
@@ -63,7 +64,7 @@ import {
 } from 'lucide-react';
 
 type Tab = 'home' | 'orders' | 'cart' | 'messages' | 'profile';
-type View = 'browse' | 'product' | 'store' | 'checkout' | 'order_detail' | 'chat' | 'payment_summary';
+type View = 'browse' | 'product' | 'store' | 'checkout' | 'order_detail' | 'chat' | 'payment_summary' | 'riders';
 
 const MIN_ORDER_AMOUNT = 150;
 
@@ -211,6 +212,20 @@ export function BuyerApp() {
     setView('chat');
   }
 
+  async function openRiderInquiry(rider: FleetRider) {
+    if (!profile) return;
+    const { conv, error } = await getOrCreateRiderInquiry(profile.id, rider.id);
+    if (!conv) {
+      alert('Hindi mabuksan ang chat ngayon. Subukan muli mamaya.' + (error ? `\n(${error})` : ''));
+      return;
+    }
+    setActiveConversationId(conv.id);
+    setChatPartnerName(rider.full_name || 'Rider');
+    setChatPartnerRole('Rider');
+    setChatReturnView(view);
+    setView('chat');
+  }
+
   const [chatReturnView, setChatReturnView] = useState<any>(null);
   function backFromChat() {
     setView(chatReturnView || 'browse');
@@ -283,13 +298,16 @@ export function BuyerApp() {
       {/* Content */}
       <div className="flex-1 pb-24 overflow-y-auto">
         {tab === 'home' && view === 'browse' && (
-          <BrowseView onProductClick={navigateToProduct} onStoreClick={navigateToStore} orderUpdates={orderUpdates} onOpenOrders={() => { setTab('orders'); setView('browse'); }} onSignOut={signOut} onGoToProfile={() => setTab('profile')} />
+          <BrowseView onProductClick={navigateToProduct} onStoreClick={navigateToStore} orderUpdates={orderUpdates} onOpenOrders={() => { setTab('orders'); setView('browse'); }} onSignOut={signOut} onGoToProfile={() => setTab('profile')} onFindRiders={() => setView('riders')} />
         )}
         {tab === 'home' && view === 'product' && selectedProduct && (
           <ProductView product={selectedProduct} store={selectedStore!} onBack={() => { setView('store'); setSelectedProduct(null); }} onAddToCart={refreshCart} onGoToStore={(s, pid) => { setSelectedStore(s); setHighlightProductId(pid); setSelectedProduct(null); setView('store'); }} onChat={openStoreInquiry} />
         )}
         {tab === 'home' && view === 'store' && selectedStore && (
           <StoreView store={selectedStore} highlightProductId={highlightProductId} onProductClick={(p) => navigateToProductDetail(p)} onBack={backToBrowse} onChat={openStoreInquiry} />
+        )}
+        {tab === 'home' && view === 'riders' && (
+          <FleetRidersView onBack={backToBrowse} onChat={openRiderInquiry} />
         )}
         {tab === 'home' && view === 'checkout' && (
           <ErrorBoundary fallback={
@@ -393,7 +411,7 @@ export function BuyerApp() {
 }
 
 // ============= BROWSE VIEW =============
-function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, onSignOut, onGoToProfile }: { onProductClick: (p: Product, s: Store) => void; onStoreClick: (s: Store) => void; orderUpdates: number; onOpenOrders: () => void; onSignOut: () => void; onGoToProfile: () => void }) {
+function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, onSignOut, onGoToProfile, onFindRiders }: { onProductClick: (p: Product, s: Store) => void; onStoreClick: (s: Store) => void; orderUpdates: number; onOpenOrders: () => void; onSignOut: () => void; onGoToProfile: () => void; onFindRiders: () => void }) {
   const { profile } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<(Product & { store: Store })[]>([]);
@@ -655,6 +673,25 @@ function BrowseView({ onProductClick, onStoreClick, orderUpdates, onOpenOrders, 
             {locationFilter.city || profile?.barangay || 'Set location'}, {formatRegionForDisplay(locationFilter.region || profile?.region)}
           </button>
         </div>
+      </div>
+
+      {/* Bao-Bao / Minivan finder — para sa maramihang bili */}
+      <div className="px-5 pt-4">
+        <button
+          onClick={onFindRiders}
+          className="w-full bg-white border-2 border-brand-200 rounded-2xl p-4 text-left active:scale-[0.98] transition shadow-sm"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center flex-shrink-0">
+              <Bike size={24} className="text-brand-700" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-gray-800 text-sm">Maramihan ang bibilhin?</p>
+              <p className="text-xs text-gray-500 leading-snug">Kumausap muna ng malapit na <span className="font-semibold text-brand-700">Bao-Bao o Minivan</span> bago mag-order.</p>
+            </div>
+            <ChevronRight size={18} className="text-brand-400 flex-shrink-0" />
+          </div>
+        </button>
       </div>
 
       {/* Order Update Notification Banner */}
@@ -4040,6 +4077,105 @@ function ReviewSectionForOrder({
 }
 
 // ============= MESSAGES VIEW =============
+// ============= BAO-BAO / MINIVAN FINDER =============
+function FleetRidersView({ onBack, onChat }: { onBack: () => void; onChat: (rider: FleetRider) => void }) {
+  const { profile } = useAuth();
+  const [riders, setRiders] = useState<FleetRider[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [chattingId, setChattingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, phone, vehicle_type, rider_plate_number, rider_motor_model, city, barangay, region, is_available, is_active, is_approved')
+        .eq('role', 'rider')
+        .in('vehicle_type', ['tricycle', 'minivan'])
+        .eq('is_available', true)
+        .eq('is_active', true)
+        .eq('is_approved', true)
+        .limit(100);
+      if (!cancelled) {
+        setRiders(sortFleetRiders((data || []) as any, profile?.city, profile?.region));
+        setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [profile?.city, profile?.region]);
+
+  const buyerCity = (profile?.city || '').toLowerCase();
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-gradient-to-br from-brand-600 to-brand-700 px-5 pt-12 pb-6 text-white">
+        <div className="flex items-center gap-3 mb-2">
+          <button onClick={onBack} aria-label="Bumalik" className="h-8 px-2.5 rounded-full bg-white/15 flex items-center gap-1 text-xs font-semibold text-white active:scale-90 transition">
+            <ArrowLeft size={14} /> Bumalik
+          </button>
+        </div>
+        <h1 className="text-xl font-bold">Bao-Bao / Minivan na Malapit</h1>
+        <p className="text-brand-100 text-xs mt-1 leading-snug">
+          Para sa maramihan o mabigat na bili. Magkasundo muna kayo ng rider sa delivery charge base sa bigat at distansya bago ka mag-order sa seller.
+        </p>
+      </div>
+
+      <div className="px-5 py-4 space-y-3">
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 size={28} className="animate-spin text-brand-600" />
+          </div>
+        ) : riders.length === 0 ? (
+          <div className="text-center py-12">
+            <Bike size={40} className="mx-auto text-gray-300 mb-3" />
+            <p className="text-sm font-semibold text-gray-600">Wala pang available na bao-bao o minivan sa ngayon</p>
+            <p className="text-xs text-gray-400 mt-1">Subukan ulit mamaya, o mag-order muna sa maliliit na bili gamit ang rider na naka-motor.</p>
+          </div>
+        ) : (
+          riders.map(rider => {
+            const isNear = buyerCity && (rider.city || '').toLowerCase() === buyerCity;
+            return (
+              <div key={rider.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                <div className="flex items-center gap-3">
+                  <Avatar src={rider.avatar_url} name={rider.full_name} size={52} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-bold text-gray-800 text-sm truncate">{rider.full_name}</p>
+                      {isNear && (
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-bold text-brand-700">
+                          <MapPin size={10} /> Malapit sa iyo
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs font-semibold text-brand-700 mt-0.5">
+                      {FLEET_VEHICLE_LABELS[rider.vehicle_type || ''] || rider.vehicle_type}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">
+                      {[rider.rider_plate_number, rider.rider_motor_model].filter(Boolean).join(' · ') || 'Walang plate info'}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {[rider.barangay, rider.city].filter(Boolean).join(', ') || 'Walang lokasyon'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={async () => { setChattingId(rider.id); await onChat(rider); setChattingId(null); }}
+                  disabled={chattingId === rider.id}
+                  className="mt-3 w-full h-10 rounded-xl bg-brand-600 text-white text-sm font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-60"
+                >
+                  {chattingId === rider.id ? <Loader2 size={16} className="animate-spin" /> : <MessageCircle size={16} />}
+                  Mag-chat para sa Karga
+                </button>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 function MessagesView({ onOpenChat, adminConversations, onOpenAdminChat }: { onOpenChat: (convId: string, name: string, role: string) => void; adminConversations: AdminConversation[]; onOpenAdminChat: (convId: string, name: string) => void }) {
   const { profile } = useAuth();
   const [conversations, setConversations] = useState<(Conversation & { other_name: string; other_role: string; last_message: string | null; last_message_time: string | null; unread: number })[]>([]);
