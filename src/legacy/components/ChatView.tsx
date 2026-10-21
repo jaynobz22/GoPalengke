@@ -880,6 +880,22 @@ export function ChatView({
             );
           }
 
+          // Official status updates: always shown as GoPalengke Admin notice, never as a user's message
+          const isSystemNotice = msg.message_type === 'system' || /^(Nakuha na ng rider|Naihatid na ang order|Paparating na ang rider|Na-deliver na)/i.test((msg.body || '').trim());
+          if (isSystemNotice) {
+            return (
+              <div key={msg.id} className="flex justify-center">
+                <div className="max-w-[85%] px-4 py-2.5 rounded-2xl bg-gray-100 border border-gray-300 text-center">
+                  <p className="text-[10px] font-bold text-brand-700 uppercase tracking-wide mb-0.5">🛡️ GoPalengke Admin</p>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap break-words">{msg.body}</p>
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    {new Date(msg.created_at).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+            );
+          }
+
           return (
             <div key={msg.id} className={`flex items-end gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
               {!isMine && <Avatar src={otherAvatar} name={otherName} size={28} />}
