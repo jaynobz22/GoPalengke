@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MapPin, X, Navigation, Settings } from 'lucide-react';
 
 type Role = 'buyer' | 'seller' | 'rider';
@@ -21,11 +21,37 @@ interface Props {
   onClose: () => void;
 }
 
-export function GpsPermissionModal({ open, role = 'buyer', onRetry, onClose }: Props) {
+const SHOWN_KEY = 'gopalengke_gps_prompt_shown';
+
+export function GpsPermissionModal({ open, role = 'buyer', onRetry, onClose: closeProp }: Props) {
   const [showHelp, setShowHelp] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [allowed, setAllowed] = useState(false);
 
-  if (!open) return null;
+  // Isang beses lang lalabas: kapag naka-allow na ang location, o naipakita na ngayong session, hindi na uulit.
+  useEffect(() => {
+    if (!open) { setAllowed(false); return; }
+    let cancelled = false;
+    const skip = () => { if (!cancelled) closeProp(); };
+    if (sessionStorage.getItem(SHOWN_KEY) === '1') { skip(); return; }
+    const perms: any = typeof navigator !== 'undefined' ? navigator.permissions : null;
+    if (perms?.query) {
+      perms.query({ name: 'geolocation' }).then((s: any) => {
+        if (cancelled) return;
+        if (s.state === 'granted') { skip(); return; }
+        if (s.state === 'denied') setShowHelp(true);
+        sessionStorage.setItem(SHOWN_KEY, '1');
+        setAllowed(true);
+      }).catch(() => { if (!cancelled) { sessionStorage.setItem(SHOWN_KEY, '1'); setAllowed(true); } });
+    } else {
+      sessionStorage.setItem(SHOWN_KEY, '1');
+      setAllowed(true);
+    }
+    return () => { cancelled = true; };
+  }, [open]);
+
+  const onClose = closeProp;
+  if (!open || !allowed) return null;
 
   function handleRetry() {
     setRetrying(true);
