@@ -796,127 +796,78 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
       ) : filtered.length === 0 ? (
         <p className="text-center text-gray-400 text-sm py-12">Walang users na nakita.</p>
       ) : (
-        <div className="space-y-2">
-          {filtered.map(user => (
-            <div key={user.id} className="bg-white rounded-2xl border border-gray-100 p-3">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm text-gray-800 truncate">{user.full_name}</p>
-                  <p className="text-xs text-gray-400 truncate">{user.email}</p>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                      user.role === 'seller' ? 'bg-orange-100 text-orange-700' :
-                      user.role === 'buyer' ? 'bg-green-100 text-green-700' :
-                      user.role === 'rider' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {user.role}
-                    </span>
-                    {user.id === adminProfile?.id && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-800 text-white">You</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Status badges */}
-              <div className="flex items-center gap-2 mb-3">
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                  user.is_approved ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'
-                }`}>
-                  {user.is_approved ? 'Approved' : 'Pending'}
-                </span>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                  user.is_active ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-                }`}>
-                  {user.is_active ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2">
-                {subtab === 'pending' ? (
-                  <Button
-                    onClick={() => toggleApproved(user)}
-                    disabled={user.id === adminProfile?.id || !!approving}
-                    className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-medium bg-green-600 text-white active:scale-95 transition disabled:opacity-30"
-                  >
-                    {approving === user.id ? <Loader2 size={14} className="animate-spin" /> : <UserCheck size={14} />}
-                    {approvalRetry === user.id ? 'Subukan muli' : 'Approve'}
-                  </Button>
-                ) : (
-                  <button
-                    onClick={() => toggleActive(user)}
-                    disabled={user.id === adminProfile?.id}
-                    className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-medium transition disabled:opacity-30 ${
-                      user.is_active
-                        ? 'bg-red-50 text-red-600'
-                        : 'bg-brand-50 text-brand-600'
-                    }`}
-                  >
-                    <Power size={14} />
-                    {user.is_active ? 'Deactivate' : 'Activate'}
-                  </button>
-                )}
-                <Button
-                  onClick={() => toggleApproved(user)}
-                  disabled={user.id === adminProfile?.id || !!approving}
-                  className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-medium transition disabled:opacity-30 ${
-                    user.is_approved
-                      ? 'bg-gray-100 text-gray-600'
-                      : 'bg-green-600 text-white'
-                  }`}
-                >
-                  {approving === user.id ? <Loader2 size={14} className="animate-spin" /> : user.is_approved ? <UserX size={14} /> : <UserCheck size={14} />}
-                  {approvalRetry === user.id ? 'Subukan muli' : user.is_approved ? 'Disapprove' : 'Approve'}
-                </Button>
-              </div>
-
-              {/* View Profile Button */}
-              <button
-                onClick={() => setReviewingUser(user)}
-                className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold bg-brand-50 text-brand-600 border border-brand-200 active:scale-95 transition mb-2"
-              >
-                <Eye size={15} />
-                Silipin ang Profile
-              </button>
-
-              {/* Chat + Video Call + Delete */}
-              {user.id !== adminProfile?.id && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => onStartChat(user)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200 active:scale-95 transition"
-                  >
-                    <MessageCircle size={15} />
-                    Chat
-                  </button>
-                  <button
-                    onClick={() => onStartCall(user)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 active:scale-95 transition"
-                  >
-                    <Video size={15} />
-                    Video Call
-                  </button>
-                  {user.role === 'seller' && (
-                    <button
-                      onClick={() => toggleDemo(user)}
-                      className="flex items-center justify-center gap-1 py-2.5 px-3 rounded-xl text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 active:scale-95 transition"
-                    >
-                      🧪 Demo
-                    </button>
-                  )}
-                  <button
-                    onClick={() => deleteUser(user)}
-                    disabled={deleting === user.id}
-                    className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-semibold bg-red-50 text-red-600 border border-red-200 active:scale-95 transition disabled:opacity-50"
-                  >
-                    {deleting === user.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+          <table className="w-full text-xs border-collapse">
+            <thead className="bg-gray-50 text-gray-500">
+              <tr>
+                <th className="px-2 py-1.5 text-left border-b border-gray-200 w-8">#</th>
+                <th className="px-2 py-1.5 text-left border-b border-gray-200">Pangalan / Email</th>
+                <th className="px-2 py-1.5 text-left border-b border-gray-200">Role</th>
+                <th className="px-2 py-1.5 text-left border-b border-gray-200">Status</th>
+                <th className="px-2 py-1.5 text-right border-b border-gray-200">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((user, idx) => {
+                const isMe = user.id === adminProfile?.id;
+                const btn = 'h-7 w-7 inline-flex items-center justify-center rounded-md border active:scale-95 transition disabled:opacity-30';
+                return (
+                  <tr key={user.id} className="odd:bg-white even:bg-gray-50 hover:bg-brand-50">
+                    <td className="px-2 py-1 border-b border-gray-100 text-gray-400">{idx + 1}</td>
+                    <td className="px-2 py-1 border-b border-gray-100 max-w-[180px]">
+                      <p className="font-semibold text-gray-800 truncate">{user.full_name}{isMe && <span className="ml-1 text-[9px] px-1.5 rounded-full bg-gray-800 text-white">You</span>}</p>
+                      <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
+                    </td>
+                    <td className="px-2 py-1 border-b border-gray-100">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                        user.role === 'seller' ? 'bg-orange-100 text-orange-700' :
+                        user.role === 'buyer' ? 'bg-green-100 text-green-700' :
+                        user.role === 'rider' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                      }`}>{user.role}</span>
+                    </td>
+                    <td className="px-2 py-1 border-b border-gray-100 whitespace-nowrap">
+                      <span className={`text-[10px] font-medium ${user.is_approved ? 'text-green-600' : 'text-amber-600'}`}>{user.is_approved ? 'Approved' : 'Pending'}</span>
+                      <span className="text-gray-300"> · </span>
+                      <span className={`text-[10px] font-medium ${user.is_active ? 'text-green-600' : 'text-red-600'}`}>{user.is_active ? 'Active' : 'Inactive'}</span>
+                    </td>
+                    <td className="px-2 py-1 border-b border-gray-100">
+                      <div className="flex items-center justify-end gap-1">
+                        <button title={approvalRetry === user.id ? 'Subukan muli' : user.is_approved ? 'Disapprove' : 'Approve'} onClick={() => toggleApproved(user)} disabled={isMe || !!approving}
+                          className={`${btn} ${user.is_approved ? 'bg-gray-100 text-gray-600 border-gray-200' : 'bg-green-600 text-white border-green-600'}`}>
+                          {approving === user.id ? <Loader2 size={13} className="animate-spin" /> : user.is_approved ? <UserX size={13} /> : <UserCheck size={13} />}
+                        </button>
+                        {subtab !== 'pending' && (
+                          <button title={user.is_active ? 'Deactivate' : 'Activate'} onClick={() => toggleActive(user)} disabled={isMe}
+                            className={`${btn} ${user.is_active ? 'bg-red-50 text-red-600 border-red-200' : 'bg-brand-50 text-brand-600 border-brand-200'}`}>
+                            <Power size={13} />
+                          </button>
+                        )}
+                        <button title="Silipin ang Profile" onClick={() => setReviewingUser(user)} className={`${btn} bg-brand-50 text-brand-600 border-brand-200`}>
+                          <Eye size={13} />
+                        </button>
+                        {!isMe && (
+                          <>
+                            <button title="Chat" onClick={() => onStartChat(user)} className={`${btn} bg-gray-100 text-gray-700 border-gray-200`}>
+                              <MessageCircle size={13} />
+                            </button>
+                            <button title="Video Call" onClick={() => onStartCall(user)} className={`${btn} bg-blue-50 text-blue-600 border-blue-200`}>
+                              <Video size={13} />
+                            </button>
+                            {user.role === 'seller' && (
+                              <button title="Demo" onClick={() => toggleDemo(user)} className={`${btn} bg-amber-50 text-amber-700 border-amber-200`}>🧪</button>
+                            )}
+                            <button title="Delete" onClick={() => deleteUser(user)} disabled={deleting === user.id} className={`${btn} bg-red-50 text-red-600 border-red-200`}>
+                              {deleting === user.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
