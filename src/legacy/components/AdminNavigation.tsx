@@ -11,6 +11,7 @@ export const adminNavigationGroups = [
   { id: 'accounts', label: 'Accounts', icon: Users, tabs: [
     { id: 'users', label: 'Users', icon: UserCheck },
     { id: 'affiliates', label: 'Affiliates', icon: Users },
+    { id: 'beta_testers', label: 'Beta Testers', icon: Mail },
   ] },
   { id: 'billing', label: 'Billing & Credits', icon: Wallet, tabs: [
     { id: 'fees', label: 'Seller Fees', icon: Wallet },
