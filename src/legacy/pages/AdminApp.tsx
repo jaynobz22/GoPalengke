@@ -20,6 +20,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { UserProfileReview } from '../components/UserProfileReview';
 import { AdminMarketingMaterials } from '../components/affiliate/AdminMarketingMaterials';
 import { OnboardingReminders } from '../components/OnboardingReminders';
+import { BetaTestersAdmin } from '../components/BetaTestersAdmin';
 import { AdminNavigation, adminNavigationGroups, type AdminTab } from '../components/AdminNavigation';
 import { Button } from '@/components/ui/button';
 import { formatRegionForDisplay } from '../lib/philippineLocations';
@@ -239,6 +240,7 @@ export function AdminApp() {
       {tab === 'fees' && <ErrorBoundary><FeesTab /></ErrorBoundary>}
       {tab === 'rider_fees' && <ErrorBoundary><RiderFeesTab /></ErrorBoundary>}
       {tab === 'announcements' && <ErrorBoundary><AnnouncementsTab /></ErrorBoundary>}
+      {tab === 'beta_testers' && <ErrorBoundary><BetaTestersAdmin /></ErrorBoundary>}
       {tab === 'security' && <ErrorBoundary><SecurityDashboardTab /></ErrorBoundary>}
       {tab === 'video_credits' && <ErrorBoundary><VideoCreditsTab onPendingCountChange={setPendingCreditCount} /></ErrorBoundary>}
       {tab === 'tutorials' && <ErrorBoundary><TutorialsTab /></ErrorBoundary>}
