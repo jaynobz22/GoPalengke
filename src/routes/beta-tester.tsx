@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import heroImg from "@/assets/beta-hero.jpg";
+import { supabase } from "@/legacy/lib/supabase";
 
-const GROUP_URL = "https://play.google.com/apps/internaltest/4700781488049509792";
 const ANDROID_URL = "https://play.google.com/store/apps/details?id=net.gopalengke";
 const WEB_URL = "https://play.google.com/apps/testing/net.gopalengke";
 
@@ -26,13 +27,13 @@ export const Route = createFileRoute("/beta-tester")({
 const steps = [
   {
     n: 1,
-    t: "Sumali sa GoPalengke Testers Google Group",
-    d: "Gamitin ang parehong Gmail account na naka-login sa Play Store ng Android phone mo. Kailangan ito bago gumana ang download link.",
+    t: "Ilagay ang pangalan at Gmail mo sa form",
+    d: "Gamitin ang parehong Gmail account na naka-login sa Play Store ng Android phone mo.",
   },
   {
     n: 2,
-    t: "Mag-opt in bilang tester",
-    d: "Pindutin ang \"Become a tester\" gamit ang Android phone o web browser. Pareho lang ang resulta.",
+    t: "Hintayin ang email mula sa GoPalengke",
+    d: "Idadagdag ka namin sa tester list. May matatanggap kang email na may download link — i-check ang inbox at spam folder.",
   },
   {
     n: 3,
@@ -49,7 +50,7 @@ const steps = [
 const faqs = [
   {
     q: "Bakit \"App not available\" ang lumalabas?",
-    a: "Hindi ka pa nakasali sa Google Group, o ibang Gmail account ang gamit mo sa Play Store. Sumali muna sa group gamit ang parehong account.",
+    a: "Baka hindi ka pa naidadagdag sa tester list, o ibang Gmail account ang gamit mo sa Play Store. Hintayin ang email namin at gamitin ang parehong Gmail.",
   },
   {
     q: "Libre ba ito?",
@@ -92,32 +93,10 @@ function BetaTesterPage() {
             Kailangan namin ng hindi bababa sa 12 testers na gagamit ng app sa loob ng 14 na araw para
             mailabas ang GoPalengke sa Google Play Store para sa buong Pilipinas.
           </p>
-          <a
-            href={GROUP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-8 inline-flex items-center justify-center rounded-xl bg-primary-foreground px-6 py-4 text-base font-bold text-primary shadow-lg transition hover:opacity-90"
-          >
-            👥 Sumali sa Google Group
-          </a>
-          <p className="mt-2 text-xs opacity-80">Unang hakbang — gawin ito bago mag-download</p>
         </div>
       </section>
 
-      <section className="mx-auto max-w-3xl px-5 pt-12">
-        <h2 className="text-center text-2xl font-bold">📹 Panoorin ang Video Tutorial</h2>
-        <p className="mt-2 text-center text-sm text-muted-foreground">Paano sumali at mag-install ng GoPalengke app</p>
-        <div className="mt-6 aspect-video w-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-          <iframe
-            className="h-full w-full"
-            src="https://www.youtube-nocookie.com/embed/AFlOqeelY3U"
-            title="GoPalengke Beta Tester Tutorial"
-            loading="lazy"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-      </section>
+      <BetaSignupForm />
 
       <section className="mx-auto max-w-3xl px-5 py-12">
         <h2 className="text-center text-2xl font-bold">Paano Sumali</h2>
@@ -140,7 +119,7 @@ function BetaTesterPage() {
         <div className="mx-auto max-w-3xl px-5 py-12">
           <h2 className="text-center text-2xl font-bold">Pumili kung paano sasali bilang tester</h2>
           <p className="mt-2 text-center text-sm text-muted-foreground">
-            Siguraduhing nakasali ka na sa Google Group bago pumindot dito.
+            Gamitin lang ito pagkatanggap mo ng email namin.
           </p>
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             <a
@@ -189,5 +168,53 @@ function BetaTesterPage() {
         </p>
       </section>
     </main>
+  );
+}
+
+function BetaSignupForm() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [state, setState] = useState<"idle" | "saving" | "done">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const n = name.trim();
+    const m = email.trim().toLowerCase();
+    if (n.length < 2 || n.length > 100) return setError("Pakilagay ang buong pangalan mo.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m) || m.length > 255) return setError("Pakilagay ang tamang email address.");
+    setState("saving");
+    const { error } = await supabase.from("beta_testers").insert({ full_name: n, email: m });
+    if (error && error.code !== "23505") {
+      setState("idle");
+      return setError("Hindi naisumite. Pakisubukan ulit mamaya.");
+    }
+    try { localStorage.setItem("gopalengke_beta_joined", "1"); } catch {}
+    setState("done");
+  }
+
+  return (
+    <section className="mx-auto max-w-xl px-5 pt-12">
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <h2 className="text-center text-2xl font-bold">Sumali sa Beta Testing</h2>
+        {state === "done" ? (
+          <div className="mt-5 rounded-xl bg-primary/10 p-4 text-sm text-foreground" role="status">
+            <p className="font-semibold text-primary">✅ Salamat sa pagsali!</p>
+            <p className="mt-2">May matatanggap kang email mula sa GoPalengke na may download link ng app. I-check ang inbox mo (pati spam folder) paminsan-minsan.</p>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="mt-5 space-y-3">
+            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} placeholder="Buong pangalan" aria-label="Buong pangalan" className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm" />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={255} placeholder="Gmail address (gamit sa Play Store)" aria-label="Gmail address" className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm" />
+            <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">📧 Pagkatapos mag-submit, may matatanggap kang email na may download link ng app. I-check lang ang inbox mo anytime.</p>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <button type="submit" disabled={state === "saving"} className="w-full rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground disabled:opacity-60">
+              {state === "saving" ? "Isinusumite..." : "Sumali bilang Beta Tester"}
+            </button>
+          </form>
+        )}
+      </div>
+    </section>
   );
 }
