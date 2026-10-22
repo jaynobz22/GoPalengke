@@ -7,6 +7,7 @@ import {
   Store, Target, TrendingUp, Truck, Users, WalletCards,
 } from 'lucide-react';
 import { navigate } from '../lib/router';
+import { SystemeForm } from './SystemeForm';
 
 type Audience = 'seller' | 'rider' | 'buyer' | 'affiliate';
 
@@ -288,6 +289,7 @@ export function MarketingAudiencePage({ audience }: { audience: Audience }) {
         <button type="button" onClick={() => navigate('/')} className="font-semibold text-white">GoPalengke</button>
         <p className="mt-2">Sariwang paninda. Lokal na kabuhayan. Mas madaling pamamalengke.</p>
       </footer>
+      <SystemeForm />
     </main>
   );
 }
