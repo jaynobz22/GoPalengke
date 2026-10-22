@@ -4,7 +4,6 @@ import { z } from "zod";
 const GP_URL = "https://melwjygaczevpasgazfo.supabase.co";
 const GP_ANON =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lbHdqeWdhY3pldnBhc2dhemZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg0OTQ1MjcsImV4cCI6MjEwNDA3MDUyN30.tsqdbMBiCc5uJvd3eyk54S51TN1ZxoYusQOwwKWooq0";
-export const BETA_INVITE_DELAY_MIN = 20;
 const OPT_IN_URL = "https://play.google.com/apps/testing/net.gopalengke";
 const STORE_URL = "https://play.google.com/store/apps/details?id=net.gopalengke";
 
@@ -51,7 +50,7 @@ export const scheduleBetaInvite = createServerFn({ method: "POST" })
       ? { Authorization: `Bearer ${LOVABLE_API_KEY}`, "X-Connection-Api-Key": RESEND_API_KEY }
       : { Authorization: `Bearer ${RESEND_API_KEY}` };
 
-    const sendAt = new Date(Date.now() + BETA_INVITE_DELAY_MIN * 60 * 1000).toISOString();
+    const sendAt = new Date().toISOString();
     const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
@@ -60,7 +59,6 @@ export const scheduleBetaInvite = createServerFn({ method: "POST" })
         to: [(tester as any).email],
         subject: "Ang download link mo ng GoPalengke app (Beta Tester)",
         html: inviteHtml((tester as any).full_name),
-        scheduled_at: sendAt,
       }),
     });
     if (!res.ok) {
