@@ -49,7 +49,7 @@ export function BetaTestersAdmin() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-lg font-bold text-foreground">Beta Testers</h2>
-          <p className="text-xs text-muted-foreground">I-copy ang emails, idagdag sa Google Play Console, tapos pindutin ang "Na-add na". Matatanggap nila ang download link makalipas ang 20 minuto.</p>
+          <p className="text-xs text-muted-foreground">I-copy ang emails, idagdag sa Google Play Console, tapos pindutin ang "Na-add na". Agad nilang matatanggap ang email na may download link.</p>
         </div>
         <div className="flex gap-2">
           {pending.length > 0 && (
