@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { isBuyerArranged } from '../lib/buyerCargo';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, deleteStorageObject } from '../lib/supabase';
 import { notifyOrderSms } from '../lib/orderSms';
@@ -1732,7 +1733,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
 
   // Auto-load nearby riders when order is ready for pickup (for the hint banner)
   useEffect(() => {
-    if (currentOrder.status === 'ready_for_pickup' && !currentOrder.rider_id && !currentOrder.delivery_method) {
+    if (currentOrder.status === 'ready_for_pickup' && !currentOrder.rider_id && !currentOrder.delivery_method && !isBuyerArranged(currentOrder.buyer_note)) {
       loadAvailableRiders();
     }
   }, [currentOrder.status, currentOrder.rider_id]);
@@ -2063,7 +2064,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       )}
 
       {/* Active step: Ready for pickup — rider selection (skip for livestock) */}
-      {!isCancelled && !currentOrder.rider_id && currentOrder.status === 'ready_for_pickup' && !currentOrder.delivery_method && (
+      {!isCancelled && !currentOrder.rider_id && currentOrder.status === 'ready_for_pickup' && !currentOrder.delivery_method && !isBuyerArranged(currentOrder.buyer_note) && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
           <div className="flex items-center gap-2 mb-3">
             <Clock size={18} className="text-amber-500" />
@@ -2093,6 +2094,20 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             <Radio size={12} className="inline mr-1" />
             I-broadcast na sa lahat ng riders — makikita na nila ang order na ito sa app nila.
           </p>
+        </div>
+      )}
+
+      {/* Buyer brought their own bao-bao/tricycle/minivan driver — no rider assignment */}
+      {!isCancelled && !currentOrder.rider_id && isBuyerArranged(currentOrder.buyer_note) && ['accepted', 'preparing', 'ready_for_pickup'].includes(currentOrder.status) && (
+        <div className="bg-brand-50 border border-brand-200 rounded-2xl p-4 mb-3">
+          <p className="text-sm font-semibold text-brand-800">🚚 May sariling magkakarga ang buyer</p>
+          <p className="text-xs text-brand-700 mt-1">Hindi mo na kailangang mag-assign ng rider. Iabot lang ang paninda sa driver na kausap ng buyer (tingnan ang note sa itaas).</p>
+          {currentOrder.status === 'ready_for_pickup' && (
+            <button onClick={() => updateStatus('delivered')} disabled={updating}
+              className="mt-3 w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
+              {updating ? 'Nag-uupdate...' : 'Naiabot na sa Driver ng Buyer'}
+            </button>
+          )}
         </div>
       )}
 

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { MOTORCYCLE_MAX_KG, buildBuyerNote } from '../lib/buyerCargo';
 import { DemoBadge } from '../components/DemoBadge';
 import { shareToMessenger } from '../lib/messengerShare';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -1910,6 +1911,8 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   const [note, setNote] = useState('');
   const [deliveryPin, setDeliveryPin] = useState<Coords | null>(null);
   const [agreedFees, setAgreedFees] = useState<Record<string, string>>({});
+  const [buyerArranged, setBuyerArranged] = useState<Record<string, boolean>>({});
+  const [arrangedDriver, setArrangedDriver] = useState<Record<string, string>>({});
   const [showMap, setShowMap] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'found' | 'denied' | 'unavailable' | 'timeout'>('idle');
   const [showGpsPrompt, setShowGpsPrompt] = useState(false);
@@ -2069,7 +2072,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
     const r = computeBaseFee(store, items);
     if (r.tier === 'motorcycle') return r;
     (getFeeForStore as any).suggested = { ...((getFeeForStore as any).suggested || {}), [store.id]: r.fee };
-    const agreed = Number(agreedFees[store.id]);
+    const agreed = buyerArranged[store.id] ? 0 : Number(agreedFees[store.id]);
     const fee = agreed > 0 ? Math.round(agreed * 100) / 100 : 0;
     return { ...r, fee, distanceCharge: fee, weightSurcharge: 0, riderNet: fee, commission: 0 };
   }
@@ -2101,7 +2104,11 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
     for (const its of Object.values(grouped)) {
       if (isLivestockOrder(its)) continue;
       const f = getFeeForStore(its[0].store, its);
-      if (f.isPrimary && f.tier !== 'motorcycle' && !(Number(agreedFees[its[0].store.id]) > 0)) {
+      if (f.isPrimary && f.tier !== 'motorcycle' && buyerArranged[its[0].store.id] && !(arrangedDriver[its[0].store.id] || '').trim()) {
+        alert('Pakilagay ang pangalan ng driver at sasakyan na kausap mo para alam ng seller kung kanino iaabot ang paninda.');
+        return;
+      }
+      if (f.isPrimary && f.tier !== 'motorcycle' && !buyerArranged[its[0].store.id] && !(Number(agreedFees[its[0].store.id]) > 0)) {
         alert('Mabigat ang karga kaya bao-bao o minivan ang kailangan. Pakilagay muna ang napagkasunduang delivery fee ninyo ng driver.');
         return;
       }
@@ -2199,7 +2206,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
         delivery_address: fullAddress,
         delivery_lat: deliveryPin?.lat ?? null,
         delivery_lng: deliveryPin?.lng ?? null,
-        buyer_note: note || null,
+        buyer_note: buildBuyerNote(note, feeBreakdown?.tier !== 'motorcycle' && !!buyerArranged[storeId], arrangedDriver[storeId]),
         commission_amount: commissionAmount,
         distance_km: feeBreakdown?.distanceKm || 0,
         vehicle_type: feeBreakdown?.tier || null,
@@ -2546,10 +2553,34 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                   <span>Distance Charge {distanceKm <= 2 ? '(base, first 2 km)' : `(base + ${(distanceKm - 2).toFixed(2)} km × ₱${rates.perKmRate})`}</span>
                   <span>₱{distanceCharge.toFixed(2)}</span>
                 </div>
-                {totalWeightKg > 20 && (
-                  <p className="text-xs text-blue-700 bg-blue-50 rounded-lg p-2 mt-1">Standard motorcycle is not eligible for this load. A {tier === 'tricycle' ? 'Tricycle / Bao-Bao' : 'Minivan'} is required.</p>
+                {totalWeightKg > MOTORCYCLE_MAX_KG && (
+                  <p className="text-xs text-blue-700 bg-blue-50 rounded-lg p-2 mt-1">Lagpas {MOTORCYCLE_MAX_KG} kg ang karga kaya hindi na pwede ang single na motor. {tier === 'tricycle' ? 'Bao-Bao / Tricycle' : 'Minivan'} ang kailangan.</p>
                 )}
                 {tier !== 'motorcycle' && (
+                  <label className="flex items-start gap-2 bg-brand-50 border border-brand-200 rounded-xl p-3 mt-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!buyerArranged[store.id]}
+                      onChange={e => setBuyerArranged(prev => ({ ...prev, [store.id]: e.target.checked }))}
+                      className="mt-0.5 h-4 w-4 accent-brand-600"
+                    />
+                    <span className="text-xs text-brand-800">
+                      <strong>🚚 May kausap na akong magkakarga (Bao-Bao / Tricycle / Minivan)</strong>
+                      <span className="block mt-0.5">Hindi na mag-a-assign ng rider ang seller. Ikaw na ang magbabayad nang direkta sa driver mo.</span>
+                    </span>
+                  </label>
+                )}
+                {tier !== 'motorcycle' && buyerArranged[store.id] && (
+                  <input
+                    type="text"
+                    maxLength={120}
+                    placeholder="Pangalan ng driver at sasakyan (hal. Kuya Jun, Bao-Bao, ABC 123)"
+                    value={arrangedDriver[store.id] ?? ''}
+                    onChange={e => setArrangedDriver(prev => ({ ...prev, [store.id]: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg border border-brand-200 bg-white text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                  />
+                )}
+                {tier !== 'motorcycle' && !buyerArranged[store.id] && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-1 space-y-2">
                     <p className="text-xs font-semibold text-amber-800">🤝 Napagkasunduang Delivery Fee ({tier === 'tricycle' ? 'Bao-Bao' : 'Minivan'})</p>
                     <p className="text-xs text-amber-700">
@@ -2753,7 +2784,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                     buyer_id: profile!.id, store_id: storeId, status: 'pending', payment_method: paymentMethod, payment_status: 'pending',
                     total, delivery_fee: deliveryFee, delivery_method: deliveryMethod, delivery_barangay: deliveryLocation.barangay || null, delivery_district: deliveryLocation.district || null,
                     delivery_city: deliveryLocation.city || null, delivery_region: deliveryLocation.region || null, delivery_address: fullAddress,
-                    delivery_lat: deliveryPin?.lat ?? null, delivery_lng: deliveryPin?.lng ?? null, buyer_note: note || null,
+                    delivery_lat: deliveryPin?.lat ?? null, delivery_lng: deliveryPin?.lng ?? null, buyer_note: buildBuyerNote(note, feeBreakdown?.tier !== 'motorcycle' && !!buyerArranged[storeId], arrangedDriver[storeId]),
                     commission_amount: commissionAmount, delivery_group_id: groupId,
                     distance_km: feeBreakdown?.distanceKm || 0, vehicle_type: feeBreakdown?.tier || null,
                     seller_delivery_subsidy: feeBreakdown?.sellerSubsidy || 0,

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { isBuyerArranged } from '../lib/buyerCargo';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { watchOrders } from '../lib/liveOrders';
 import { supabase } from '../lib/supabase';
@@ -252,7 +253,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
       supabase.from('orders').select('*, store:stores(*), buyer:profiles!orders_buyer_id_fkey(full_name)')
         .eq('rider_id', profile.id).in('status', ['ready_for_pickup', 'picked_up']).order('created_at', { ascending: false }),
     ]);
-    setAvailableOrders((available || []) as any);
+    setAvailableOrders(((available || []) as any[]).filter(o => !isBuyerArranged(o.buyer_note)) as any);
     setMyOrders((mine || []) as any);
     setLoading(false);
   }, [profile]);

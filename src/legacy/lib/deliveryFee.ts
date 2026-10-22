@@ -103,10 +103,10 @@ function round2(n: number): number {
 
 /**
  * Determine the required vehicle tier based on cargo weight.
- * ≤20kg → motorcycle, 21-150kg → tricycle, 151-500kg → minivan.
+ * ≤25kg → motorcycle, >25-150kg → tricycle, 151-500kg → minivan.
  */
 export function getRequiredTier(totalWeightKg: number): VehicleTier {
-  if (totalWeightKg <= 20) return 'motorcycle';
+  if (totalWeightKg <= 25) return 'motorcycle';
   if (totalWeightKg <= 150) return 'tricycle';
   return 'minivan';
 }
