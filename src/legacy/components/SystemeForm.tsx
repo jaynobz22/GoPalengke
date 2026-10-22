@@ -8,13 +8,22 @@ export function SystemeForm() {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const host = ref.current;
-    if (!host || document.getElementById(SCRIPT_ID)) return;
+    const w = window as unknown as { __systemeLoaded?: boolean };
+    if (!host || w.__systemeLoaded || document.getElementById(SCRIPT_ID)) return;
+    w.__systemeLoaded = true;
     const s = document.createElement('script');
     s.id = SCRIPT_ID;
     s.src = SCRIPT_SRC;
     s.async = true;
+    // Systeme waits for window.onload, which already fired in this app (page opened via in-app navigation
+    // or loaded before the script) — so trigger it manually once the script is ready. Fixes phones.
+    s.onload = () => {
+      if (document.readyState === 'complete' && typeof window.onload === 'function') {
+        window.onload.call(window, new Event('load'));
+      }
+    };
     host.appendChild(s);
-    return () => { s.remove(); };
+    return () => { s.remove(); w.__systemeLoaded = false; };
   }, []);
   return <div ref={ref} />;
 }
