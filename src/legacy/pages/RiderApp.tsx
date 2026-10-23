@@ -23,6 +23,7 @@ import { ensureGps } from '../lib/gpsGate';
 import { ReviewSection } from '../components/Reviews';
 import { OrderStepTracker, type StepInfo } from '../components/OrderStepTracker';
 import { AdminVideoCall } from '../components/AdminVideoCall';
+import { MultiStoreTabs } from '../components/MultiStoreTabs';
 import { AdminChat } from '../components/AdminChat';
 import { VideoCreditStore } from '../components/VideoCreditStore';
 import { useIncomingAdminCall } from '../lib/useAdminCall';
@@ -830,8 +831,12 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         </div>
       )}
 
+      {allStores.length > 1 && (
+        <MultiStoreTabs orders={allStores.map(s => s.order)} mode="rider" showCod={isDelivered && isCod} />
+      )}
+
       {/* COD Payment Section — rider sends payment to seller after delivery */}
-      {isDelivered && isCod && !codAccepted && (
+      {isDelivered && isCod && !codAccepted && allStores.length <= 1 && (
         <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-3">
           <div className="flex items-center gap-2 mb-3">
             <DollarSign size={20} className="text-amber-600" />
@@ -1131,7 +1136,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
       )}
 
       {/* Items */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
+      <div className={`bg-white rounded-2xl border border-gray-100 p-4 mb-3 ${allStores.length > 1 ? 'hidden' : ''}`}>
         <h3 className="font-semibold text-gray-800 mb-3">Mga Paninda</h3>
         {items.map(item => (
           <div key={item.id} className="flex items-center gap-3 py-2">

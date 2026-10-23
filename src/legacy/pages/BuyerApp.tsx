@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { MOTORCYCLE_MAX_KG, buildBuyerNote } from '../lib/buyerCargo';
+import { MOTORCYCLE_MAX_KG, buildBuyerNote, withPickedRider } from '../lib/buyerCargo';
 import { DemoBadge } from '../components/DemoBadge';
 import { shareToMessenger } from '../lib/messengerShare';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -49,6 +49,7 @@ import { ImageUploadField } from '../components/ImageUploadField';
 import { ReviewForm, ReviewSection } from '../components/Reviews';
 import { OrderStepTracker, type StepInfo } from '../components/OrderStepTracker';
 import { VideoCreditStore } from '../components/VideoCreditStore';
+import { MultiStoreTabs } from '../components/MultiStoreTabs';
 import { AdminVideoCall } from '../components/AdminVideoCall';
 import { AdminChat } from '../components/AdminChat';
 import { LoginReminderPopup } from '../components/LoginReminderPopup';
@@ -1913,6 +1914,15 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   const [agreedFees, setAgreedFees] = useState<Record<string, string>>({});
   const [buyerArranged, setBuyerArranged] = useState<Record<string, boolean>>({});
   const [arrangedDriver, setArrangedDriver] = useState<Record<string, string>>({});
+  const [pickedRider, setPickedRider] = useState<Record<string, { id: string; name: string }>>({});
+  const [fleetList, setFleetList] = useState<FleetRider[]>([]);
+  useEffect(() => {
+    supabase.from('profiles')
+      .select('id, full_name, avatar_url, phone, vehicle_type, rider_plate_number, rider_motor_model, city, barangay, region, is_available, is_active, is_approved')
+      .eq('role', 'rider').in('vehicle_type', ['tricycle', 'minivan'])
+      .eq('is_available', true).eq('is_active', true).eq('is_approved', true).limit(100)
+      .then(({ data }) => setFleetList(sortFleetRiders((data || []) as any, profile?.city, profile?.region)));
+  }, [profile?.city, profile?.region]);
   const [showMap, setShowMap] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'locating' | 'found' | 'denied' | 'unavailable' | 'timeout'>('idle');
   const [showGpsPrompt, setShowGpsPrompt] = useState(false);
@@ -2108,6 +2118,10 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
         alert('Pakilagay ang pangalan ng driver at sasakyan na kausap mo para alam ng seller kung kanino iaabot ang paninda.');
         return;
       }
+      if (f.isPrimary && f.tier !== 'motorcycle' && !buyerArranged[its[0].store.id] && !pickedRider[its[0].store.id]) {
+        alert('Mabigat ang karga. Pumili muna ng Bao-Bao / Minivan na magdedeliver bago mag-checkout.');
+        return;
+      }
       if (f.isPrimary && f.tier !== 'motorcycle' && !buyerArranged[its[0].store.id] && !(Number(agreedFees[its[0].store.id]) > 0)) {
         alert('Mabigat ang karga kaya bao-bao o minivan ang kailangan. Pakilagay muna ang napagkasunduang delivery fee ninyo ng driver.');
         return;
@@ -2206,7 +2220,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
         delivery_address: fullAddress,
         delivery_lat: deliveryPin?.lat ?? null,
         delivery_lng: deliveryPin?.lng ?? null,
-        buyer_note: buildBuyerNote(note, feeBreakdown?.tier !== 'motorcycle' && !!buyerArranged[storeId], arrangedDriver[storeId]),
+        buyer_note: withPickedRider(buildBuyerNote(note, feeBreakdown?.tier !== 'motorcycle' && !!buyerArranged[storeId], arrangedDriver[storeId]), feeBreakdown && feeBreakdown.tier !== 'motorcycle' && !buyerArranged[storeId] ? pickedRider[storeId]?.id : null, pickedRider[storeId]?.name),
         commission_amount: commissionAmount,
         distance_km: feeBreakdown?.distanceKm || 0,
         vehicle_type: feeBreakdown?.tier || null,
@@ -2582,6 +2596,21 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                 )}
                 {tier !== 'motorcycle' && !buyerArranged[store.id] && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-1 space-y-2">
+                    <p className="text-xs font-semibold text-amber-800">🛺 Pumili ng Bao-Bao / Minivan na magdedeliver</p>
+                    {fleetList.length === 0 ? (
+                      <p className="text-xs text-amber-700">Walang available na Bao-Bao / Minivan ngayon. Pwede mong i-check ang "May kausap na akong magkakarga" sa itaas.</p>
+                    ) : (
+                      <select
+                        value={pickedRider[store.id]?.id ?? ''}
+                        onChange={e => { const r = fleetList.find(x => x.id === e.target.value); setPickedRider(prev => { const n = { ...prev }; if (r) n[store.id] = { id: r.id, name: r.full_name }; else delete n[store.id]; return n; }); }}
+                        className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-white text-sm"
+                      >
+                        <option value="">— Piliin ang driver —</option>
+                        {fleetList.map(r => (
+                          <option key={r.id} value={r.id}>{r.full_name} · {FLEET_VEHICLE_LABELS[r.vehicle_type || ''] || r.vehicle_type}{r.city ? ` · ${r.city}` : ''}</option>
+                        ))}
+                      </select>
+                    )}
                     <p className="text-xs font-semibold text-amber-800">🤝 Napagkasunduang Delivery Fee ({tier === 'tricycle' ? 'Bao-Bao' : 'Minivan'})</p>
                     <p className="text-xs text-amber-700">
                       Makipag-usap muna sa driver tungkol sa bayad base sa bigat ({totalWeightKg.toFixed(1)} kg) at layo ({distanceKm.toFixed(1)} km). Gabay lang: mga ₱{Number((getFeeForStore as any).suggested?.[store.id] ?? 0) > 0 ? Number((getFeeForStore as any).suggested[store.id]).toFixed(0) : '—'}.
@@ -2784,7 +2813,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                     buyer_id: profile!.id, store_id: storeId, status: 'pending', payment_method: paymentMethod, payment_status: 'pending',
                     total, delivery_fee: deliveryFee, delivery_method: deliveryMethod, delivery_barangay: deliveryLocation.barangay || null, delivery_district: deliveryLocation.district || null,
                     delivery_city: deliveryLocation.city || null, delivery_region: deliveryLocation.region || null, delivery_address: fullAddress,
-                    delivery_lat: deliveryPin?.lat ?? null, delivery_lng: deliveryPin?.lng ?? null, buyer_note: buildBuyerNote(note, feeBreakdown?.tier !== 'motorcycle' && !!buyerArranged[storeId], arrangedDriver[storeId]),
+                    delivery_lat: deliveryPin?.lat ?? null, delivery_lng: deliveryPin?.lng ?? null, buyer_note: withPickedRider(buildBuyerNote(note, feeBreakdown?.tier !== 'motorcycle' && !!buyerArranged[storeId], arrangedDriver[storeId]), feeBreakdown && feeBreakdown.tier !== 'motorcycle' && !buyerArranged[storeId] ? pickedRider[storeId]?.id : null, pickedRider[storeId]?.name),
                     commission_amount: commissionAmount, delivery_group_id: groupId,
                     distance_km: feeBreakdown?.distanceKm || 0, vehicle_type: feeBreakdown?.tier || null,
                     seller_delivery_subsidy: feeBreakdown?.sellerSubsidy || 0,
@@ -3753,8 +3782,11 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         <p className="text-sm text-gray-400">{currentOrder.delivery_barangay}, {currentOrder.delivery_city}, {formatRegionForDisplay(currentOrder.delivery_region)}</p>
       </div>
 
-      {/* Sibling stores in the same delivery group */}
-      {siblingOrders.length > 0 && (
+      {/* Multi-store: one tab per store */}
+      {siblingOrders.length > 0 && store && (
+        <MultiStoreTabs orders={[{ ...currentOrder, store }, ...siblingOrders]} mode="buyer" />
+      )}
+      {false && siblingOrders.length > 0 && (
         <div className="bg-white rounded-2xl border border-brand-200 p-4 mb-3">
           <div className="flex items-center gap-2 mb-3">
             <StoreIcon size={16} className="text-brand-600" />

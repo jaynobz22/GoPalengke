@@ -20,3 +20,14 @@ test('buyer-arranged note is detected and tells seller not to assign a rider', (
 test('normal note is not buyer-arranged', () => {
   assert.equal(isBuyerArranged(buildBuyerNote('ingat po', false)), false);
 });
+
+import { withPickedRider, getPickedRiderId } from './buyerCargo';
+test('buyer-picked bao-bao rider id is recoverable from the note', () => {
+  const id = '123e4567-e89b-12d3-a456-426614174000';
+  const n = withPickedRider('ingat po', id, 'Kuya Ben');
+  assert.equal(getPickedRiderId(n), id);
+  assert.match(n!, /ingat po/);
+});
+test('no picked rider when none chosen', () => {
+  assert.equal(getPickedRiderId(withPickedRider('ingat', null)), null);
+});

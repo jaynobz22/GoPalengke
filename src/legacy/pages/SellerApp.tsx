@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { isBuyerArranged } from '../lib/buyerCargo';
+import { isBuyerArranged, getPickedRiderId } from '../lib/buyerCargo';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, deleteStorageObject } from '../lib/supabase';
 import { notifyOrderSms } from '../lib/orderSms';
@@ -2063,6 +2063,19 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         </button>
       )}
 
+      {!isCancelled && !currentOrder.rider_id && currentOrder.status === 'ready_for_pickup' && getPickedRiderId(currentOrder.buyer_note) && (
+        <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-4 mb-3">
+          <p className="text-sm font-bold text-green-800">🛺 May piniling Bao-Bao / Minivan ang buyer</p>
+          <p className="text-xs text-green-700 mt-1">{(currentOrder.buyer_note || '').split('\n')[0].replace(/^.*?\]\s*/, '')}</p>
+          <button
+            onClick={() => assignRider(getPickedRiderId(currentOrder.buyer_note)!)}
+            disabled={!!assigningRider}
+            className="mt-3 w-full py-2.5 bg-green-600 text-white rounded-xl font-semibold text-sm disabled:opacity-50"
+          >
+            {assigningRider ? 'Ina-assign...' : 'I-assign ang piniling driver ng buyer'}
+          </button>
+        </div>
+      )}
       {/* Active step: Ready for pickup — rider selection (skip for livestock) */}
       {!isCancelled && !currentOrder.rider_id && currentOrder.status === 'ready_for_pickup' && !currentOrder.delivery_method && !isBuyerArranged(currentOrder.buyer_note) && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
