@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAffiliateAuth, type Affiliate } from '../../lib/affiliateAuth';
 import { navigate } from '../../lib/router';
 import { supabase } from '../../lib/supabase';
+import { sellerMilestoneProgress, SELLER_MILESTONE, SELLER_COMMISSION_TOTAL, SELLER_TIER1, SELLER_TIER2 } from '../../lib/affiliateSellerMilestone';
 import { AffiliateMarketingTools } from '../../components/affiliate/AffiliateMarketingTools';
 import { AIMarketingKit } from '../../components/affiliate/AIMarketingKit';
 import { TargetedMarketingPages } from '../../components/affiliate/TargetedMarketingPages';
@@ -33,10 +34,6 @@ interface Transaction {
   created_at: string;
 }
 
-const SELLER_MILESTONE = 1000;
-const SELLER_COMMISSION_TOTAL = 200;
-const SELLER_TIER1 = 150;
-const SELLER_TIER2 = 50;
 const RIDER_MILESTONE = 500;
 const RIDER_COMMISSION_TOTAL = 50;
 const RIDER_TIER1 = 35;
@@ -76,6 +73,7 @@ export function AffiliateDashboard() {
   const [payoutMsg, setPayoutMsg] = useState<string | null>(null);
   const [downline, setDownline] = useState<any[]>([]);
   const [sales, setSales] = useState<Record<string, { sales: number; orders: number }>>({});
+  const [salesError, setSalesError] = useState(false);
   const [detail, setDetail] = useState<null | 'seller' | 'rider' | 'affiliate'>(null);
 
   const load = useCallback(async () => {
@@ -95,7 +93,8 @@ export function AffiliateDashboard() {
         .order('created_at', { ascending: false }),
     ]);
     setDownline(dlData.data || []);
-    const { data: salesRows } = await supabase.rpc('affiliate_referral_sales', { p_affiliate_id: affiliate.id });
+    const { data: salesRows, error: salesReadError } = await supabase.rpc('affiliate_referral_sales', { p_affiliate_id: affiliate.id });
+    setSalesError(Boolean(salesReadError));
     const sm: Record<string, { sales: number; orders: number }> = {};
     (salesRows || []).forEach((x: any) => { sm[x.referral_id] = { sales: Number(x.delivered_sales) || 0, orders: Number(x.delivered_orders) || 0 }; });
     setSales(sm);
@@ -346,7 +345,7 @@ export function AffiliateDashboard() {
                       </button>
                     </div>
                     <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-                      I-share ang link na ito sa mga taong gusto mong mag-sign up sa GoPalengke. Sila na ang pipili kung seller o rider ang role nila sa sign up page. Awtomatikong mai-credit sa'yo ang commission kapag naabot nila ang milestone.
+                      I-share ang link na ito sa mga taong gusto mong mag-sign up sa GoPalengke. Sila na ang pipili kung seller o rider ang role nila sa sign up page. Mai-credit ang seller commission kapag nakumpirma ng admin ang bayad sa ₱{SELLER_MILESTONE} fee milestone.
                     </p>
                   </div>
 
@@ -450,31 +449,33 @@ export function AffiliateDashboard() {
                   ) : (
                     <div className="space-y-2">
                       {sellerRefs.map(r => {
-                        const progress = Math.min(100, (Number(r.accumulated_admin_collected) / SELLER_MILESTONE) * 100);
-                        const remaining = Math.max(0, SELLER_MILESTONE - Number(r.accumulated_admin_collected));
+                        const sellerSales = sales[r.id];
+                        const milestone = !salesError && sellerSales ? sellerMilestoneProgress(sellerSales.sales, Number(r.milestones_hit)) : null;
                         return (
                           <div key={r.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <div>
+                            <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                              <div className="min-w-0 flex-1">
                                 <p className="font-semibold text-sm text-gray-800">{r.referred_name}</p>
                                 <p className="text-xs text-gray-400">Milestones: {r.milestones_hit} · Earned: ₱{Number(r.total_commission_earned).toFixed(0)}</p>
-                                <p className="text-xs font-semibold text-green-700">Benta ng seller: ₱{(sales[r.id]?.sales || 0).toLocaleString()} · {sales[r.id]?.orders || 0} delivered orders</p>
+                                {milestone && <p className="text-xs font-semibold text-green-700">Benta ng seller: ₱{sellerSales.sales.toLocaleString()} · {sellerSales.orders} delivered orders</p>}
                               </div>
                               <span className="text-xs font-bold text-gray-600">
-                                ₱{Number(r.accumulated_admin_collected).toFixed(0)} / ₱{SELLER_MILESTONE}
+                                {milestone ? `₱${milestone.currentFees.toFixed(2)} / ₱${SELLER_MILESTONE.toLocaleString()}` : 'Hindi mabasa ang benta'}
                               </span>
                             </div>
                             <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
                               <div
                                 className="h-full rounded-full bg-gradient-to-r from-orange-400 to-amber-500 transition-all"
-                                style={{ width: `${progress}%` }}
+                                style={{ width: `${milestone?.percent || 0}%` }}
                               />
                             </div>
                             <p className="text-[10px] text-gray-400 mt-1">
-                              {remaining > 0
-                                ? `₱${remaining.toFixed(0)} pa na fees na ma-collect mula sa seller bago ang next milestone (₱${SELLER_TIER1} sa'yo + ₱${SELLER_TIER2} sa sponsor). Nagsisimula ang fees kapag umabot na sa ₱5,000 ang benta.`
-                                : 'Milestone reached! Waiting for next cycle.'}
+                              {!milestone ? 'Hindi makuha ang benta. Subukang i-refresh; hindi muna maipapakita ang tamang progress.'
+                                : milestone.awaitingPayment
+                                  ? `Naabot na ang ₱${SELLER_MILESTONE.toLocaleString()} mula sa 3% ng completed sales. Hinihintay ang bayad ng seller at kumpirmasyon ng admin.`
+                                  : `3% ng bawat completed sale ang naiipon mula sa unang benta. ₱${milestone.remaining.toFixed(2)} pa bago ang ₱${SELLER_MILESTONE.toLocaleString()} fee milestone.`}
                             </p>
+                            <p className="text-xs text-muted-foreground mt-2">Kapag nakumpirma ang bayad ng seller: ₱{SELLER_COMMISSION_TOTAL} commission — ₱{SELLER_TIER1} sa direct sponsor (ikaw) at ₱{SELLER_TIER2} sa upline sponsor. Hindi pa kita ang naipong fees hangga’t hindi bayad.</p>
                           </div>
                         );
                       })}
@@ -652,7 +653,10 @@ export function AffiliateDashboard() {
                 const list = detail === 'seller' ? sellerRefs : riderRefs;
                 const ms = detail === 'seller' ? SELLER_MILESTONE : RIDER_MILESTONE;
                 if (list.length === 0) return <p className="text-center text-gray-400 text-sm py-6">Wala pang {detail} referrals.</p>;
-                return list.map(r => (
+                return list.map(r => {
+                  const milestone = detail === 'seller' && !salesError && sales[r.id] ? sellerMilestoneProgress(sales[r.id].sales, Number(r.milestones_hit)) : null;
+                  const progressAmount = detail === 'seller' ? milestone?.currentFees : Number(r.accumulated_admin_collected || 0);
+                  return (
                   <div key={r.id} className="border border-gray-100 rounded-xl p-3">
                     <div className="flex justify-between items-start gap-2">
                       <p className="font-semibold text-gray-800">{r.referred_name || 'Walang pangalan'}</p>
@@ -660,11 +664,11 @@ export function AffiliateDashboard() {
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center mt-2">
                       <div className="bg-gray-50 rounded-lg p-2"><p className="text-[10px] text-gray-400">Milestones</p><p className="text-sm font-bold text-gray-800">{r.milestones_hit || 0}</p></div>
-                      <div className="bg-gray-50 rounded-lg p-2"><p className="text-[10px] text-gray-400">Progress</p><p className="text-sm font-bold text-gray-800">₱{Number(r.accumulated_admin_collected || 0).toLocaleString()}/{ms}</p></div>
+                      <div className="bg-gray-50 rounded-lg p-2"><p className="text-[10px] text-gray-400">{detail === 'seller' ? '3% fee progress' : 'Progress'}</p><p className="text-sm font-bold text-gray-800 break-words">{progressAmount === undefined ? 'Hindi mabasa' : `₱${progressAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ₱${ms.toLocaleString()}`}</p></div>
                       <div className="bg-green-50 rounded-lg p-2"><p className="text-[10px] text-gray-400">Kita mo</p><p className="text-sm font-bold text-green-700">₱{Number(r.total_commission_earned || 0).toLocaleString()}</p></div>
                     </div>
                   </div>
-                ));
+                ); });
               })()}
             </div>
           </div>

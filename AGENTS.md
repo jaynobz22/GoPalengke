@@ -9,6 +9,8 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
+- Affiliate seller fee progress uses the shared browser-safe affiliateSellerMilestone calculator in both tracker and referral details; delivered sales accrue fees and credited milestone counts retire paid cycles without treating accrual as wallet earnings.
+
 - User dashboards use full-width responsive shells up to `max-w-7xl`, while preserving their phone layout below `md`; this prevents desktop sessions from remaining in a narrow mobile column.
 - Public store shares use the dedicated `/s/$slug` SSR data route with optional `?p=<product-id>`; social crawlers need server-readable store/product metadata and images.
 - Seller recognition uses the shared SellerRankBadge module and a public stores.seller_rank snapshot; exact seller_fees.total_sales remains private.

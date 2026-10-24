@@ -3,6 +3,7 @@
 Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked out at /tmp/gopalengke-src)
 
 ## Tasks
+- [ ] Correct affiliate seller progress to accrued sales fees in tracker and details; test amounts and payment-state boundaries, then push
 - [x] Update rider admin chat to approval/location reminders only; nine tests pass, signed-in temporary rider sees one persisted reminder after reload, check account removed, and changes pushed
 - [x] Add talipapa/neighborhood seller option and location-based market choices with manual entry to create/edit store forms; four tests and isolated form interactions pass; pushed
 - [x] Tint buyer/seller, admin and affiliate chat panels soft green with a visible edge so the chat box reads apart from the white page; desktop and phone screenshots checked and pushed
