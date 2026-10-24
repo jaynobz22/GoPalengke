@@ -4,6 +4,7 @@ import { DemoBadge } from '../components/DemoBadge';
 import { shareToMessenger } from '../lib/messengerShare';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { watchOrders } from '../lib/liveOrders';
+import { canShowBuyerRiderTracking } from '../lib/buyerRiderTracking';
 import { supabase } from '../lib/supabase';
 import { notifyOrderSms } from '../lib/orderSms';
 import { useAuth } from '../lib/auth';
@@ -3231,7 +3232,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
                       </div>
                       <ChevronRight size={18} className="text-gray-300" />
                     </div>
-                    <RiderStageBanner order={order} compact />
+                    {canShowBuyerRiderTracking(order) && <RiderStageBanner order={order} compact />}
                   </button>
                   {canDelete && (
                     <button
@@ -3361,6 +3362,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
   const isBuyer = profile?.id === currentOrder.buyer_id;
   const isCancelled = currentOrder.status === 'cancelled';
   const isDelivered = currentOrder.status === 'delivered';
+  const showRiderTracking = canShowBuyerRiderTracking(currentOrder);
 
   const isCod = currentOrder.payment_method === 'cod';
 
@@ -3409,7 +3411,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         </div>
         <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString('en-PH')}</p>
       </div>
-      <RiderStageBanner order={currentOrder} />
+      {showRiderTracking && <RiderStageBanner order={currentOrder} />}
 
       {/* Scheduled delivery banner */}
       {currentOrder.scheduled_delivery_at && (
@@ -3549,7 +3551,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
       )}
 
       {/* Live ETA Timer — shown when rider is on the way (pickup or delivery); hidden for livestock */}
-      {(currentOrder.status === 'ready_for_pickup' || currentOrder.status === 'picked_up') && currentOrder.rider_lat != null && currentOrder.rider_lng != null && currentOrder.delivery_method !== 'pickup' && currentOrder.delivery_method !== 'meetup' && store && (
+      {showRiderTracking && currentOrder.rider_lat != null && currentOrder.rider_lng != null && currentOrder.delivery_method !== 'pickup' && currentOrder.delivery_method !== 'meetup' && store && (
         <LiveETATimer
           riderCoords={{ lat: currentOrder.rider_lat, lng: currentOrder.rider_lng }}
           buyerCoords={currentOrder.status === 'ready_for_pickup'
@@ -3568,7 +3570,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
       )}
 
       {/* Live Tracking Map — shown when rider is on the way (to store or to buyer) */}
-      {(currentOrder.status === 'ready_for_pickup' || currentOrder.status === 'picked_up') && currentOrder.rider_lat != null && currentOrder.rider_lng != null && store && (
+      {showRiderTracking && currentOrder.rider_lat != null && currentOrder.rider_lng != null && store && (
         <BuyerLiveTrackingMap
           riderLat={currentOrder.rider_lat}
           riderLng={currentOrder.rider_lng}
@@ -3600,7 +3602,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
           </div>
         </div>
       )}
-      {currentOrder.status === 'ready_for_pickup' && currentOrder.rider_id && (currentOrder.rider_lat == null || currentOrder.rider_lng == null) && (
+      {currentOrder.status === 'ready_for_pickup' && showRiderTracking && (currentOrder.rider_lat == null || currentOrder.rider_lng == null) && (
         <div className="bg-blue-50 rounded-2xl border border-blue-200 p-4 mb-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">

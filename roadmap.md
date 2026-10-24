@@ -1,5 +1,9 @@
 # Roadmap: GoPalengke Migration (GitHub → Lovable)
 
+## Current: Buyer rider acceptance
+- [x] Gate buyer movement banners, tracking map, and ETA on rider acceptance; four acceptance tests pass and push to the existing repo
+- [ ] Verify seller assignment → rider acceptance in real buyer/rider accounts (blocked: no authenticated session for the existing external account system)
+
 Source: https://github.com/jaynobz22/GoPalengke (Vite SPA + Supabase, checked out at /tmp/gopalengke-src)
 
 ## Tasks
