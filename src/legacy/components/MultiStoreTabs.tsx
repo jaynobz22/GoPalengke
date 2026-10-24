@@ -33,6 +33,7 @@ export function MultiStoreTabs({ orders, mode, showCod, onCodSubmitted }: { orde
   const ref = submitted[o.id] || o.cod_payment_reference;
 
   async function submit() {
+    if (!o) return;
     const v = (refs[o.id] || '').trim();
     if (!v) return;
     setSaving(true);
