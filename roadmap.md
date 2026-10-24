@@ -3,7 +3,7 @@
 ## Current: Smooth live rider map
 - [x] Add cancellable display-only rider marker animation and retain user map framing during GPS updates
 - [x] Include GPS and completion fields in buyer backup refresh updates
-- [ ] Verify tracking tests and isolated browser movement, then push to existing GitHub repo
+- [x] Ten tracking/pickup tests pass; isolated browser verifies smooth movement and destination change without errors; pushed to existing GitHub repo
 - [ ] Verify live movement with real buyer/rider accounts (blocked: no session for the existing external account system)
 
 ## Current: Buyer rider acceptance
