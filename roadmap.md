@@ -2,7 +2,7 @@
 
 ## Current: Seller rider QR timing
 - [x] Restrict rider QR/payment instructions to NON-COD store arrival/pickup and remove travel QR
-- [ ] Verify visibility rules and seller screen, then push to existing repo
+- [x] Three rule tests pass; isolated seller screen verifies QR at NON-COD pickup, hidden during travel and COD; pushed to existing repo
 
 ## Current: Rider arrival at buyer
 - [x] Add persistent arrival action and buyer/seller arrival banner
