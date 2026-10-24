@@ -2,7 +2,7 @@
 
 ## Current: Buyer COD QR/cash
 - [x] Arrival-only rider QR with QR-default and clickable cash choice, without changing COD accounting
-- [ ] Verify rules and payment selection in browser, then push to existing repo
+- [x] Six payment/arrival tests pass; isolated buyer screen verifies hidden before arrival, default QR, Cash selection and return to QR; pushed
 
 ## Current: Seller rider QR timing
 - [x] Restrict rider QR/payment instructions to NON-COD store arrival/pickup and remove travel QR
