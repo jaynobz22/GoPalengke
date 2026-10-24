@@ -751,7 +751,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
     { key: 'arrive', label: 'NANDITO NA AKO SA TINDAHAN', doneLabel: 'Nakarating na sa tindahan', description: 'Pagdating mo sa tindahan, pindutin ang "Nandito na ako sa Tindahan" para malaman agad ng buyer at seller.', status: 'completed' },
     { key: 'pickup', label: 'NA PICK UP KO NA', doneLabel: 'Na-pick up na ang parcel', description: 'Pag nailagay mo na ang parcel sa delivery box, pindutin ang "Na Pick Up ko na".', status: 'completed' },
     { key: 'on_the_way', label: 'GOING TO BUYER NA', doneLabel: 'Umalis na papunta sa buyer', description: 'Kapag nakuha na ang parcel sa lahat ng tindahan, bumiyahe papunta sa buyer.', status: 'completed' },
-    { key: 'arrive_buyer', label: 'NANDITO NA AKO', doneLabel: 'Dumating na sa buyer', description: 'Pagdating sa lokasyon ng buyer, pindutin ang “Nandito na ako”.', status: 'pending' },
+    { key: 'arrive_buyer', label: 'NANDITO NA AKO', doneLabel: 'Dumating na ang Rider', description: 'Pagdating sa lokasyon ng buyer, pindutin ang “Nandito na ako”.', status: 'pending' },
     ...(isCod ? [{ key: 'remit', label: 'IABOT ANG PARCEL / MAGBAYAD SA SELLER', doneLabel: 'Nai-submit ang COD remittance', description: 'Iabot ang parcel, kolektahin ang COD, ibawas ang rider fee, at ipadala ang natira sa bawat seller. I-submit ang reference.', status: 'pending' }] : []),
     { key: 'delivered', label: 'MARK AS DELIVERED', doneLabel: 'Na-deliver na ang parcel', description: 'Kapag natanggap na ng buyer ang parcel at ok na ang lahat, i-mark as delivered.', status: 'pending' },
   ];

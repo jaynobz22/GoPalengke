@@ -6,6 +6,7 @@ import { notifyOrderSms } from '../lib/orderSms';
 import { watchOrders } from '../lib/liveOrders';
 import { canShowSellerRiderQr } from '../lib/sellerRiderQr';
 import { pickupUpdate } from '../lib/orderPickup';
+import { orderArrivalPhase } from '../lib/orderArrivalPhase';
 import { checkRiderBatch } from '../lib/riderBatch';
 import { useAuth } from '../lib/auth';
 import { navigate } from '../lib/router';
@@ -1907,7 +1908,9 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   const detailsSeen = detailsChecked || (typeof window !== 'undefined' && localStorage.getItem(detailsKey) === '1');
   const markDetailsChecked = () => { try { localStorage.setItem(detailsKey, '1'); } catch {} setDetailsChecked(true); };
 
-  // Seller flow ayon sa diagram ni boss: NON-COD = 6 steps, COD = 7 steps
+  const arrivalPhase = orderArrivalPhase(currentOrder);
+  const showArrivalStep = !noRiderFlow;
+  // Arrival is a separate waiting step, not a delivery-status update.
   const sellerSteps: StepInfo[] = [
     { key: 'details', label: 'MAY BAGONG ORDER! I-click para makita ang details', doneLabel: 'Na-check na ang details', description: 'Tingnan muna ang buyer, mga paninda, lokasyon, total at paraan ng bayad.', status: 'pending' },
     { key: 'accept', label: 'ACCEPT & CONFIRM o DECLINE', doneLabel: 'Na-accept at confirm na', description: isCod ? 'I-accept kung available ang paninda. Kung hindi, i-decline at sabihin sa buyer ang dahilan sa chat.' : 'Pag in-accept, makikita ng buyer ang QR mo para magbayad. Kung hindi kaya, i-decline at ipaliwanag sa chat.', status: 'pending' },
@@ -1916,6 +1919,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       : { key: 'payment', label: 'CONFIRM PAYMENT / PREPARING ORDER', doneLabel: 'Payment confirmed', description: currentOrder.payment_status === 'paid' ? 'Nag-send na ang buyer ng reference number. I-check sa GCash/Maya bago ihanda.' : 'Hinihintay pang magbayad ang buyer gamit ang QR mo.', status: 'pending' },
     { key: 'ready', label: noRiderFlow ? 'READY FOR PICKUP NA' : 'READY FOR PICKUP NA / MAG-ASSIGN NG RIDER', doneLabel: noRiderFlow ? 'Handa na ang order' : 'May na-assign na na rider', description: currentOrder.status === 'preparing' ? 'Pag tapos nang balutin ang paninda, i-click ang Ready for Pickup.' : 'Pumili ng rider na magdedeliver. Makikita ng buyer ang profile ng rider.', status: 'pending' },
     { key: 'pickup', label: isCod ? 'NA-PICKUP NA NG RIDER' : 'BAYARAN ANG RIDER / NA-PICKUP NA NG RIDER', doneLabel: 'Na-pickup na ng rider', description: isCod ? 'Iabot ang parcel sa rider. Walang bayad sa tindahan — sa buyer sisingilin ng rider.' : 'Ibigay ang delivery fee sa rider (QR o cash), iabot ang parcel, tapos i-click ang Na-pickup na.', status: 'pending' },
+    ...(showArrivalStep ? [{ key: 'arrival', label: arrivalPhase === 'arrived' || arrivalPhase === 'delivered' ? 'Dumating na ang Rider' : 'Hinihintay dumating ang rider sa buyer', doneLabel: 'Dumating na ang Rider', description: arrivalPhase === 'arrived' ? (isCod ? 'Nasa buyer na ang rider. Iaabot niya ang parcel, kukunin ang COD at ipapadala ang bayad sa iyo bago i-mark as delivered.' : 'Nasa buyer na ang rider. Iaabot niya ang parcel bago i-mark as delivered.') : 'Na-pickup na ang parcel. Mag-a-update rito kapag pinindot ng rider ang “Nandito na ako” sa lokasyon ng buyer.', status: 'pending' as const }] : []),
     ...(isCod ? [{ key: 'codpay', label: 'ORDER DELIVERED / CONFIRM PAYMENT', doneLabel: 'Natanggap na ang bayad', description: `Hintayin ma-deliver. Ipapadala ng rider ang ₱${codRemitToSeller(currentOrder).toFixed(2)} (bawas na ang rider's fee) at ang reference number.`, status: 'pending' as const }] : []),
     { key: 'done', label: isCod ? 'DONE' : 'ORDER DELIVERED / DONE', doneLabel: 'Tapos na ang transaction', description: isDelivered ? 'Na-deliver na! I-click ang DONE para tapusin. Makakapag-review na ang buyer sa iyo at sa rider.' : 'Hinihintay pang ma-deliver ng rider ang order sa buyer.', status: 'pending' },
   ];
@@ -1927,10 +1931,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   else if (st === 'preparing') currentStepIndex = 3;
   else if (st === 'ready_for_pickup') currentStepIndex = currentOrder.picked_up_at ? 5 : hasRider ? 4 : 3;
   else if (st === 'picked_up') currentStepIndex = isCod ? 5 : 5;
-  else if (st === 'delivered') {
-    if (isCod) currentStepIndex = currentOrder.cod_payment_accepted_at ? 6 : 5;
-    else currentStepIndex = 5;
-  }
+  else if (st === 'delivered') currentStepIndex = sellerSteps.findIndex(s => s.key === (isCod && !currentOrder.cod_payment_accepted_at ? 'codpay' : 'done'));
   if (finished) currentStepIndex = sellerSteps.length;
 
   sellerSteps.forEach((s, i) => {
@@ -2311,7 +2312,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           </div>
           <button onClick={acceptCodPayment} disabled={updating}
             className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
-            {updating ? 'Nag-uupdate...' : 'STEP 6: CONFIRM PAYMENT'}
+            {updating ? 'Nag-uupdate...' : `STEP ${sellerSteps.findIndex(s => s.key === 'codpay') + 1}: CONFIRM PAYMENT`}
           </button>
         </div>
       )}
@@ -2331,7 +2332,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       )}
       {!isCancelled && isDelivered && !finished && (!isCod || currentOrder.cod_payment_accepted_at || noRiderFlow) && (
         <button onClick={markDone} className={btnCls}>
-          STEP {isCod ? 7 : 6}: DONE ✓
+          STEP {sellerSteps.findIndex(s => s.key === 'done') + 1}: DONE ✓
         </button>
       )}
       {finished && (

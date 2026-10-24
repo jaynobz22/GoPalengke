@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { watchOrders } from '../lib/liveOrders';
 import { canShowBuyerRiderTracking, mergeBuyerOrderUpdate } from '../lib/buyerRiderTracking';
 import { canShowBuyerCodPayment } from '../lib/buyerCodPayment';
+import { orderArrivalPhase } from '../lib/orderArrivalPhase';
 import { BuyerCodPayment } from '../components/BuyerCodPayment';
 import { supabase } from '../lib/supabase';
 import { notifyOrderSms } from '../lib/orderSms';
@@ -3379,11 +3380,13 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
   const sellerDone = 'seller_done_at' in currentOrder ? !!(currentOrder as any).seller_done_at : true;
   const canReview = isDelivered && (!isCod || !!currentOrder.cod_payment_accepted_at) && sellerDone;
   const grandTotal = (Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2);
+  const arrivalPhase = orderArrivalPhase(currentOrder);
   const buyerSteps: StepInfo[] = [
     { key: 'placed', label: 'Hinihintay i-confirm ng seller', doneLabel: 'Na-confirm ng seller ang order', description: 'Nai-submit na ang order mo. Tinitingnan ng seller kung available ang mga paninda.', status: 'pending' },
     ...(isCod ? [] : [{ key: 'pay', label: 'MAGBAYAD GAMIT ANG QR', doneLabel: currentOrder.payment_status === 'paid' ? 'Naipadala na ang bayad' : 'Nabayaran na', description: currentOrder.payment_status === 'paid' ? 'Naipadala mo na ang reference number. Hinihintay i-confirm ng seller ang bayad.' : `I-scan ang QR ng seller, magbayad ng ₱${grandTotal}, at i-submit ang reference number.`, status: 'pending' as const }]),
     { key: 'preparing', label: 'Inihahanda ng seller', doneLabel: 'Naihanda na ang order', description: 'Inihahanda na ang order mo. Mag-a-assign ang seller ng rider — makikita mo rito ang profile niya.', status: 'pending' },
-    { key: 'on_the_way', label: currentOrder.rider_arrived_buyer_at ? 'Dumating na ang Rider' : 'On the way na ang rider', doneLabel: 'Na-deliver na sa iyo', description: currentOrder.rider_arrived_buyer_at ? (isCod ? `Tanggapin ang parcel at ibigay ang ₱${grandTotal} na COD sa rider.` : 'Dumating na ang rider. Tanggapin ang parcel.') : isCod ? `Nakuha na ng rider ang parcel at papunta na sa iyo. Ihanda ang ₱${grandTotal} na cash para sa rider.` : 'Nakuha na ng rider ang parcel at papunta na sa iyo. Makikita ang live location sa mapa.', status: 'pending' },
+    { key: 'on_the_way', label: 'On the way na ang rider', doneLabel: 'Na-pickup na ng rider ang parcel', description: `Nakuha na ng rider ang parcel at papunta na sa iyo.${isCod ? ` Ihanda ang ₱${grandTotal} para sa COD.` : ''}`, status: 'pending' },
+    { key: 'arrival', label: 'Dumating na ang Rider', doneLabel: 'Dumating na ang Rider', description: isCod ? `Tanggapin ang parcel at magbayad ng ₱${grandTotal} sa rider gamit ang QR o Cash. Ipapadala niya ang bayad sa seller bago i-mark as delivered.` : 'Nasa lokasyon mo na ang rider. Tanggapin ang parcel bago niya i-mark as delivered.', status: 'pending' },
     { key: 'done', label: isCod ? 'Hinihintay matapos ng seller (Confirm Payment / DONE)' : 'Hinihintay matapos ng seller (DONE)', doneLabel: 'Tapos na ang transaction', description: 'Na-deliver na! Hinihintay na lang i-click ng seller ang DONE.', status: 'pending' },
     { key: 'review', label: 'MAG-REVIEW SA SELLER AT RIDER', doneLabel: 'Salamat sa review!', description: 'Tapos na ang order! I-rate ang tindahan at ang rider.', status: 'pending' },
   ];
@@ -3393,8 +3396,8 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
   if (bst === 'pending') currentStepIndex = 0;
   else if (bst === 'accepted') currentStepIndex = isCod ? 1 : 1;
   else if (bst === 'preparing' || bst === 'ready_for_pickup') currentStepIndex = 1 + off;
-  else if (bst === 'picked_up') currentStepIndex = 2 + off;
-  else if (bst === 'delivered') currentStepIndex = canReview ? 4 + off : 3 + off;
+  else if (bst === 'picked_up') currentStepIndex = (arrivalPhase === 'arrived' ? 3 : 2) + off;
+  else if (bst === 'delivered') currentStepIndex = canReview ? 5 + off : 4 + off;
   if (!isCod && bst === 'accepted') currentStepIndex = 1;
 
   // Mark steps
@@ -3599,7 +3602,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
           phase={currentOrder.status === 'ready_for_pickup' ? 'to_store' : 'to_buyer'}
         />
       )}
-      {currentOrder.status === 'picked_up' && (currentOrder.rider_lat == null || currentOrder.rider_lng == null) && (
+      {arrivalPhase === 'travelling' && (currentOrder.rider_lat == null || currentOrder.rider_lng == null) && (
         <div className="bg-blue-50 rounded-2xl border border-blue-200 p-4 mb-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">

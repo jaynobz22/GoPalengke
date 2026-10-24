@@ -29,5 +29,6 @@
 - Buyer order-detail realtime and polling updates share mergeBuyerOrderUpdate; GPS and completion changes must propagate even when the status stays unchanged. Map interpolation is display-only and respects reduced motion.
 - Rider pickup uses browser-safe orderPickup updates: single-store pickup activates delivery status, while grouped pickup records only its store until group departure; this keeps buyer movement aligned with the delivery leg.
 - Rider arrival uses orders.rider_arrived_buyer_at while retaining picked_up status; riderArrival guards delivery completion until arrival and every COD store reference exist, preserving delivery/commission trigger timing.
+- Seller and buyer trackers use browser-safe orderArrivalPhase for arrival presentation before delivered; this keeps an arrival timestamp from being mistaken for delivery completion.
 - Seller rider-fee QR and payment instructions share sellerRiderQr pickup-phase gating, so they disappear on departure without changing payment accounting.
 - Buyer COD payment choices use BuyerCodPayment behind arrival gating; QR/cash selection is presentation-only and never changes COD verification or remittance accounting.
