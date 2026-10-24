@@ -1,5 +1,6 @@
 // @ts-nocheck
-import { Award, Crown, Flame, Sparkles, Sprout, Star, Store } from 'lucide-react';
+import { useState } from 'react';
+import { Award, Check, Crown, Flame, Lock, Sparkles, Sprout, Star, Store, X } from 'lucide-react';
 
 export const SELLER_RANKS = [
   { key: 'rising_merchant', name: 'Rising Merchant', minimum: 0, icon: Sprout, badgeClass: 'border-emerald-200 bg-emerald-50 text-emerald-700', barClass: 'bg-emerald-500' },
@@ -48,12 +49,76 @@ export function SellerRankBadge({ rankKey, totalSales, compact = false }: { rank
   );
 }
 
+export function SellerRankMilestonesModal({ totalSales, onClose }: { totalSales: number; onClose: () => void }) {
+  const safeSales = Math.max(0, Number(totalSales) || 0);
+  const { current } = getSellerRankProgress(safeSales);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose} role="dialog" aria-modal="true" aria-label="Lahat ng seller milestones">
+      <div className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-2xl bg-white p-5 shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h3 className="font-display text-lg font-bold text-gray-800">Seller Milestones</h3>
+            <p className="text-xs text-gray-500">Ang mga pagkilalang maabot mo habang lumalaki ang benta mo sa GoPalengke.</p>
+          </div>
+          <button onClick={onClose} className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100" aria-label="Isara">
+            <X size={18} />
+          </button>
+        </div>
+
+        <ul className="space-y-2">
+          {SELLER_RANKS.map(rank => {
+            const Icon = rank.icon;
+            const reached = safeSales >= rank.minimum;
+            const isCurrent = rank.key === current.key;
+            const needed = Math.max(0, rank.minimum - safeSales);
+            return (
+              <li key={rank.key} className={`flex items-center gap-3 rounded-xl border p-3 ${isCurrent ? 'border-emerald-300 bg-emerald-50' : reached ? 'border-gray-100 bg-gray-50' : 'border-gray-100 bg-white'}`}>
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${rank.badgeClass}`}>
+                  <Icon size={20} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-gray-800">{rank.name}</p>
+                  <p className="text-[11px] text-gray-500">
+                    {rank.minimum === 0 ? 'Simula ng bawat tindahan' : `₱${rank.minimum.toLocaleString('en-PH')} na benta`}
+                  </p>
+                  {!reached && (
+                    <p className="text-[11px] font-semibold text-amber-600">₱{needed.toLocaleString('en-PH')} pa bago maabot</p>
+                  )}
+                </div>
+                {isCurrent ? (
+                  <span className="shrink-0 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">Kasalukuyan</span>
+                ) : reached ? (
+                  <Check size={18} className="shrink-0 text-emerald-600" aria-label="Naabot na" />
+                ) : (
+                  <Lock size={15} className="shrink-0 text-gray-300" aria-label="Hindi pa naabot" />
+                )}
+              </li>
+            );
+          })}
+        </ul>
+
+        <p className="mt-4 text-center text-[11px] text-gray-400">Kabuuang benta mo: ₱{safeSales.toLocaleString('en-PH', { maximumFractionDigits: 0 })}</p>
+      </div>
+    </div>
+  );
+}
+
 export function SellerRankProgress({ totalSales }: { totalSales: number }) {
   const { current, next, progress, remaining } = getSellerRankProgress(totalSales);
   const CurrentIcon = current.icon;
+  const [showMilestones, setShowMilestones] = useState(false);
 
   return (
-    <section className="mx-5 mb-1 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm" aria-label="Seller milestone">
+    <>
+    <section
+      className="mx-5 mb-1 cursor-pointer rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow"
+      aria-label="Seller milestone — i-click para makita ang lahat ng milestones"
+      role="button"
+      tabIndex={0}
+      onClick={() => setShowMilestones(true)}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowMilestones(true); } }}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${current.badgeClass}`}>
@@ -79,6 +144,9 @@ export function SellerRankProgress({ totalSales }: { totalSales: number }) {
       ) : (
         <p className="mt-2 text-xs font-semibold text-teal-700">Pinakamataas na pagkilala sa GoPalengke—ipagpatuloy ang husay!</p>
       )}
+      <p className="mt-2 text-center text-[10px] font-semibold text-emerald-600">I-click para makita ang lahat ng milestones 👆</p>
     </section>
+    {showMilestones && <SellerRankMilestonesModal totalSales={totalSales} onClose={() => setShowMilestones(false)} />}
+    </>
   );
 }
