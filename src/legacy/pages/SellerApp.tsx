@@ -1527,26 +1527,32 @@ function SellerOrders({ store, onOrderClick }: { store: Store; onOrderClick: (o:
   const [showHidden, setShowHidden] = useState(false);
 
   const load = useCallback(async () => {
+    // COD: hindi pa "tapos" ang order hangga't hindi pa kinukumpirma ng seller na natanggap ang bayad mula sa rider
+    const isDone = (o: any) =>
+      o.status === 'cancelled' ||
+      (o.status === 'delivered' && (o.payment_method !== 'cod' || !!o.cod_payment_accepted_at || o.payment_status === 'paid'));
     let q = supabase.from('orders').select('*, buyer:profiles!orders_buyer_id_fkey(full_name, phone)').eq('store_id', store.id).is('hidden_by_seller_at', null).order('created_at', { ascending: false });
     if (filter === 'pending') q = q.eq('status', 'pending');
-    if (filter === 'active') q = q.in('status', ['pending', 'accepted', 'preparing', 'ready_for_pickup', 'picked_up']);
+    if (filter === 'active') q = q.in('status', ['pending', 'accepted', 'preparing', 'ready_for_pickup', 'picked_up', 'delivered']);
     if (filter === 'completed') q = q.in('status', ['delivered', 'cancelled']);
     const [{ data }, { data: all }] = await Promise.all([
       q,
-      supabase.from('orders').select('status').eq('store_id', store.id).is('hidden_by_seller_at', null),
+      supabase.from('orders').select('status, payment_method, payment_status, cod_payment_accepted_at').eq('store_id', store.id).is('hidden_by_seller_at', null),
     ]);
     let list = (data || []) as any[];
+    if (filter === 'active') list = list.filter(o => !isDone(o));
+    if (filter === 'completed') list = list.filter(o => isDone(o));
     if (filter === 'active') {
       // In-progress orders first (oldest first), then new pending orders
       const rank = (st: string) => (st === 'pending' ? 1 : 0);
       list = [...list].sort((a, b) => rank(a.status) - rank(b.status) || new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     }
-    const st = (all || []).map((o: any) => o.status as string);
+    const st = (all || []) as any[];
     setCounts({
       all: st.length,
-      pending: st.filter(x => x === 'pending').length,
-      active: st.filter(x => !['delivered', 'cancelled'].includes(x)).length,
-      completed: st.filter(x => ['delivered', 'cancelled'].includes(x)).length,
+      pending: st.filter(x => x.status === 'pending').length,
+      active: st.filter(x => !isDone(x)).length,
+      completed: st.filter(x => isDone(x)).length,
     });
     setOrders(list as any);
     setLoading(false);
