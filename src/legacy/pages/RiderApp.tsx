@@ -767,7 +767,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   if (isCod) {
     riderSteps.push({
       key: 'cod_payment',
-      label: 'MAGBAYAD SA SELLER (COD)', doneLabel: 'Natanggap ng seller ang bayad',
+      label: 'HINTAYIN ANG CONFIRMATION NG SELLER', doneLabel: 'Natanggap ng seller ang bayad',
       description: codAccepted
         ? 'Na-tanggap na ng seller ang COD payment. Tapos na ang transaction!'
         : codSubmitted
@@ -859,10 +859,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         );
       })()}
       {currentOrder.status === 'picked_up' && (
-        <div className="rounded-2xl border-2 border-blue-300 bg-blue-50 p-4 mb-3">
-          <p className="font-bold text-blue-800 text-sm">Na Pick Up mo na ang order</p>
-          <p className="text-xs text-blue-700 mt-1">Papunta ka na sa buyer. Live na nakikita ng buyer ang location mo.</p>
-        </div>
+        <RiderStageBanner order={currentOrder} />
       )}
 
       {allStores.length > 1 && (
