@@ -12,6 +12,7 @@ import { checkOrderFlood, checkIpMismatch } from '../lib/security';
 import type { Product, Store, Category, CartItem, Order, OrderItem, OrderStatus, Conversation, AdminConversation } from '../lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '../lib/types';
 import { LocationSelector, type LocationData } from '../components/LocationSelector';
+import { CollapsibleSection } from '../components/CollapsibleSection';
 import { InactiveBanner } from '../components/InactiveBanner';
 import { GpsPermissionModal } from '../components/GpsPermissionModal';
 import { ensureGps } from '../lib/gpsGate';

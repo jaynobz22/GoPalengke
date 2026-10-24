@@ -28,6 +28,7 @@ import { ensureGps } from '../lib/gpsGate';
 import { SellerBilling } from '../components/SellerBilling';
 import { ReviewSection } from '../components/Reviews';
 import { OrderStepTracker, type StepInfo } from '../components/OrderStepTracker';
+import { CollapsibleSection } from '../components/CollapsibleSection';
 import { AdminVideoCall } from '../components/AdminVideoCall';
 import { AdminChat } from '../components/AdminChat';
 import { LoginReminderPopup } from '../components/LoginReminderPopup';

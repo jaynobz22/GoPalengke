@@ -22,6 +22,7 @@ import { GpsPermissionModal } from '../components/GpsPermissionModal';
 import { ensureGps } from '../lib/gpsGate';
 import { ReviewSection } from '../components/Reviews';
 import { OrderStepTracker, type StepInfo } from '../components/OrderStepTracker';
+import { CollapsibleSection } from '../components/CollapsibleSection';
 import { AdminVideoCall } from '../components/AdminVideoCall';
 import { MultiStoreTabs } from '../components/MultiStoreTabs';
 import { AdminChat } from '../components/AdminChat';
