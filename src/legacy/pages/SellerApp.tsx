@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, deleteStorageObject } from '../lib/supabase';
 import { notifyOrderSms } from '../lib/orderSms';
 import { watchOrders } from '../lib/liveOrders';
+import { pickupUpdate } from '../lib/orderPickup';
 import { checkRiderBatch } from '../lib/riderBatch';
 import { useAuth } from '../lib/auth';
 import { navigate } from '../lib/router';
@@ -1952,15 +1953,16 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   async function markPickedUp() {
     setUpdating(true);
     const now = new Date().toISOString();
+    let groupOrderCount: number | undefined;
     if (currentOrder.delivery_group_id) {
-      // Multi-store: markahan lang na nakuha na sa tindahang ito; ang rider ang magsasabing "Going to Buyer"
-      await supabase.from('orders').update({ picked_up_at: now }).eq('id', currentOrder.id);
-      setCurrentOrder(prev => ({ ...prev, picked_up_at: now }));
-    } else {
-      await supabase.from('orders').update({ status: 'picked_up', picked_up_at: now }).eq('id', currentOrder.id);
-      notifyOrderSms(currentOrder.id, 'on_the_way');
-      setCurrentOrder(prev => ({ ...prev, status: 'picked_up', picked_up_at: now }));
+      // Seller reads may only include their own store, so keep grouped pickups conservative.
+      groupOrderCount = undefined;
     }
+    const update = pickupUpdate(currentOrder.delivery_group_id, now, groupOrderCount);
+    const { error } = await supabase.from('orders').update(update).eq('id', currentOrder.id);
+    if (error) { setUpdating(false); alert('Hindi na-save ang pickup. Pakisubukan muli.'); return; }
+    if (update.status === 'picked_up') notifyOrderSms(currentOrder.id, 'on_the_way');
+    setCurrentOrder(prev => ({ ...prev, ...update }));
     setUpdating(false);
   }
 

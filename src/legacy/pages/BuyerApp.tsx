@@ -3373,7 +3373,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
     { key: 'placed', label: 'Hinihintay i-confirm ng seller', doneLabel: 'Na-confirm ng seller ang order', description: 'Nai-submit na ang order mo. Tinitingnan ng seller kung available ang mga paninda.', status: 'pending' },
     ...(isCod ? [] : [{ key: 'pay', label: 'MAGBAYAD GAMIT ANG QR', doneLabel: currentOrder.payment_status === 'paid' ? 'Naipadala na ang bayad' : 'Nabayaran na', description: currentOrder.payment_status === 'paid' ? 'Naipadala mo na ang reference number. Hinihintay i-confirm ng seller ang bayad.' : `I-scan ang QR ng seller, magbayad ng ₱${grandTotal}, at i-submit ang reference number.`, status: 'pending' as const }]),
     { key: 'preparing', label: 'Inihahanda ng seller', doneLabel: 'Naihanda na ang order', description: 'Inihahanda na ang order mo. Mag-a-assign ang seller ng rider — makikita mo rito ang profile niya.', status: 'pending' },
-    { key: 'on_the_way', label: 'Papunta na ang rider', doneLabel: 'Na-deliver na sa iyo', description: isCod ? `Nakuha na ng rider ang parcel. Ihanda ang ₱${grandTotal} na cash para sa rider.` : 'Nakuha na ng rider ang parcel at papunta na sa iyo. Makikita ang live location sa mapa.', status: 'pending' },
+    { key: 'on_the_way', label: 'On the way na ang rider', doneLabel: 'Na-deliver na sa iyo', description: isCod ? `Nakuha na ng rider ang parcel at papunta na sa iyo. Ihanda ang ₱${grandTotal} na cash para sa rider.` : 'Nakuha na ng rider ang parcel at papunta na sa iyo. Makikita ang live location sa mapa.', status: 'pending' },
     { key: 'done', label: isCod ? 'Hinihintay matapos ng seller (Confirm Payment / DONE)' : 'Hinihintay matapos ng seller (DONE)', doneLabel: 'Tapos na ang transaction', description: 'Na-deliver na! Hinihintay na lang i-click ng seller ang DONE.', status: 'pending' },
     { key: 'review', label: 'MAG-REVIEW SA SELLER AT RIDER', doneLabel: 'Salamat sa review!', description: 'Tapos na ang order! I-rate ang tindahan at ang rider.', status: 'pending' },
   ];
@@ -3596,7 +3596,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
               <Bike size={16} className="text-white" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-blue-800">Paparating na ang rider!</p>
+              <p className="text-sm font-semibold text-blue-800">On the way na ang rider</p>
               <p className="text-xs text-blue-600">Nasa daan na ang rider papunta sa iyo. Makikita ang live location dito pag nagsimula na ang rider.</p>
             </div>
           </div>

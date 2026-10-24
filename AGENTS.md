@@ -26,3 +26,4 @@
 - Profile dashboard gating and rider onboarding use the shared profileCompletion rules; rider admin reminders validate the existing account session server-side and use a stable message ID to prevent duplicates on concurrent loads or retries.
 - Buyer pre-order rider inquiries reuse the null-order conversation pattern (getOrCreateRiderInquiry, type buyer_rider) and the shared fleetRiders module lists only available/approved tricycle and minivan riders, nearest city first; this keeps heavy-cargo chats consistent with store inquiries without duplicating RLS or sorting logic.
 - Buyer movement banners, maps, and ETA use the shared browser-safe buyerRiderTracking gate; this prevents rider assignment from being mistaken for delivery acceptance.
+- Rider pickup uses browser-safe orderPickup updates: single-store pickup activates delivery status, while grouped pickup records only its store until group departure; this keeps buyer movement aligned with the delivery leg.

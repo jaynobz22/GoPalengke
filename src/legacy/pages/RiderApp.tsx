@@ -2,6 +2,7 @@
 import { isBuyerArranged } from '../lib/buyerCargo';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { watchOrders } from '../lib/liveOrders';
+import { pickupUpdate } from '../lib/orderPickup';
 import { supabase } from '../lib/supabase';
 import { notifyOrderSms } from '../lib/orderSms';
 import { checkRiderBatch } from '../lib/riderBatch';
@@ -1021,8 +1022,21 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
                   {currentOrder.status === 'ready_for_pickup' && !isPickedUp && currentOrder.rider_accepted_at && ((s.order as any).rider_arrived_store_at || (s.order.id === currentOrder.id && currentOrder.rider_arrived_store_at)) && (
                     <button
                       onClick={async () => {
+                        setUpdating(true);
+                        let groupOrderCount: number | undefined;
+                        if (currentOrder.delivery_group_id) {
+                          const { count, error } = await supabase.from('orders').select('id', { count: 'exact', head: true }).eq('delivery_group_id', currentOrder.delivery_group_id);
+                          if (error || !count) { setUpdating(false); alert('Hindi ma-check ang mga pickup. Pakisubukan muli.'); return; }
+                          groupOrderCount = count;
+                        }
+                        const update = pickupUpdate(currentOrder.delivery_group_id, new Date().toISOString(), groupOrderCount);
+                        const { error } = await supabase.from('orders').update(update).eq('id', s.order.id);
+                        setUpdating(false);
+                        if (error) { alert('Hindi na-save ang pickup. Pakisubukan muli.'); return; }
                         setPickedUpStores(prev => new Set(prev).add(s.order.store_id));
-                        await supabase.from('orders').update({ picked_up_at: new Date().toISOString() }).eq('id', s.order.id);
+                        if (s.order.id === currentOrder.id) setCurrentOrder(prev => ({ ...prev, ...update }));
+                        else setSiblingOrders(prev => prev.map(o => o.id === s.order.id ? { ...o, ...update } : o));
+                        if (update.status === 'picked_up') notifyOrderSms(currentOrder.id, 'on_the_way');
                       }}
                       disabled={updating}
                       className="mt-2 next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3"
