@@ -5,6 +5,8 @@ import { shareToMessenger } from '../lib/messengerShare';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { watchOrders } from '../lib/liveOrders';
 import { canShowBuyerRiderTracking, mergeBuyerOrderUpdate } from '../lib/buyerRiderTracking';
+import { canShowBuyerCodPayment } from '../lib/buyerCodPayment';
+import { BuyerCodPayment } from '../components/BuyerCodPayment';
 import { supabase } from '../lib/supabase';
 import { notifyOrderSms } from '../lib/orderSms';
 import { useAuth } from '../lib/auth';
@@ -3359,6 +3361,14 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
     });
   }, [order.id, order.delivery_group_id]);
 
+  useEffect(() => {
+    if (!currentOrder.rider_id) { setRider(null); return; }
+    let cancelled = false;
+    supabase.from('profiles').select('full_name, phone, avatar_url, rider_qr_code_url').eq('id', currentOrder.rider_id).maybeSingle()
+      .then(({ data }) => { if (!cancelled) setRider(data as any); });
+    return () => { cancelled = true; };
+  }, [currentOrder.rider_id]);
+
   const isBuyer = profile?.id === currentOrder.buyer_id;
   const isCancelled = currentOrder.status === 'cancelled';
   const isDelivered = currentOrder.status === 'delivered';
@@ -3616,47 +3626,8 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         </div>
       )}
 
-      {/* COD: Rider QR code for buyer to pay full amount — shown when rider has picked up */}
-      {!isCancelled && currentOrder.status === 'picked_up' && currentOrder.payment_method === 'cod' && rider?.rider_qr_code_url && (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-3">
-          <div className="flex items-center gap-2 mb-3">
-            <QrCode size={18} className="text-blue-600" />
-            <span className="font-semibold text-sm text-blue-800">Magbayad sa Rider</span>
-          </div>
-          <p className="text-xs text-blue-700 mb-3 leading-relaxed">
-            Pwede mong bayaran ang buong halaga na <strong>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</strong> (paninda + delivery fee) sa rider gamit ang QR code, o maghanda ng cash pagdating niya.
-          </p>
-          <div className="bg-white rounded-xl p-3 flex justify-center mb-2">
-            <img src={rider.rider_qr_code_url} alt="QR Code ng Rider" loading="lazy" decoding="async" className="w-40 h-40 rounded-xl object-contain" />
-          </div>
-          <button
-            onClick={async () => {
-              try {
-                const response = await fetch(rider.rider_qr_code_url!);
-                const blob = await response.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `rider-qr-${rider.full_name.replace(/\\s+/g, '-').toLowerCase()}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-              } catch {
-                window.open(rider.rider_qr_code_url!, '_blank');
-              }
-            }}
-            className="w-full py-2.5 bg-blue-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
-          >
-            <Download size={16} /> I-download ang QR Code
-          </button>
-        </div>
-      )}
-      {!isCancelled && currentOrder.status === 'picked_up' && currentOrder.payment_method === 'cod' && rider && !rider.rider_qr_code_url && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3 flex items-center gap-2">
-          <Package size={16} className="text-amber-500 flex-shrink-0" />
-          <p className="text-sm text-amber-700">Maghanda ng <strong>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</strong> cash (paninda + delivery fee) para sa rider pagdating.</p>
-        </div>
+      {canShowBuyerCodPayment(currentOrder) && rider && (
+        <BuyerCodPayment key={currentOrder.id} amount={Number(currentOrder.total) + Number(currentOrder.delivery_fee)} qrUrl={rider.rider_qr_code_url} riderName={rider.full_name} />
       )}
 
       {/* Store info */}

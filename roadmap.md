@@ -1,5 +1,9 @@
 # Roadmap: GoPalengke Migration (GitHub → Lovable)
 
+## Current: Buyer COD QR/cash
+- [x] Arrival-only rider QR with QR-default and clickable cash choice, without changing COD accounting
+- [ ] Verify rules and payment selection in browser, then push to existing repo
+
 ## Current: Seller rider QR timing
 - [x] Restrict rider QR/payment instructions to NON-COD store arrival/pickup and remove travel QR
 - [x] Three rule tests pass; isolated seller screen verifies QR at NON-COD pickup, hidden during travel and COD; pushed to existing repo

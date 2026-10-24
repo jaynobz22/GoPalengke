@@ -30,3 +30,4 @@
 - Rider pickup uses browser-safe orderPickup updates: single-store pickup activates delivery status, while grouped pickup records only its store until group departure; this keeps buyer movement aligned with the delivery leg.
 - Rider arrival uses orders.rider_arrived_buyer_at while retaining picked_up status; riderArrival guards delivery completion until arrival and every COD store reference exist, preserving delivery/commission trigger timing.
 - Seller rider-fee QR and payment instructions share sellerRiderQr pickup-phase gating, so they disappear on departure without changing payment accounting.
+- Buyer COD payment choices use BuyerCodPayment behind arrival gating; QR/cash selection is presentation-only and never changes COD verification or remittance accounting.
