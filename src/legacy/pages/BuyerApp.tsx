@@ -3364,40 +3364,26 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
 
   const isCod = currentOrder.payment_method === 'cod';
 
-  // Build buyer-side step list — COD skips the "Nabayaran na" step (payment happens at delivery)
-  const buyerSteps: StepInfo[] = isCod ? [
-    { key: 'placed', label: 'Na-order na', description: 'Nai-submit na ang order mo. Naghihintay ng confirmation mula sa seller na available ang mga paninda.', status: 'completed' },
-    { key: 'confirmed', label: 'Na-confirm ng seller', description: 'Na-confirm na ng seller! Available ang mga paninda. Maghanda ka na ng cash para sa rider pagdating.', status: 'completed' },
-    { key: 'preparing', label: 'Inihahanda ng seller', description: 'Inihahanda na ng seller ang order mo. Hintayin lang ang rider na ma-assign at mag-pick up.', status: 'completed' },
-    { key: 'on_the_way', label: 'On the way na!', description: 'Nakuha na ng rider ang parcel at papunta na sa iyo. Makikita mo ang live location sa mapa sa baba.', status: 'completed' },
-    { key: 'delivered', label: 'Na-deliver na!', description: 'Na-deliver na ang order mo sa iyo. Magbayad sa rider ng ₱' + (Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2) + '. Salamat!', status: 'completed' },
-  ] : [
-    { key: 'placed', label: 'Na-order na', description: 'Nai-submit na ang order mo. Naghihintay ng confirmation mula sa seller na available ang mga paninda.', status: 'completed' },
-    { key: 'confirmed', label: 'Na-confirm ng seller', description: 'Na-confirm na ng seller! Available ang mga paninda. Pwede ka na magbayad.', status: 'completed' },
-    { key: 'paid', label: 'Nabayaran na', description: 'Nabayaran na ang order! Inihahanda na ng seller ang mga paninda. Magko-contact na ng rider.', status: 'completed' },
-    { key: 'preparing', label: 'Inihahanda ng seller', description: 'Inihahanda na ng seller ang order mo. Hintayin lang ang rider na ma-assign at mag-pick up.', status: 'completed' },
-    { key: 'on_the_way', label: 'On the way na!', description: 'Nakuha na ng rider ang parcel at papunta na sa iyo. Makikita mo ang live location sa mapa sa baba.', status: 'completed' },
-    { key: 'delivered', label: 'Na-deliver na!', description: 'Na-deliver na ang order mo sa iyo. Salamat! Pwede mo na i-review ang seller at rider.', status: 'completed' },
+  const sellerDone = 'seller_done_at' in currentOrder ? !!(currentOrder as any).seller_done_at : true;
+  const canReview = isDelivered && (!isCod || !!currentOrder.cod_payment_accepted_at) && sellerDone;
+  const grandTotal = (Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2);
+  const buyerSteps: StepInfo[] = [
+    { key: 'placed', label: 'Hinihintay i-confirm ng seller', doneLabel: 'Na-confirm ng seller ang order', description: 'Nai-submit na ang order mo. Tinitingnan ng seller kung available ang mga paninda.', status: 'pending' },
+    ...(isCod ? [] : [{ key: 'pay', label: 'MAGBAYAD GAMIT ANG QR', doneLabel: currentOrder.payment_status === 'paid' ? 'Naipadala na ang bayad' : 'Nabayaran na', description: currentOrder.payment_status === 'paid' ? 'Naipadala mo na ang reference number. Hinihintay i-confirm ng seller ang bayad.' : `I-scan ang QR ng seller, magbayad ng ₱${grandTotal}, at i-submit ang reference number.`, status: 'pending' as const }]),
+    { key: 'preparing', label: 'Inihahanda ng seller', doneLabel: 'Naihanda na ang order', description: 'Inihahanda na ang order mo. Mag-a-assign ang seller ng rider — makikita mo rito ang profile niya.', status: 'pending' },
+    { key: 'on_the_way', label: 'Papunta na ang rider', doneLabel: 'Na-deliver na sa iyo', description: isCod ? `Nakuha na ng rider ang parcel. Ihanda ang ₱${grandTotal} na cash para sa rider.` : 'Nakuha na ng rider ang parcel at papunta na sa iyo. Makikita ang live location sa mapa.', status: 'pending' },
+    { key: 'done', label: isCod ? 'Hinihintay matapos ng seller (Confirm Payment / DONE)' : 'Hinihintay matapos ng seller (DONE)', doneLabel: 'Tapos na ang transaction', description: 'Na-deliver na! Hinihintay na lang i-click ng seller ang DONE.', status: 'pending' },
+    { key: 'review', label: 'MAG-REVIEW SA SELLER AT RIDER', doneLabel: 'Salamat sa review!', description: 'Tapos na ang order! I-rate ang tindahan at ang rider.', status: 'pending' },
   ];
-
-  // Map order status to step index
+  const off = isCod ? 0 : 1;
   let currentStepIndex = 0;
-  if (isCod) {
-    if (currentOrder.status === 'pending') currentStepIndex = 0;
-    else if (currentOrder.status === 'accepted') currentStepIndex = 1;
-    else if (currentOrder.status === 'preparing' || currentOrder.status === 'ready_for_pickup') currentStepIndex = 2;
-    else if (currentOrder.status === 'picked_up') currentStepIndex = 3;
-    else if (currentOrder.status === 'delivered') currentStepIndex = 4;
-  } else {
-    if (currentOrder.status === 'pending') currentStepIndex = 0;
-    else if (currentOrder.status === 'accepted') {
-      if (currentOrder.payment_status !== 'paid') currentStepIndex = 1;
-      else currentStepIndex = 2;
-    }
-    else if (currentOrder.status === 'preparing' || currentOrder.status === 'ready_for_pickup') currentStepIndex = 3;
-    else if (currentOrder.status === 'picked_up') currentStepIndex = 4;
-    else if (currentOrder.status === 'delivered') currentStepIndex = 5;
-  }
+  const bst = currentOrder.status;
+  if (bst === 'pending') currentStepIndex = 0;
+  else if (bst === 'accepted') currentStepIndex = isCod ? 1 : 1;
+  else if (bst === 'preparing' || bst === 'ready_for_pickup') currentStepIndex = 1 + off;
+  else if (bst === 'picked_up') currentStepIndex = 2 + off;
+  else if (bst === 'delivered') currentStepIndex = canReview ? 4 + off : 3 + off;
+  if (!isCod && bst === 'accepted') currentStepIndex = 1;
 
   // Mark steps
   buyerSteps.forEach((s, i) => {
@@ -3459,18 +3445,12 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         </div>
       )}
 
-      {/* Collapsible Step Tracker */}
-      {!isCancelled && (
-        <div className="mb-3">
-          <OrderStepTracker steps={buyerSteps} currentStepIndex={currentStepIndex} />
-        </div>
-      )}
       {isCancelled && (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-3 text-center">
           <p className="text-sm font-semibold text-red-700">Nakansela ang order na ito.</p>
         </div>
       )}
-
+      <OrderStepTracker steps={buyerSteps} currentStepIndex={currentStepIndex} hidden={isCancelled}>
       {/* Active step action area */}
       {!isCancelled && !isDelivered && currentStepIndex === 1 && currentOrder.payment_method === 'qr_code' && currentOrder.payment_status !== 'paid' && store?.qr_code_url && (
         <div className="bg-white rounded-2xl border-2 border-brand-200 p-4 mb-3">
@@ -3705,6 +3685,27 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         </div>
       )}
 
+      {/* Leave a Review - only for delivered orders; for COD, only after seller accepts payment */}
+      {isBuyer && canReview && (
+        <ReviewSectionForOrder
+          orderId={currentOrder.id}
+          store={store}
+          rider={rider}
+          riderId={currentOrder.rider_id}
+          sellerId={store?.seller_id || null}
+        />
+      )}
+
+      {/* COD: waiting for seller to confirm payment before review */}
+      {isBuyer && isDelivered && !canReview && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3 flex items-center gap-2">
+          <Clock size={18} className="text-amber-500 flex-shrink-0" />
+          <p className="text-sm text-amber-700">Hinihintay pang i-click ng seller ang DONE{isCod ? ' (at tanggapin ang COD payment)' : ''} bago makapag-review.</p>
+        </div>
+      )}
+
+      </OrderStepTracker>
+
       {/* Items */}
       <CollapsibleSection title="Mga Paninda at Total">
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
@@ -3831,25 +3832,6 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* Leave a Review - only for delivered orders; for COD, only after seller accepts payment */}
-      {isBuyer && isDelivered && (!isCod || !!currentOrder.cod_payment_accepted_at) && (
-        <ReviewSectionForOrder
-          orderId={currentOrder.id}
-          store={store}
-          rider={rider}
-          riderId={currentOrder.rider_id}
-          sellerId={store?.seller_id || null}
-        />
-      )}
-
-      {/* COD: waiting for seller to confirm payment before review */}
-      {isBuyer && isDelivered && isCod && !currentOrder.cod_payment_accepted_at && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3 flex items-center gap-2">
-          <Clock size={18} className="text-amber-500 flex-shrink-0" />
-          <p className="text-sm text-amber-700">Naghihintay na tanggapin ng seller ang COD payment mula sa rider bago makapag-review.</p>
         </div>
       )}
 

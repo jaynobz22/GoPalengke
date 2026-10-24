@@ -711,11 +711,11 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
 
   // Build rider-side step list — eksaktong daloy: Tanggapin → Nandito sa Tindahan → Na Pick Up → Going to Buyer → Delivered
   const riderSteps: StepInfo[] = [
-    { key: 'accept', label: 'Tanggapin ang Delivery', description: 'Tinanggap mo na ang delivery order. Papunta ka na sa tindahan ng seller para kunin ang parcel.', status: 'completed' },
-    { key: 'arrive', label: 'Nandito na ako sa Tindahan', description: 'Pagdating mo sa tindahan, pindutin ang "Nandito na ako sa Tindahan" para malaman agad ng buyer at seller.', status: 'completed' },
-    { key: 'pickup', label: 'Na Pick Up ko na', description: 'Pag nailagay mo na ang parcel sa delivery box, pindutin ang "Na Pick Up ko na".', status: 'completed' },
-    { key: 'on_the_way', label: 'Going to Buyer na', description: 'Kapag wala nang ibang tindahang puntahan, aalis ka na papunta sa buyer. Live na nakikita ng buyer ang location mo sa mapa.', status: 'completed' },
-    { key: 'delivered', label: 'Na-deliver na!', description: 'Na-deliver mo na ang parcel sa buyer. Tapusin ang delivery.', status: 'completed' },
+    { key: 'accept', label: 'TANGGAPIN ANG DELIVERY', doneLabel: 'Tinanggap mo na ang delivery', description: 'Tinanggap mo na ang delivery order. Papunta ka na sa tindahan ng seller para kunin ang parcel.', status: 'completed' },
+    { key: 'arrive', label: 'NANDITO NA AKO SA TINDAHAN', doneLabel: 'Nakarating na sa tindahan', description: 'Pagdating mo sa tindahan, pindutin ang "Nandito na ako sa Tindahan" para malaman agad ng buyer at seller.', status: 'completed' },
+    { key: 'pickup', label: 'NA PICK UP KO NA', doneLabel: 'Na-pick up na ang parcel', description: 'Pag nailagay mo na ang parcel sa delivery box, pindutin ang "Na Pick Up ko na".', status: 'completed' },
+    { key: 'on_the_way', label: 'GOING TO BUYER NA / MARK AS DELIVERED', doneLabel: 'Na-deliver na sa buyer', description: 'Kapag wala nang ibang tindahang puntahan, aalis ka na papunta sa buyer. Live na nakikita ng buyer ang location mo sa mapa.', status: 'completed' },
+    { key: 'delivered', label: 'TAPOS NA ANG DELIVERY', doneLabel: 'Tapos na', description: 'Na-deliver mo na ang parcel. Salamat, rider!', status: 'completed' },
   ];
 
   let currentStepIndex = 0;
@@ -723,7 +723,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const allArrived = allStores.length > 0 && allStores.every(s => !!(s.order as any).rider_arrived_store_at || pickedUpStores.has(s.order.store_id));
   if (currentOrder.rider_accepted_at && allArrived) currentStepIndex = 2;
   if (currentOrder.status === 'picked_up') currentStepIndex = 3;
-  else if (currentOrder.status === 'delivered') currentStepIndex = 4;
+  else if (currentOrder.status === 'delivered') currentStepIndex = isCod ? 4 : 5;
 
   riderSteps.forEach((s, i) => {
     s.status = i < currentStepIndex ? 'completed' : i === currentStepIndex ? 'active' : 'pending';
@@ -733,7 +733,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   if (isCod) {
     riderSteps.push({
       key: 'cod_payment',
-      label: 'Ipadala ang Bayad sa Seller',
+      label: 'MAGBAYAD SA SELLER (COD)', doneLabel: 'Natanggap ng seller ang bayad',
       description: codAccepted
         ? 'Na-tanggap na ng seller ang COD payment. Tapos na ang transaction!'
         : codSubmitted
@@ -741,7 +741,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           : 'Kolektahin ang cash sa buyer, ibawas ang rider\'s fee mo, ipadala ang natira sa QR code ng seller, at i-submit ang reference number.',
       status: codAccepted ? 'completed' : codSubmitted ? 'active' : 'pending',
     });
-    if (codAccepted || codSubmitted) currentStepIndex = riderSteps.length - 1;
+    if (isDelivered) currentStepIndex = codAccepted ? riderSteps.length : riderSteps.length - 1;
   }
 
   const sameCity = store?.city === currentOrder.delivery_city;
@@ -783,6 +783,12 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString('en-PH')}</p>
       </div>
 
+      {isCancelled && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-3 text-center">
+          <p className="text-sm font-semibold text-red-700">Nakansela ang order na ito.</p>
+        </div>
+      )}
+      <OrderStepTracker steps={riderSteps} currentStepIndex={currentStepIndex} hidden={isCancelled}>
       {currentOrder.status === 'ready_for_pickup' && currentOrder.rider_id === profile?.id && !currentOrder.rider_accepted_at && (
         <div className="rounded-2xl border-2 border-green-500 bg-green-50 p-4 mb-3">
           <p className="font-bold text-green-800">In-assign sa iyo ang delivery na ito</p>
@@ -820,18 +826,6 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         <div className="rounded-2xl border-2 border-blue-300 bg-blue-50 p-4 mb-3">
           <p className="font-bold text-blue-800 text-sm">Na Pick Up mo na ang order</p>
           <p className="text-xs text-blue-700 mt-1">Papunta ka na sa buyer. Live na nakikita ng buyer ang location mo.</p>
-        </div>
-      )}
-
-      {/* Collapsible Step Tracker */}
-      {!isCancelled && (
-        <div className="mb-3">
-          <OrderStepTracker steps={riderSteps} currentStepIndex={currentStepIndex} />
-        </div>
-      )}
-      {isCancelled && (
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-3 text-center">
-          <p className="text-sm font-semibold text-red-700">Nakansela ang order na ito.</p>
         </div>
       )}
 
@@ -891,7 +885,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
                 disabled={updating || !codRef.trim()}
                 className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3"
               >
-                <Check size={18} /> {updating ? 'Nagse-send...' : 'STEP 7: I-submit ang Reference'}
+                <Check size={18} /> {updating ? 'Nagse-send...' : 'STEP 5: I-SUBMIT ANG REFERENCE'}
               </button>
             </div>
           ) : !showCodPayment ? (
@@ -1106,7 +1100,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           disabled={updating}
           className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3"
         >
-          {updating ? 'Nag-uupdate...' : 'STEP 4: Going to Buyer na'}
+          {updating ? 'Nag-uupdate...' : 'STEP 4: GOING TO BUYER NA'}
         </button>
       )}
 
@@ -1226,9 +1220,10 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
       {currentOrder.status === 'picked_up' && (
         <button onClick={markDelivered} disabled={updating}
           className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
-          {updating ? 'Nag-uupdate...' : 'STEP 5: Mark as Delivered'}
+          {updating ? 'Nag-uupdate...' : 'STEP 4: MARK AS DELIVERED'}
         </button>
       )}
+      </OrderStepTracker>
     </div>
   );
 }

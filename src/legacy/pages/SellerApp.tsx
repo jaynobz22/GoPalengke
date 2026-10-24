@@ -1853,7 +1853,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   const [detailsChecked, setDetailsChecked] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [finished, setFinished] = useState(false);
-  useEffect(() => { try { setFinished(localStorage.getItem(`gp_done_${order.id}`) === '1'); } catch {} }, [order.id]);
+  useEffect(() => { try { setFinished(!!(order as any).seller_done_at || localStorage.getItem(`gp_done_${order.id}`) === '1'); } catch {} }, [order.id]);
 
   async function assignRider(riderId: string) {
     setAssigningRider(riderId);
@@ -1923,7 +1923,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   if (st === 'pending') currentStepIndex = detailsSeen ? 1 : 0;
   else if (st === 'accepted') currentStepIndex = 2;
   else if (st === 'preparing') currentStepIndex = 3;
-  else if (st === 'ready_for_pickup') currentStepIndex = hasRider ? 4 : 3;
+  else if (st === 'ready_for_pickup') currentStepIndex = currentOrder.picked_up_at ? 5 : hasRider ? 4 : 3;
   else if (st === 'picked_up') currentStepIndex = isCod ? 5 : 5;
   else if (st === 'delivered') {
     if (isCod) currentStepIndex = currentOrder.cod_payment_accepted_at ? 6 : 5;
@@ -1942,11 +1942,25 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
     onOpenChat(currentOrder, buyer?.full_name || 'Buyer');
   }
 
+  async function markDone() {
+    try { localStorage.setItem(`gp_done_${currentOrder.id}`, '1'); } catch {}
+    setFinished(true);
+    // seller_done_at: binubuksan ang review ng buyer (kung naka-setup ang column)
+    await supabase.from('orders').update({ seller_done_at: new Date().toISOString() } as any).eq('id', currentOrder.id);
+  }
+
   async function markPickedUp() {
     setUpdating(true);
-    await supabase.from('orders').update({ status: 'picked_up', picked_up_at: new Date().toISOString() }).eq('id', currentOrder.id);
-    notifyOrderSms(currentOrder.id, 'on_the_way');
-    setCurrentOrder(prev => ({ ...prev, status: 'picked_up' }));
+    const now = new Date().toISOString();
+    if (currentOrder.delivery_group_id) {
+      // Multi-store: markahan lang na nakuha na sa tindahang ito; ang rider ang magsasabing "Going to Buyer"
+      await supabase.from('orders').update({ picked_up_at: now }).eq('id', currentOrder.id);
+      setCurrentOrder(prev => ({ ...prev, picked_up_at: now }));
+    } else {
+      await supabase.from('orders').update({ status: 'picked_up', picked_up_at: now }).eq('id', currentOrder.id);
+      notifyOrderSms(currentOrder.id, 'on_the_way');
+      setCurrentOrder(prev => ({ ...prev, status: 'picked_up', picked_up_at: now }));
+    }
     setUpdating(false);
   }
 
@@ -2326,13 +2340,13 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         </div>
       )}
 
-      {!isCancelled && st === 'ready_for_pickup' && hasRider && !noRiderFlow && (
+      {!isCancelled && st === 'ready_for_pickup' && hasRider && !noRiderFlow && !currentOrder.picked_up_at && (
         <button onClick={markPickedUp} disabled={updating || !currentOrder.rider_accepted_at} className={btnCls}>
           {updating ? 'Nag-uupdate...' : !currentOrder.rider_accepted_at ? 'Hinihintay tanggapin ng rider…' : 'STEP 5: NA-PICKUP NA NG RIDER'}
         </button>
       )}
       {!isCancelled && isDelivered && !finished && (!isCod || currentOrder.cod_payment_accepted_at || noRiderFlow) && (
-        <button onClick={() => { try { localStorage.setItem(`gp_done_${currentOrder.id}`, '1'); } catch {} setFinished(true); }} className={btnCls}>
+        <button onClick={markDone} className={btnCls}>
           STEP {isCod ? 7 : 6}: DONE ✓
         </button>
       )}
