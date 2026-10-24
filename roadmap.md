@@ -3,7 +3,7 @@
 ## Current: Rider arrival at buyer
 - [x] Add persistent arrival action and buyer/seller arrival banner
 - [x] Move COD remittance before delivered, including per-store reference gating
-- [ ] Test arrival/delivery guards and browser flow, then push to existing repo
+- [x] Sixteen arrival/tracking/pickup/COD tests pass; isolated COD browser flow verifies arrival → reference → delivered without errors; changes pushed
 - [ ] Apply database/rider-buyer-arrival.sql to external GoPalengke database (blocked: no privileged access to that backend)
 - [ ] Verify real buyer/seller/rider delivery (blocked: no authenticated external account session)
 
