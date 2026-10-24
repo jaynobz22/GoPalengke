@@ -3705,6 +3705,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
       )}
 
       {/* Items */}
+      <CollapsibleSection title="Mga Paninda at Total">
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
         <h3 className="font-semibold text-gray-800 mb-3">Mga Paninda</h3>
         {items.map(item => (
@@ -3725,6 +3726,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
           <div className="flex justify-between font-bold text-gray-800"><span>Total</span><span>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</span></div>
         </div>
       </div>
+      </CollapsibleSection>
 
       {/* Rider info */}
       {rider && (
@@ -3773,6 +3775,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
       )}
 
       {/* Delivery Address */}
+      <CollapsibleSection title="Delivery Address">
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
         <div className="flex items-center gap-2 mb-2">
           <Navigation size={16} className="text-brand-600" />
@@ -3781,6 +3784,8 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         <p className="text-sm text-gray-600">{currentOrder.delivery_address}</p>
         <p className="text-sm text-gray-400">{currentOrder.delivery_barangay}, {currentOrder.delivery_city}, {formatRegionForDisplay(currentOrder.delivery_region)}</p>
       </div>
+      </CollapsibleSection>
+
 
       {/* Multi-store: one tab per store */}
       {siblingOrders.length > 0 && store && (

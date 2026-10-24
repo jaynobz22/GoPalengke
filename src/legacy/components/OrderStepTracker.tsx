@@ -17,6 +17,7 @@ interface OrderStepTrackerProps {
 
 export function OrderStepTracker({ steps, currentStepIndex }: OrderStepTrackerProps) {
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showPending, setShowPending] = useState(false);
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
 
   // Pag may bagong update, dalhin agad sa screen ang susunod na button na dapat i-click
@@ -110,8 +111,17 @@ export function OrderStepTracker({ steps, currentStepIndex }: OrderStepTrackerPr
         </div>
       )}
 
-      {/* Pending steps — collapsed, dimmed */}
-      {pendingSteps.map((step, i) => (
+      {/* Pending steps — nakatago, isang maikling row lang */}
+      {pendingSteps.length > 0 && (
+        <button
+          onClick={() => setShowPending(p => !p)}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-left active:scale-[0.98] transition"
+        >
+          <span className="text-xs font-semibold text-gray-500 flex-1">Susunod pa: {pendingSteps.length} hakbang</span>
+          {showPending ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+        </button>
+      )}
+      {showPending && pendingSteps.map((step, i) => (
         <div key={step.key} className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center gap-3 opacity-60">
           <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
             <span className="text-gray-400 font-bold text-xs">{currentStepIndex + 2 + i}</span>

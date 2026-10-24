@@ -440,9 +440,9 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
                 <button
                   onClick={() => confirmAssigned(first)}
                   disabled={accepting === first.id || !canAct}
-                  className="next-action mt-3 w-full py-3 bg-green-600 text-white rounded-xl font-bold active:scale-[0.98] transition disabled:opacity-50"
+                  className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3"
                 >
-                  {accepting === first.id ? 'Tinatanggap...' : 'Tanggapin ang Delivery'}
+                  {accepting === first.id ? 'Tinatanggap...' : 'STEP 1: Tanggapin ang Delivery'}
                 </button>
               </div>
             );
@@ -797,9 +797,9 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
               setCurrentOrder(prev => ({ ...prev, rider_accepted_at: now }));
             }}
             disabled={updating}
-            className="next-action mt-3 w-full py-3 bg-green-600 text-white rounded-xl font-bold active:scale-[0.98] transition disabled:opacity-50"
+            className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3"
           >
-            {updating ? 'Tinatanggap...' : 'Tanggapin ang Delivery'}
+            {updating ? 'Tinatanggap...' : 'STEP 1: Tanggapin ang Delivery'}
           </button>
         </div>
       )}
@@ -888,17 +888,17 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
               <button
                 onClick={submitCodPayment}
                 disabled={updating || !codRef.trim()}
-                className="next-action w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50"
+                className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3"
               >
-                <Check size={18} /> {updating ? 'Nagse-send...' : 'I-submit ang Reference'}
+                <Check size={18} /> {updating ? 'Nagse-send...' : 'STEP 7: I-submit ang Reference'}
               </button>
             </div>
           ) : !showCodPayment ? (
             <button
               onClick={() => setShowCodPayment(true)}
-              className="next-action w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
+              className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3"
             >
-              <QrCode size={18} /> Magbayad sa Seller
+              <QrCode size={18} /> STEP 6: Magbayad sa Seller
             </button>
           ) : (
             <div className="flex items-center gap-2 text-sm text-amber-700">
@@ -1018,9 +1018,9 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
                         else setSiblingOrders(prev => prev.map((o: any) => o.id === s.order.id ? { ...o, rider_arrived_store_at: now } : o));
                       }}
                       disabled={updating}
-                      className="mt-2 px-4 py-2 bg-amber-500 text-white rounded-lg text-xs font-semibold active:scale-95 transition disabled:opacity-50"
+                      className="mt-2 next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3"
                     >
-                      {updating ? 'Nag-uupdate...' : 'Nandito na ako sa Tindahan'}
+                      {updating ? 'Nag-uupdate...' : 'STEP 2: Nandito na ako sa Tindahan'}
                     </button>
                   )}
                   {currentOrder.status === 'ready_for_pickup' && !isPickedUp && currentOrder.rider_accepted_at && ((s.order as any).rider_arrived_store_at || (s.order.id === currentOrder.id && currentOrder.rider_arrived_store_at)) && (
@@ -1030,9 +1030,9 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
                         await supabase.from('orders').update({ picked_up_at: new Date().toISOString() }).eq('id', s.order.id);
                       }}
                       disabled={updating}
-                      className="mt-2 px-4 py-2 bg-brand-600 text-white rounded-lg text-xs font-semibold active:scale-95 transition disabled:opacity-50"
+                      className="mt-2 next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3"
                     >
-                      {updating ? 'Nag-uupdate...' : 'Na Pick Up ko na'}
+                      {updating ? 'Nag-uupdate...' : 'STEP 3: Na Pick Up ko na'}
                     </button>
                   )}
                 </div>
@@ -1103,9 +1103,9 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
             setUpdating(false);
           }}
           disabled={updating}
-          className="next-action w-full py-4 bg-blue-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-blue-600/20 active:scale-[0.98] transition disabled:opacity-50 mb-3"
+          className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3"
         >
-          {updating ? 'Nag-uupdate...' : 'Going to Buyer na'}
+          {updating ? 'Nag-uupdate...' : 'STEP 4: Going to Buyer na'}
         </button>
       )}
 
@@ -1139,6 +1139,8 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
       )}
 
       {/* Items */}
+      <CollapsibleSection title="Mga Paninda at Kita">
+
       <div className={`bg-white rounded-2xl border border-gray-100 p-4 mb-3 ${allStores.length > 1 ? 'hidden' : ''}`}>
         <h3 className="font-semibold text-gray-800 mb-3">Mga Paninda</h3>
         {items.map(item => (
@@ -1183,6 +1185,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           )}
         </div>
       </div>
+      </CollapsibleSection>
 
       {/* Payment Info */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
@@ -1221,8 +1224,8 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
       {/* Mark as Delivered button */}
       {currentOrder.status === 'picked_up' && (
         <button onClick={markDelivered} disabled={updating}
-          className="next-action w-full py-4 bg-blue-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-blue-600/20 active:scale-[0.98] transition disabled:opacity-50 mb-3">
-          {updating ? 'Nag-uupdate...' : 'Mark as Delivered'}
+          className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
+          {updating ? 'Nag-uupdate...' : 'STEP 5: Mark as Delivered'}
         </button>
       )}
     </div>

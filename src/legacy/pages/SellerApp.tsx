@@ -1999,8 +1999,8 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       {/* Active step: New order — confirm button */}
       {!isCancelled && currentOrder.status === 'pending' && (
         <button onClick={() => updateStatus('accepted')} disabled={updating}
-          className="w-full py-4 bg-brand-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-brand-600/20 active:scale-[0.98] transition disabled:opacity-50 mb-3">
-          {updating ? 'Nag-uupdate...' : 'I-confirm ang Order'}
+          className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
+          {updating ? 'Nag-uupdate...' : 'STEP 1: I-confirm ang Order'}
         </button>
       )}
 
@@ -2039,8 +2039,8 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             </ol>
           </div>
           <button onClick={() => updateStatus('preparing')} disabled={updating}
-            className="next-action w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
-            {updating ? 'Nag-uupdate...' : 'Simulang Ihanda ang Order'}
+            className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
+            {updating ? 'Nag-uupdate...' : 'STEP 2: Simulang Ihanda ang Order'}
           </button>
         </div>
       )}
@@ -2050,8 +2050,8 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
           <p className="text-sm text-amber-700 mb-3">Cash on Delivery — maghahanda ang buyer ng <strong>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</strong> para sa rider. Ihandang muna ang order.</p>
           <button onClick={() => updateStatus('preparing')} disabled={updating}
-            className="next-action w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
-            {updating ? 'Nag-uupdate...' : 'Simulang Ihanda ang Order'}
+            className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
+            {updating ? 'Nag-uupdate...' : 'STEP 2: Simulang Ihanda ang Order'}
           </button>
         </div>
       )}
@@ -2059,8 +2059,8 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       {/* Active step: Preparing — ready for pickup button */}
       {!isCancelled && currentOrder.status === 'preparing' && (
         <button onClick={() => updateStatus('ready_for_pickup')} disabled={updating}
-          className="next-action w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50 mb-3">
-          {updating ? 'Nag-uupdate...' : 'Ready for Pickup na'}
+          className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
+          {updating ? 'Nag-uupdate...' : 'STEP 3: Ready for Pickup na'}
         </button>
       )}
 
@@ -2071,9 +2071,9 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           <button
             onClick={() => assignRider(getPickedRiderId(currentOrder.buyer_note)!)}
             disabled={!!assigningRider}
-            className="next-action mt-3 w-full py-2.5 bg-green-600 text-white rounded-xl font-semibold text-sm disabled:opacity-50"
+            className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3"
           >
-            {assigningRider ? 'Ina-assign...' : 'I-assign ang piniling driver ng buyer'}
+            {assigningRider ? 'Ina-assign...' : 'STEP 4: I-assign ang piniling driver ng buyer'}
           </button>
         </div>
       )}
@@ -2124,8 +2124,8 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           <p className="text-xs text-brand-700 mt-1">Hindi mo na kailangang mag-assign ng rider. Iabot lang ang paninda sa driver na kausap ng buyer (tingnan ang note sa itaas).</p>
           {currentOrder.status === 'ready_for_pickup' && (
             <button onClick={() => updateStatus('delivered')} disabled={updating}
-              className="next-action mt-3 w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
-              {updating ? 'Nag-uupdate...' : 'Naiabot na sa Driver ng Buyer'}
+              className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
+              {updating ? 'Nag-uupdate...' : 'STEP 4: Naiabot na sa Driver ng Buyer'}
             </button>
           )}
         </div>
@@ -2146,8 +2146,8 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             </div>
           </div>
           <button onClick={() => updateStatus('delivered')} disabled={updating}
-            className="next-action w-full py-3 bg-green-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
-            {updating ? 'Nag-uupdate...' : 'Na-deliver na / Nai-sundo na'}
+            className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
+            {updating ? 'Nag-uupdate...' : 'STEP 4: Na-deliver na / Nai-sundo na'}
           </button>
         </div>
       )}
@@ -2270,8 +2270,8 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             <p className="text-sm font-mono font-bold text-gray-800 break-all">{currentOrder.cod_payment_reference}</p>
           </div>
           <button onClick={acceptCodPayment} disabled={updating}
-            className="next-action w-full py-3 bg-green-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
-            {updating ? 'Nag-uupdate...' : 'Tanggapin ang Payment'}
+            className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
+            {updating ? 'Nag-uupdate...' : 'STEP 5: Tanggapin ang Payment'}
           </button>
         </div>
       )}
@@ -2444,6 +2444,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       )}
 
       {/* Items */}
+      <CollapsibleSection title="Mga Paninda at Total">
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
         <h3 className="font-semibold text-gray-800 mb-3">Mga Paninda</h3>
         {items.map(item => (
@@ -2467,6 +2468,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           <div className="flex justify-between font-bold text-gray-800"><span>Total</span><span>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</span></div>
         </div>
       </div>
+      </CollapsibleSection>
 
       {/* Cancel button */}
       {!isDelivered && !isCancelled && (
