@@ -1,5 +1,11 @@
 # Roadmap: GoPalengke Migration (GitHub → Lovable)
 
+## Current: Smooth live rider map
+- [x] Add cancellable display-only rider marker animation and retain user map framing during GPS updates
+- [x] Include GPS and completion fields in buyer backup refresh updates
+- [ ] Verify tracking tests and isolated browser movement, then push to existing GitHub repo
+- [ ] Verify live movement with real buyer/rider accounts (blocked: no session for the existing external account system)
+
 ## Current: Buyer rider acceptance
 - [x] Update rider/seller pickup and buyer on-the-way notice; acceptance and pickup tests pass and changes pushed
 - [x] Gate buyer movement banners, tracking map, and ETA on rider acceptance; four acceptance tests pass and push to the existing repo

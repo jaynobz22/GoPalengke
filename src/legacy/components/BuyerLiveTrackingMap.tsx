@@ -4,6 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Navigation, Bike, Timer, MapPin, Loader2, Route as RouteIcon, Clock } from 'lucide-react';
 import { fetchRoute, haversineKm, type Coords, type RouteResult } from '../lib/deliveryFee';
+import { interpolateRiderPosition } from '../lib/buyerRiderTracking';
 
 interface BuyerLiveTrackingMapProps {
   riderLat: number;
@@ -59,6 +60,7 @@ export function BuyerLiveTrackingMap({
   const destMarkerRef = useRef<L.Marker | null>(null);
   const routeLineRef = useRef<L.Polyline | null>(null);
   const accuracyCircleRef = useRef<L.Circle | null>(null);
+  const lastFittedDestinationRef = useRef<string | null>(null);
 
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [loadingRoute, setLoadingRoute] = useState(false);
@@ -94,11 +96,17 @@ export function BuyerLiveTrackingMap({
     }).addTo(map);
 
     mapRef.current = map;
-    setTimeout(() => map.invalidateSize(), 100);
+    const resizeTimer = window.setTimeout(() => map.invalidateSize(), 100);
 
     return () => {
+      window.clearTimeout(resizeTimer);
       map.remove();
       mapRef.current = null;
+      riderMarkerRef.current = null;
+      destMarkerRef.current = null;
+      routeLineRef.current = null;
+      accuracyCircleRef.current = null;
+      lastFittedDestinationRef.current = null;
     };
   }, []);
 
@@ -122,18 +130,14 @@ export function BuyerLiveTrackingMap({
     if (!map) return;
 
     // Rider marker
-    if (riderMarkerRef.current) {
-      riderMarkerRef.current.setLatLng([riderLat, riderLng]);
-    } else {
+    if (!riderMarkerRef.current) {
       riderMarkerRef.current = L.marker([riderLat, riderLng], { icon: riderIcon })
         .addTo(map)
-        .bindPopup(`${riderName} (Rider)`);
+        .bindPopup(document.createTextNode(`${riderName} (Rider)`));
     }
 
     // Accuracy circle
-    if (accuracyCircleRef.current) {
-      accuracyCircleRef.current.setLatLng([riderLat, riderLng]);
-    } else {
+    if (!accuracyCircleRef.current) {
       accuracyCircleRef.current = L.circle([riderLat, riderLng], {
         radius: 50,
         color: '#2563eb',
@@ -146,14 +150,40 @@ export function BuyerLiveTrackingMap({
     // Destination marker
     if (destination) {
       if (destMarkerRef.current) {
-        destMarkerRef.current.setLatLng([destination.lat, destination.lng]);
+        destMarkerRef.current.setLatLng([destination.lat, destination.lng]).setIcon(destIcon).bindPopup(destLabel);
       } else {
         destMarkerRef.current = L.marker([destination.lat, destination.lng], { icon: destIcon })
           .addTo(map)
           .bindPopup(destLabel);
       }
+    } else if (destMarkerRef.current) {
+      destMarkerRef.current.remove();
+      destMarkerRef.current = null;
     }
-  }, [riderLat, riderLng, destination?.lat, destination?.lng]);
+
+    const marker = riderMarkerRef.current;
+    const circle = accuracyCircleRef.current;
+    if (!marker) return;
+    marker.setPopupContent(document.createTextNode(`${riderName} (Rider)`));
+    const start = marker.getLatLng();
+    const target = { lat: riderLat, lng: riderLng };
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      marker.setLatLng(target);
+      circle?.setLatLng(target);
+      return;
+    }
+    let frame = 0;
+    const startedAt = performance.now();
+    const animate = (now: number) => {
+      const progress = Math.min(1, (now - startedAt) / 1000);
+      const position = interpolateRiderPosition(start, target, progress);
+      marker.setLatLng(position);
+      circle?.setLatLng(position);
+      if (progress < 1) frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [riderLat, riderLng, riderName, destination?.lat, destination?.lng, phase]);
 
   // Draw route polyline
   useEffect(() => {
@@ -172,11 +202,13 @@ export function BuyerLiveTrackingMap({
       dashArray: '10, 8',
     }).addTo(map);
 
-    if (route.coordinates.length > 0) {
+    const destinationKey = `${phase}:${destination?.lat}:${destination?.lng}`;
+    if (route.coordinates.length > 0 && lastFittedDestinationRef.current !== destinationKey) {
       const bounds = L.latLngBounds(route.coordinates);
       map.fitBounds(bounds, { padding: [60, 60] });
+      lastFittedDestinationRef.current = destinationKey;
     }
-  }, [route]);
+  }, [route, phase, destination?.lat, destination?.lng]);
 
   const estimatedTotalSeconds = sameCity ? 15 * 60 : 30 * 60;
   const remainingSeconds = Math.max(0, estimatedTotalSeconds - elapsedSeconds);
