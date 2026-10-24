@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { VEHICLE_TIERS, type VehicleTier } from '../lib/deliveryFee';
 import { formatRegionForDisplay } from '../lib/philippineLocations';
+import { codRemitToSeller } from '../lib/codRemit';
 
 type Tab = 'deliveries' | 'messages' | 'history' | 'billing' | 'profile';
 
@@ -439,7 +440,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
                 <button
                   onClick={() => confirmAssigned(first)}
                   disabled={accepting === first.id || !canAct}
-                  className="mt-3 w-full py-3 bg-green-600 text-white rounded-xl font-bold active:scale-[0.98] transition disabled:opacity-50"
+                  className="next-action mt-3 w-full py-3 bg-green-600 text-white rounded-xl font-bold active:scale-[0.98] transition disabled:opacity-50"
                 >
                   {accepting === first.id ? 'Tinatanggap...' : 'Tanggapin ang Delivery'}
                 </button>
@@ -704,6 +705,8 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const allPickedUp = allPickupStoreIds.every(id => pickedUpStores.has(id));
   const totalFee = allStores.reduce((s, o) => s + o.order.delivery_fee + Number(o.order.seller_delivery_subsidy || 0), 0);
   const totalAmount = allStores.reduce((s, o) => s + o.order.total + o.order.delivery_fee, 0);
+  const remitAmount = codRemitToSeller(currentOrder);
+  const riderKeeps = Math.max(0, Number(currentOrder.total) + Number(currentOrder.delivery_fee) - remitAmount);
 
   // Build rider-side step list — eksaktong daloy: Tanggapin → Nandito sa Tindahan → Na Pick Up → Going to Buyer → Delivered
   const riderSteps: StepInfo[] = [
@@ -734,7 +737,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         ? 'Na-tanggap na ng seller ang COD payment. Tapos na ang transaction!'
         : codSubmitted
           ? 'Nai-submit na ang reference number. Naghihintay ng confirmation ng seller.'
-          : 'Kolektahin ang cash sa buyer, i-scan ang QR code ng seller, ipadala ang bayad, at i-submit ang reference number.',
+          : 'Kolektahin ang cash sa buyer, ibawas ang rider\'s fee mo, ipadala ang natira sa QR code ng seller, at i-submit ang reference number.',
       status: codAccepted ? 'completed' : codSubmitted ? 'active' : 'pending',
     });
     if (codAccepted || codSubmitted) currentStepIndex = riderSteps.length - 1;
@@ -794,7 +797,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
               setCurrentOrder(prev => ({ ...prev, rider_accepted_at: now }));
             }}
             disabled={updating}
-            className="mt-3 w-full py-3 bg-green-600 text-white rounded-xl font-bold active:scale-[0.98] transition disabled:opacity-50"
+            className="next-action mt-3 w-full py-3 bg-green-600 text-white rounded-xl font-bold active:scale-[0.98] transition disabled:opacity-50"
           >
             {updating ? 'Tinatanggap...' : 'Tanggapin ang Delivery'}
           </button>
@@ -849,7 +852,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
             </div>
           ) : showCodPayment && store?.qr_code_url ? (
             <div>
-              <p className="text-xs text-amber-700 mb-3">Kolektahin ang cash sa buyer, i-scan ang QR code ng seller sa GCash/Maya, ipadala ang <strong>₱{totalAmount.toFixed(2)}</strong>, at i-submit ang reference number.</p>
+              <p className="text-xs text-amber-700 mb-3">Kolektahin ang cash sa buyer, i-scan ang QR code ng seller sa GCash/Maya, ipadala ang <strong>₱{remitAmount.toFixed(2)}</strong> (bawas na ang rider's fee mo na ₱{riderKeeps.toFixed(2)}), at i-submit ang reference number.</p>
               <div className="bg-gray-50 rounded-xl p-4 flex justify-center mb-3">
                 <img src={store.qr_code_url} alt="QR Code ng Seller" loading="lazy" decoding="async" className="w-48 h-48 rounded-xl object-contain" />
               </div>
@@ -885,7 +888,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
               <button
                 onClick={submitCodPayment}
                 disabled={updating || !codRef.trim()}
-                className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50"
+                className="next-action w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50"
               >
                 <Check size={18} /> {updating ? 'Nagse-send...' : 'I-submit ang Reference'}
               </button>
@@ -893,7 +896,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           ) : !showCodPayment ? (
             <button
               onClick={() => setShowCodPayment(true)}
-              className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
+              className="next-action w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
             >
               <QrCode size={18} /> Magbayad sa Seller
             </button>
@@ -1100,7 +1103,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
             setUpdating(false);
           }}
           disabled={updating}
-          className="w-full py-4 bg-blue-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-blue-600/20 active:scale-[0.98] transition disabled:opacity-50 mb-3"
+          className="next-action w-full py-4 bg-blue-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-blue-600/20 active:scale-[0.98] transition disabled:opacity-50 mb-3"
         >
           {updating ? 'Nag-uupdate...' : 'Going to Buyer na'}
         </button>
@@ -1188,7 +1191,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           {currentOrder.payment_method === 'qr_code' ? 'QR Code (GCash/Maya) — Paid by buyer' : 'Cash on Delivery'}
         </p>
         {isCod && (
-          <p className="text-xs text-amber-600 mt-1">Cash on Delivery — kolektahin ang ₱{totalAmount.toFixed(2)} sa buyer, ipadala sa seller via QR code.</p>
+          <p className="text-xs text-amber-600 mt-1">Cash on Delivery — kolektahin ang ₱{totalAmount.toFixed(2)} sa buyer. Itabi ang rider's fee mo, at ang natira lang ang ipadala sa seller via QR code.</p>
         )}
       </div>
 
@@ -1218,7 +1221,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
       {/* Mark as Delivered button */}
       {currentOrder.status === 'picked_up' && (
         <button onClick={markDelivered} disabled={updating}
-          className="w-full py-4 bg-blue-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-blue-600/20 active:scale-[0.98] transition disabled:opacity-50 mb-3">
+          className="next-action w-full py-4 bg-blue-600 text-white rounded-2xl font-semibold text-lg shadow-lg shadow-blue-600/20 active:scale-[0.98] transition disabled:opacity-50 mb-3">
           {updating ? 'Nag-uupdate...' : 'Mark as Delivered'}
         </button>
       )}

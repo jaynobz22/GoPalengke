@@ -75,6 +75,7 @@ export function AffiliateDashboard() {
   const [payoutSubmitting, setPayoutSubmitting] = useState(false);
   const [payoutMsg, setPayoutMsg] = useState<string | null>(null);
   const [downline, setDownline] = useState<any[]>([]);
+  const [sales, setSales] = useState<Record<string, { sales: number; orders: number }>>({});
   const [detail, setDetail] = useState<null | 'seller' | 'rider' | 'affiliate'>(null);
 
   const load = useCallback(async () => {
@@ -94,6 +95,10 @@ export function AffiliateDashboard() {
         .order('created_at', { ascending: false }),
     ]);
     setDownline(dlData.data || []);
+    const { data: salesRows } = await supabase.rpc('affiliate_referral_sales', { p_affiliate_id: affiliate.id });
+    const sm: Record<string, { sales: number; orders: number }> = {};
+    (salesRows || []).forEach((x: any) => { sm[x.referral_id] = { sales: Number(x.delivered_sales) || 0, orders: Number(x.delivered_orders) || 0 }; });
+    setSales(sm);
     setReferrals((refData.data || []) as Referral[]);
     setTransactions((txData.data || []) as Transaction[]);
     setLoading(false);
@@ -453,6 +458,7 @@ export function AffiliateDashboard() {
                               <div>
                                 <p className="font-semibold text-sm text-gray-800">{r.referred_name}</p>
                                 <p className="text-xs text-gray-400">Milestones: {r.milestones_hit} · Earned: ₱{Number(r.total_commission_earned).toFixed(0)}</p>
+                                <p className="text-xs font-semibold text-green-700">Benta ng seller: ₱{(sales[r.id]?.sales || 0).toLocaleString()} · {sales[r.id]?.orders || 0} delivered orders</p>
                               </div>
                               <span className="text-xs font-bold text-gray-600">
                                 ₱{Number(r.accumulated_admin_collected).toFixed(0)} / ₱{SELLER_MILESTONE}
@@ -466,7 +472,7 @@ export function AffiliateDashboard() {
                             </div>
                             <p className="text-[10px] text-gray-400 mt-1">
                               {remaining > 0
-                                ? `₱${remaining.toFixed(0)} pa bago maabot ang next milestone (₱${SELLER_TIER1} sa'yo + ₱${SELLER_TIER2} sa sponsor)`
+                                ? `₱${remaining.toFixed(0)} pa na fees na ma-collect mula sa seller bago ang next milestone (₱${SELLER_TIER1} sa'yo + ₱${SELLER_TIER2} sa sponsor). Nagsisimula ang fees kapag umabot na sa ₱5,000 ang benta.`
                                 : 'Milestone reached! Waiting for next cycle.'}
                             </p>
                           </div>

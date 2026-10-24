@@ -3543,7 +3543,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
                 setSubmitting(false);
               }}
               disabled={submitting}
-              className="w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition shadow-lg shadow-green-600/20 disabled:opacity-50"
+              className="next-action w-full py-3 bg-green-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition shadow-lg shadow-green-600/20 disabled:opacity-50"
             >
               <Check size={18} /> {submitting ? 'Nagse-send...' : 'Naka-bayad na Ako'}
             </button>

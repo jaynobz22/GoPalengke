@@ -244,3 +244,9 @@ body {
   --color-brand-800: #166534;
   --color-brand-900: #14532d;
 }
+
+@keyframes next-action-flash {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(22 163 74 / 0.7); transform: scale(1); }
+  50% { box-shadow: 0 0 0 8px rgb(22 163 74 / 0); transform: scale(1.02); }
+}
+.next-action:not(:disabled) { animation: next-action-flash 1.4s ease-in-out infinite; }

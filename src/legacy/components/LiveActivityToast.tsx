@@ -98,6 +98,17 @@ export function LiveActivityToast() {
     if (!enabled) return;
     const pushReal = (a: Activity) => { if (!seen.current.has(a.id)) { seen.current.add(a.id); queue.current.push(a); } };
 
+    const loadRecent = async () => {
+      const { data } = await supabase.rpc('recent_public_activity', { p_limit: 12 });
+      (data || []).forEach((r: any) => {
+        if (r.kind === 'rider') pushReal({ id: r.id, kind: 'rider', isSample: false, message: `May rider na naghatid ng parcel sa ${r.barangay || 'barangay ng buyer'}.` });
+        else if (r.product_name) pushReal({ id: r.id, kind: guessKind(`${r.product_name} ${r.store_name}`), isSample: false, message: `May bumili ng ${formatQuantity(Number(r.quantity), r.unit)} na ${r.product_name} sa ${r.store_name}, ${r.place || 'lokal na palengke'}.` });
+      });
+      // Kapag naubos na, payagang ulitin ang mga totoong activity
+      if (!queue.current.length) seen.current.clear();
+    };
+    loadRecent();
+    const poll = window.setInterval(() => { if (!queue.current.length) loadRecent(); }, 60000);
     const channel = supabase
       .channel(`public-live-activity-${Math.random().toString(36).slice(2, 8)}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, async (payload: any) => {
@@ -128,7 +139,7 @@ export function LiveActivityToast() {
         });
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { window.clearInterval(poll); supabase.removeChannel(channel); };
   }, [enabled]);
 
   if (!enabled || !activity) return null;

@@ -2,6 +2,7 @@
 // Each tab shows only that store's items and, for riders on COD orders,
 // that store's own QR code and reference-number submission.
 import { useEffect, useState } from 'react';
+import { codRemitToSeller } from '../lib/codRemit';
 import { supabase } from '../lib/supabase';
 import type { Order, OrderItem, Store } from '../lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '../lib/types';
@@ -81,7 +82,7 @@ export function MultiStoreTabs({ orders, mode, showCod }: { orders: GroupOrder[]
 
         {mode === 'rider' && showCod && o.payment_method === 'cod' && !o.cod_payment_accepted_at && (
           <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
-            <p className="text-xs font-semibold text-amber-800 mb-2">COD — ipadala ang ₱{amount.toFixed(2)} sa {o.store.name}</p>
+            <p className="text-xs font-semibold text-amber-800 mb-2">COD — ipadala ang ₱{codRemitToSeller(o).toFixed(2)} sa {o.store.name} (bawas na ang rider's fee)</p>
             {ref ? (
               <p className="text-xs text-amber-700">Nai-submit na ang reference ({ref}). Hinihintay ang confirmation ng seller.</p>
             ) : o.store.qr_code_url ? (

@@ -36,6 +36,7 @@ import { SellerRankBadge, SellerRankProgress } from '../components/SellerRankBad
 import { useIncomingAdminCall } from '../lib/useAdminCall';
 import { useAdminConversations } from '../lib/useAdminChat';
 import { shareToMessenger } from '../lib/messengerShare';
+import { codRemitToSeller } from '../lib/codRemit';
 import {
   Store as StoreIcon, Package, Plus, ArrowLeft, Edit, Trash2, X,
   Star, MapPin, QrCode, Upload, Check, ShoppingBag, Bike, Phone, Clock,
@@ -2038,7 +2039,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             </ol>
           </div>
           <button onClick={() => updateStatus('preparing')} disabled={updating}
-            className="w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
+            className="next-action w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
             {updating ? 'Nag-uupdate...' : 'Simulang Ihanda ang Order'}
           </button>
         </div>
@@ -2049,7 +2050,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
           <p className="text-sm text-amber-700 mb-3">Cash on Delivery — maghahanda ang buyer ng <strong>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</strong> para sa rider. Ihandang muna ang order.</p>
           <button onClick={() => updateStatus('preparing')} disabled={updating}
-            className="w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
+            className="next-action w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
             {updating ? 'Nag-uupdate...' : 'Simulang Ihanda ang Order'}
           </button>
         </div>
@@ -2058,7 +2059,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       {/* Active step: Preparing — ready for pickup button */}
       {!isCancelled && currentOrder.status === 'preparing' && (
         <button onClick={() => updateStatus('ready_for_pickup')} disabled={updating}
-          className="w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50 mb-3">
+          className="next-action w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50 mb-3">
           {updating ? 'Nag-uupdate...' : 'Ready for Pickup na'}
         </button>
       )}
@@ -2070,10 +2071,16 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           <button
             onClick={() => assignRider(getPickedRiderId(currentOrder.buyer_note)!)}
             disabled={!!assigningRider}
-            className="mt-3 w-full py-2.5 bg-green-600 text-white rounded-xl font-semibold text-sm disabled:opacity-50"
+            className="next-action mt-3 w-full py-2.5 bg-green-600 text-white rounded-xl font-semibold text-sm disabled:opacity-50"
           >
             {assigningRider ? 'Ina-assign...' : 'I-assign ang piniling driver ng buyer'}
           </button>
+        </div>
+      )}
+      {!isCancelled && currentOrder.delivery_group_id && Number(currentOrder.delivery_fee) === 0 && !currentOrder.delivery_method && Number(currentOrder.seller_delivery_subsidy || 0) === 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 mb-3">
+          <p className="text-xs font-semibold text-blue-800">ℹ️ Bakit walang rider's fee ang order na ito?</p>
+          <p className="text-xs text-blue-700 mt-1 leading-relaxed">Bumili rin ang buyer sa ibang tindahan sa iisang order. Isang delivery fee lang ang binabayaran ng buyer, at nasa unang tindahan ito. Maaaring ang unang seller ang mag-a-assign ng rider na dadaan din sa iyo, o may sariling magkakarga na ang buyer. Ihanda lang ang order at iabot sa rider o driver na darating.</p>
         </div>
       )}
       {/* Active step: Ready for pickup — rider selection (skip for livestock) */}
@@ -2117,7 +2124,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           <p className="text-xs text-brand-700 mt-1">Hindi mo na kailangang mag-assign ng rider. Iabot lang ang paninda sa driver na kausap ng buyer (tingnan ang note sa itaas).</p>
           {currentOrder.status === 'ready_for_pickup' && (
             <button onClick={() => updateStatus('delivered')} disabled={updating}
-              className="mt-3 w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
+              className="next-action mt-3 w-full py-3 bg-brand-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
               {updating ? 'Nag-uupdate...' : 'Naiabot na sa Driver ng Buyer'}
             </button>
           )}
@@ -2139,7 +2146,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             </div>
           </div>
           <button onClick={() => updateStatus('delivered')} disabled={updating}
-            className="w-full py-3 bg-green-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
+            className="next-action w-full py-3 bg-green-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
             {updating ? 'Nag-uupdate...' : 'Na-deliver na / Nai-sundo na'}
           </button>
         </div>
@@ -2246,7 +2253,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       {isDelivered && isCod && !currentOrder.cod_payment_reference && (
         <div className="bg-green-50 border border-green-300 rounded-2xl p-4 mb-3 flex items-center gap-2">
           <Check size={18} className="text-green-600" />
-          <p className="text-sm text-green-700 font-medium">Na-deliver na! Kolektahin ang ₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)} sa rider pagbalik niya.</p>
+          <p className="text-sm text-green-700 font-medium">Na-deliver na! Ipapadala ng rider ang ₱{codRemitToSeller(currentOrder).toFixed(2)} sa QR mo (bawas na ang rider's fee). Hintayin ang reference number.</p>
         </div>
       )}
 
@@ -2257,13 +2264,13 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             <DollarSign size={20} className="text-amber-600" />
             <p className="font-semibold text-sm text-amber-800">COD Payment mula sa Rider</p>
           </div>
-          <p className="text-xs text-amber-700 mb-2">Nai-submit na ng rider ang reference number para sa COD payment. I-verify at i-accept ang payment para matapos ang transaction at lumabas ang review sa buyer.</p>
+          <p className="text-xs text-amber-700 mb-2">Nai-submit na ng rider ang reference number para sa COD payment. Dapat ₱{codRemitToSeller(currentOrder).toFixed(2)} ang natanggap mo (bawas na ang rider's fee). I-verify at i-accept ang payment para matapos ang transaction at lumabas ang review sa buyer.</p>
           <div className="p-3 bg-white rounded-xl border border-amber-200 mb-3">
             <p className="text-xs text-gray-400 mb-0.5">Reference Number mula sa Rider:</p>
             <p className="text-sm font-mono font-bold text-gray-800 break-all">{currentOrder.cod_payment_reference}</p>
           </div>
           <button onClick={acceptCodPayment} disabled={updating}
-            className="w-full py-3 bg-green-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
+            className="next-action w-full py-3 bg-green-600 text-white rounded-2xl font-semibold active:scale-[0.98] transition disabled:opacity-50">
             {updating ? 'Nag-uupdate...' : 'Tanggapin ang Payment'}
           </button>
         </div>

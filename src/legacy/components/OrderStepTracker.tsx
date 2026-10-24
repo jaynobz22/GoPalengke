@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 import type { OrderStatus } from '../lib/types';
 
@@ -18,6 +18,17 @@ interface OrderStepTrackerProps {
 export function OrderStepTracker({ steps, currentStepIndex }: OrderStepTrackerProps) {
   const [showCompleted, setShowCompleted] = useState(false);
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
+
+  // Pag may bagong update, dalhin agad sa screen ang susunod na button na dapat i-click
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      const btn = document.querySelector('.next-action:not(:disabled)') as HTMLElement | null;
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      if (r.top < 0 || r.bottom > window.innerHeight) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [currentStepIndex, steps[currentStepIndex]?.description]);
 
   function toggleStep(key: string) {
     setExpandedSteps(prev => {
@@ -95,6 +106,7 @@ export function OrderStepTracker({ steps, currentStepIndex }: OrderStepTrackerPr
             </span>
           </div>
           <p className="text-sm text-brand-700 leading-relaxed pl-11">{activeStep.description}</p>
+          <p className="text-xs font-semibold text-brand-800 pl-11 mt-2">👉 Susunod na gagawin: i-click ang kumikislap na berdeng button sa ibaba.</p>
         </div>
       )}
 
