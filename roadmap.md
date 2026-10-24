@@ -1,5 +1,9 @@
 # Roadmap: GoPalengke Migration (GitHub → Lovable)
 
+## Current: Arrival step on seller and buyer
+- [x] Show explicit arrival between pickup/travel and delivered, retaining COD and NON-COD completion gates
+- [x] Thirteen rule tests pass; isolated seller and buyer screens show travel → arrival → delivered without page errors; pushed 749fdcb
+
 ## Current: Buyer COD QR/cash
 - [x] Arrival-only rider QR with QR-default and clickable cash choice, without changing COD accounting
 - [x] Six payment/arrival tests pass; isolated buyer screen verifies hidden before arrival, default QR, Cash selection and return to QR; pushed
