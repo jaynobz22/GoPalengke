@@ -1,26 +1,34 @@
 // @ts-nocheck
-import { useEffect, useState } from 'react';
-import { Check, ChevronDown, ChevronUp } from 'lucide-react';
-import type { OrderStatus } from '../lib/types';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Check, Lock, ChevronDown, ChevronUp } from 'lucide-react';
 
 export interface StepInfo {
   key: string;
   label: string;
   description: string;
   status: 'completed' | 'active' | 'pending';
+  /** Label na lalabas kapag tapos na ang step (hal. "Na-check na ang details"). */
+  doneLabel?: string;
 }
 
 interface OrderStepTrackerProps {
   steps: StepInfo[];
   currentStepIndex: number;
+  /** Ang totoong action buttons ng kasalukuyang step — ilalagay sa loob ng active step. */
+  children?: ReactNode;
+  /** Ipakita lang ang children (hal. kapag cancelled). */
+  hidden?: boolean;
 }
 
-export function OrderStepTracker({ steps, currentStepIndex }: OrderStepTrackerProps) {
-  const [showCompleted, setShowCompleted] = useState(false);
-  const [showPending, setShowPending] = useState(false);
-  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
+/**
+ * Step ladder: lahat ng step ay mukhang button. Tapos na = gray + ✓ (deactivated),
+ * kasalukuyan = berde at kumikislap (dito lang ang pwedeng i-click),
+ * susunod pa = gray + 🔒 (locked hanggang matapos ang naunang step).
+ */
+export function OrderStepTracker({ steps, currentStepIndex, children, hidden }: OrderStepTrackerProps) {
+  const [showDone, setShowDone] = useState(false);
+  const hasChildren = children != null;
 
-  // Pag may bagong update, dalhin agad sa screen ang susunod na button na dapat i-click
   useEffect(() => {
     const t = window.setTimeout(() => {
       const btn = document.querySelector('.next-action:not(:disabled)') as HTMLElement | null;
@@ -31,106 +39,74 @@ export function OrderStepTracker({ steps, currentStepIndex }: OrderStepTrackerPr
     return () => window.clearTimeout(t);
   }, [currentStepIndex, steps[currentStepIndex]?.description]);
 
-  function toggleStep(key: string) {
-    setExpandedSteps(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
+  if (hidden) return <>{children}</>;
 
-  const completedSteps = steps.slice(0, currentStepIndex);
-  const activeStep = steps[currentStepIndex];
-  const pendingSteps = steps.slice(currentStepIndex + 1);
+  const done = steps.slice(0, currentStepIndex);
+  const active = steps[currentStepIndex];
+  const pending = steps.slice(currentStepIndex + 1);
+  const allDone = currentStepIndex >= steps.length;
+  const visibleDone = showDone || done.length <= 2 ? done : done.slice(-1);
 
   return (
-    <div className="space-y-2">
-      {/* Completed steps — itago by default, isang maikling row na may check lang */}
-      {completedSteps.length > 0 && (
-        <button
-          onClick={() => setShowCompleted(p => !p)}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-green-50/60 border border-green-100 text-left active:scale-[0.98] transition"
-        >
-          <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-            <Check size={12} className="text-white" />
-          </div>
-          <span className="text-xs font-semibold text-green-700 flex-1">
-            Tapos na: {completedSteps.length} hakbang {completedSteps.map(s => s.label).join(' ✓ ')}
-          </span>
-          {showCompleted
-            ? <ChevronUp size={14} className="text-green-500 flex-shrink-0" />
-            : <ChevronDown size={14} className="text-green-500 flex-shrink-0" />
-          }
+    <div className="space-y-2 mb-3">
+      {done.length > 2 && (
+        <button type="button" onClick={() => setShowDone(s => !s)}
+          className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-semibold text-gray-500">
+          <span>{showDone ? 'Itago' : 'Ipakita'} ang {done.length} tapos na hakbang</span>
+          {showDone ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
       )}
-      {showCompleted && completedSteps.map((step) => {
-        const isExpanded = expandedSteps.has(step.key);
+      {visibleDone.map((s) => {
+        const i = steps.indexOf(s);
         return (
-          <div key={step.key} className="bg-green-50/50 border border-green-200 rounded-xl overflow-hidden">
-            <button
-              onClick={() => toggleStep(step.key)}
-              className="w-full flex items-center gap-3 p-3 text-left active:scale-[0.98] transition"
-            >
-              <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                <Check size={14} className="text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-green-800 truncate">{step.label}</p>
-              </div>
-              {isExpanded
-                ? <ChevronUp size={14} className="text-green-500 flex-shrink-0" />
-                : <ChevronDown size={14} className="text-green-500 flex-shrink-0" />
-              }
-            </button>
-            {isExpanded && (
-              <div className="px-3 pb-3 pl-12">
-                <p className="text-sm text-green-700 leading-relaxed">{step.description}</p>
-              </div>
-            )}
-          </div>
+          <button key={s.key} type="button" disabled aria-disabled
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-gray-100 border border-gray-200 text-left cursor-not-allowed">
+            <span className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+              <Check size={14} className="text-white" />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[10px] font-bold text-gray-400">STEP {i + 1} · TAPOS NA</span>
+              <span className="block text-sm font-semibold text-gray-500 truncate">{s.doneLabel || s.label}</span>
+            </span>
+          </button>
         );
       })}
 
-      {/* Active step — laging open sa green box, dito lang nakafocus ang rider */}
-      {activeStep && (
-        <div className="bg-brand-50 border-2 border-brand-400 rounded-2xl p-4">
+      {active && !allDone && (
+        <div className="rounded-2xl border-2 border-brand-500 bg-brand-50 p-3 shadow-lg shadow-green-600/10">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center flex-shrink-0 animate-pulse">
+            <span className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center flex-shrink-0 animate-pulse">
               <span className="text-white font-bold text-sm">{currentStepIndex + 1}</span>
-            </div>
-            <div className="flex-1">
-              <p className="font-bold text-brand-800">{activeStep.label}</p>
-            </div>
-            <span className="text-[10px] font-bold text-white bg-brand-500 px-2 py-0.5 rounded-full">
-              KASALUKUYAN
             </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-brand-600">STEP {currentStepIndex + 1} NG {steps.length} · GAWIN NGAYON</p>
+              <p className="font-bold text-brand-800 leading-tight">{active.label}</p>
+            </div>
           </div>
-          <p className="text-sm text-brand-700 leading-relaxed pl-11">{activeStep.description}</p>
-          <p className="text-xs font-semibold text-brand-800 pl-11 mt-2">👉 Susunod na gagawin: i-click ang kumikislap na berdeng button sa ibaba.</p>
+          <p className="text-xs text-brand-700 leading-relaxed mb-2">{active.description}</p>
+          {hasChildren
+            ? <div>{children}</div>
+            : <p className="text-xs font-semibold text-brand-800">👉 I-click ang kumikislap na berdeng button sa ibaba.</p>}
         </div>
       )}
 
-      {/* Pending steps — nakatago, isang maikling row lang */}
-      {pendingSteps.length > 0 && (
-        <button
-          onClick={() => setShowPending(p => !p)}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-left active:scale-[0.98] transition"
-        >
-          <span className="text-xs font-semibold text-gray-500 flex-1">Susunod pa: {pendingSteps.length} hakbang</span>
-          {showPending ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
-        </button>
+      {!hasChildren && pending.length > 0 && (
+        <p className="px-3 text-[11px] font-semibold text-gray-400">🔒 {pending.length} hakbang pa ang naka-lock: {pending.map(p => p.label).join(' → ')}</p>
       )}
-      {showPending && pendingSteps.map((step, i) => (
-        <div key={step.key} className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center gap-3 opacity-60">
-          <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-            <span className="text-gray-400 font-bold text-xs">{currentStepIndex + 2 + i}</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-500 truncate">{step.label}</p>
-          </div>
-        </div>
+      {hasChildren && pending.map((s, j) => (
+        <button key={s.key} type="button" disabled aria-disabled
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-gray-50 border border-dashed border-gray-200 text-left opacity-70 cursor-not-allowed">
+          <span className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+            <Lock size={12} className="text-gray-400" />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-[10px] font-bold text-gray-400">STEP {currentStepIndex + 2 + j} · NAKA-LOCK PA</span>
+            <span className="block text-sm font-medium text-gray-400 truncate">{s.label}</span>
+          </span>
+        </button>
       ))}
+
+      {allDone && hasChildren && <div>{children}</div>}
     </div>
   );
 }

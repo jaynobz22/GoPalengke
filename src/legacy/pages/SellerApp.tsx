@@ -1850,6 +1850,11 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
     setLoadingRiders(false);
   }
 
+  const [detailsChecked, setDetailsChecked] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [finished, setFinished] = useState(false);
+  useEffect(() => { try { setFinished(localStorage.getItem(`gp_done_${order.id}`) === '1'); } catch {} }, [order.id]);
+
   async function assignRider(riderId: string) {
     setAssigningRider(riderId);
     const batch = await checkRiderBatch(riderId, currentOrder);
@@ -1894,47 +1899,58 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   const isCod = currentOrder.payment_method === 'cod';
   const isCodPaymentPending = isCod && isDelivered && !!currentOrder.cod_payment_reference && !currentOrder.cod_payment_accepted_at;
 
-  // Build seller-side step list — COD skips "Nabayaran na" (payment at delivery)
-  const sellerSteps: StepInfo[] = isCod ? [
-    { key: 'new_order', label: 'Bagong Order', description: 'May bagong order! I-confirm muna para sure na available ang mga paninda.', status: 'completed' },
-    { key: 'confirmed', label: 'Na-confirm na', description: 'Na-confirm mo na ang order. Cash on Delivery — maghahanda ang buyer ng cash para sa rider. Ihanda na ang order.', status: 'completed' },
-    { key: 'preparing', label: 'Inihahanda ang order', description: 'Inihahanda mo na ang order. I-mark bilang ready for pickup kapag tapos na, para makapili ng rider.', status: 'completed' },
-    { key: 'ready', label: 'Ready for pickup', description: 'Handa na ang order! Pumili ng rider o i-broadcast sa lahat ng available na riders.', status: 'completed' },
-    { key: 'on_the_way', label: 'Nakuha na ng rider', description: 'Nakuha na ng rider ang parcel at on the way na sa buyer. Hintayin na ma-deliver.', status: 'completed' },
-    { key: 'delivered', label: 'Na-deliver na!', description: 'Na-deliver na ang order. Kolektahin ang bayad sa rider pagbalik niya. Tapos na ang transaction.', status: 'completed' },
-  ] : [
-    { key: 'new_order', label: 'Bagong Order', description: 'May bagong order! I-confirm muna para sure na available ang mga paninda.', status: 'completed' },
-    { key: 'confirmed', label: 'Na-confirm na', description: 'Na-confirm mo na ang order. Naghihintay na magbayad ang buyer.', status: 'completed' },
-    { key: 'paid', label: 'Nabayaran na!', description: 'Nabayaran na ng buyer! Ihanda na ang order at i-mark bilang preparing.', status: 'completed' },
-    { key: 'preparing', label: 'Inihahanda ang order', description: 'Inihahanda mo na ang order. I-mark bilang ready for pickup kapag tapos na, para makapili ng rider.', status: 'completed' },
-    { key: 'ready', label: 'Ready for pickup', description: 'Handa na ang order! Pumili ng rider o i-broadcast sa lahat ng available na riders.', status: 'completed' },
-    { key: 'on_the_way', label: 'Nakuha na ng rider', description: 'Nakuha na ng rider ang parcel at on the way na sa buyer. Hintayin na ma-deliver.', status: 'completed' },
-    { key: 'delivered', label: 'Na-deliver na!', description: 'Na-deliver na ang order. Tapos na ang transaction.', status: 'completed' },
+  const hasRider = !!currentOrder.rider_id;
+  const noRiderFlow = !!currentOrder.delivery_method || isBuyerArranged(currentOrder.buyer_note);
+  const detailsKey = `gp_seen_${currentOrder.id}`;
+  const detailsSeen = detailsChecked || (typeof window !== 'undefined' && localStorage.getItem(detailsKey) === '1');
+  const markDetailsChecked = () => { try { localStorage.setItem(detailsKey, '1'); } catch {} setDetailsChecked(true); };
+
+  // Seller flow ayon sa diagram ni boss: NON-COD = 6 steps, COD = 7 steps
+  const sellerSteps: StepInfo[] = [
+    { key: 'details', label: 'MAY BAGONG ORDER! I-click para makita ang details', doneLabel: 'Na-check na ang details', description: 'Tingnan muna ang buyer, mga paninda, lokasyon, total at paraan ng bayad.', status: 'pending' },
+    { key: 'accept', label: 'ACCEPT & CONFIRM o DECLINE', doneLabel: 'Na-accept at confirm na', description: isCod ? 'I-accept kung available ang paninda. Kung hindi, i-decline at sabihin sa buyer ang dahilan sa chat.' : 'Pag in-accept, makikita ng buyer ang QR mo para magbayad. Kung hindi kaya, i-decline at ipaliwanag sa chat.', status: 'pending' },
+    isCod
+      ? { key: 'preparing', label: 'PREPARING ORDER', doneLabel: 'Inihanda na ang order', description: 'Cash on Delivery — walang bayad muna. I-click para malaman ng buyer na inihahanda mo na.', status: 'pending' }
+      : { key: 'payment', label: 'CONFIRM PAYMENT / PREPARING ORDER', doneLabel: 'Payment confirmed', description: currentOrder.payment_status === 'paid' ? 'Nag-send na ang buyer ng reference number. I-check sa GCash/Maya bago ihanda.' : 'Hinihintay pang magbayad ang buyer gamit ang QR mo.', status: 'pending' },
+    { key: 'ready', label: noRiderFlow ? 'READY FOR PICKUP NA' : 'READY FOR PICKUP NA / MAG-ASSIGN NG RIDER', doneLabel: noRiderFlow ? 'Handa na ang order' : 'May na-assign na na rider', description: currentOrder.status === 'preparing' ? 'Pag tapos nang balutin ang paninda, i-click ang Ready for Pickup.' : 'Pumili ng rider na magdedeliver. Makikita ng buyer ang profile ng rider.', status: 'pending' },
+    { key: 'pickup', label: isCod ? 'NA-PICKUP NA NG RIDER' : 'BAYARAN ANG RIDER / NA-PICKUP NA NG RIDER', doneLabel: 'Na-pickup na ng rider', description: isCod ? 'Iabot ang parcel sa rider. Walang bayad sa tindahan — sa buyer sisingilin ng rider.' : 'Ibigay ang delivery fee sa rider (QR o cash), iabot ang parcel, tapos i-click ang Na-pickup na.', status: 'pending' },
+    ...(isCod ? [{ key: 'codpay', label: 'ORDER DELIVERED / CONFIRM PAYMENT', doneLabel: 'Natanggap na ang bayad', description: `Hintayin ma-deliver. Ipapadala ng rider ang ₱${codRemitToSeller(currentOrder).toFixed(2)} (bawas na ang rider's fee) at ang reference number.`, status: 'pending' as const }] : []),
+    { key: 'done', label: isCod ? 'DONE' : 'ORDER DELIVERED / DONE', doneLabel: 'Tapos na ang transaction', description: isDelivered ? 'Na-deliver na! I-click ang DONE para tapusin. Makakapag-review na ang buyer sa iyo at sa rider.' : 'Hinihintay pang ma-deliver ng rider ang order sa buyer.', status: 'pending' },
   ];
 
   let currentStepIndex = 0;
-  if (isCod) {
-    if (currentOrder.status === 'pending') currentStepIndex = 0;
-    else if (currentOrder.status === 'accepted') currentStepIndex = 1;
-    else if (currentOrder.status === 'preparing') currentStepIndex = 2;
-    else if (currentOrder.status === 'ready_for_pickup') currentStepIndex = 3;
-    else if (currentOrder.status === 'picked_up') currentStepIndex = 4;
-    else if (currentOrder.status === 'delivered') currentStepIndex = 5;
-  } else {
-    if (currentOrder.status === 'pending') currentStepIndex = 0;
-    else if (currentOrder.status === 'accepted') {
-      if (currentOrder.payment_status !== 'paid') currentStepIndex = 1;
-      else currentStepIndex = 2;
-    }
-    else if (currentOrder.status === 'preparing') currentStepIndex = 3;
-    else if (currentOrder.status === 'ready_for_pickup') currentStepIndex = 4;
-    else if (currentOrder.status === 'picked_up') currentStepIndex = 5;
-    else if (currentOrder.status === 'delivered') currentStepIndex = 6;
+  const st = currentOrder.status;
+  if (st === 'pending') currentStepIndex = detailsSeen ? 1 : 0;
+  else if (st === 'accepted') currentStepIndex = 2;
+  else if (st === 'preparing') currentStepIndex = 3;
+  else if (st === 'ready_for_pickup') currentStepIndex = hasRider ? 4 : 3;
+  else if (st === 'picked_up') currentStepIndex = isCod ? 5 : 5;
+  else if (st === 'delivered') {
+    if (isCod) currentStepIndex = currentOrder.cod_payment_accepted_at ? 6 : 5;
+    else currentStepIndex = 5;
   }
+  if (finished) currentStepIndex = sellerSteps.length;
 
   sellerSteps.forEach((s, i) => {
     s.status = i < currentStepIndex ? 'completed' : i === currentStepIndex ? 'active' : 'pending';
   });
+
+  async function declineOrder() {
+    const reason = window.prompt('Bakit ide-decline ang order? (makikita ito ng buyer sa chat)');
+    if (reason === null) return;
+    await updateStatus('cancelled');
+    onOpenChat(currentOrder, buyer?.full_name || 'Buyer');
+  }
+
+  async function markPickedUp() {
+    setUpdating(true);
+    await supabase.from('orders').update({ status: 'picked_up', picked_up_at: new Date().toISOString() }).eq('id', currentOrder.id);
+    notifyOrderSms(currentOrder.id, 'on_the_way');
+    setCurrentOrder(prev => ({ ...prev, status: 'picked_up' }));
+    setUpdating(false);
+  }
+
+  const btnCls = 'next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3';
 
   return (
     <div className="px-5 py-4">
@@ -1991,24 +2007,43 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         </div>
       )}
 
-      {/* Collapsible Step Tracker */}
-      {!isCancelled && (
-        <div className="mb-3">
-          <OrderStepTracker steps={sellerSteps} currentStepIndex={currentStepIndex} />
-        </div>
-      )}
       {isCancelled && (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-3 text-center">
           <p className="text-sm font-semibold text-red-700">Nakansela ang order na ito.</p>
         </div>
       )}
+      <OrderStepTracker steps={sellerSteps} currentStepIndex={currentStepIndex} hidden={isCancelled}>
+      {/* STEP 1: details */}
+      {!isCancelled && st === 'pending' && !detailsSeen && (
+        <div>
+          {!showDetails ? (
+            <button onClick={() => setShowDetails(true)} className={btnCls}>STEP 1: MAY BAGONG ORDER! CLICK TO SEE DETAILS</button>
+          ) : (
+            <div className="bg-white rounded-xl border border-brand-200 p-3 mb-3 text-sm text-gray-700 space-y-1.5">
+              <p><strong>Buyer:</strong> {buyer?.full_name || '—'}</p>
+              <div><strong>Mga paninda:</strong>
+                <ul className="list-disc pl-5 text-xs">{items.map(it => <li key={it.id}>{it.product_name} × {it.quantity}{it.unit ? ` ${it.unit}` : ''} — ₱{(Number(it.price) * Number(it.quantity)).toFixed(2)}</li>)}</ul>
+              </div>
+              <p><strong>Lokasyon:</strong> {[currentOrder.delivery_address, currentOrder.delivery_barangay, currentOrder.delivery_city].filter(Boolean).join(', ') || '—'}</p>
+              <p><strong>Total:</strong> ₱{Number(currentOrder.total).toFixed(2)} + ₱{Number(currentOrder.delivery_fee).toFixed(2)} delivery</p>
+              <p><strong>Bayad:</strong> {isCod ? 'COD (Cash on Delivery)' : 'NON-COD (QR / GCash)'}</p>
+              <button onClick={markDetailsChecked} className={btnCls + ' mt-2'}>✓ Na-check ko na ang details</button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Active step: New order — confirm button */}
-      {!isCancelled && currentOrder.status === 'pending' && (
-        <button onClick={() => updateStatus('accepted')} disabled={updating}
-          className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
-          {updating ? 'Nag-uupdate...' : 'STEP 1: I-confirm ang Order'}
-        </button>
+      {!isCancelled && st === 'pending' && detailsSeen && (
+        <div className="grid grid-cols-1 gap-2">
+          <button onClick={() => updateStatus('accepted')} disabled={updating} className={btnCls + ' !mb-0'}>
+            {updating ? 'Nag-uupdate...' : 'STEP 2: ACCEPT & CONFIRM'}
+          </button>
+          <button onClick={declineOrder} disabled={updating}
+            className="w-full py-3 bg-orange-500 text-white rounded-2xl font-bold text-sm active:scale-[0.98] transition disabled:opacity-50 mb-3">
+            DECLINE
+          </button>
+        </div>
       )}
 
       {/* Active step: Waiting for payment — show QR reminder */}
@@ -2047,7 +2082,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           </div>
           <button onClick={() => updateStatus('preparing')} disabled={updating}
             className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
-            {updating ? 'Nag-uupdate...' : 'STEP 2: Simulang Ihanda ang Order'}
+            {updating ? 'Nag-uupdate...' : 'STEP 3: CONFIRM PAYMENT / PREPARING ORDER'}
           </button>
         </div>
       )}
@@ -2058,7 +2093,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           <p className="text-sm text-amber-700 mb-3">Cash on Delivery — maghahanda ang buyer ng <strong>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</strong> para sa rider. Ihandang muna ang order.</p>
           <button onClick={() => updateStatus('preparing')} disabled={updating}
             className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
-            {updating ? 'Nag-uupdate...' : 'STEP 2: Simulang Ihanda ang Order'}
+            {updating ? 'Nag-uupdate...' : 'STEP 3: PREPARING ORDER'}
           </button>
         </div>
       )}
@@ -2067,7 +2102,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       {!isCancelled && currentOrder.status === 'preparing' && (
         <button onClick={() => updateStatus('ready_for_pickup')} disabled={updating}
           className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
-          {updating ? 'Nag-uupdate...' : 'STEP 3: Ready for Pickup na'}
+          {updating ? 'Nag-uupdate...' : 'STEP 4: READY FOR PICKUP NA'}
         </button>
       )}
 
@@ -2080,7 +2115,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             disabled={!!assigningRider}
             className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3"
           >
-            {assigningRider ? 'Ina-assign...' : 'STEP 4: I-assign ang piniling driver ng buyer'}
+            {assigningRider ? 'Ina-assign...' : 'STEP 4: I-ASSIGN ANG PINILING DRIVER NG BUYER'}
           </button>
         </div>
       )}
@@ -2108,9 +2143,9 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           )}
           <button
             onClick={() => { setShowRiderPicker(true); loadAvailableRiders(); }}
-            className="w-full py-3 bg-white text-brand-700 border border-brand-200 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
+            className={btnCls}
           >
-            <Users size={18} /> Pumili ng Rider
+            <Users size={18} /> STEP 4: MAG-ASSIGN NG RIDER
           </button>
           <div className="flex items-center gap-2 text-xs text-amber-600 py-2">
             <div className="flex-1 h-px bg-amber-200" />
@@ -2132,7 +2167,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           {currentOrder.status === 'ready_for_pickup' && (
             <button onClick={() => updateStatus('delivered')} disabled={updating}
               className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
-              {updating ? 'Nag-uupdate...' : 'STEP 4: Naiabot na sa Driver ng Buyer'}
+              {updating ? 'Nag-uupdate...' : 'STEP 4: NAIABOT NA SA DRIVER NG BUYER'}
             </button>
           )}
         </div>
@@ -2154,7 +2189,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           </div>
           <button onClick={() => updateStatus('delivered')} disabled={updating}
             className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
-            {updating ? 'Nag-uupdate...' : 'STEP 4: Na-deliver na / Nai-sundo na'}
+            {updating ? 'Nag-uupdate...' : 'STEP 4: NA-DELIVER NA / NAI-SUNDO NA'}
           </button>
         </div>
       )}
@@ -2278,7 +2313,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           </div>
           <button onClick={acceptCodPayment} disabled={updating}
             className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
-            {updating ? 'Nag-uupdate...' : 'STEP 5: Tanggapin ang Payment'}
+            {updating ? 'Nag-uupdate...' : 'STEP 6: CONFIRM PAYMENT'}
           </button>
         </div>
       )}
@@ -2290,6 +2325,23 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           <p className="text-sm text-green-700 font-medium">Na-tanggap na ang COD payment. Tapos na ang transaction!</p>
         </div>
       )}
+
+      {!isCancelled && st === 'ready_for_pickup' && hasRider && !noRiderFlow && (
+        <button onClick={markPickedUp} disabled={updating || !currentOrder.rider_accepted_at} className={btnCls}>
+          {updating ? 'Nag-uupdate...' : !currentOrder.rider_accepted_at ? 'Hinihintay tanggapin ng rider…' : 'STEP 5: NA-PICKUP NA NG RIDER'}
+        </button>
+      )}
+      {!isCancelled && isDelivered && !finished && (!isCod || currentOrder.cod_payment_accepted_at || noRiderFlow) && (
+        <button onClick={() => { try { localStorage.setItem(`gp_done_${currentOrder.id}`, '1'); } catch {} setFinished(true); }} className={btnCls}>
+          STEP {isCod ? 7 : 6}: DONE ✓
+        </button>
+      )}
+      {finished && (
+        <div className="bg-green-50 border border-green-300 rounded-2xl p-4 mb-3 text-center">
+          <p className="text-sm font-bold text-green-700">🎉 Tapos na ang buong transaction! Makakapag-review na ang buyer sa iyo at sa rider.</p>
+        </div>
+      )}
+      </OrderStepTracker>
 
       {/* Rider Picker Modal */}
       {showRiderPicker && (
