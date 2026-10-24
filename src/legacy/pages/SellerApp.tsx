@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, deleteStorageObject } from '../lib/supabase';
 import { notifyOrderSms } from '../lib/orderSms';
 import { watchOrders } from '../lib/liveOrders';
+import { canShowSellerRiderQr } from '../lib/sellerRiderQr';
 import { pickupUpdate } from '../lib/orderPickup';
 import { checkRiderBatch } from '../lib/riderBatch';
 import { useAuth } from '../lib/auth';
@@ -2242,7 +2243,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           {riderAssigned && !currentOrder.rider_accepted_at && (
             <p className="text-xs text-green-600 mt-2 font-medium">Na-assign na ang rider! Maghihintay na lang na tanggapin niya ang delivery.</p>
           )}
-          {currentOrder.payment_method !== 'cod' && (
+          {canShowSellerRiderQr(currentOrder) && (
             <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-2">
               <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-blue-700 leading-relaxed">
@@ -2250,7 +2251,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
               </p>
             </div>
           )}
-          {currentOrder.payment_method !== 'cod' && rider.rider_qr_code_url && (
+          {canShowSellerRiderQr(currentOrder) && rider.rider_qr_code_url && (
             <div className="mt-3 pt-3 border-t border-gray-100">
               <p className="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1.5">
                 <QrCode size={14} className="text-brand-600" /> QR Code ng Rider para sa Delivery Fee
@@ -2285,25 +2286,6 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           <div className="mt-2">
             <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs">Nasa daan na ang rider papunta sa buyer</span>
           </div>
-          {currentOrder.payment_method !== 'cod' && (
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-2">
-              <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-blue-700 leading-relaxed">
-                Nasa iyo na ang delivery fee (₱{Number(currentOrder.delivery_fee).toFixed(2)}) mula sa binayaran ng buyer. Ibigay ito sa rider gamit ang QR code niya.
-              </p>
-            </div>
-          )}
-          {currentOrder.payment_method !== 'cod' && rider.rider_qr_code_url && (
-            <div className="mt-3 pt-3 border-t border-gray-100">
-              <p className="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1.5">
-                <QrCode size={14} className="text-brand-600" /> QR Code ng Rider para sa Delivery Fee
-              </p>
-              <div className="bg-gray-50 rounded-xl p-3 flex justify-center">
-                <img src={rider.rider_qr_code_url} alt="QR Code ng Rider" loading="lazy" decoding="async" className="w-36 h-36 rounded-xl object-contain" />
-              </div>
-              <p className="text-xs text-gray-400 mt-2 text-center">I-scan para mabayaran ang delivery fee (₱{Number(currentOrder.delivery_fee).toFixed(2)}) ng rider.</p>
-            </div>
-          )}
         </div>
       )}
 

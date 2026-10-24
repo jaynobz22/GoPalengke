@@ -1,5 +1,9 @@
 # Roadmap: GoPalengke Migration (GitHub → Lovable)
 
+## Current: Seller rider QR timing
+- [x] Restrict rider QR/payment instructions to NON-COD store arrival/pickup and remove travel QR
+- [ ] Verify visibility rules and seller screen, then push to existing repo
+
 ## Current: Rider arrival at buyer
 - [x] Add persistent arrival action and buyer/seller arrival banner
 - [x] Move COD remittance before delivered, including per-store reference gating
