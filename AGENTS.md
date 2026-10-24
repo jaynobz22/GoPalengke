@@ -28,3 +28,4 @@
 - Buyer movement banners, maps, and ETA use the shared browser-safe buyerRiderTracking gate; this prevents rider assignment from being mistaken for delivery acceptance.
 - Buyer order-detail realtime and polling updates share mergeBuyerOrderUpdate; GPS and completion changes must propagate even when the status stays unchanged. Map interpolation is display-only and respects reduced motion.
 - Rider pickup uses browser-safe orderPickup updates: single-store pickup activates delivery status, while grouped pickup records only its store until group departure; this keeps buyer movement aligned with the delivery leg.
+- Rider arrival uses orders.rider_arrived_buyer_at while retaining picked_up status; riderArrival guards delivery completion until arrival and every COD store reference exist, preserving delivery/commission trigger timing.

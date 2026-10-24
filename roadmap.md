@@ -1,5 +1,12 @@
 # Roadmap: GoPalengke Migration (GitHub → Lovable)
 
+## Current: Rider arrival at buyer
+- [x] Add persistent arrival action and buyer/seller arrival banner
+- [x] Move COD remittance before delivered, including per-store reference gating
+- [ ] Test arrival/delivery guards and browser flow, then push to existing repo
+- [ ] Apply database/rider-buyer-arrival.sql to external GoPalengke database (blocked: no privileged access to that backend)
+- [ ] Verify real buyer/seller/rider delivery (blocked: no authenticated external account session)
+
 ## Current: Smooth live rider map
 - [x] Add cancellable display-only rider marker animation and retain user map framing during GPS updates
 - [x] Include GPS and completion fields in buyer backup refresh updates

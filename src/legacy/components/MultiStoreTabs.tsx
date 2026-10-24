@@ -9,7 +9,7 @@ import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '../lib/types';
 
 type GroupOrder = Order & { store: Store };
 
-export function MultiStoreTabs({ orders, mode, showCod }: { orders: GroupOrder[]; mode: 'rider' | 'buyer'; showCod?: boolean }) {
+export function MultiStoreTabs({ orders, mode, showCod, onCodSubmitted }: { orders: GroupOrder[]; mode: 'rider' | 'buyer'; showCod?: boolean; onCodSubmitted?: (orderId: string, reference: string) => void }) {
   const [tab, setTab] = useState(0);
   const [items, setItems] = useState<Record<string, OrderItem[]>>({});
   const [refs, setRefs] = useState<Record<string, string>>({});
@@ -27,7 +27,8 @@ export function MultiStoreTabs({ orders, mode, showCod }: { orders: GroupOrder[]
   }, [ids]);
 
   if (orders.length < 2) return null;
-  const o = orders[Math.min(tab, orders.length - 1)]!;
+  const o = orders[Math.min(tab, orders.length - 1)];
+  if (!o) return null;
   const amount = Number(o.total) + Number(o.delivery_fee);
   const ref = submitted[o.id] || o.cod_payment_reference;
 
@@ -39,6 +40,7 @@ export function MultiStoreTabs({ orders, mode, showCod }: { orders: GroupOrder[]
     setSaving(false);
     if (error) { alert('Hindi ma-submit ang reference. Subukan ulit.'); return; }
     setSubmitted(p => ({ ...p, [o.id]: v }));
+    onCodSubmitted?.(o.id, v);
   }
 
   return (

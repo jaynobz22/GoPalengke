@@ -3,6 +3,8 @@ import { isBuyerArranged } from '../lib/buyerCargo';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { watchOrders } from '../lib/liveOrders';
 import { pickupUpdate } from '../lib/orderPickup';
+import { canMarkRiderArrival, canMarkRiderDelivered } from '../lib/riderArrival';
+import { Button } from '@/components/ui/button';
 import { supabase } from '../lib/supabase';
 import { notifyOrderSms } from '../lib/orderSms';
 import { checkRiderBatch } from '../lib/riderBatch';
@@ -623,9 +625,13 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
     }
 
     return watchOrders(`rider-order-${order.id}`, `id=eq.${order.id}`, (payload: any) => {
+      if (order.delivery_group_id) {
+        supabase.from('orders').select('*, store:stores(*)').eq('delivery_group_id', order.delivery_group_id).neq('id', order.id)
+          .then(({ data }) => { if (data) setSiblingOrders(data as any); });
+      }
       if (payload?.new) { setCurrentOrder((prev: any) => ({ ...prev, ...payload.new })); return; }
       supabase.from('orders').select('*').eq('id', order.id).maybeSingle().then(({ data }) => {
-        if (data) setCurrentOrder((prev: any) => (prev.status === data.status && prev.rider_id === data.rider_id && prev.payment_status === data.payment_status && prev.rider_accepted_at === data.rider_accepted_at && prev.picked_up_at === data.picked_up_at && prev.rider_arrived_store_at === data.rider_arrived_store_at ? prev : { ...prev, ...data }));
+        if (data) setCurrentOrder((prev: any) => ({ ...prev, ...data }));
       });
     });
   }, [order.id, order.delivery_group_id]);
@@ -669,7 +675,15 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   }, [currentOrder.status, currentOrder.id, currentOrder.delivery_group_id, profile, startRiderGps]);
 
   async function markDelivered() {
+    if (!canMarkRiderDelivered(allStores.map(s => s.order))) return;
+    if (!confirm(isCod ? 'Naiabot na ang parcel, nakolekta ang COD, at naipadala na ang bayad sa bawat seller?' : 'Naiabot at natanggap na ng buyer ang parcel?')) return;
     setUpdating(true);
+    let latestQuery = supabase.from('orders').select('*').eq('rider_id', profile?.id);
+    latestQuery = currentOrder.delivery_group_id ? latestQuery.eq('delivery_group_id', currentOrder.delivery_group_id) : latestQuery.eq('id', currentOrder.id);
+    const { data: latest, error: readError } = await latestQuery;
+    if (readError || !latest || !canMarkRiderDelivered(latest)) {
+      setUpdating(false); alert('Kailangan munang ma-save ang pagdating at COD reference sa bawat seller. Subukan ulit.'); return;
+    }
     if (currentOrder.delivery_group_id) {
       const { error } = await supabase.from('orders').update({ status: 'delivered', rider_lat: null, rider_lng: null }).eq('delivery_group_id', currentOrder.delivery_group_id);
       setUpdating(false);
@@ -683,14 +697,31 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   }
 
   async function submitCodPayment() {
-    if (!codRef.trim()) return;
+    if (!codRef.trim() || !currentOrder.rider_arrived_buyer_at) return;
     setUpdating(true);
-    await supabase.from('orders').update({
+    const { error } = await supabase.from('orders').update({
       cod_payment_reference: codRef.trim(),
     }).eq('id', currentOrder.id);
+    if (error) { setUpdating(false); alert('Hindi na-save ang reference. Subukan ulit.'); return; }
     setCurrentOrder(prev => ({ ...prev, cod_payment_reference: codRef.trim() }));
     setUpdating(false);
     setShowCodPayment(false);
+  }
+
+  async function markArrivedAtBuyer() {
+    if (!canMarkRiderArrival(currentOrder) || updating || !profile) return;
+    setUpdating(true);
+    const now = new Date().toISOString();
+    let query = supabase.from('orders').update({ rider_arrived_buyer_at: now })
+      .eq('rider_id', profile.id).eq('status', 'picked_up').is('rider_arrived_buyer_at', null);
+    query = currentOrder.delivery_group_id ? query.eq('delivery_group_id', currentOrder.delivery_group_id) : query.eq('id', currentOrder.id);
+    const { data, error } = await query.select('id, rider_arrived_buyer_at');
+    setUpdating(false);
+    if (error) { alert('Hindi na-save ang pagdating. Subukan ulit; kung hindi pa naka-enable, kailangan ang arrival database update.'); return; }
+    if (!data?.length) { alert('Walang na-update na delivery. I-refresh at subukan ulit.'); return; }
+    const arrivedIds = new Set(data.map(row => row.id));
+    if (arrivedIds.has(currentOrder.id)) setCurrentOrder(prev => ({ ...prev, rider_arrived_buyer_at: now }));
+    setSiblingOrders(prev => prev.map(o => arrivedIds.has(o.id) ? { ...o, rider_arrived_buyer_at: now } : o));
   }
 
   const isCancelled = currentOrder.status === 'cancelled';
@@ -700,7 +731,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const codAccepted = !!currentOrder.cod_payment_accepted_at;
 
   const allStores: { order: Order & { store: Store } }[] = [
-    { order: { ...currentOrder, store: store! } },
+    { order: { ...currentOrder, store } },
     ...siblingOrders.map(s => ({ order: s })),
   ].filter(s => s.order.store);
   const allPickupStoreIds = allStores.map(s => s.order.store_id);
@@ -710,25 +741,27 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
   const remitAmount = codRemitToSeller(currentOrder);
   const riderKeeps = Math.max(0, Number(currentOrder.total) + Number(currentOrder.delivery_fee) - remitAmount);
 
-  // Build rider-side step list — eksaktong daloy: Tanggapin → Nandito sa Tindahan → Na Pick Up → Going to Buyer → Delivered
+  const arrivedAtBuyer = !!currentOrder.rider_arrived_buyer_at;
+  const allCodSubmitted = allStores.length > 0 && allStores.every(s => s.order.payment_method !== 'cod' || !!s.order.cod_payment_reference || !!s.order.cod_payment_accepted_at);
+  const readyToDeliver = canMarkRiderDelivered(allStores.map(s => s.order));
+  const showRemittance = isCod && (arrivedAtBuyer || isDelivered);
+  // Arrival is separate from handover and delivery completion.
   const riderSteps: StepInfo[] = [
     { key: 'accept', label: 'TANGGAPIN ANG DELIVERY', doneLabel: 'Tinanggap mo na ang delivery', description: 'Tinanggap mo na ang delivery order. Papunta ka na sa tindahan ng seller para kunin ang parcel.', status: 'completed' },
     { key: 'arrive', label: 'NANDITO NA AKO SA TINDAHAN', doneLabel: 'Nakarating na sa tindahan', description: 'Pagdating mo sa tindahan, pindutin ang "Nandito na ako sa Tindahan" para malaman agad ng buyer at seller.', status: 'completed' },
     { key: 'pickup', label: 'NA PICK UP KO NA', doneLabel: 'Na-pick up na ang parcel', description: 'Pag nailagay mo na ang parcel sa delivery box, pindutin ang "Na Pick Up ko na".', status: 'completed' },
-    { key: 'on_the_way', label: 'GOING TO BUYER NA / MARK AS DELIVERED', doneLabel: 'Na-deliver na sa buyer', description: 'Kapag wala nang ibang tindahang puntahan, aalis ka na papunta sa buyer. Live na nakikita ng buyer ang location mo sa mapa.', status: 'completed' },
-    { key: 'delivered', label: 'TAPOS NA ANG DELIVERY', doneLabel: 'Tapos na', description: 'Na-deliver mo na ang parcel. Salamat, rider!', status: 'completed' },
+    { key: 'on_the_way', label: 'GOING TO BUYER NA', doneLabel: 'Umalis na papunta sa buyer', description: 'Kapag nakuha na ang parcel sa lahat ng tindahan, bumiyahe papunta sa buyer.', status: 'completed' },
+    { key: 'arrive_buyer', label: 'NANDITO NA AKO', doneLabel: 'Dumating na sa buyer', description: 'Pagdating sa lokasyon ng buyer, pindutin ang “Nandito na ako”.', status: 'pending' },
+    ...(isCod ? [{ key: 'remit', label: 'IABOT ANG PARCEL / MAGBAYAD SA SELLER', doneLabel: 'Nai-submit ang COD remittance', description: 'Iabot ang parcel, kolektahin ang COD, ibawas ang rider fee, at ipadala ang natira sa bawat seller. I-submit ang reference.', status: 'pending' }] : []),
+    { key: 'delivered', label: 'MARK AS DELIVERED', doneLabel: 'Na-deliver na ang parcel', description: 'Kapag natanggap na ng buyer ang parcel at ok na ang lahat, i-mark as delivered.', status: 'pending' },
   ];
 
   let currentStepIndex = 0;
   if (currentOrder.rider_accepted_at) currentStepIndex = 1;
   const allArrived = allStores.length > 0 && allStores.every(s => !!(s.order as any).rider_arrived_store_at || pickedUpStores.has(s.order.store_id));
   if (currentOrder.rider_accepted_at && allArrived) currentStepIndex = 2;
-  if (currentOrder.status === 'picked_up') currentStepIndex = 3;
-  else if (currentOrder.status === 'delivered') currentStepIndex = isCod ? 4 : 5;
-
-  riderSteps.forEach((s, i) => {
-    s.status = i < currentStepIndex ? 'completed' : i === currentStepIndex ? 'active' : 'pending';
-  });
+  if (allPickedUp && allStores.length > 0) currentStepIndex = 3;
+  if (currentOrder.status === 'picked_up') currentStepIndex = arrivedAtBuyer ? (isCod && !allCodSubmitted ? 5 : isCod ? 6 : 5) : 4;
 
   // Add COD payment step if COD
   if (isCod) {
@@ -744,6 +777,8 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
     });
     if (isDelivered) currentStepIndex = codAccepted ? riderSteps.length : riderSteps.length - 1;
   }
+  if (isDelivered && !isCod) currentStepIndex = riderSteps.length;
+  riderSteps.forEach((s, i) => { s.status = i < currentStepIndex ? 'completed' : i === currentStepIndex ? 'active' : 'pending'; });
 
   const sameCity = store?.city === currentOrder.delivery_city;
   const estimatedKm = (() => {
@@ -831,11 +866,14 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
       )}
 
       {allStores.length > 1 && (
-        <MultiStoreTabs orders={allStores.map(s => s.order)} mode="rider" showCod={isDelivered && isCod} />
+        <MultiStoreTabs orders={allStores.map(s => s.order)} mode="rider" showCod={showRemittance} onCodSubmitted={(id, reference) => {
+          if (id === currentOrder.id) setCurrentOrder(prev => ({ ...prev, cod_payment_reference: reference }));
+          else setSiblingOrders(prev => prev.map(o => o.id === id ? { ...o, cod_payment_reference: reference } : o));
+        }} />
       )}
 
       {/* COD Payment Section — rider sends payment to seller after delivery */}
-      {isDelivered && isCod && !codAccepted && allStores.length <= 1 && (
+      {showRemittance && !codAccepted && allStores.length <= 1 && (
         <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 mb-3">
           <div className="flex items-center gap-2 mb-3">
             <DollarSign size={20} className="text-amber-600" />
@@ -844,7 +882,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
           {codSubmitted ? (
             <div className="flex items-center gap-2">
               <Clock size={16} className="text-amber-500 flex-shrink-0" />
-              <p className="text-sm text-amber-700">Nai-submit na ang reference number. Naghihintay ng confirmation ng seller.</p>
+              <p className="text-sm text-amber-700">Nai-submit na ang reference number. {isDelivered ? 'Naghihintay ng confirmation ng seller.' : 'Kung naiabot na ang parcel, i-click ang Mark as Delivered.'}</p>
             </div>
           ) : showCodPayment && store?.qr_code_url ? (
             <div>
@@ -886,7 +924,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
                 disabled={updating || !codRef.trim()}
                 className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3"
               >
-                <Check size={18} /> {updating ? 'Nagse-send...' : 'STEP 5: I-SUBMIT ANG REFERENCE'}
+                <Check size={18} /> {updating ? 'Nagse-send...' : 'STEP 6: I-SUBMIT ANG REFERENCE'}
               </button>
             </div>
           ) : !showCodPayment ? (
@@ -1230,12 +1268,16 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         </div>
       )}
 
-      {/* Mark as Delivered button */}
-      {currentOrder.status === 'picked_up' && (
-        <button onClick={markDelivered} disabled={updating}
-          className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
-          {updating ? 'Nag-uupdate...' : 'STEP 4: MARK AS DELIVERED'}
-        </button>
+      {canMarkRiderArrival(currentOrder) && (
+        <Button onClick={markArrivedAtBuyer} disabled={updating} className="next-action w-full h-auto py-4 rounded-2xl font-bold text-base whitespace-normal mb-3">
+          <MapPin /> {updating ? 'Nagse-save...' : 'STEP 5: NANDITO NA AKO'}
+        </Button>
+      )}
+      {currentOrder.status === 'picked_up' && arrivedAtBuyer && (
+        <Button onClick={markDelivered} disabled={updating || !readyToDeliver}
+          className="next-action w-full h-auto py-4 rounded-2xl font-bold text-base whitespace-normal mb-3">
+          <Check /> {updating ? 'Nag-uupdate...' : `STEP ${isCod ? 7 : 6}: MARK AS DELIVERED`}
+        </Button>
       )}
       </OrderStepTracker>
     </div>

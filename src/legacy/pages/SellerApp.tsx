@@ -1732,7 +1732,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           if (!data) return;
           newOrder = data as Order;
         }
-        setCurrentOrder((prev: any) => (prev.status === newOrder.status && prev.rider_id === newOrder.rider_id && prev.payment_status === newOrder.payment_status && prev.rider_accepted_at === newOrder.rider_accepted_at && prev.picked_up_at === newOrder.picked_up_at ? prev : { ...prev, ...newOrder }));
+        setCurrentOrder((prev: any) => ({ ...prev, ...newOrder }));
         if (newOrder.rider_id && !rider) {
           supabase.from('profiles').select('full_name, phone, avatar_url, rider_qr_code_url').eq('id', newOrder.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
         }
