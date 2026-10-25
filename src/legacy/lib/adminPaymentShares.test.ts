@@ -8,6 +8,6 @@ test('admin deducts 50 rider affiliate share and 200 seller share from separate 
     { description: '[fp:abc-123]', amount: 200, status: 'credited' },
     { description: '[rfp:abc-123]', amount: 50, status: 'pending' },
   ]);
-  assert.equal(500 - result['rfp:abc-123'], 450);
-  assert.equal(1000 - result['fp:abc-123'], 800);
+  assert.equal(500 - (result['rfp:abc-123'] ?? 0), 450);
+  assert.equal(1000 - (result['fp:abc-123'] ?? 0), 800);
 });

@@ -463,7 +463,7 @@ function OverviewTab() {
       <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-5 mb-4 text-white">
         <div className="flex items-center gap-2 mb-2">
           <DollarSign size={20} className="text-green-400" />
-          <span className="text-sm font-medium text-gray-300">Platform Earnings (Outstanding)</span>
+          <span className="text-sm font-medium text-gray-300">Hindi pa nababayaran (Receivables)</span>
         </div>
         <p className="text-3xl font-bold">₱{stats.totalPlatformEarnings.toFixed(2)}</p>
         <div className="flex gap-4 mt-3 text-xs text-gray-400">

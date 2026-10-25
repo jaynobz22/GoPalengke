@@ -1,5 +1,12 @@
 # Roadmap: GoPalengke Migration (GitHub → Lovable)
 
+## Current: Rider billing automation and admin error
+- [x] Fix missing admin earnings ledger import; isolated admin overview and expanded payment reference render without page errors
+- [x] Prepare onboarding and paid-platform milestone SQL preserving existing 3% accrual; PostgreSQL fixture verifies one-time ₱300 at ₱1,000, partial payments, ₱35/₱15, ₱50 without sponsor and safe reruns
+- [x] Deduct rider affiliate shares in admin ledger; eleven tests pass; pushed
+- [ ] Apply and verify database/rider-fee-and-affiliate-payout.sql on external database (blocked: SQL execution access unavailable; script stops if legacy payout hooks conflict)
+- [ ] Verify rider progress for standalone affiliate-only sessions (blocked: current legacy affiliate login has no verified auth session; narrow progress read requires linked account sign-in)
+
 ## Current: Seller completed-order popup
 - [x] Clear selected order on navigation, refresh details before actions, synchronize DONE and close only after successful save
 - [x] Seven regression tests pass; isolated browser verifies cached pending → delivered/DONE without acceptance controls, and successful DONE closure with no page errors; pushed 3806678
