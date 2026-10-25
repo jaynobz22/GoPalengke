@@ -1920,6 +1920,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct, onChatRider }: { onBack: 
   const [agreedFees, setAgreedFees] = useState<Record<string, string>>({});
   const [buyerArranged, setBuyerArranged] = useState<Record<string, boolean>>({});
   const [arrangedDriver, setArrangedDriver] = useState<Record<string, string>>({});
+  const [arrangedDriverMember, setArrangedDriverMember] = useState<Record<string, boolean>>({});
   const [pickedRider, setPickedRider] = useState<Record<string, { id: string; name: string }>>({});
   const [chattingDriverId, setChattingDriverId] = useState<string | null>(null);
   const [fleetList, setFleetList] = useState<FleetRider[]>([]);
@@ -2089,7 +2090,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct, onChatRider }: { onBack: 
     const r = computeBaseFee(store, items);
     if (r.tier === 'motorcycle') return r;
     (getFeeForStore as any).suggested = { ...((getFeeForStore as any).suggested || {}), [store.id]: r.fee };
-    const agreed = buyerArranged[store.id] ? 0 : Number(agreedFees[store.id]);
+    const agreed = (buyerArranged[store.id] && arrangedDriverMember[store.id] === false) ? 0 : Number(agreedFees[store.id]);
     const fee = agreed > 0 ? Math.round(agreed * 100) / 100 : 0;
     return { ...r, fee, distanceCharge: fee, weightSurcharge: 0, riderNet: fee, commission: 0 };
   }
@@ -2123,6 +2124,10 @@ function CheckoutView({ onBack, onOrderPlaced, canAct, onChatRider }: { onBack: 
       const f = getFeeForStore(its[0].store, its);
       if (f.isPrimary && f.tier !== 'motorcycle' && buyerArranged[its[0].store.id] && !(arrangedDriver[its[0].store.id] || '').trim()) {
         alert('Pakilagay ang pangalan ng driver at sasakyan na kausap mo para alam ng seller kung kanino iaabot ang paninda.');
+        return;
+      }
+      if (f.isPrimary && f.tier !== 'motorcycle' && buyerArranged[its[0].store.id] && arrangedDriverMember[its[0].store.id] !== false && !(Number(agreedFees[its[0].store.id]) > 0)) {
+        alert('Registered na rider ng GoPalengke ang kausap mo — pakilagay ang napagkasunduang delivery fee para may ma-singil ang system at affiliate sa bao-bao na iyon.');
         return;
       }
       if (f.isPrimary && f.tier !== 'motorcycle' && !buyerArranged[its[0].store.id] && !pickedRider[its[0].store.id]) {
@@ -2227,7 +2232,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct, onChatRider }: { onBack: 
         delivery_address: fullAddress,
         delivery_lat: deliveryPin?.lat ?? null,
         delivery_lng: deliveryPin?.lng ?? null,
-        buyer_note: withPickedRider(buildBuyerNote(note, feeBreakdown?.tier !== 'motorcycle' && !!buyerArranged[storeId], arrangedDriver[storeId]), feeBreakdown && feeBreakdown.tier !== 'motorcycle' && !buyerArranged[storeId] ? pickedRider[storeId]?.id : null, pickedRider[storeId]?.name),
+        buyer_note: withPickedRider(buildBuyerNote(note, feeBreakdown?.tier !== 'motorcycle' && !!buyerArranged[storeId], arrangedDriver[storeId], arrangedDriverMember[storeId] !== false), feeBreakdown && feeBreakdown.tier !== 'motorcycle' && !buyerArranged[storeId] ? pickedRider[storeId]?.id : null, pickedRider[storeId]?.name),
         commission_amount: commissionAmount,
         distance_km: feeBreakdown?.distanceKm || 0,
         vehicle_type: feeBreakdown?.tier || null,
@@ -2592,14 +2597,66 @@ function CheckoutView({ onBack, onOrderPlaced, canAct, onChatRider }: { onBack: 
                   </label>
                 )}
                 {tier !== 'motorcycle' && buyerArranged[store.id] && (
-                  <input
-                    type="text"
-                    maxLength={120}
-                    placeholder="Pangalan ng driver at sasakyan (hal. Kuya Jun, Bao-Bao, ABC 123)"
-                    value={arrangedDriver[store.id] ?? ''}
-                    onChange={e => setArrangedDriver(prev => ({ ...prev, [store.id]: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg border border-brand-200 bg-white text-sm outline-none focus:ring-2 focus:ring-brand-200"
-                  />
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      maxLength={120}
+                      placeholder="Pangalan ng driver at sasakyan (hal. Kuya Jun, Bao-Bao, ABC 123)"
+                      value={arrangedDriver[store.id] ?? ''}
+                      onChange={e => setArrangedDriver(prev => ({ ...prev, [store.id]: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg border border-brand-200 bg-white text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                    />
+                    <div className="bg-white border border-brand-200 rounded-xl p-3 space-y-2">
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`driver-member-${store.id}`}
+                          checked={arrangedDriverMember[store.id] !== false}
+                          onChange={() => setArrangedDriverMember(prev => ({ ...prev, [store.id]: true }))}
+                          className="mt-0.5 h-4 w-4 accent-brand-600"
+                        />
+                        <span className="text-xs text-gray-700">
+                          <strong>✅ Member ng GoPalengke ang driver</strong>
+                          <span className="block mt-0.5 text-gray-500">May napagkasunduang fee na ilalagay sa ibaba — may maliit na singil ang system at affiliate sa bao-bao na ito.</span>
+                        </span>
+                      </label>
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`driver-member-${store.id}`}
+                          checked={arrangedDriverMember[store.id] === false}
+                          onChange={() => setArrangedDriverMember(prev => ({ ...prev, [store.id]: false }))}
+                          className="mt-0.5 h-4 w-4 accent-brand-600"
+                        />
+                        <span className="text-xs text-gray-700">
+                          <strong>🚗 Hindi member / outsider o sariling sasakyan</strong>
+                          <span className="block mt-0.5 text-gray-500">Walang singil ang system — ikaw at ang driver lang ang magtatawad nang direkta.</span>
+                        </span>
+                      </label>
+                    </div>
+                    {arrangedDriverMember[store.id] !== false && (
+                      <>
+                        <p className="text-xs font-semibold text-brand-800">🤝 Napagkasunduang Delivery Fee sa Driver</p>
+                        {(() => {
+                          const fare = estimateFleetFare(tier === 'minivan' ? 'minivan' : 'tricycle', distanceKm, totalWeightKg);
+                          return (
+                            <p className="text-xs text-brand-700">
+                              Patas na gabay (base sa presyuhan ng Lalamove/Transportify) para sa {totalWeightKg.toFixed(1)} kg / {distanceKm.toFixed(1)} km: <strong>₱{fare.low} – ₱{fare.high}</strong> (suggested: ₱{fare.suggested}).
+                            </p>
+                          );
+                        })()}
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          placeholder="Ilagay ang napagkasunduang halaga (₱)"
+                          value={agreedFees[store.id] ?? ''}
+                          onChange={e => setAgreedFees(prev => ({ ...prev, [store.id]: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-lg border border-brand-200 bg-white text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                        />
+                      </>
+                    )}
+                  </div>
                 )}
                 {tier !== 'motorcycle' && !buyerArranged[store.id] && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-1 space-y-2">
@@ -2842,7 +2899,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct, onChatRider }: { onBack: 
                     buyer_id: profile!.id, store_id: storeId, status: 'pending', payment_method: paymentMethod, payment_status: 'pending',
                     total, delivery_fee: deliveryFee, delivery_method: deliveryMethod, delivery_barangay: deliveryLocation.barangay || null, delivery_district: deliveryLocation.district || null,
                     delivery_city: deliveryLocation.city || null, delivery_region: deliveryLocation.region || null, delivery_address: fullAddress,
-                    delivery_lat: deliveryPin?.lat ?? null, delivery_lng: deliveryPin?.lng ?? null, buyer_note: withPickedRider(buildBuyerNote(note, feeBreakdown?.tier !== 'motorcycle' && !!buyerArranged[storeId], arrangedDriver[storeId]), feeBreakdown && feeBreakdown.tier !== 'motorcycle' && !buyerArranged[storeId] ? pickedRider[storeId]?.id : null, pickedRider[storeId]?.name),
+                    delivery_lat: deliveryPin?.lat ?? null, delivery_lng: deliveryPin?.lng ?? null, buyer_note: withPickedRider(buildBuyerNote(note, feeBreakdown?.tier !== 'motorcycle' && !!buyerArranged[storeId], arrangedDriver[storeId], arrangedDriverMember[storeId] !== false), feeBreakdown && feeBreakdown.tier !== 'motorcycle' && !buyerArranged[storeId] ? pickedRider[storeId]?.id : null, pickedRider[storeId]?.name),
                     commission_amount: commissionAmount, delivery_group_id: groupId,
                     distance_km: feeBreakdown?.distanceKm || 0, vehicle_type: feeBreakdown?.tier || null,
                     seller_delivery_subsidy: feeBreakdown?.sellerSubsidy || 0,

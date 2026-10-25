@@ -31,3 +31,16 @@ test('buyer-picked bao-bao rider id is recoverable from the note', () => {
 test('no picked rider when none chosen', () => {
   assert.equal(getPickedRiderId(withPickedRider('ingat', null)), null);
 });
+
+test('member driver note mentions agreed fee and system charge', () => {
+  const n = buildBuyerNote('', true, 'Kuya Jun', true);
+  assert.ok(isBuyerArranged(n));
+  assert.match(n!, /registered na rider ng GoPalengke/);
+});
+
+test('outsider driver note says no system charge', () => {
+  const n = buildBuyerNote('', true, 'Kuya Jun', false);
+  assert.ok(isBuyerArranged(n));
+  assert.match(n!, /HINDI member ng GoPalengke/);
+  assert.match(n!, /walang singil ang system/);
+});

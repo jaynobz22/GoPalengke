@@ -7,11 +7,13 @@ export const MOTORCYCLE_MAX_KG = 25;
 
 export const BUYER_ARRANGED_MARKER = '🚚 [MAY SARILING MAGKAKARGA]';
 
-export function buildBuyerNote(note: string, arranged: boolean, driver?: string): string | null {
+export function buildBuyerNote(note: string, arranged: boolean, driver?: string, driverIsMember = true): string | null {
   const clean = (note || '').trim();
   if (!arranged) return clean || null;
   const d = (driver || '').trim();
-  const head = `${BUYER_ARRANGED_MARKER} May kausap nang magkakarga ang buyer${d ? `: ${d}` : ''}. Huwag nang mag-assign ng rider.`;
+  const head = driverIsMember
+    ? `${BUYER_ARRANGED_MARKER} May kausap nang magkakarga ang buyer${d ? `: ${d}` : ''} (registered na rider ng GoPalengke — may napagkasunduang fee). Huwag nang mag-assign ng rider.`
+    : `${BUYER_ARRANGED_MARKER} May kausap nang magkakarga ang buyer${d ? `: ${d}` : ''} (HINDI member ng GoPalengke / sariling sasakyan — walang singil ang system sa driver na ito). Huwag nang mag-assign ng rider.`;
   return clean ? `${head}\n${clean}` : head;
 }
 
