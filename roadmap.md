@@ -1,7 +1,7 @@
 # Roadmap: GoPalengke Migration (GitHub → Lovable)
 
 ## Current: Rider billing automation and admin error
-- [ ] Update first paid cycle to include one-time onboarding, synchronize rider/affiliate progress and suspension, test and supply replacement SQL
+- [x] Update first cycle (onboarding + platform), synchronize progress and new-delivery suspension; 13 tests and isolated payment-state checks pass; replacement SQL supplied
 - [x] Fix missing admin earnings ledger import; isolated admin overview and expanded payment reference render without page errors
 - [x] Prepare onboarding and paid-platform milestone SQL preserving existing 3% accrual; PostgreSQL fixture verifies one-time ₱300 at ₱1,000, partial payments, ₱35/₱15, ₱50 without sponsor and safe reruns
 - [x] Deduct rider affiliate shares in admin ledger; eleven tests pass; pushed

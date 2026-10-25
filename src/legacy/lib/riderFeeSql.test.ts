@@ -27,7 +27,11 @@ test('replacement SQL: onboarding, first/subsequent paid cycles, affiliate split
     const direct = '00000000-0000-0000-0000-000000000002';
     const sponsor = '00000000-0000-0000-0000-000000000003';
     const ref = '00000000-0000-0000-0000-000000000004';
-    const fee = async () => (await db.query('SELECT * FROM rider_fees')).rows[0];
+    const fee = async () => {
+      const row = (await db.query<Record<string, unknown>>('SELECT * FROM rider_fees')).rows[0];
+      assert.ok(row);
+      return row;
+    };
     await db.exec(`INSERT INTO rider_fees(rider_id,total_career_earnings,platform_fee_balance) VALUES('${rider}',999.99,30);`);
     assert.equal(Number((await fee()).total_payable), 30);
     await db.exec('UPDATE rider_fees SET total_career_earnings=1000');
@@ -48,7 +52,7 @@ test('replacement SQL: onboarding, first/subsequent paid cycles, affiliate split
     assert.equal(Number((await fee()).total_payable), 0);
     await db.exec(`INSERT INTO rider_fee_payments(rider_id,amount,status,platform_fee_paid,onboarding_fee_paid)
       VALUES('${rider}',0.01,'approved',0.01,0);`);
-    let wallets = (await db.query('SELECT id,wallet_balance FROM affiliates')).rows;
+    const wallets = (await db.query<{ id: string; wallet_balance: number }>('SELECT id,wallet_balance FROM affiliates')).rows;
     assert.equal(Number(wallets.find(x => x.id === direct)?.wallet_balance), 35);
     assert.equal(Number(wallets.find(x => x.id === sponsor)?.wallet_balance), 15);
     await db.exec(sql);
@@ -62,7 +66,7 @@ test('replacement SQL: onboarding, first/subsequent paid cycles, affiliate split
       UPDATE rider_fees SET platform_fee_balance=0;
       INSERT INTO rider_fee_payments(rider_id,amount,status,platform_fee_paid,onboarding_fee_paid)
       VALUES('${rider}',500,'approved',500,0);`);
-    assert.equal(Number((await db.query(`SELECT wallet_balance FROM affiliates WHERE id='${direct}'`)).rows[0].wallet_balance), 85);
+    assert.equal(Number((await db.query<{ wallet_balance: number }>(`SELECT wallet_balance FROM affiliates WHERE id='${direct}'`)).rows[0]?.wallet_balance), 85);
     assert.equal(Number((await fee()).total_payable), 0);
     await assert.rejects(db.exec(`INSERT INTO rider_fee_payments(rider_id,amount,status,platform_fee_paid,onboarding_fee_paid)
       VALUES('${rider}',300,'approved',0,300)`), /cannot exceed 300/);
