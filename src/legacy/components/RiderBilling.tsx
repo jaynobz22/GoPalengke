@@ -9,6 +9,8 @@ import {
   RIDER_PLATFORM_FEE_RATE,
 } from '../lib/types';
 import { ImageUploadField } from '../components/ImageUploadField';
+import { riderFeeProgress } from '../lib/riderFeeMilestone';
+import { riderFeeFor } from '../lib/codRemit';
 import {
   Wallet, TrendingUp, Loader2, Check, X, QrCode, AlertCircle,
   Receipt, ListOrdered, Bike, DollarSign, Info, Upload,
@@ -46,7 +48,7 @@ export function RiderBilling() {
       supabase.from('rider_fees').select('*').eq('rider_id', profile.id).maybeSingle(),
       supabase.from('rider_fee_payments').select('*').eq('rider_id', profile.id).order('created_at', { ascending: false }),
       supabase.from('platform_qr_codes').select('*').eq('is_active', true).maybeSingle(),
-      supabase.from('orders').select('id, delivery_fee, status, created_at, store:stores(name)')
+      supabase.from('orders').select('id, delivery_fee, seller_delivery_subsidy, status, created_at, store:stores(name)')
         .eq('rider_id', profile.id).eq('status', 'delivered').order('created_at', { ascending: false }),
     ]);
 
@@ -57,8 +59,8 @@ export function RiderBilling() {
     if (orders) {
       setTransactions(orders.map(o => ({
         order: o as any,
-        deliveryFee: Number(o.delivery_fee || 0),
-        platformFee: Math.round(Number(o.delivery_fee || 0) * RIDER_PLATFORM_FEE_RATE * 100) / 100,
+        deliveryFee: riderFeeFor(o),
+        platformFee: Math.round(riderFeeFor(o) * RIDER_PLATFORM_FEE_RATE * 100) / 100,
         date: o.created_at,
       })));
     }
@@ -81,7 +83,7 @@ export function RiderBilling() {
   // Threshold warnings
   useEffect(() => {
     if (!fee) return;
-    const payable = Number(fee.total_payable || 0);
+    const payable = Number(fee.platform_fee_balance || 0);
     if (payable >= RIDER_FEE_WARNING_90 && payable < RIDER_FEE_THRESHOLD && !fee.warning_90_sent_at) {
       setWarningShown('Ka-rider, ang iyong naipong platform fee ay ₱450 na. Ito ang huling paalala — mangyaring mag-settle bago umabot ng ₱500 upang maiwasan ang deactivation.');
     } else if (payable >= RIDER_FEE_WARNING_80 && payable < RIDER_FEE_WARNING_90 && !fee.warning_80_sent_at) {
@@ -138,7 +140,7 @@ export function RiderBilling() {
   const totalEarnings = Number(fee?.total_career_earnings || 0);
   const onboardingStatus = fee?.onboarding_fee_status || 'pending';
   const isFrozen = !!fee?.frozen_at;
-  const thresholdProgress = Math.min(100, (totalPayable / RIDER_FEE_THRESHOLD) * 100);
+  const thresholdProgress = riderFeeProgress(platformBalance).percent;
   const pendingPayments = payments.filter(p => p.status === 'pending');
   const onboardingActive = onboardingStatus === 'active';
   const onboardingPaid = onboardingStatus === 'paid';

@@ -4,6 +4,7 @@ import { useAffiliateAuth, type Affiliate } from '../../lib/affiliateAuth';
 import { navigate } from '../../lib/router';
 import { supabase } from '../../lib/supabase';
 import { sellerMilestoneProgress, SELLER_MILESTONE, SELLER_COMMISSION_TOTAL, SELLER_TIER1, SELLER_TIER2 } from '../../lib/affiliateSellerMilestone';
+import { riderFeeProgress } from '../../lib/riderFeeMilestone';
 import { AffiliateMarketingTools } from '../../components/affiliate/AffiliateMarketingTools';
 import { AIMarketingKit } from '../../components/affiliate/AIMarketingKit';
 import { TargetedMarketingPages } from '../../components/affiliate/TargetedMarketingPages';
@@ -74,6 +75,7 @@ export function AffiliateDashboard() {
   const [downline, setDownline] = useState<any[]>([]);
   const [sales, setSales] = useState<Record<string, { sales: number; orders: number }>>({});
   const [salesError, setSalesError] = useState(false);
+  const [riderBalances, setRiderBalances] = useState<Record<string, number>>({});
   const [detail, setDetail] = useState<null | 'seller' | 'rider' | 'affiliate'>(null);
 
   const load = useCallback(async () => {
@@ -98,12 +100,26 @@ export function AffiliateDashboard() {
     const sm: Record<string, { sales: number; orders: number }> = {};
     (salesRows || []).forEach((x: any) => { sm[x.referral_id] = { sales: Number(x.delivered_sales) || 0, orders: Number(x.delivered_orders) || 0 }; });
     setSales(sm);
+    const { data: riderRows, error: riderError } = await supabase.rpc('affiliate_rider_fee_progress_v2', { p_affiliate_id: affiliate.id });
+    const rb: Record<string, number> = {};
+    if (!riderError) (riderRows || []).forEach((r: any) => { rb[r.referral_id] = Number(r.platform_fee_balance || 0); });
+    setRiderBalances(rb);
     setReferrals((refData.data || []) as Referral[]);
     setTransactions((txData.data || []) as Transaction[]);
     setLoading(false);
   }, [affiliate]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!affiliate?.id) return;
+    const update = () => { load(); refresh(); };
+    const channel = supabase.channel(`affiliate-fees-${affiliate.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'affiliate_transactions', filter: `affiliate_id=eq.${affiliate.id}` }, update)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'affiliate_referrals', filter: `affiliate_id=eq.${affiliate.id}` }, update)
+      .subscribe();
+    const timer = setInterval(update, 30000);
+    return () => { clearInterval(timer); supabase.removeChannel(channel); };
+  }, [affiliate?.id, load, refresh]);
 
   useEffect(() => {
     if (!affiliate) return;
@@ -493,8 +509,8 @@ export function AffiliateDashboard() {
                   ) : (
                     <div className="space-y-2">
                       {riderRefs.map(r => {
-                        const progress = Math.min(100, (Number(r.accumulated_admin_collected) / RIDER_MILESTONE) * 100);
-                        const remaining = Math.max(0, RIDER_MILESTONE - Number(r.accumulated_admin_collected));
+                        const balance = riderBalances[r.id];
+                        const { percent: progress, remaining } = riderFeeProgress(balance ?? 0);
                         return (
                           <div key={r.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                             <div className="flex items-center justify-between mb-2">
@@ -503,7 +519,7 @@ export function AffiliateDashboard() {
                                 <p className="text-xs text-gray-400">Milestones: {r.milestones_hit} · Earned: ₱{Number(r.total_commission_earned).toFixed(0)}</p>
                               </div>
                               <span className="text-xs font-bold text-gray-600">
-                                ₱{Number(r.accumulated_admin_collected).toFixed(0)} / ₱{RIDER_MILESTONE}
+                                {balance === undefined ? 'Hindi mabasa' : `₱${balance.toFixed(2)} / ₱${RIDER_MILESTONE}`}
                               </span>
                             </div>
                             <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
@@ -513,9 +529,9 @@ export function AffiliateDashboard() {
                               />
                             </div>
                             <p className="text-[10px] text-gray-400 mt-1">
-                              {remaining > 0
-                                ? `₱${remaining.toFixed(0)} pa bago maabot ang next milestone (₱${RIDER_TIER1} sa'yo + ₱${RIDER_TIER2} sa sponsor)`
-                                : 'Milestone reached! Waiting for next cycle.'}
+                              {balance === undefined ? 'Hindi pa mabasa ang rider fee progress.' : remaining > 0
+                                ? `₱${remaining.toFixed(2)} pa sa 3% platform fee (${affiliate.sponsor_id ? "₱35 sa'yo + ₱15 sa sponsor" : "₱50 sa'yo"})`
+                                : 'Naabot ang ₱500. Kita ay papasok matapos ma-approve ang bayad.'}
                             </p>
                           </div>
                         );
@@ -655,7 +671,7 @@ export function AffiliateDashboard() {
                 if (list.length === 0) return <p className="text-center text-gray-400 text-sm py-6">Wala pang {detail} referrals.</p>;
                 return list.map(r => {
                   const milestone = detail === 'seller' && !salesError && sales[r.id] ? sellerMilestoneProgress(sales[r.id].sales, Number(r.milestones_hit)) : null;
-                  const progressAmount = detail === 'seller' ? milestone?.currentFees : Number(r.accumulated_admin_collected || 0);
+                  const progressAmount = detail === 'seller' ? milestone?.currentFees : riderBalances[r.id];
                   return (
                   <div key={r.id} className="border border-gray-100 rounded-xl p-3">
                     <div className="flex justify-between items-start gap-2">

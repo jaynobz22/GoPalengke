@@ -10,6 +10,8 @@
 <!-- LOVABLE:END -->
 
 - Affiliate seller fee progress uses the shared browser-safe affiliateSellerMilestone calculator in both tracker and referral details; delivered sales accrue fees and credited milestone counts retire paid cycles without treating accrual as wallet earnings.
+- Rider onboarding augments existing rider_fees accrual rather than adding a second order accrual trigger; paid platform-only milestones and uniquely keyed affiliate transactions prevent onboarding payments and retries from duplicating affiliate payouts.
+- Admin collected-income deductions use paymentAffiliateShares with separate seller/rider payment tags and credited transactions only, so both fee ledgers reconcile with affiliate wallets.
 
 - User dashboards use full-width responsive shells up to `max-w-7xl`, while preserving their phone layout below `md`; this prevents desktop sessions from remaining in a narrow mobile column.
 - Public store shares use the dedicated `/s/$slug` SSR data route with optional `?p=<product-id>`; social crawlers need server-readable store/product metadata and images.

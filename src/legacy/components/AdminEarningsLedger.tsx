@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Wallet, ChevronDown, ChevronUp } from 'lucide-react';
+import { paymentAffiliateShares } from '../lib/adminPaymentShares';
 
 interface Row {
   id: string;
@@ -23,22 +24,18 @@ export function AdminEarningsLedger() {
     const [sp, rp, tx] = await Promise.all([
       supabase.from('fee_payments').select('*, seller:profiles!fee_payments_seller_id_fkey(full_name)').eq('status', 'approved').order('approved_at', { ascending: false }),
       supabase.from('rider_fee_payments').select('*, rider:profiles!rider_fee_payments_rider_id_fkey(full_name)').eq('status', 'approved').order('approved_at', { ascending: false }),
-      supabase.from('affiliate_transactions').select('description, amount').like('description', '%[fp:%'),
+      supabase.from('affiliate_transactions').select('description, amount, status').eq('status', 'credited').or('description.like.%[fp:%,description.like.%[rfp:%'),
     ]);
-    const shares: Record<string, number> = {};
-    (tx.data || []).forEach((t: any) => {
-      const m = /\[fp:([0-9a-f-]+)\]/.exec(t.description || '');
-      if (m) shares[m[1]] = (shares[m[1]] || 0) + Number(t.amount || 0);
-    });
+    const shares = paymentAffiliateShares(tx.data || []);
     const s: Row[] = (sp.data || []).map((p: any) => ({
       id: p.id, who: p.seller?.full_name || 'Seller', kind: 'seller', amount: Number(p.amount || 0),
       breakdown: `Commission ₱${Number(p.commission_paid || 0).toFixed(2)} + Rent ₱${Number(p.subscription_paid || 0).toFixed(2)}`,
-      ref: p.reference_number, approvedAt: p.approved_at || p.updated_at, affiliateShare: shares[p.id] || 0,
+      ref: p.reference_number, approvedAt: p.approved_at || p.updated_at, affiliateShare: shares[`fp:${p.id}`] || 0,
     }));
     const r: Row[] = (rp.data || []).map((p: any) => ({
       id: p.id, who: p.rider?.full_name || 'Rider', kind: 'rider', amount: Number(p.amount || 0),
       breakdown: `Platform fee ₱${Number(p.platform_fee_paid || 0).toFixed(2)} + Onboarding ₱${Number(p.onboarding_fee_paid || 0).toFixed(2)}`,
-      ref: p.reference_number, approvedAt: p.approved_at || p.updated_at, affiliateShare: 0,
+      ref: p.reference_number, approvedAt: p.approved_at || p.updated_at, affiliateShare: shares[`rfp:${p.id}`] || 0,
     }));
     setRows([...s, ...r].sort((a, b) => (b.approvedAt || '').localeCompare(a.approvedAt || '')));
   }, []);
@@ -48,6 +45,7 @@ export function AdminEarningsLedger() {
     const ch = supabase.channel('admin-earnings-ledger')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fee_payments' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'rider_fee_payments' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'affiliate_transactions' }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [load]);
