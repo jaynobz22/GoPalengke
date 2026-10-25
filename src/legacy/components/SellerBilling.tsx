@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import type { SellerFee, FeePayment, Order } from '../lib/types';
 import { COMMISSION_RATE, SUBSCRIPTION_FEE, SUBSCRIPTION_THRESHOLD, PAYMENT_THRESHOLD } from '../lib/types';
+import { nextRentDue } from '../lib/rentCycle';
 import {
   DollarSign, TrendingUp, Calendar, Loader2, Check, X, QrCode,
   AlertCircle, Wallet, Receipt, ListOrdered,
@@ -113,6 +114,8 @@ export function SellerBilling() {
   const payableProgress = Math.min(100, (totalPayable / PAYMENT_THRESHOLD) * 100);
   const canPay = totalPayable >= PAYMENT_THRESHOLD;
   const pendingPayments = payments.filter(p => p.status === 'pending');
+  const lastRentPaid = payments.find(p => p.status === 'approved' && Number(p.subscription_paid || 0) > 0);
+  const rentDue = nextRentDue(lastRentPaid?.approved_at, fee?.last_subscription_charge_at);
 
   return (
     <div className="px-5 py-4 pb-8">
@@ -225,6 +228,13 @@ export function SellerBilling() {
                 {subscriptionActive ? `₱${subscriptionBalance.toFixed(2)}` : 'FREE'}
               </span>
             </div>
+            {subscriptionActive && rentDue && (
+              <div className={`rounded-xl px-3 py-2 text-xs ${subscriptionBalance > 0 ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                {subscriptionBalance > 0
+                  ? `May ₱${subscriptionBalance.toFixed(2)} na rent na dapat bayaran para sa buwang ito.`
+                  : `✅ Bayad na ang rent. Susunod na ₱${SUBSCRIPTION_FEE} sa ${rentDue.due.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })} (${rentDue.daysLeft} araw pa).`}
+              </div>
+            )}
           </div>
 
           {/* One-time progress toward rent activation (hidden once active) */}

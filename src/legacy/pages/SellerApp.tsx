@@ -153,6 +153,7 @@ export function SellerApp() {
   useEffect(() => {
     if (!profile) return;
     async function checkFreeze() {
+      await supabase.rpc('charge_due_rent').then(() => {}, () => {});
       await supabase.rpc('freeze_overdue_sellers');
       const { data } = await supabase.from('seller_fees').select('*').eq('seller_id', profile.id).maybeSingle();
       const fee = data as SellerFee | null;

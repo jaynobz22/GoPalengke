@@ -472,6 +472,8 @@ function OverviewTab() {
         </div>
       </div>
 
+      <AdminEarningsLedger />
+
       {/* User Stats */}
       <h3 className="font-bold text-gray-800 mb-3 text-sm">Users</h3>
       <div className="grid grid-cols-3 gap-3 mb-4">
