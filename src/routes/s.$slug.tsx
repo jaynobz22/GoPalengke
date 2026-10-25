@@ -1,8 +1,9 @@
+import { lazyWithReload } from "@/lib/chunk-reload";
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import { getStoreSharePreview } from "@/lib/store-share.functions";
 
-const LegacyApp = lazy(() => import("../legacy/App"));
+const LegacyApp = lazy(lazyWithReload(() => import("../legacy/App")));
 const PUBLIC_ORIGIN = "https://gopalengke.net";
 
 export const Route = createFileRoute("/s/$slug")({

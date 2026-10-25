@@ -24,7 +24,15 @@ export function reloadOnce(): boolean {
 
 export function lazyWithReload<T>(factory: () => Promise<T>): () => Promise<T> {
   return () =>
-    factory().catch((err) => {
+    factory()
+      .then((mod) => {
+        if (mod == null) {
+          if (reloadOnce()) return new Promise<T>(() => {});
+          throw new Error("error loading dynamically imported module");
+        }
+        return mod;
+      })
+      .catch((err) => {
       if (isChunkError(err) && reloadOnce()) {
         return new Promise<T>(() => {}); // wait for reload
       }
@@ -37,7 +45,9 @@ export function installChunkReloadGuard() {
   if (installed || typeof window === "undefined") return;
   installed = true;
   window.addEventListener("vite:preloadError", (e) => {
-    if (reloadOnce()) e.preventDefault();
+    // Huwag i-preventDefault: kapag ginawa, undefined ang ibinabalik ng import
+    // at nagka-crash ang React.lazy ("'default' in undefined").
+    reloadOnce();
   });
   window.addEventListener("unhandledrejection", (e) => {
     if (isChunkError(e.reason)) reloadOnce();
