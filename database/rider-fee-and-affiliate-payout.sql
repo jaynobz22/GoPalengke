@@ -49,6 +49,26 @@ DROP TRIGGER IF EXISTS trigger_rider_onboarding_v2 ON public.rider_fees;
 CREATE TRIGGER trigger_rider_onboarding_v2 BEFORE INSERT OR UPDATE ON public.rider_fees
 FOR EACH ROW EXECUTE FUNCTION public.activate_rider_onboarding_v2();
 
+-- Only guard NEW acceptance; existing deliveries may still be completed.
+-- This does not accrue any order fees or change admin suspension flags.
+CREATE OR REPLACE FUNCTION public.guard_rider_billing_acceptance_v3()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NEW.rider_id IS NOT NULL AND NEW.rider_accepted_at IS NOT NULL
+     AND (OLD.rider_accepted_at IS NULL OR OLD.rider_id IS DISTINCT FROM NEW.rider_id) THEN
+    PERFORM id FROM public.rider_fees WHERE rider_id = NEW.rider_id FOR UPDATE;
+    IF EXISTS (SELECT 1 FROM public.rider_fees WHERE rider_id = NEW.rider_id
+      AND (total_payable >= 500 OR frozen_at IS NOT NULL)) THEN
+      RAISE EXCEPTION 'Settle rider fees and wait for admin approval before accepting a new delivery';
+    END IF;
+  END IF;
+  RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION public.guard_rider_billing_acceptance_v3() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS trigger_rider_billing_acceptance_v3 ON public.orders;
+CREATE TRIGGER trigger_rider_billing_acceptance_v3 BEFORE UPDATE ON public.orders
+FOR EACH ROW EXECUTE FUNCTION public.guard_rider_billing_acceptance_v3();
+
 -- Atomic per-referral paid-cycle credits, with a unique key for every cycle/tier.
 CREATE UNIQUE INDEX IF NOT EXISTS rider_affiliate_cycle_unique_v2
 ON public.affiliate_transactions ((substring(description from '\[rider-cycle:[^]]+\]')), tier)

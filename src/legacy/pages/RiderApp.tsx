@@ -105,16 +105,26 @@ export function RiderApp() {
     setShowChat(true);
   }
 
-  const canAct = profile?.is_active ?? true;
+  const [billingFrozen, setBillingFrozen] = useState(false);
+  const canAct = (profile?.is_active ?? true) && !billingFrozen;
   const [freezeReason, setFreezeReason] = useState<'billing' | 'admin' | null>(null);
 
   useEffect(() => {
-    if (!profile || canAct) { setFreezeReason(null); return; }
-    supabase.from('rider_fees').select('frozen_at').eq('rider_id', profile.id).maybeSingle()
-      .then(({ data }) => {
-        setFreezeReason(data?.frozen_at ? 'billing' : 'admin');
-      });
-  }, [profile, canAct]);
+    if (!profile) { setBillingFrozen(false); setFreezeReason(null); return; }
+    let mounted = true;
+    const loadBillingGate = async () => {
+      const { data, error } = await supabase.from('rider_fees').select('frozen_at, total_payable').eq('rider_id', profile.id).maybeSingle();
+      if (!mounted || error) return;
+      const frozen = !!data?.frozen_at || Number(data?.total_payable || 0) >= 500;
+      setBillingFrozen(frozen);
+      setFreezeReason(frozen ? 'billing' : profile.is_active === false ? 'admin' : null);
+    };
+    loadBillingGate();
+    const channel = supabase.channel(`rider-billing-gate-${profile.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rider_fees', filter: `rider_id=eq.${profile.id}` }, loadBillingGate).subscribe();
+    const timer = setInterval(loadBillingGate, 30000);
+    return () => { mounted = false; clearInterval(timer); supabase.removeChannel(channel); };
+  }, [profile]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col w-full max-w-7xl mx-auto relative">
