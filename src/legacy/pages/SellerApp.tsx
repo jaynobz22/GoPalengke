@@ -7,6 +7,7 @@ import { watchOrders } from '../lib/liveOrders';
 import { canShowSellerRiderQr } from '../lib/sellerRiderQr';
 import { pickupUpdate } from '../lib/orderPickup';
 import { orderArrivalPhase } from '../lib/orderArrivalPhase';
+import { canReviewNewSellerOrder } from '../lib/sellerOrderState';
 import { checkRiderBatch } from '../lib/riderBatch';
 import { useAuth } from '../lib/auth';
 import { navigate } from '../lib/router';
@@ -59,6 +60,10 @@ export function SellerApp() {
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const openTab = (nextTab: Tab) => {
+    setSelectedOrder(null);
+    setTab(nextTab);
+  };
   const [showStoreForm, setShowStoreForm] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [chatPartnerName, setChatPartnerName] = useState('');
@@ -278,13 +283,13 @@ export function SellerApp() {
         </div>
       )}
       <div className="flex-1 pb-24 overflow-y-auto">
-        {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} onOpenMessages={() => setTab('messages')} onOpenOrders={() => setTab('orders')} onViewStore={() => { sessionStorage.setItem('gp_store_preview_from_dashboard', '1'); navigate(`/s/${store.slug}`); }} onSignOut={signOut} unreadMessages={unreadCount} canAct={canAct} />}
+        {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} onOpenMessages={() => openTab('messages')} onOpenOrders={() => openTab('orders')} onViewStore={() => { sessionStorage.setItem('gp_store_preview_from_dashboard', '1'); navigate(`/s/${store.slug}`); }} onSignOut={signOut} unreadMessages={unreadCount} canAct={canAct} />}
         {tab === 'products' && (
           <SellerProducts store={store} onAdd={() => { setEditingProduct(null); setShowProductForm(true); }} onEdit={(p) => { setEditingProduct(p); setShowProductForm(true); }} />
         )}
         {tab === 'orders' && (
           selectedOrder ? (
-            <SellerOrderDetail order={selectedOrder} store={store} onBack={() => setSelectedOrder(null)} onOpenChat={openChat} />
+            <SellerOrderDetail key={selectedOrder.id} order={selectedOrder} store={store} onBack={() => setSelectedOrder(null)} onOpenChat={openChat} />
           ) : (
             <SellerOrders store={store} onOrderClick={setSelectedOrder} />
           )
@@ -360,7 +365,7 @@ export function SellerApp() {
         />
       )}
 
-      <SellerBottomNav tab={tab} setTab={setTab} storeId={store.id} unreadMessages={totalUnread} />
+      <SellerBottomNav tab={tab} setTab={openTab} storeId={store.id} unreadMessages={totalUnread} />
 
       {showFreezeWarning && sellerFee?.grace_deadline && (
         <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center px-5">
@@ -1699,6 +1704,9 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   const [buyer, setBuyer] = useState<{ full_name: string; phone: string | null; avatar_url: string | null } | null>(null);
   const [rider, setRider] = useState<{ full_name: string; phone: string | null; avatar_url: string | null } | null>(null);
   const [currentOrder, setCurrentOrder] = useState(order);
+  const [orderRefreshed, setOrderRefreshed] = useState(false);
+  const [orderLoadError, setOrderLoadError] = useState(false);
+  const refreshOrderRef = useRef<(() => Promise<void>) | null>(null);
   const [updating, setUpdating] = useState(false);
   const [showRiderPicker, setShowRiderPicker] = useState(false);
   const [availableRiders, setAvailableRiders] = useState<{ id: string; full_name: string; phone: string | null; avatar_url: string | null; busy?: number }[]>([]);
@@ -1727,19 +1735,30 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       supabase.from('profiles').select('full_name, phone, avatar_url, rider_qr_code_url').eq('id', order.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
     }
 
-    const sub = { stop: watchOrders(`seller-order-${order.id}`, `id=eq.${order.id}`, async (payload: any) => {
-        let newOrder = payload?.new as Order;
-        if (!newOrder) {
-          const { data } = await supabase.from('orders').select('*').eq('id', order.id).maybeSingle();
-          if (!data) return;
-          newOrder = data as Order;
-        }
-        setCurrentOrder((prev: any) => ({ ...prev, ...newOrder }));
-        if (newOrder.rider_id && !rider) {
-          supabase.from('profiles').select('full_name, phone, avatar_url, rider_qr_code_url').eq('id', newOrder.rider_id).maybeSingle().then(({ data }) => setRider(data as any));
-        }
-      }) };
-    return () => { sub.stop(); };
+    let disposed = false;
+    let request = 0;
+    const refresh = async () => {
+      const version = ++request;
+      try {
+        const { data, error } = await supabase.from('orders').select('*').eq('id', order.id).eq('store_id', store.id).maybeSingle();
+        if (disposed || version !== request) return;
+        if (error) { setOrderLoadError(true); return; }
+        if (!data) { onBack(); return; }
+        const newOrder = data as Order;
+        setCurrentOrder(newOrder);
+        setOrderRefreshed(true);
+        setOrderLoadError(false);
+        if (newOrder.rider_id) {
+          supabase.from('profiles').select('full_name, phone, avatar_url, rider_qr_code_url').eq('id', newOrder.rider_id).maybeSingle().then(({ data }) => { if (!disposed && version === request) setRider(data as any); });
+        } else setRider(null);
+      } catch {
+        if (!disposed && version === request) setOrderLoadError(true);
+      }
+    };
+    refreshOrderRef.current = refresh;
+    void refresh();
+    const stop = watchOrders(`seller-order-${order.id}`, `id=eq.${order.id}`, () => { void refresh(); });
+    return () => { disposed = true; refreshOrderRef.current = null; stop(); };
   }, [order.id]);
 
   // Auto-load nearby riders when order is ready for pickup (for the hint banner)
@@ -1855,8 +1874,10 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
 
   const [detailsChecked, setDetailsChecked] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [finished, setFinished] = useState(false);
-  useEffect(() => { try { setFinished(!!(order as any).seller_done_at || localStorage.getItem(`gp_done_${order.id}`) === '1'); } catch {} }, [order.id]);
+  const [locallyFinished, setLocallyFinished] = useState(false);
+  useEffect(() => { try { setLocallyFinished(localStorage.getItem(`gp_done_${order.id}`) === '1'); } catch {} }, [order.id]);
+  const finished = !!currentOrder.seller_done_at || (currentOrder.status === 'delivered' && locallyFinished);
+  const canReviewNew = canReviewNewSellerOrder(currentOrder, orderRefreshed && !orderLoadError) && !finished;
 
   async function assignRider(riderId: string) {
     setAssigningRider(riderId);
@@ -1880,6 +1901,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   }
 
   async function updateStatus(status: OrderStatus) {
+    if ((status === 'accepted' || status === 'cancelled') && !canReviewNew) return;
     setUpdating(true);
     if (status === 'accepted' && !(await ensureGps('seller'))) { setUpdating(false); return; }
     await supabase.from('orders').update({ status }).eq('id', currentOrder.id);
@@ -1946,10 +1968,15 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   }
 
   async function markDone() {
+    setUpdating(true);
+    const doneAt = new Date().toISOString();
+    const { error } = await supabase.from('orders').update({ seller_done_at: doneAt } as any).eq('id', currentOrder.id);
+    setUpdating(false);
+    if (error) { alert('Hindi na-save ang DONE. Pakisubukan muli.'); return; }
     try { localStorage.setItem(`gp_done_${currentOrder.id}`, '1'); } catch {}
-    setFinished(true);
-    // seller_done_at: binubuksan ang review ng buyer (kung naka-setup ang column)
-    await supabase.from('orders').update({ seller_done_at: new Date().toISOString() } as any).eq('id', currentOrder.id);
+    setLocallyFinished(true);
+    setCurrentOrder(prev => ({ ...prev, seller_done_at: doneAt }));
+    onBack();
   }
 
   async function markPickedUp() {
@@ -2030,9 +2057,13 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           <p className="text-sm font-semibold text-red-700">Nakansela ang order na ito.</p>
         </div>
       )}
-      <OrderStepTracker steps={sellerSteps} currentStepIndex={currentStepIndex} hidden={isCancelled}>
+      {(!orderRefreshed || orderLoadError) ? (
+        <div role="status" className="py-4 text-sm text-muted-foreground">
+          {orderLoadError ? <><p>Hindi makuha ang pinakabagong order. Pakisubukan muli.</p><Button variant="outline" onClick={() => { void refreshOrderRef.current?.(); }}>Subukan muli</Button></> : 'Kinukuha ang pinakabagong order…'}
+        </div>
+      ) : <OrderStepTracker steps={sellerSteps} currentStepIndex={currentStepIndex} hidden={isCancelled}>
       {/* STEP 1: details */}
-      {!isCancelled && st === 'pending' && !detailsSeen && (
+      {canReviewNew && !detailsSeen && (
         <div>
           {!showDetails ? (
             <button onClick={() => setShowDetails(true)} className={btnCls}>STEP 1: MAY BAGONG ORDER! CLICK TO SEE DETAILS</button>
@@ -2052,7 +2083,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       )}
 
       {/* Active step: New order — confirm button */}
-      {!isCancelled && st === 'pending' && detailsSeen && (
+      {canReviewNew && detailsSeen && (
         <div className="grid grid-cols-1 gap-2">
           <button onClick={() => updateStatus('accepted')} disabled={updating} className={btnCls + ' !mb-0'}>
             {updating ? 'Nag-uupdate...' : 'STEP 2: ACCEPT & CONFIRM'}
@@ -2331,7 +2362,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         </button>
       )}
       {!isCancelled && isDelivered && !finished && (!isCod || currentOrder.cod_payment_accepted_at || noRiderFlow) && (
-        <button onClick={markDone} className={btnCls}>
+        <button onClick={markDone} disabled={updating} className={btnCls}>
           STEP {sellerSteps.findIndex(s => s.key === 'done') + 1}: DONE ✓
         </button>
       )}
@@ -2340,7 +2371,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           <p className="text-sm font-bold text-green-700">🎉 Tapos na ang buong transaction! Makakapag-review na ang buyer sa iyo at sa rider.</p>
         </div>
       )}
-      </OrderStepTracker>
+      </OrderStepTracker>}
 
       {/* Rider Picker Modal */}
       {showRiderPicker && (

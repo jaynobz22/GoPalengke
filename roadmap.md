@@ -1,5 +1,10 @@
 # Roadmap: GoPalengke Migration (GitHub → Lovable)
 
+## Current: Seller completed-order popup
+- [x] Clear selected order on navigation, refresh details before actions, synchronize DONE and close only after successful save
+- [ ] Run regression checks and push to the existing repository
+- [ ] Verify with a real seller order (blocked: no authenticated session for the existing external account system)
+
 ## Current: Arrival step on seller and buyer
 - [x] Show explicit arrival between pickup/travel and delivered, retaining COD and NON-COD completion gates
 - [x] Thirteen rule tests pass; isolated seller and buyer screens show travel → arrival → delivered without page errors; pushed 749fdcb

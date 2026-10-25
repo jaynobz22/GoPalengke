@@ -32,3 +32,4 @@
 - Seller and buyer trackers use browser-safe orderArrivalPhase for arrival presentation before delivered; this keeps an arrival timestamp from being mistaken for delivery completion.
 - Seller rider-fee QR and payment instructions share sellerRiderQr pickup-phase gating, so they disappear on departure without changing payment accounting.
 - Buyer COD payment choices use BuyerCodPayment behind arrival gating; QR/cash selection is presentation-only and never changes COD verification or remittance accounting.
+- Seller order navigation clears selected details; keyed details refresh the order before exposing actions and derive DONE from the refreshed row, preventing cached pending orders from reopening acceptance controls.
