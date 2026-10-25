@@ -28,7 +28,7 @@ test('replacement SQL: onboarding, first/subsequent paid cycles, affiliate split
     const sponsor = '00000000-0000-0000-0000-000000000003';
     const ref = '00000000-0000-0000-0000-000000000004';
     const fee = async () => {
-      const row = (await db.query<Record<string, unknown>>('SELECT * FROM rider_fees')).rows[0];
+      const row = (await db.query<{ total_payable: number; onboarding_fee_status: string; frozen_at: string | null }>('SELECT * FROM rider_fees')).rows[0];
       assert.ok(row);
       return row;
     };
