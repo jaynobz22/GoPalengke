@@ -13,6 +13,7 @@ import { navigate } from '../lib/router';
 import type { Order, OrderItem, Store, Conversation, AdminConversation } from '../lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '../lib/types';
 import { estimateDistanceKm, computeDeliveryFee, haversineKm, PER_KM_RATE, BASE_DELIVERY_FEE, getStoreCoords, getDeliveryCoords, type Coords } from '../lib/deliveryFee';
+import { estimateFleetFare, type FleetFareVehicle } from '../lib/fleetFareReference';
 import { RiderNavigationMap, type NavPhase } from '../components/RiderNavigationMap';
 import { RiderBilling } from '../components/RiderBilling';
 import { LiveETATimer } from '../components/LiveETATimer';
@@ -818,6 +819,23 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         </div>
         <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString('en-PH')}</p>
       </div>
+
+      {/* Patas na singil reference para sa bao-bao/minivan (gabay base sa Lalamove/Transportify) */}
+      {(['tricycle', 'minivan'].includes((profile?.vehicle_type || '') as string)) && (() => {
+        const fare = estimateFleetFare((profile?.vehicle_type === 'minivan' ? 'minivan' : 'tricycle') as FleetFareVehicle, estimatedKm, 0);
+        return (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-3">
+            <p className="text-xs font-bold text-blue-800 mb-1">💰 Patas na Singil Reference ({fare.vehicleLabel})</p>
+            <p className="text-xs text-blue-700 leading-snug">
+              Base sa presyuhan ng Lalamove/Transportify para sa ~{estimatedKm.toFixed(1)} km:
+              {' '}<strong>₱{fare.low} – ₱{fare.high}</strong> (suggested: ₱{fare.suggested}).
+            </p>
+            <p className="text-[11px] text-blue-600 mt-1 leading-snug">
+              Kasama na rito ang gasolina at oras. Kung mabigat ang karga o may traffic, puwede sa itaas ng suggested; gabay lang ito — ikaw at ang buyer/seller pa rin ang magkakasundo sa final na bayad.
+            </p>
+          </div>
+        );
+      })()}
 
       {isCancelled && (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-3 text-center">

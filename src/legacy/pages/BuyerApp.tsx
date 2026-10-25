@@ -48,6 +48,7 @@ import { DeliveryMap } from '../components/DeliveryMap';
 import { COMMISSION_RATE } from '../lib/types';
 import { ChatView, getOrCreateConversation, getOrCreateStoreInquiry, getOrCreateRiderInquiry } from '../components/ChatView';
 import { FLEET_VEHICLE_LABELS, sortFleetRiders, type FleetRider } from '../lib/fleetRiders';
+import { estimateFleetFare } from '../lib/fleetFareReference';
 import { RiderStageBanner } from '../components/RiderStageBanner';
 import { Avatar } from '../components/Avatar';
 import { ImageUploadField } from '../components/ImageUploadField';
@@ -327,7 +328,7 @@ export function BuyerApp() {
               </button>
             </div>
           }>
-            <CheckoutView onBack={backToBrowse} onOrderPlaced={(orders) => {
+            <CheckoutView onBack={backToBrowse} onChatRider={openRiderInquiry} onOrderPlaced={(orders) => {
               if (orders.length > 1) {
                 setPaymentGroupOrders(orders);
                 setView('payment_summary');
@@ -1895,7 +1896,7 @@ function CartView({ onCheckout, refreshKey }: { onCheckout: () => void; refreshK
 }
 
 // ============= CHECKOUT VIEW =============
-function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; onOrderPlaced: (orders: Order[]) => void; canAct: boolean }) {
+function CheckoutView({ onBack, onOrderPlaced, canAct, onChatRider }: { onBack: () => void; onOrderPlaced: (orders: Order[]) => void; canAct: boolean; onChatRider?: (rider: FleetRider) => Promise<void> }) {
   const { profile } = useAuth();
   const [cartItems, setCartItems] = useState<(CartItem & { product: Product; store: Store })[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1920,6 +1921,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
   const [buyerArranged, setBuyerArranged] = useState<Record<string, boolean>>({});
   const [arrangedDriver, setArrangedDriver] = useState<Record<string, string>>({});
   const [pickedRider, setPickedRider] = useState<Record<string, { id: string; name: string }>>({});
+  const [chattingDriverId, setChattingDriverId] = useState<string | null>(null);
   const [fleetList, setFleetList] = useState<FleetRider[]>([]);
   useEffect(() => {
     supabase.from('profiles')
@@ -2616,10 +2618,32 @@ function CheckoutView({ onBack, onOrderPlaced, canAct }: { onBack: () => void; o
                         ))}
                       </select>
                     )}
+                    {pickedRider[store.id] && onChatRider && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const r = fleetList.find(x => x.id === pickedRider[store.id]?.id);
+                          if (!r) return;
+                          setChattingDriverId(r.id);
+                          try { await onChatRider(r); } finally { setChattingDriverId(null); }
+                        }}
+                        disabled={chattingDriverId === pickedRider[store.id].id}
+                        className="w-full h-10 rounded-xl bg-brand-600 text-white text-xs font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-60"
+                      >
+                        {chattingDriverId === pickedRider[store.id].id ? <Loader2 size={14} className="animate-spin" /> : <MessageCircle size={14} />}
+                        💬 Chat muna si {pickedRider[store.id].name} bago i-assign
+                      </button>
+                    )}
                     <p className="text-xs font-semibold text-amber-800">🤝 Napagkasunduang Delivery Fee ({tier === 'tricycle' ? 'Bao-Bao' : 'Minivan'})</p>
-                    <p className="text-xs text-amber-700">
-                      Makipag-usap muna sa driver tungkol sa bayad base sa bigat ({totalWeightKg.toFixed(1)} kg) at layo ({distanceKm.toFixed(1)} km). Gabay lang: mga ₱{Number((getFeeForStore as any).suggested?.[store.id] ?? 0) > 0 ? Number((getFeeForStore as any).suggested[store.id]).toFixed(0) : '—'}.
-                    </p>
+                    {(() => {
+                      const fare = estimateFleetFare(tier === 'minivan' ? 'minivan' : 'tricycle', distanceKm, totalWeightKg);
+                      return (
+                        <p className="text-xs text-amber-700">
+                          Makipag-usap muna sa driver tungkol sa bayad base sa bigat ({totalWeightKg.toFixed(1)} kg) at layo ({distanceKm.toFixed(1)} km).
+                          {' '}Patas na gabay (base sa presyuhan ng Lalamove/Transportify): <strong>₱{fare.low} – ₱{fare.high}</strong> (suggested: ₱{fare.suggested}).
+                        </p>
+                      );
+                    })()}
                     <input
                       type="number"
                       inputMode="decimal"
