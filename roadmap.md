@@ -2,7 +2,7 @@
 
 ## Current: Seller completed-order popup
 - [x] Clear selected order on navigation, refresh details before actions, synchronize DONE and close only after successful save
-- [ ] Run regression checks and push to the existing repository
+- [x] Seven regression tests pass; isolated browser verifies cached pending → delivered/DONE without acceptance controls, and successful DONE closure with no page errors; pushed 3806678
 - [ ] Verify with a real seller order (blocked: no authenticated session for the existing external account system)
 
 ## Current: Arrival step on seller and buyer
