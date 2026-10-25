@@ -109,6 +109,8 @@ export function SellerBilling() {
   const totalSales = Number(fee?.total_sales || 0);
   const subscriptionActive = fee?.subscription_active || false;
   const salesProgress = Math.min(100, (totalSales / SUBSCRIPTION_THRESHOLD) * 100);
+  const cycleSales = commissionBalance / COMMISSION_RATE;
+  const payableProgress = Math.min(100, (totalPayable / PAYMENT_THRESHOLD) * 100);
   const canPay = totalPayable >= PAYMENT_THRESHOLD;
   const pendingPayments = payments.filter(p => p.status === 'pending');
 
@@ -129,26 +131,20 @@ export function SellerBilling() {
         </div>
       )}
 
-      {/* Total Gross Sales Card */}
+      {/* Current billing cycle — resets to ₱0 after each approved payment */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <TrendingUp size={18} className="text-green-600" />
-            <span className="text-sm font-medium text-gray-600">Kabuuang Gross Sales</span>
+            <span className="text-sm font-medium text-gray-600">Benta ngayong Cycle</span>
           </div>
-          <span className="text-lg font-bold text-gray-800">₱{totalSales.toFixed(2)}</span>
+          <span className="text-lg font-bold text-gray-800">₱{cycleSales.toFixed(2)}</span>
         </div>
         <div className="h-3 bg-gray-100 rounded-full overflow-hidden mb-2">
-          <div
-            className={`h-full rounded-full transition-all ${subscriptionActive ? 'bg-green-500' : 'bg-brand-500'}`}
-            style={{ width: `${salesProgress}%` }}
-          />
+          <div className="h-full rounded-full transition-all bg-brand-500" style={{ width: `${payableProgress}%` }} />
         </div>
         <p className="text-xs text-gray-400">
-          {subscriptionActive
-            ? 'Na-activate na ang ₱700 monthly rent. Kasama na ito sa kasalukuyang balanse.'
-            : `₱${(SUBSCRIPTION_THRESHOLD - totalSales).toFixed(2)} pa bago ma-activate ang ₱700 monthly rent.`
-          }
+          Babayaran: ₱{totalPayable.toFixed(2)} / ₱{PAYMENT_THRESHOLD.toFixed(0)}. Babalik sa ₱0 pagkatapos ma-approve ang bayad. Ang kabuuang benta mo ay nasa Profile.
         </p>
       </div>
 
@@ -231,25 +227,21 @@ export function SellerBilling() {
             </div>
           </div>
 
-          {/* Sales Progress toward ₱5,000 */}
+          {/* One-time progress toward rent activation (hidden once active) */}
+          {!subscriptionActive && (
           <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-600">Progreso patungo sa ₱5,000</span>
               <span className="text-sm font-bold text-gray-800">₱{totalSales.toFixed(2)} / ₱{SUBSCRIPTION_THRESHOLD.toFixed(0)}</span>
             </div>
             <div className="h-3 bg-gray-100 rounded-full overflow-hidden mb-2">
-              <div
-                className={`h-full rounded-full transition-all ${subscriptionActive ? 'bg-green-500' : 'bg-brand-500'}`}
-                style={{ width: `${salesProgress}%` }}
-              />
+              <div className="h-full rounded-full transition-all bg-brand-500" style={{ width: `${salesProgress}%` }} />
             </div>
             <p className="text-xs text-gray-400">
-              {subscriptionActive
-                ? 'Na-activate na ang monthly rent (₱700/buwan).'
-                : `₱${(SUBSCRIPTION_THRESHOLD - totalSales).toFixed(2)} pa bago ma-activate ang ₱700 monthly rent.`
-              }
+              ₱{(SUBSCRIPTION_THRESHOLD - totalSales).toFixed(2)} pa bago ma-activate ang ₱700 monthly rent.
             </p>
           </div>
+          )}
 
           {/* Rent notice */}
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4">

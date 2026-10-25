@@ -697,6 +697,7 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
           <div className="min-w-0 flex-1 pt-1">
             <h1 className="break-words text-xl font-bold text-gray-800">{store.name}</h1>
             <div className="mt-1"><SellerRankBadge totalSales={totalSales} /></div>
+            <p className="mt-1 text-xs text-gray-500">Kabuuang benta mula nagsimula: <span className="font-bold text-gray-800">₱{totalSales.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></p>
             {profile?.full_name && (
               <p className="mt-0.5 flex items-center gap-1 truncate text-sm text-gray-500">
                 <Users size={12} className="shrink-0 text-gray-400" />

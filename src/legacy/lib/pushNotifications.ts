@@ -113,6 +113,9 @@ export async function unsubscribeFromPush(): Promise<void> {
 
     const subscription = await reg.pushManager.getSubscription();
     if (subscription) {
+      // Remove this device's row first (while still signed in) so the previous
+      // account stops receiving alerts on a shared phone/browser.
+      await supabase.from(SUBSCRIPTIONS_TABLE).delete().eq('endpoint', subscription.endpoint);
       await subscription.unsubscribe();
     }
   } catch (err) {

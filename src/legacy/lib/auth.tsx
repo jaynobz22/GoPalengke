@@ -229,6 +229,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
+    try {
+      const { unsubscribeFromPush } = await import('./pushNotifications');
+      await unsubscribeFromPush();
+    } catch { /* never block logout */ }
     await supabase.auth.signOut();
     setProfile(null);
     setSession(null);
