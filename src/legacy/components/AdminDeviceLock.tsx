@@ -11,13 +11,20 @@ const SESSION_OK = 'gp_admin_bio_ok';
 type Device = { id: string; label: string; type: 'laptop' | 'phone'; approved: boolean; credId?: string; created: string };
 type LockData = { devices: Device[] };
 
+const readCookie = () => { try { return document.cookie.split('; ').find(c => c.startsWith(DEVICE_KEY + '='))?.split('=')[1] || null; } catch { return null; } };
+export function setDeviceId(id: string) {
+  try { localStorage.setItem(DEVICE_KEY, id); } catch {}
+  try { document.cookie = `${DEVICE_KEY}=${id}; max-age=${60 * 60 * 24 * 365 * 5}; path=/; SameSite=Lax; Secure`; } catch {}
+}
 export function getDeviceId(): string {
-  let id = localStorage.getItem(DEVICE_KEY);
+  let id = null;
+  try { id = localStorage.getItem(DEVICE_KEY); } catch {}
+  if (!id) id = readCookie();
   if (!id) {
     const a = new Uint8Array(16); crypto.getRandomValues(a);
     id = Array.from(a, b => b.toString(16).padStart(2, '0')).join('');
-    localStorage.setItem(DEVICE_KEY, id);
   }
+  setDeviceId(id); // keep both copies in sync
   return id;
 }
 const isPhone = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
@@ -123,6 +130,29 @@ export function AdminDeviceGate({ children }: { children: React.ReactNode }) {
     } catch { setMsg('Hindi na-verify. Subukan ulit.'); }
     setBusy(false);
   }
+  // Phone already approved before but its saved ID was wiped (cache clear, app reinstall,
+  // browser vs home-screen app). The fingerprint key registered earlier proves it's the same phone.
+  async function relinkPhone() {
+    setBusy(true); setMsg('');
+    try {
+      const lock = await loadLock();
+      const known = lock.devices.filter(d => d.approved && d.type === 'phone' && d.credId);
+      if (!known.length) throw new Error('Walang naka-register na fingerprint na phone.');
+      const cred = await navigator.credentials.get({ publicKey: {
+        challenge: rand(), rpId: location.hostname, userVerification: 'required', timeout: 60000,
+        allowCredentials: known.map(d => ({ type: 'public-key', id: unb64(d.credId) })),
+      } });
+      const match = known.find(d => d.credId === b64(cred.rawId));
+      if (!match) throw new Error('Hindi tugma sa approved na phone.');
+      lock.devices = lock.devices.filter(d => d.id !== device.id); // remove duplicate pending entry
+      await saveLock(lock, profile.id);
+      setDeviceId(match.id);
+      sessionStorage.setItem(SESSION_OK, match.id);
+      setDevice(match);
+      setState('ok');
+    } catch (e) { setMsg(e?.message?.includes('tugma') || e?.message?.includes('Walang') ? e.message : 'Hindi na-verify. Subukan ulit.'); }
+    setBusy(false);
+  }
 
   if (state === 'ok') return <>{children}</>;
 
@@ -133,7 +163,15 @@ export function AdminDeviceGate({ children }: { children: React.ReactNode }) {
         {state === 'pending' && (<>
           <ShieldAlert size={44} className="text-red-500 mx-auto mb-3" />
           <h2 className="font-bold text-gray-800 text-lg">Naka-lock ang Admin Panel</h2>
-          <p className="text-sm text-gray-500 mt-2">Hindi pa approved ang device na ito. Buksan ang admin panel sa approved mong laptop → <b>Settings → Admin Devices</b> at i-approve ang:</p>
+          {isPhone() && (<>
+            <p className="text-sm text-gray-500 mt-2">Na-approve na ba dati ang phone na ito? I-unlock gamit ang fingerprint/Face ID — hindi na kailangan ng laptop.</p>
+            <button onClick={relinkPhone} disabled={busy}
+              className="mt-3 w-full py-3 bg-brand-600 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+              {busy ? <Loader2 size={18} className="animate-spin" /> : <Fingerprint size={18} />} I-unlock gamit ang Fingerprint
+            </button>
+            <p className="text-xs text-gray-400 mt-4">Kung bagong phone ito:</p>
+          </>)}
+          <p className="text-sm text-gray-500 mt-2">Buksan ang admin panel sa approved mong laptop → <b>Settings → Admin Devices</b> at i-approve ang:</p>
           <p className="mt-3 font-mono text-sm bg-gray-100 rounded-xl py-2">{device?.label} · {device?.id.slice(0, 6).toUpperCase()}</p>
         </>)}
         {(state === 'needBioSetup' || state === 'needBio') && (<>
