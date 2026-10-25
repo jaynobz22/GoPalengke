@@ -83,13 +83,14 @@ export function RiderBilling() {
   // Threshold warnings
   useEffect(() => {
     if (!fee) return;
-    const payable = Number(fee.platform_fee_balance || 0);
+    const onboardingPaid = payments.filter(p => p.status === 'approved').reduce((sum, p) => sum + Number(p.onboarding_fee_paid || 0), 0);
+    const payable = riderFeeProgress(Number(fee.platform_fee_balance || 0), fee.onboarding_fee_status, onboardingPaid).current;
     if (payable >= RIDER_FEE_WARNING_90 && payable < RIDER_FEE_THRESHOLD && !fee.warning_90_sent_at) {
-      setWarningShown('Ka-rider, ang iyong naipong platform fee ay ₱450 na. Ito ang huling paalala — mangyaring mag-settle bago umabot ng ₱500 upang maiwasan ang deactivation.');
+      setWarningShown('Ka-rider, umabot na sa ₱450 ang babayaran mo. Huling paalala: mag-settle bago umabot ng ₱500.');
     } else if (payable >= RIDER_FEE_WARNING_80 && payable < RIDER_FEE_WARNING_90 && !fee.warning_80_sent_at) {
-      setWarningShown('Ka-rider, ang iyong naipong platform fee ay ₱400 na. Mangyaring mag-settle bago umabot ng ₱500 upang maiwasan ang deactivation.');
+      setWarningShown('Ka-rider, umabot na sa ₱400 ang babayaran mo. Mag-settle bago umabot ng ₱500.');
     }
-  }, [fee]);
+  }, [fee, payments]);
 
   async function submitPayment(e: React.FormEvent) {
     e.preventDefault();
@@ -136,11 +137,13 @@ export function RiderBilling() {
   }
 
   const platformBalance = Number(fee?.platform_fee_balance || 0);
-  const totalPayable = Number(fee?.total_payable || 0);
   const totalEarnings = Number(fee?.total_career_earnings || 0);
   const onboardingStatus = fee?.onboarding_fee_status || 'pending';
-  const isFrozen = !!fee?.frozen_at;
-  const thresholdProgress = riderFeeProgress(platformBalance).percent;
+  const approvedOnboarding = payments.filter(p => p.status === 'approved').reduce((sum, p) => sum + Number(p.onboarding_fee_paid || 0), 0);
+  const progress = riderFeeProgress(platformBalance, onboardingStatus, approvedOnboarding);
+  const totalPayable = progress.current;
+  const isFrozen = !!fee?.frozen_at || totalPayable >= RIDER_FEE_THRESHOLD;
+  const thresholdProgress = progress.percent;
   const pendingPayments = payments.filter(p => p.status === 'pending');
   const onboardingActive = onboardingStatus === 'active';
   const onboardingPaid = onboardingStatus === 'paid';
@@ -171,7 +174,7 @@ export function RiderBilling() {
       {isFrozen && (
         <div className="flex items-center gap-2 text-red-700 text-sm bg-red-50 border border-red-200 px-4 py-3 rounded-xl mb-4">
           <AlertCircle size={16} className="flex-shrink-0" />
-          <span>Naka-suspend ang iyong account dahil umabot na ng ₱500 ang naipong platform fee. Magbayad para makapag-deliver ka ulit.</span>
+          <span>Naka-suspend ang delivery dahil umabot na ng ₱500 ang babayaran. Magbayad at maghintay ng approval para makapag-deliver ulit.</span>
         </div>
       )}
 
@@ -310,8 +313,9 @@ export function RiderBilling() {
             <p className="text-xs text-blue-700 font-medium mb-2">Paano ito gumagana:</p>
             <ul className="text-xs text-blue-600 space-y-1">
               <li>• 3% ng bawat delivery fee ang platform fee na naipon</li>
-              <li>• Kapag ₱{RIDER_FEE_THRESHOLD} na ang naipon, maa-suspend ang account hanggang magbayad</li>
-              <li>• ₱{RIDER_ONBOARDING_FEE} onboarding fee — pwedeng bayaran agad o hihintayin hanggang ₱{RIDER_ONBOARDING_ACTIVATION_THRESHOLD} earnings</li>
+              <li>• Unang ₱500: ₱300 onboarding + ₱200 mula sa 3% platform fee</li>
+              <li>• One-time lang ang onboarding; aktibo sa ₱1,000 career earnings</li>
+              <li>• Pag bayad na ang onboarding, bawat susunod na ₱500 ay mula sa 3% lang</li>
               <li>• Magbayad gamit ang QR code ng admin, ilagay ang reference number, at maghintay ng approval</li>
             </ul>
           </div>

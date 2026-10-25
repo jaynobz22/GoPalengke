@@ -1,5 +1,6 @@
 -- Existing GoPalengke database only. Run this entire script in one transaction.
--- Keeps the existing 3% delivery accrual; does NOT install another orders trigger.
+-- REPLACEMENT: first cycle = 300 onboarding + 200 platform; later cycles = 500 platform.
+-- Keeps existing order accrual and admin approval; does NOT add an orders trigger.
 BEGIN;
 
 -- Stop rather than risk two payout engines. Inspect legacy approval/payout hooks first.
@@ -26,13 +27,22 @@ END $$;
 
 CREATE OR REPLACE FUNCTION public.activate_rider_onboarding_v2()
 RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE v_onboarding_paid numeric := 0;
 BEGIN
+  SELECT LEAST(300, COALESCE(sum(onboarding_fee_paid),0)) INTO v_onboarding_paid
+  FROM public.rider_fee_payments WHERE rider_id = NEW.rider_id AND status = 'approved';
+  IF v_onboarding_paid >= 300 THEN NEW.onboarding_fee_status := 'paid'; END IF;
   IF NEW.onboarding_fee_status = 'pending' AND COALESCE(NEW.total_career_earnings, 0) >= 1000 THEN
     NEW.onboarding_fee_status := 'active';
-    -- Reconcile payable rather than adding 300 twice if legacy accrual already added it.
-    NEW.total_payable := COALESCE(NEW.platform_fee_balance, 0) + 300;
-    NEW.updated_at := now();
   END IF;
+  NEW.total_payable := GREATEST(0, COALESCE(NEW.platform_fee_balance, 0))
+    + CASE WHEN NEW.onboarding_fee_status = 'active' THEN 300 - v_onboarding_paid ELSE 0 END;
+  IF NEW.total_payable >= 500 THEN
+    NEW.frozen_at := COALESCE(NEW.frozen_at, now());
+  ELSE
+    NEW.frozen_at := NULL;
+  END IF;
+  NEW.updated_at := now();
   RETURN NEW;
 END $$;
 DROP TRIGGER IF EXISTS trigger_rider_onboarding_v2 ON public.rider_fees;
@@ -51,7 +61,7 @@ DECLARE p record; ref record; direct record; sponsor uuid; paid numeric;
   earned_cycles integer; credited_cycles integer; cycle integer; tag text; direct_amount numeric;
 BEGIN
   SELECT * INTO p FROM public.rider_fee_payments WHERE id = p_payment_id;
-  IF NOT FOUND OR p.status <> 'approved' OR COALESCE(p.platform_fee_paid, 0) <= 0 THEN RETURN; END IF;
+  IF NOT FOUND OR p.status <> 'approved' THEN RETURN; END IF;
   SELECT * INTO ref FROM public.affiliate_referrals
     WHERE referred_user_id = p.rider_id AND referred_role = 'rider' ORDER BY created_at LIMIT 1 FOR UPDATE;
   IF NOT FOUND THEN RETURN; END IF;
@@ -63,7 +73,8 @@ BEGIN
   END IF;
   -- Same lock order across concurrent referrals and sponsor/direct combinations.
   PERFORM id FROM public.affiliates WHERE id IN (direct.id, sponsor) ORDER BY id FOR UPDATE;
-  SELECT COALESCE(sum(platform_fee_paid), 0) INTO paid FROM public.rider_fee_payments
+  -- Cap lifetime onboarding contribution: it can complete only the first cycle.
+  SELECT COALESCE(sum(platform_fee_paid), 0) + LEAST(300, COALESCE(sum(onboarding_fee_paid),0)) INTO paid FROM public.rider_fee_payments
     WHERE rider_id = p.rider_id AND status = 'approved';
   earned_cycles := floor(paid / 500);
   SELECT count(*) INTO credited_cycles FROM public.affiliate_transactions
@@ -94,7 +105,19 @@ GRANT EXECUTE ON FUNCTION public.credit_rider_affiliate_v2(uuid) TO service_role
 CREATE OR REPLACE FUNCTION public.trg_rider_payment_affiliate_v2()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
-  IF NEW.status = 'approved' THEN PERFORM public.credit_rider_affiliate_v2(NEW.id); END IF;
+  IF NEW.status = 'approved' THEN
+    IF COALESCE(NEW.platform_fee_paid,0) < 0 OR COALESCE(NEW.onboarding_fee_paid,0) < 0
+       OR COALESCE(NEW.platform_fee_paid,0) + COALESCE(NEW.onboarding_fee_paid,0) <> NEW.amount THEN
+      RAISE EXCEPTION 'Rider approval must allocate the actual amount between platform and onboarding fees';
+    END IF;
+    IF (SELECT COALESCE(sum(onboarding_fee_paid),0) FROM public.rider_fee_payments
+        WHERE rider_id = NEW.rider_id AND status = 'approved') > 300 THEN
+      RAISE EXCEPTION 'One-time onboarding payments cannot exceed 300';
+    END IF;
+    -- Refresh payable after the existing approval has deducted platform fees.
+    UPDATE public.rider_fees SET updated_at = now() WHERE rider_id = NEW.rider_id;
+    PERFORM public.credit_rider_affiliate_v2(NEW.id);
+  END IF;
   RETURN NEW;
 END $$;
 REVOKE ALL ON FUNCTION public.trg_rider_payment_affiliate_v2() FROM PUBLIC, anon, authenticated;
@@ -115,8 +138,20 @@ $$;
 REVOKE ALL ON FUNCTION public.affiliate_rider_fee_progress_v2(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.affiliate_rider_fee_progress_v2(uuid) TO authenticated;
 
-UPDATE public.rider_fees SET total_career_earnings = total_career_earnings
-WHERE onboarding_fee_status = 'pending' AND total_career_earnings >= 1000;
+-- Separate v3 avoids changing the return shape of the installed v2 RPC.
+CREATE OR REPLACE FUNCTION public.affiliate_rider_fee_progress_v3(p_affiliate_id uuid)
+RETURNS TABLE(referral_id uuid, cycle_progress numeric)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT r.id, COALESCE(f.total_payable, 0)::numeric
+  FROM public.affiliate_referrals r
+  JOIN public.affiliates a ON a.id = r.affiliate_id
+  LEFT JOIN public.rider_fees f ON f.rider_id = r.referred_user_id
+  WHERE r.affiliate_id = p_affiliate_id AND r.referred_role = 'rider' AND a.linked_user_id = auth.uid()
+$$;
+REVOKE ALL ON FUNCTION public.affiliate_rider_fee_progress_v3(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.affiliate_rider_fee_progress_v3(uuid) TO authenticated;
+
+UPDATE public.rider_fees SET total_career_earnings = total_career_earnings;
 SELECT public.credit_rider_affiliate_v2(id) FROM public.rider_fee_payments
 WHERE status = 'approved' ORDER BY approved_at, created_at, id;
 COMMIT;

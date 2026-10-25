@@ -20,5 +20,5 @@ export function riderFeeProgress(balance: number, onboardingStatus = 'paid', onb
   const onboardingDue = onboardingStatus === 'active'
     ? Math.max(0, RIDER_ONBOARDING_AMOUNT - Math.min(RIDER_ONBOARDING_AMOUNT, Math.max(0, onboardingPaid))) : 0;
   const current = Math.round((Math.max(0, balance) + onboardingDue) * 100) / 100;
-  return { current, remaining: Math.max(0, 500 - current), percent: Math.min(100, current / 500 * 100) };
+  return { current, remaining: Math.round(Math.max(0, 500 - current) * 100) / 100, percent: Math.min(100, current / 500 * 100) };
 }

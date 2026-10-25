@@ -100,9 +100,9 @@ export function AffiliateDashboard() {
     const sm: Record<string, { sales: number; orders: number }> = {};
     (salesRows || []).forEach((x: any) => { sm[x.referral_id] = { sales: Number(x.delivered_sales) || 0, orders: Number(x.delivered_orders) || 0 }; });
     setSales(sm);
-    const { data: riderRows, error: riderError } = await supabase.rpc('affiliate_rider_fee_progress_v2', { p_affiliate_id: affiliate.id });
+    const { data: riderRows, error: riderError } = await supabase.rpc('affiliate_rider_fee_progress_v3', { p_affiliate_id: affiliate.id });
     const rb: Record<string, number> = {};
-    if (!riderError) (riderRows || []).forEach((r: any) => { rb[r.referral_id] = Number(r.platform_fee_balance || 0); });
+    if (!riderError) (riderRows || []).forEach((r: any) => { rb[r.referral_id] = Number(r.cycle_progress || 0); });
     setRiderBalances(rb);
     setReferrals((refData.data || []) as Referral[]);
     setTransactions((txData.data || []) as Transaction[]);
@@ -530,7 +530,7 @@ export function AffiliateDashboard() {
                             </div>
                             <p className="text-[10px] text-gray-400 mt-1">
                               {balance === undefined ? 'Hindi pa mabasa ang rider fee progress.' : remaining > 0
-                                ? `₱${remaining.toFixed(2)} pa sa 3% platform fee (${affiliate.sponsor_id ? "₱35 sa'yo + ₱15 sa sponsor" : "₱50 sa'yo"})`
+                                ? `₱${remaining.toFixed(2)} pa sa ₱500 cycle. Una: ₱300 onboarding + ₱200 na 3%; susunod: ₱500 na 3% lang. (${affiliate.sponsor_id ? "₱35 sa'yo + ₱15 sa sponsor" : "₱50 sa'yo"})`
                                 : 'Naabot ang ₱500. Kita ay papasok matapos ma-approve ang bayad.'}
                             </p>
                           </div>
