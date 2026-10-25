@@ -100,9 +100,17 @@ export function AffiliateDashboard() {
     const sm: Record<string, { sales: number; orders: number }> = {};
     (salesRows || []).forEach((x: any) => { sm[x.referral_id] = { sales: Number(x.delivered_sales) || 0, orders: Number(x.delivered_orders) || 0 }; });
     setSales(sm);
-    const { data: riderRows, error: riderError } = await supabase.rpc('affiliate_rider_fee_progress_v3', { p_affiliate_id: affiliate.id });
     const rb: Record<string, number> = {};
-    if (!riderError) (riderRows || []).forEach((r: any) => { rb[r.referral_id] = Number(r.cycle_progress || 0); });
+    const v3 = await supabase.rpc('affiliate_rider_fee_progress_v3', { p_affiliate_id: affiliate.id });
+    if (!v3.error) {
+      (v3.data || []).forEach((r: any) => { rb[r.referral_id] = Number(r.cycle_progress || 0); });
+    } else {
+      // Fallback to the older read so progress never stays unreadable.
+      const v2 = await supabase.rpc('affiliate_rider_fee_progress_v2', { p_affiliate_id: affiliate.id });
+      if (!v2.error) (v2.data || []).forEach((r: any) => { rb[r.referral_id] = Number(r.platform_fee_balance || 0); });
+    }
+    // Riders with no fee record yet show ₱0 instead of "Hindi mabasa".
+    (refData.data || []).forEach((r: any) => { if (r.referred_role === 'rider' && rb[r.id] === undefined) rb[r.id] = 0; });
     setRiderBalances(rb);
     setReferrals((refData.data || []) as Referral[]);
     setTransactions((txData.data || []) as Transaction[]);
