@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { stockLevel, daysLeft } from '../lib/inventoryStatus';
 import { isBuyerArranged, getPickedRiderId } from '../lib/buyerCargo';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, deleteStorageObject } from '../lib/supabase';
@@ -885,17 +886,36 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
 function SellerProducts({ store, onAdd, onEdit }: { store: Store; onAdd: () => void; onEdit: (p: Product) => void }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sold, setSold] = useState<Record<string, number>>({});
+  const [filter, setFilter] = useState<'all' | 'low' | 'out'>('all');
+  const [restockId, setRestockId] = useState<string | null>(null);
+  const [restockQty, setRestockQty] = useState('');
 
   const load = useCallback(async () => {
     const { data } = await supabase.from('products').select('*').eq('store_id', store.id).order('created_at', { ascending: false });
     setProducts(data || []);
     setLoading(false);
+    const since = new Date(Date.now() - 30 * 86400000).toISOString();
+    const { data: items } = await supabase.from('order_items')
+      .select('product_id, quantity, orders!inner(store_id, status, created_at)')
+      .eq('orders.store_id', store.id).neq('orders.status', 'cancelled').gte('orders.created_at', since);
+    const map: Record<string, number> = {};
+    (items || []).forEach((i: any) => { if (i.product_id) map[i.product_id] = (map[i.product_id] || 0) + Number(i.quantity || 0); });
+    setSold(map);
   }, [store.id]);
 
   useEffect(() => { load(); }, [load]);
 
   async function toggleAvailable(p: Product) {
     await supabase.from('products').update({ is_available: !p.is_available }).eq('id', p.id);
+    load();
+  }
+
+  async function addStock(p: Product) {
+    const n = parseInt(restockQty);
+    if (!n || n <= 0) return;
+    await supabase.from('products').update({ stock: (p.stock || 0) + n }).eq('id', p.id);
+    setRestockId(null); setRestockQty('');
     load();
   }
 
@@ -907,6 +927,13 @@ function SellerProducts({ store, onAdd, onEdit }: { store: Store; onAdd: () => v
     load();
   }
 
+  const levels = Object.fromEntries(products.map(p => [p.id, stockLevel(p.stock, sold[p.id])]));
+  const lowCount = products.filter(p => levels[p.id] === 'low').length;
+  const outCount = products.filter(p => levels[p.id] === 'out').length;
+  const shown = products
+    .filter(p => filter === 'all' || levels[p.id] === filter)
+    .sort((a, b) => (sold[b.id] || 0) - (sold[a.id] || 0));
+
   return (
     <div className="px-5 py-4">
       <div className="flex items-center justify-between mb-4">
@@ -915,6 +942,17 @@ function SellerProducts({ store, onAdd, onEdit }: { store: Store; onAdd: () => v
           <Plus size={22} className="text-white" />
         </button>
       </div>
+
+      {products.length > 0 && (
+        <div className="flex gap-2 mb-4 overflow-x-auto">
+          {([['all', `Lahat (${products.length})`], ['low', `Paubos na (${lowCount})`], ['out', `Ubos na (${outCount})`]] as const).map(([k, label]) => (
+            <button key={k} onClick={() => setFilter(k)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border ${filter === k ? 'bg-brand-600 text-white border-brand-600' : k === 'out' && outCount ? 'bg-red-50 text-red-600 border-red-200' : k === 'low' && lowCount ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-white text-gray-600 border-gray-200'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
@@ -928,15 +966,34 @@ function SellerProducts({ store, onAdd, onEdit }: { store: Store; onAdd: () => v
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {products.map(p => (
-            <div key={p.id} className={`bg-white rounded-2xl border p-3 flex items-center gap-3 transition ${p.is_available ? 'border-gray-100' : 'border-gray-200 opacity-60'}`}>
+          {shown.length === 0 && <p className="text-sm text-gray-400 py-6">Walang paninda sa listahang ito.</p>}
+          {shown.map(p => {
+            const lvl = levels[p.id];
+            const dl = daysLeft(p.stock, sold[p.id]);
+            return (
+            <div key={p.id} className={`bg-white rounded-2xl border p-3 flex items-center gap-3 transition ${lvl === 'out' ? 'border-red-300 bg-red-50' : lvl === 'low' ? 'border-amber-300' : p.is_available ? 'border-gray-100' : 'border-gray-200 opacity-60'}`}>
               <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0">
                 {p.image_url && <img src={p.image_url} alt={p.name} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm text-gray-800 line-clamp-1">{p.name}</p>
                 <p className="text-brand-600 font-bold text-sm">₱{p.price}<span className="text-xs text-gray-400 font-normal">/{p.unit}</span></p>
-                <p className="text-xs text-gray-400">Stock: {p.stock}</p>
+                <p className={`text-xs font-semibold ${lvl === 'out' ? 'text-red-600' : lvl === 'low' ? 'text-amber-700' : 'text-gray-500'}`}>
+                  {lvl === 'out' ? '⛔ UBOS NA' : lvl === 'low' ? '⚠️ Paubos na' : 'Stock'}: {p.stock} {p.unit}
+                </p>
+                <p className="text-[11px] text-gray-400">
+                  Nabenta (30 araw): {sold[p.id] || 0}{dl ? ` · ~${dl} araw pa` : ''}
+                </p>
+                {restockId === p.id ? (
+                  <div className="flex gap-1 mt-1">
+                    <input type="number" min="1" autoFocus value={restockQty} onChange={e => setRestockQty(e.target.value)}
+                      placeholder="+ ilan" className="w-20 px-2 py-1 text-xs border rounded-lg" />
+                    <button onClick={() => addStock(p)} className="px-2 py-1 text-xs rounded-lg bg-brand-600 text-white font-semibold">Idagdag</button>
+                    <button onClick={() => setRestockId(null)} className="px-2 py-1 text-xs rounded-lg bg-gray-100 text-gray-600">X</button>
+                  </div>
+                ) : (
+                  <button onClick={() => { setRestockId(p.id); setRestockQty(''); }} className="mt-1 text-xs font-semibold text-brand-600">+ Dagdag stock</button>
+                )}
               </div>
               <div className="flex flex-col gap-1.5 items-end">
                 <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${p.is_available ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -957,7 +1014,7 @@ function SellerProducts({ store, onAdd, onEdit }: { store: Store; onAdd: () => v
                 </div>
               </div>
             </div>
-          ))}
+          );})}
         </div>
       )}
     </div>
