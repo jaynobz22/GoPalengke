@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { stockLevel, daysLeft } from '../lib/inventoryStatus';
+import { sellerDashboardStats } from '../lib/sellerDashboardStats';
 import { isBuyerArranged, getPickedRiderId } from '../lib/buyerCargo';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, deleteStorageObject } from '../lib/supabase';
@@ -597,16 +598,16 @@ function SellerDashboard({ store, onEditStore, onOpenMessages, onOpenOrders, onV
 
   useEffect(() => {
     async function load() {
-      const [{ data: orders }, { data: products }, { count }, { data: fee }] = await Promise.all([
+      const [{ data: orders }, { data: allOrdersData }, { data: products }, { count }, { data: fee }] = await Promise.all([
         supabase.from('orders').select('*, buyer:profiles!orders_buyer_id_fkey(full_name)').eq('store_id', store.id).order('created_at', { ascending: false }).limit(5),
+        supabase.from('orders').select('total, status').eq('store_id', store.id),
         supabase.from('products').select('*').eq('store_id', store.id),
         supabase.from('orders').select('*', { count: 'exact', head: true }).eq('store_id', store.id),
         supabase.from('seller_fees').select('total_sales').eq('seller_id', store.seller_id).maybeSingle(),
       ]);
 
       const allOrders = (orders || []) as any;
-      const pending = allOrders.filter((o: any) => o.status === 'pending').length;
-      const revenue = allOrders.filter((o: any) => o.status !== 'cancelled').reduce((s: number, o: any) => s + Number(o.total), 0);
+      const { pending, revenue } = sellerDashboardStats(allOrdersData as any);
 
       // Count orders with payment_status = 'paid' that are not yet delivered/cancelled
       const { count: paidCount } = await supabase.from('orders')
