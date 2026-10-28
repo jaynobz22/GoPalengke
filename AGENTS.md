@@ -36,3 +36,4 @@
 - Buyer COD payment choices use BuyerCodPayment behind arrival gating; QR/cash selection is presentation-only and never changes COD verification or remittance accounting.
 - Seller order navigation clears selected details; keyed details refresh the order before exposing actions and derive DONE from the refreshed row, preventing cached pending orders from reopening acceptance controls.
 - Buyer and rider multi-store navigation uses shared StoreOrderTabs and order-ID selection within buyer/checkout groups; switching remounts full details so payment and pickup actions always target the selected store while delivery accounting remains grouped.
+- Multi-store rider collection uses multiStorePickup rules and stable buyer-rider chat message IDs for explicit next-store departure; reconstruct saved departures after reload and re-read all active pickups before activating buyer-bound delivery to avoid duplicate notices and premature departure.

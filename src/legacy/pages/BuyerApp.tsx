@@ -8,6 +8,7 @@ import { canShowBuyerRiderTracking, mergeBuyerOrderUpdate } from '../lib/buyerRi
 import { canShowBuyerCodPayment } from '../lib/buyerCodPayment';
 import { orderArrivalPhase } from '../lib/orderArrivalPhase';
 import { BuyerCodPayment } from '../components/BuyerCodPayment';
+import { BuyerStoreTripNotice } from '../components/BuyerStoreTripNotice';
 import { supabase } from '../lib/supabase';
 import { notifyOrderSms } from '../lib/orderSms';
 import { useAuth } from '../lib/auth';
@@ -3545,6 +3546,9 @@ function OrderDetailView({ order, onBack, onOpenChat, onStoreSelect }: { onStore
         <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString('en-PH')}</p>
       </div>
       {showRiderTracking && <RiderStageBanner order={currentOrder} />}
+      {showRiderTracking && currentOrder.delivery_group_id && currentOrder.rider_id && (
+        <BuyerStoreTripNotice groupId={currentOrder.delivery_group_id} buyerId={currentOrder.buyer_id} riderId={currentOrder.rider_id} status={currentOrder.status} />
+      )}
 
       {/* Scheduled delivery banner */}
       {currentOrder.scheduled_delivery_at && (

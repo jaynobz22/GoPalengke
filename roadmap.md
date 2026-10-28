@@ -1,5 +1,12 @@
 # Roadmap: GoPalengke Migration (GitHub → Lovable)
 
+## Current: Next-store rider departure
+- [x] Add explicit next-store departure and persistent buyer chat notice after each pickup
+- [x] Gate buyer departure on fresh confirmation of every active store pickup
+- [x] Nineteen rule tests pass; isolated four-store browser verifies three saved notices and buyer departure only after every pickup
+- [ ] Push to the existing repository
+- [ ] Verify a real rider/buyer delivery (blocked: no authenticated external account session)
+
 ## Current: Buyer and rider per-store order tabs
 - [x] Separate multi-store buyer Active orders and submitted payments into store-name tabs
 - [x] Separate rider assigned deliveries and per-store pickup details into store-name tabs
