@@ -3278,6 +3278,11 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
               <Package size={48} className="mx-auto mb-3 opacity-50" />
               <p>Wala pang active order. Mag-order na!</p>
             </>
+          ) : subTab === 'review' ? (
+            <>
+              <Star size={48} className="mx-auto mb-3 opacity-50" />
+              <p>Wala nang order na kailangang i-review.</p>
+            </>
           ) : (
             <>
               <CheckCircle size={48} className="mx-auto mb-3 opacity-50" />
