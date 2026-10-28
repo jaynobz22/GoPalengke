@@ -1,5 +1,12 @@
 # Roadmap: GoPalengke Migration (GitHub → Lovable)
 
+## Current: Buyer and rider per-store order tabs
+- [x] Separate multi-store buyer Active orders and submitted payments into store-name tabs
+- [x] Separate rider assigned deliveries and per-store pickup details into store-name tabs
+- [x] Twenty-one grouping/payment/pickup tests pass; isolated browser verifies four tabs, selected-store navigation, QR gating and independent payment references; real checkout remains unverified
+- [ ] Push to existing GitHub repo
+- [ ] Verify with real buyer/rider accounts (blocked: existing external account system has no available authenticated session)
+
 ## Current: Rider billing automation and admin error
 - [x] Update first cycle (onboarding + platform), synchronize progress and new-delivery suspension; 13 tests and isolated payment-state checks pass; replacement SQL supplied
 - [x] Fix missing admin earnings ledger import; isolated admin overview and expanded payment reference render without page errors

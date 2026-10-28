@@ -29,6 +29,8 @@ import { OrderStepTracker, type StepInfo } from '../components/OrderStepTracker'
 import { CollapsibleSection } from '../components/CollapsibleSection';
 import { AdminVideoCall } from '../components/AdminVideoCall';
 import { MultiStoreTabs } from '../components/MultiStoreTabs';
+import { StoreOrderTabs } from '../components/StoreOrderTabs';
+import { groupStoreOrders, selectedStoreOrder } from '../lib/storeOrderGroups';
 import { AdminChat } from '../components/AdminChat';
 import { VideoCreditStore } from '../components/VideoCreditStore';
 import { useIncomingAdminCall } from '../lib/useAdminCall';
@@ -137,7 +139,7 @@ export function RiderApp() {
       <div className="flex-1 pb-24 overflow-y-auto">
         {tab === 'deliveries' && (
           selectedOrder ? (
-            <RiderOrderDetail order={selectedOrder} onBack={() => setSelectedOrder(null)} onOpenChat={openChat} />
+            <RiderOrderDetail key={selectedOrder.id} onStoreSelect={setSelectedOrder} order={selectedOrder} onBack={() => setSelectedOrder(null)} onOpenChat={openChat} />
           ) : (
             <RiderDeliveries onOrderClick={setSelectedOrder} canAct={canAct} onSignOut={signOut} onGoToProfile={() => setTab('profile')} />
           )
@@ -149,7 +151,7 @@ export function RiderApp() {
         )}
         {tab === 'history' && (
           selectedOrder ? (
-            <RiderOrderDetail order={selectedOrder} onBack={() => setSelectedOrder(null)} onOpenChat={openChat} />
+            <RiderOrderDetail key={selectedOrder.id} onStoreSelect={setSelectedOrder} order={selectedOrder} onBack={() => setSelectedOrder(null)} onOpenChat={openChat} />
           ) : (
             <RiderHistory onOrderClick={setSelectedOrder} />
           )
@@ -205,15 +207,7 @@ export function RiderApp() {
 }
 
 // Helper: group orders by delivery_group_id (or individual if null)
-function groupOrders(orders: (Order & { store: Store; buyer: { full_name: string } })[]) {
-  const map = new Map<string, (Order & { store: Store; buyer: { full_name: string } })[]>();
-  for (const order of orders) {
-    const key = order.delivery_group_id || order.id;
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(order);
-  }
-  return Array.from(map.entries()).map(([key, orders]) => ({ key, orders }));
-}
+const groupOrders = groupStoreOrders;
 
 // ============= RIDER REMINDER BANNER =============
 function RiderReminderBanner() {
@@ -256,6 +250,7 @@ function RiderReminderBanner() {
 function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { onOrderClick: (o: Order) => void; canAct: boolean; onSignOut: () => void; onGoToProfile: () => void }) {
   const { profile } = useAuth();
   const [availableOrders, setAvailableOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
+  const [selectedStores, setSelectedStores] = useState<Record<string, string>>({});
   const [myOrders, setMyOrders] = useState<(Order & { store: Store; buyer: { full_name: string } })[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
@@ -436,15 +431,17 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
       {assignedGroups.length > 0 && (
         <div className="px-5 pb-4 space-y-3">
           {assignedGroups.map(group => {
-            const first = group.orders[0];
+            const first = selectedStoreOrder(group.orders, selectedStores[group.key]);
+            if (!first) return null;
             const totalFee = group.orders.reduce((s, o) => s + o.delivery_fee + Number(o.seller_delivery_subsidy || 0), 0);
             return (
               <div key={group.key} className="rounded-2xl border-2 border-green-500 bg-green-50 p-4 shadow-lg shadow-green-500/20">
                 <p className="text-[11px] font-bold text-green-700 uppercase tracking-wide flex items-center gap-1"><Bike size={14} /> Bagong Delivery para sa iyo!</p>
                 <p className="font-bold text-gray-800 mt-1">{first.buyer?.full_name || 'Buyer'}</p>
+                <StoreOrderTabs orders={group.orders} selectedId={first.id} mode="rider" onSelect={id => setSelectedStores(prev => ({ ...prev, [group.key]: id }))} />
                 <div className="text-sm text-gray-600 mt-1 space-y-0.5">
-                  {group.orders.map((o, i) => (
-                    <p key={o.id} className="flex items-center gap-1.5"><StoreIcon size={14} className="text-green-600" /> {group.orders.length > 1 ? `Pickup ${i + 1}: ` : ''}{o.store?.name}</p>
+                  {[first].map((o, i) => (
+                    <p key={o.id} className="flex items-center gap-1.5"><StoreIcon size={14} className="text-green-600" /> {o.store?.name}</p>
                   ))}
                   <p className="flex items-center gap-1.5"><MapPin size={14} className="text-green-600" /> {first.delivery_barangay}, {first.delivery_city}</p>
                 </div>
@@ -479,11 +476,14 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
               const groups = groupOrders(activeOrders);
               return groups.map(group => {
                 const isMulti = group.orders.length > 1;
-                const first = group.orders[0];
+                const first = selectedStoreOrder(group.orders, selectedStores[group.key]);
+                if (!first) return null;
                 const totalFee = group.orders.reduce((s, o) => s + o.delivery_fee + Number(o.seller_delivery_subsidy || 0), 0);
                 return (
-                  <button key={group.key} onClick={() => onOrderClick(first)}
-                    className="w-full bg-white rounded-2xl border border-blue-200 p-4 text-left active:scale-[0.98] transition">
+                  <div key={group.key} className="border-b border-border pb-4">
+                    <StoreOrderTabs orders={group.orders} selectedId={first.id} mode="rider" onSelect={id => setSelectedStores(prev => ({ ...prev, [group.key]: id }))} />
+                    <Button variant="ghost" onClick={() => onOrderClick(first)}
+                    className="h-auto w-full block whitespace-normal text-left px-0 py-2">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <p className="font-semibold text-gray-800">{first.buyer?.full_name || 'Buyer'}</p>
@@ -495,16 +495,16 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
                         {ORDER_STATUS_LABELS[first.status]}
                       </span>
                     </div>
-                    <RiderStageBanner order={group.orders.find(o => o.status === 'ready_for_pickup') || first} compact />
+                    <RiderStageBanner order={first} compact />
                     {isMulti ? (
                       <>
                         <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
                           <StoreIcon size={14} /><span>{group.orders.length} tindahan:</span>
                         </div>
                         <div className="flex flex-wrap gap-1 mb-1">
-                          {group.orders.map((o, i) => (
+                          {[first].map((o, i) => (
                             <span key={o.id} className="text-xs text-gray-600 font-medium">
-                              {o.store.name}{i < group.orders.length - 1 ? ',' : ''}
+                              {o.store.name}
                             </span>
                           ))}
                         </div>
@@ -521,7 +521,8 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
                       <span className="text-sm text-gray-400">₱{totalFee.toFixed(0)} ang fee</span>
                       <span className="text-xs text-blue-600 font-medium">Tignan ang details →</span>
                     </div>
-                  </button>
+                    </Button>
+                  </div>
                 );
               });
             })()}
@@ -602,7 +603,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
 }
 
 // ============= RIDER ORDER DETAIL =============
-function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack: () => void; onOpenChat: (order: Order, buyerName: string) => void }) {
+function RiderOrderDetail({ order, onBack, onOpenChat, onStoreSelect }: { onStoreSelect: (order: Order) => void; order: Order; onBack: () => void; onOpenChat: (order: Order, buyerName: string) => void }) {
   const { profile } = useAuth();
   const [items, setItems] = useState<OrderItem[]>([]);
   const [store, setStore] = useState<Store | null>(null);
@@ -818,6 +819,10 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
         </button>
         <h2 className="text-xl font-bold text-gray-800">Delivery Details</h2>
       </div>
+      <StoreOrderTabs orders={allStores.map(s => s.order)} selectedId={currentOrder.id} mode="rider" onSelect={id => {
+        const selected = selectedStoreOrder(allStores.map(s => s.order), id);
+        if (selected) onStoreSelect(selected);
+      }} />
 
       {/* Status badge */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
@@ -891,7 +896,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
       )}
 
       {allStores.length > 1 && (
-        <MultiStoreTabs orders={allStores.map(s => s.order)} mode="rider" showCod={showRemittance} onCodSubmitted={(id, reference) => {
+        <MultiStoreTabs selectedId={currentOrder.id} orders={allStores.map(s => s.order)} mode="rider" showCod={showRemittance} onCodSubmitted={(id, reference) => {
           if (id === currentOrder.id) setCurrentOrder(prev => ({ ...prev, cod_payment_reference: reference }));
           else setSiblingOrders(prev => prev.map(o => o.id === id ? { ...o, cod_payment_reference: reference } : o));
         }} />
@@ -1008,7 +1013,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
       {(currentOrder.status === 'ready_for_pickup' || currentOrder.status === 'picked_up') && store && (() => {
         // Habang hindi pa na-pick up LAHAT: rider → susunod na tindahan lang (walang buyer)
         const toBuyer = currentOrder.status === 'picked_up';
-        const nextStore = allStores.find(s => !pickedUpStores.has(s.order.store_id))?.order.store || store;
+        const nextStore = store;
         const sCoords = getStoreCoords(nextStore);
         const bCoords = getDeliveryCoords({
           lat: currentOrder.delivery_lat,
@@ -1051,7 +1056,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat }: { order: Order; onBack:
             <span className="text-[10px] font-bold text-white bg-brand-500 px-2 py-0.5 rounded-full">MULTI-PICKUP</span>
           )}
         </h3>
-        {allStores.map((s, idx) => {
+        {allStores.filter(s => s.order.id === currentOrder.id).map((s, idx) => {
           const isPickedUp = pickedUpStores.has(s.order.store_id);
           const storeData = s.order.store;
           return (

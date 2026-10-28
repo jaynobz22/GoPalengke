@@ -55,7 +55,9 @@ import { ImageUploadField } from '../components/ImageUploadField';
 import { ReviewForm, ReviewSection } from '../components/Reviews';
 import { OrderStepTracker, type StepInfo } from '../components/OrderStepTracker';
 import { VideoCreditStore } from '../components/VideoCreditStore';
-import { MultiStoreTabs } from '../components/MultiStoreTabs';
+import { StoreOrderTabs } from '../components/StoreOrderTabs';
+import { BuyerActiveStoreGroup } from '../components/BuyerActiveStoreGroup';
+import { groupStoreOrders, selectedStoreOrder, canShowStorePayment } from '../lib/storeOrderGroups';
 import { AdminVideoCall } from '../components/AdminVideoCall';
 import { AdminChat } from '../components/AdminChat';
 import { LoginReminderPopup } from '../components/LoginReminderPopup';
@@ -343,14 +345,14 @@ export function BuyerApp() {
           <PaymentSummaryView orders={paymentGroupOrders} onDone={() => { setTab('orders'); setView('browse'); }} onBack={backToBrowse} />
         )}
         {tab === 'home' && view === 'order_detail' && selectedOrder && (
-          <OrderDetailView order={selectedOrder} onBack={backToBrowse} onOpenChat={openChat} />
+          <OrderDetailView key={selectedOrder.id} onStoreSelect={setSelectedOrder} order={selectedOrder} onBack={backToBrowse} onOpenChat={openChat} />
         )}
 
         {tab === 'orders' && (
           <OrdersView onOrderClick={navigateToOrder} />
         )}
         {tab === 'orders' && view === 'order_detail' && selectedOrder && (
-          <OrderDetailView order={selectedOrder} onBack={() => { setView('browse'); setSelectedOrder(null); }} onOpenChat={openChat} />
+          <OrderDetailView key={selectedOrder.id} onStoreSelect={setSelectedOrder} order={selectedOrder} onBack={() => { setView('browse'); setSelectedOrder(null); }} onOpenChat={openChat} />
         )}
 
         {tab === 'cart' && (
@@ -2939,6 +2941,8 @@ function PaymentSummaryView({ orders, onDone, onBack }: { orders: Order[]; onDon
   const [paidStatus, setPaidStatus] = useState<Record<string, boolean>>({});
   const [orderStatus, setOrderStatus] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState<string | null>(null);
+  const [selectedPaymentOrderId, setSelectedPaymentOrderId] = useState(orders[0]?.id);
+  const selectedPaymentOrder = selectedStoreOrder(orders, selectedPaymentOrderId);
 
   useEffect(() => {
     async function loadStores() {
@@ -3003,13 +3007,14 @@ function PaymentSummaryView({ orders, onDone, onBack }: { orders: Order[]; onDon
         </p>
       </div>
 
-      {/* Per-store payment cards */}
-      {orders.map((order) => {
+      <StoreOrderTabs orders={orders.map(o => ({ ...o, store: stores[o.store_id], payment_status: paidStatus[o.id] ? 'paid' : o.payment_status }))} selectedId={selectedPaymentOrder?.id} onSelect={setSelectedPaymentOrderId} />
+      {/* Selected store payment; other stores retain their own state */}
+      {(selectedPaymentOrder ? [selectedPaymentOrder] : []).map((order) => {
         const store = stores[order.store_id];
         const isPaid = paidStatus[order.id] || order.payment_status === 'paid';
         const amount = Number(order.total) + Number(order.delivery_fee);
         const curStatus = orderStatus[order.id] || order.status;
-        const sellerConfirmed = !!curStatus && curStatus !== 'pending' && curStatus !== 'cancelled';
+        const sellerConfirmed = canShowStorePayment({ ...order, status: curStatus, payment_status: isPaid ? 'paid' : order.payment_status });
 
         return (
           <div key={order.id} className={`bg-white rounded-2xl border-2 p-4 mb-3 transition ${isPaid ? 'border-green-300 bg-green-50/30' : 'border-gray-100'}`}>
@@ -3193,17 +3198,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
 
   const displayed = subTab === 'active' ? activeOrders : subTab === 'review' ? reviewOrders : historyOrders;
 
-  // Group orders by delivery_group_id; ungrouped orders (null) stay as individual items
-  const grouped: { key: string; orders: (Order & { store: Store })[] }[] = [];
-  const groupMap = new Map<string, (Order & { store: Store })[]>();
-  for (const order of displayed) {
-    const gid = order.delivery_group_id || order.id;
-    if (!groupMap.has(gid)) groupMap.set(gid, []);
-    groupMap.get(gid)!.push(order);
-  }
-  for (const [key, groupOrders] of groupMap) {
-    grouped.push({ key, orders: groupOrders });
-  }
+  const grouped = groupStoreOrders(displayed);
 
   return (
     <div className="px-5 py-4">
@@ -3371,6 +3366,10 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
               );
             }
 
+            if (subTab === 'active') {
+              return <BuyerActiveStoreGroup key={group.key} orders={group.orders} onOrderClick={onOrderClick} />;
+            }
+
             // Multi-store grouped card
             const canDeleteMulti = !isActive && !groupNeedsReview;
             return (
@@ -3448,7 +3447,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
 }
 
 // ============= ORDER DETAIL VIEW =============
-function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: () => void; onOpenChat: (orderId: string, buyerId: string, type: 'buyer_seller' | 'buyer_rider', partnerName: string, partnerRole: string, sellerId?: string | null, riderId?: string | null) => void }) {
+function OrderDetailView({ order, onBack, onOpenChat, onStoreSelect }: { onStoreSelect: (order: Order) => void; order: Order; onBack: () => void; onOpenChat: (orderId: string, buyerId: string, type: 'buyer_seller' | 'buyer_rider', partnerName: string, partnerRole: string, sellerId?: string | null, riderId?: string | null) => void }) {
   const { profile } = useAuth();
   const [items, setItems] = useState<OrderItem[]>([]);
   const [store, setStore] = useState<Store | null>(null);
@@ -3530,6 +3529,10 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
         </button>
         <h2 className="text-xl font-bold text-gray-800">Order Details</h2>
       </div>
+      {store && <StoreOrderTabs orders={[{ ...currentOrder, store }, ...siblingOrders]} selectedId={currentOrder.id} onSelect={id => {
+        const selected = selectedStoreOrder([{ ...currentOrder, store }, ...siblingOrders], id);
+        if (selected) onStoreSelect(selected);
+      }} />}
 
       {/* Status badge */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
@@ -3882,10 +3885,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
       </CollapsibleSection>
 
 
-      {/* Multi-store: one tab per store */}
-      {siblingOrders.length > 0 && store && (
-        <MultiStoreTabs orders={[{ ...currentOrder, store }, ...siblingOrders]} mode="buyer" />
-      )}
+
       {false && siblingOrders.length > 0 && (
         <div className="bg-white rounded-2xl border border-brand-200 p-4 mb-3">
           <div className="flex items-center gap-2 mb-3">

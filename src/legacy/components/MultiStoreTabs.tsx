@@ -6,11 +6,13 @@ import { codRemitToSeller } from '../lib/codRemit';
 import { supabase } from '../lib/supabase';
 import type { Order, OrderItem, Store } from '../lib/types';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '../lib/types';
+import { StoreOrderTabs } from './StoreOrderTabs';
+import { selectedStoreOrder, canShowStorePayment } from '../lib/storeOrderGroups';
 
 type GroupOrder = Order & { store: Store };
 
-export function MultiStoreTabs({ orders, mode, showCod, onCodSubmitted }: { orders: GroupOrder[]; mode: 'rider' | 'buyer'; showCod?: boolean; onCodSubmitted?: (orderId: string, reference: string) => void }) {
-  const [tab, setTab] = useState(0);
+export function MultiStoreTabs({ orders, mode, showCod, onCodSubmitted, selectedId }: { orders: GroupOrder[]; mode: 'rider' | 'buyer'; showCod?: boolean; onCodSubmitted?: (orderId: string, reference: string) => void; selectedId?: string }) {
+  const [tabId, setTabId] = useState(orders[0]?.id);
   const [items, setItems] = useState<Record<string, OrderItem[]>>({});
   const [refs, setRefs] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<Record<string, string>>({});
@@ -27,8 +29,9 @@ export function MultiStoreTabs({ orders, mode, showCod, onCodSubmitted }: { orde
   }, [ids]);
 
   if (orders.length < 2) return null;
-  const o = orders[Math.min(tab, orders.length - 1)];
+  const o = selectedStoreOrder(orders, selectedId || tabId);
   if (!o) return null;
+  const tab = orders.findIndex(order => order.id === o.id);
   const amount = Number(o.total) + Number(o.delivery_fee);
   const ref = submitted[o.id] || o.cod_payment_reference;
 
@@ -47,17 +50,7 @@ export function MultiStoreTabs({ orders, mode, showCod, onCodSubmitted }: { orde
   return (
     <div className="bg-white rounded-2xl border border-brand-200 p-3 mb-3">
       <p className="text-xs font-bold text-brand-700 mb-2">🏪 {orders.length} na tindahan sa order na ito</p>
-      <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-1 px-1">
-        {orders.map((x, i) => {
-          const done = !!(submitted[x.id] || x.cod_payment_reference);
-          return (
-            <button key={x.id} onClick={() => setTab(i)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition ${i === tab ? 'bg-brand-600 text-white border-brand-600' : 'bg-brand-50 text-brand-700 border-brand-200'}`}>
-              Store {i + 1}{showCod && done ? ' ✓' : ''}
-            </button>
-          );
-        })}
-      </div>
+      {!selectedId && <StoreOrderTabs orders={orders} selectedId={o.id} onSelect={setTabId} mode={mode} />}
 
       <div className="border-t border-gray-100 pt-3">
         <div className="flex items-start justify-between gap-2 mb-2">
@@ -79,7 +72,7 @@ export function MultiStoreTabs({ orders, mode, showCod, onCodSubmitted }: { orde
           <span>Kabuuan (Store {tab + 1})</span><span>₱{amount.toFixed(2)}</span>
         </div>
 
-        {mode === 'buyer' && o.payment_method === 'qr_code' && o.payment_status !== 'paid' && o.store.qr_code_url && (
+        {mode === 'buyer' && canShowStorePayment(o) && o.store.qr_code_url && (
           <a href={o.store.qr_code_url} target="_blank" rel="noopener noreferrer" className="mt-2 block text-center text-xs font-semibold text-brand-700 underline">Buksan ang QR ng tindahang ito</a>
         )}
 
