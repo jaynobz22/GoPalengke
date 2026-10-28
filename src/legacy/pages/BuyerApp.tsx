@@ -2937,6 +2937,7 @@ function PaymentSummaryView({ orders, onDone, onBack }: { orders: Order[]; onDon
   const [stores, setStores] = useState<Record<string, Store>>({});
   const [paymentRefs, setPaymentRefs] = useState<Record<string, string>>({});
   const [paidStatus, setPaidStatus] = useState<Record<string, boolean>>({});
+  const [orderStatus, setOrderStatus] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState<string | null>(null);
 
   useEffect(() => {
@@ -2958,6 +2959,7 @@ function PaymentSummaryView({ orders, onDone, onBack }: { orders: Order[]; onDon
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload: any) => {
         if (payload.new && orderIds.includes(payload.new.id)) {
           setPaidStatus(prev => ({ ...prev, [payload.new.id]: payload.new.payment_status === 'paid' }));
+          if (payload.new.status) setOrderStatus(prev => ({ ...prev, [payload.new.id]: payload.new.status }));
         }
       })
       .subscribe();
@@ -3006,6 +3008,8 @@ function PaymentSummaryView({ orders, onDone, onBack }: { orders: Order[]; onDon
         const store = stores[order.store_id];
         const isPaid = paidStatus[order.id] || order.payment_status === 'paid';
         const amount = Number(order.total) + Number(order.delivery_fee);
+        const curStatus = orderStatus[order.id] || order.status;
+        const sellerConfirmed = !!curStatus && curStatus !== 'pending' && curStatus !== 'cancelled';
 
         return (
           <div key={order.id} className={`bg-white rounded-2xl border-2 p-4 mb-3 transition ${isPaid ? 'border-green-300 bg-green-50/30' : 'border-gray-100'}`}>
@@ -3038,7 +3042,13 @@ function PaymentSummaryView({ orders, onDone, onBack }: { orders: Order[]; onDon
             </div>
 
             {/* QR Code section - only for QR payments */}
-            {isQR && !isPaid && store?.qr_code_url && (
+            {isQR && !isPaid && !sellerConfirmed && (
+              <div className="mt-3 flex items-center gap-2 text-sm text-amber-700 bg-amber-50 rounded-xl p-3">
+                <Clock size={16} className="text-amber-500 flex-shrink-0" />
+                <p>{curStatus === 'cancelled' ? 'Hindi tinanggap ng seller ang order na ito. Huwag nang magbayad.' : 'Hinihintay pa ang kumpirmasyon ng seller (stocks). Lalabas ang QR code dito kapag na-confirm na — huwag munang magbayad.'}</p>
+              </div>
+            )}
+            {isQR && !isPaid && sellerConfirmed && store?.qr_code_url && (
               <div className="mt-3">
                 {/* QR Code Image */}
                 <div className="bg-gray-50 rounded-xl p-4 flex justify-center">
@@ -3090,7 +3100,7 @@ function PaymentSummaryView({ orders, onDone, onBack }: { orders: Order[]; onDon
             )}
 
             {/* QR code not uploaded */}
-            {isQR && !isPaid && !store?.qr_code_url && (
+            {isQR && !isPaid && sellerConfirmed && !store?.qr_code_url && (
               <div className="mt-3 flex items-center gap-2 text-sm text-gray-500 bg-amber-50 rounded-xl p-3">
                 <ImageOff size={16} className="text-amber-500 flex-shrink-0" />
                 <p>Wala pang QR code ang tindahan na ito. Makipag-ugnayan sa seller via chat.</p>
@@ -3872,7 +3882,7 @@ function OrderDetailView({ order, onBack, onOpenChat }: { order: Order; onBack: 
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {sib.payment_method === 'qr_code' && sib.store.qr_code_url && !isPaid && (
+                  {sib.payment_method === 'qr_code' && sib.store.qr_code_url && !isPaid && sib.status !== 'pending' && sib.status !== 'cancelled' && (
                     <a href={sib.store.qr_code_url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-600 font-medium">
                       <QrCode size={16} className="inline" /> QR
                     </a>
