@@ -3139,7 +3139,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
   const [orders, setOrders] = useState<(Order & { store: Store })[]>([]);
   const [reviewMap, setReviewMap] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
-  const [subTab, setSubTab] = useState<'active' | 'history'>('active');
+  const [subTab, setSubTab] = useState<'active' | 'review' | 'history'>('active');
 
   const loadOrders = useCallback(async () => {
     if (!profile) return;
@@ -3183,14 +3183,15 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
     return false;
   }, [reviewMap]);
 
-  const activeOrders = orders.filter(o => activeStatuses.includes(o.status) || needsReview(o));
+  const activeOrders = orders.filter(o => activeStatuses.includes(o.status));
+  const reviewOrders = orders.filter(needsReview);
   const historyOrders = orders.filter(o => !activeStatuses.includes(o.status) && !needsReview(o));
   const activeCount = activeOrders.length;
   const pendingReviewCount = orders.filter(needsReview).length;
 
   if (loading) return <div className="p-5"><div className="h-32 bg-gray-100 rounded-2xl animate-pulse" /></div>;
 
-  const displayed = subTab === 'active' ? activeOrders : historyOrders;
+  const displayed = subTab === 'active' ? activeOrders : subTab === 'review' ? reviewOrders : historyOrders;
 
   // Group orders by delivery_group_id; ungrouped orders (null) stay as individual items
   const grouped: { key: string; orders: (Order & { store: Store })[] }[] = [];
@@ -3225,6 +3226,20 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
           )}
         </button>
         <button
+          onClick={() => setSubTab('review')}
+          className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
+            subTab === 'review' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500'
+          }`}
+        >
+          <Star size={16} />
+          I-review
+          {pendingReviewCount > 0 && (
+            <span className="bg-amber-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              {pendingReviewCount > 9 ? '9+' : pendingReviewCount}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => setSubTab('history')}
           className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
             subTab === 'history' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500'
@@ -3247,11 +3262,11 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
         </div>
       )}
 
-      {subTab === 'active' && pendingReviewCount > 0 && (
+      {subTab === 'review' && pendingReviewCount > 0 && (
         <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2">
           <Star size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-amber-700">
-            May <strong>{pendingReviewCount}</strong> na-deliver na order na wala pang review. Kumusta ang iyong experience sa tindahan at rider? Mag-iwan ng review para matapos at mailipat ito sa History.
+            May <strong>{pendingReviewCount}</strong> na-deliver na order na wala pang review. Kumusta ang iyong experience sa tindahan at rider? Mag-iwan ng review para mailipat ito sa Kasaysayan.
           </p>
         </div>
       )}
