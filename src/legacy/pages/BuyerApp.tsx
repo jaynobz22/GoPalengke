@@ -3210,45 +3210,51 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
       <h2 className="text-xl font-bold text-gray-800 mb-4">Mga Orders ko</h2>
 
       {/* Sub-tabs */}
-      <div className="flex gap-2 mb-4 bg-gray-100 rounded-xl p-1">
+      <div className="flex gap-1.5 mb-4 bg-gray-100 rounded-xl p-1">
         <button
           onClick={() => setSubTab('active')}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
-            subTab === 'active' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500'
+          className={`flex-1 min-w-0 px-0.5 py-2 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-0.5 whitespace-nowrap ${
+            subTab === 'active' ? 'bg-brand-600 text-white shadow-sm' : 'bg-brand-50 text-brand-700'
           }`}
         >
-          <Clock size={16} />
+          <Clock size={13} className="flex-shrink-0" />
           Active
           {activeCount > 0 && (
-            <span className="bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+            <span className={`text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
+              subTab === 'active' ? 'bg-white text-brand-700' : 'bg-red-500 text-white'
+            }`}>
               {activeCount > 9 ? '9+' : activeCount}
             </span>
           )}
         </button>
         <button
           onClick={() => setSubTab('review')}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
-            subTab === 'review' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500'
+          className={`flex-1 min-w-0 px-0.5 py-2 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-0.5 whitespace-nowrap ${
+            subTab === 'review' ? 'bg-amber-500 text-white shadow-sm' : 'bg-amber-50 text-amber-700'
           }`}
         >
-          <Star size={16} />
+          <Star size={13} className="flex-shrink-0" />
           For Review
           {pendingReviewCount > 0 && (
-            <span className="bg-amber-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+            <span className={`text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
+              subTab === 'review' ? 'bg-white text-amber-700' : 'bg-amber-500 text-white'
+            }`}>
               {pendingReviewCount > 9 ? '9+' : pendingReviewCount}
             </span>
           )}
         </button>
         <button
           onClick={() => setSubTab('history')}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
-            subTab === 'history' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500'
+          className={`flex-1 min-w-0 px-0.5 py-2 rounded-lg text-[11px] font-semibold transition flex items-center justify-center gap-0.5 whitespace-nowrap ${
+            subTab === 'history' ? 'bg-gray-700 text-white shadow-sm' : 'bg-gray-200 text-gray-700'
           }`}
         >
-          <CheckCircle size={16} />
+          <CheckCircle size={13} className="flex-shrink-0" />
           History
           {historyOrders.length > 0 && (
-            <span className="bg-gray-300 text-gray-600 text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+            <span className={`text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
+              subTab === 'history' ? 'bg-white text-gray-700' : 'bg-gray-500 text-white'
+            }`}>
               {historyOrders.length > 9 ? '9+' : historyOrders.length}
             </span>
           )}
