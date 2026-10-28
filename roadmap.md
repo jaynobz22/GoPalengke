@@ -4,7 +4,7 @@
 - [x] Add explicit next-store departure and persistent buyer chat notice after each pickup
 - [x] Gate buyer departure on fresh confirmation of every active store pickup
 - [x] Nineteen rule tests pass; isolated four-store browser verifies three saved notices and buyer departure only after every pickup
-- [ ] Push to the existing repository
+- [x] Push to the existing repository (3759dbe)
 - [ ] Verify a real rider/buyer delivery (blocked: no authenticated external account session)
 
 ## Current: Buyer and rider per-store order tabs
