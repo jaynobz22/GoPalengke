@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { lockedGroupRider } from '../lib/multiStoreRider';
 import { stockLevel, daysLeft } from '../lib/inventoryStatus';
 import { sellerDashboardStats } from '../lib/sellerDashboardStats';
 import { isBuyerArranged, getPickedRiderId } from '../lib/buyerCargo';
@@ -1829,6 +1830,20 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
 
   async function loadAvailableRiders() {
     setLoadingRiders(true);
+
+    // Multi-store: kung may rider na ang ibang tindahan ng parehong buyer, siya lang ang pwede
+    if (currentOrder.delivery_group_id) {
+      const { data: sibs } = await supabase.from('orders').select('rider_id, status')
+        .eq('delivery_group_id', currentOrder.delivery_group_id).neq('id', currentOrder.id);
+      const locked = lockedGroupRider((sibs || []) as any[]);
+      if (locked) {
+        const { data: p } = await supabase.from('profiles').select('id, full_name, phone, avatar_url').eq('id', locked).maybeSingle();
+        setAvailableRiders(p ? [{ ...(p as any), busy: 0 }] : []);
+        setNearbyRiders([]);
+        setLoadingRiders(false);
+        return;
+      }
+    }
 
     const [ridersRes, activeOrdersRes] = await Promise.all([
       supabase.from('profiles').select('id, full_name, phone, avatar_url').eq('role', 'rider').eq('is_available', true).order('full_name', { ascending: true }),

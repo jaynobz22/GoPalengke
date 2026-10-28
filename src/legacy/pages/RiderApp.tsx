@@ -440,6 +440,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
                 <p className="text-[11px] font-bold text-green-700 uppercase tracking-wide flex items-center gap-1"><Bike size={14} /> Bagong Delivery para sa iyo!</p>
                 <p className="font-bold text-gray-800 mt-1">{first.buyer?.full_name || 'Buyer'}</p>
                 <StoreOrderTabs orders={group.orders} selectedId={first.id} mode="rider" onSelect={id => setSelectedStores(prev => ({ ...prev, [group.key]: id }))} />
+{group.orders.length > 1 && <p className="mt-2 rounded-lg bg-amber-100 px-2 py-1.5 text-xs font-semibold text-amber-800">📦 Iisang buyer, {group.orders.length} tindahan ang pi-pick up mo (+₱10 kada dagdag na tindahan).</p>}
                 <div className="text-sm text-gray-600 mt-1 space-y-0.5">
                   {[first].map((o, i) => (
                     <p key={o.id} className="flex items-center gap-1.5"><StoreIcon size={14} className="text-green-600" /> {o.store?.name}</p>
@@ -483,6 +484,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
                 return (
                   <div key={group.key} className="border-b border-border pb-4">
                     <StoreOrderTabs orders={group.orders} selectedId={first.id} mode="rider" onSelect={id => setSelectedStores(prev => ({ ...prev, [group.key]: id }))} />
+{group.orders.length > 1 && <p className="mt-2 rounded-lg bg-amber-100 px-2 py-1.5 text-xs font-semibold text-amber-800">📦 Iisang buyer, {group.orders.length} tindahan ang pi-pick up mo (+₱10 kada dagdag na tindahan).</p>}
                     <Button variant="ghost" onClick={() => onOrderClick(first)}
                     className="h-auto w-full block whitespace-normal text-left px-0 py-2">
                     <div className="flex items-center justify-between mb-2">

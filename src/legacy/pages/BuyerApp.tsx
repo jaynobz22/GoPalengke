@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { extraStorePickupFee, EXTRA_PICKUP_FEE } from '../lib/multiStoreRider';
 import { MOTORCYCLE_MAX_KG, buildBuyerNote, withPickedRider } from '../lib/buyerCargo';
 import { DemoBadge } from '../components/DemoBadge';
 import { shareToMessenger } from '../lib/messengerShare';
@@ -2085,7 +2086,8 @@ function CheckoutView({ onBack, onOrderPlaced, canAct, onChatRider }: { onBack: 
       return applyFree(getBaseFeeForStore(store, deliverable.flat()), { isPrimary: true, primaryStoreName: null, combinedStores: deliverable.length });
     }
     const own = items ? estimateWeightKg(items) : 0;
-    return { fee: 0, distanceKm: 0, isEstimated: false, distanceCharge: 0, weightSurcharge: 0, totalWeightKg: own, isNcr: isNcrRegion(store.region, store.city), tier: getRequiredTier(own), riderNet: 0, commission: 0, isPrimary: false, primaryStoreName: primaryStore.name, combinedStores: deliverable.length, freeDelivery: false, sellerSubsidy: 0 };
+    const extra = extraStorePickupFee(false, deliverable.length);
+    return { fee: extra, distanceKm: 0, isEstimated: false, distanceCharge: 0, weightSurcharge: 0, totalWeightKg: own, isNcr: isNcrRegion(store.region, store.city), tier: getRequiredTier(own), riderNet: extra, commission: 0, isPrimary: false, primaryStoreName: primaryStore.name, combinedStores: deliverable.length, freeDelivery: false, sellerSubsidy: 0 };
   }
 
   // Calculate tiered fee per store: distance charge + weight surcharge
@@ -2528,10 +2530,10 @@ function CheckoutView({ onBack, onOrderPlaced, canAct, onChatRider }: { onBack: 
                 </div>
                 <div className="flex justify-between text-sm font-semibold text-gray-700 pt-1.5 border-t border-gray-50">
                   <span>Delivery Fee</span>
-                  <span>₱0.00</span>
+                  <span>{fee > 0 ? `₱${fee.toFixed(2)}` : '₱0.00'}</span>
                 </div>
                 <p className="text-xs text-brand-700 bg-brand-50 rounded-lg p-2">
-                  Walang base fee at distance charge dito. Idinagdag na ang bigat ng karga sa delivery fee ng <strong>{primaryStoreName}</strong>. Wala kang babayaran sa rider para sa tindahang ito.
+                  Walang base fee at distance charge dito. Idinagdag na ang bigat ng karga sa delivery fee ng <strong>{primaryStoreName}</strong>. {fee > 0 ? (paymentMethod === 'cod' ? `Kasama sa cash na ibibigay mo sa rider ang ₱${fee.toFixed(0)} na pickup fee para sa tindahang ito.` : `Kasama sa babayaran mo sa tindahang ito ang ₱${fee.toFixed(0)} na pickup fee para sa rider.`) : 'Wala kang babayaran sa rider para sa tindahang ito.'}
                 </p>
               </div>
             ) : fee === 0 && deliveryPin && !roadDistanceCache[store.id] ? (
@@ -2565,7 +2567,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct, onChatRider }: { onBack: 
               <div className="mt-3 pt-3 border-t border-gray-50 space-y-1.5">
                 {combinedStores > 1 && (
                   <p className="text-xs text-brand-700 bg-brand-50 rounded-lg p-2">
-                    Isang delivery fee lang para sa {combinedStores} tindahan. Kasama na rito ang pinagsamang bigat ng karga. {paymentMethod !== 'cod' && 'Ang tindahang ito ang tatanggap ng bayad para sa rider.'}
+                    Isang delivery fee lang para sa {combinedStores} tindahan. Kasama na rito ang pinagsamang bigat ng karga. May ₱{EXTRA_PICKUP_FEE} na pickup fee sa rider kada dagdag na tindahan. {paymentMethod !== 'cod' && 'Ang tindahang ito ang tatanggap ng bayad para sa rider.'}
                   </p>
                 )}
                 <div className="flex items-center justify-between text-xs">
