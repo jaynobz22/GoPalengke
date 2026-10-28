@@ -3803,9 +3803,9 @@ function OrderDetailView({ order, onBack, onOpenChat, onStoreSelect }: { onStore
       </OrderStepTracker>
 
       {/* Items */}
-      <CollapsibleSection title="Mga Paninda at Total">
+      <CollapsibleSection title="Mga Binili at Total">
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
-        <h3 className="font-semibold text-gray-800 mb-3">Mga Paninda</h3>
+        <h3 className="font-semibold text-gray-800 mb-3">Mga Binili</h3>
         {items.map(item => (
           <div key={item.id} className="flex items-center gap-3 py-2">
             <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
