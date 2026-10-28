@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { latestVisibleMessage } from '../lib/chatNotices';
 import { isBuyerArranged } from '../lib/buyerCargo';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { watchOrders } from '../lib/liveOrders';
@@ -1841,13 +1842,13 @@ function RiderMessagesView({ onOpenChat, adminConversations, onOpenAdminChat }: 
           .maybeSingle();
         const otherName = buyer?.full_name || 'Buyer';
         const otherRole = 'Buyer';
-        const { data: lastMsg } = await supabase
+        const { data: recentMsgs } = await supabase
           .from('messages')
-          .select('body, created_at, sender_id, read_at')
+          .select('body, created_at, sender_id, read_at, message_type')
           .eq('conversation_id', conv.id)
           .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .limit(10);
+        const lastMsg = latestVisibleMessage(recentMsgs, userId);
         const { count } = await supabase
           .from('messages')
           .select('*', { count: 'exact', head: true })

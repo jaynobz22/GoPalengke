@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { latestVisibleMessage } from '../lib/chatNotices';
 import { extraStorePickupFee, EXTRA_PICKUP_FEE } from '../lib/multiStoreRider';
 import { MOTORCYCLE_MAX_KG, buildBuyerNote, withPickedRider } from '../lib/buyerCargo';
 import { DemoBadge } from '../components/DemoBadge';
@@ -4363,13 +4364,13 @@ function MessagesView({ onOpenChat, adminConversations, onOpenAdminChat }: { onO
           otherName = rider?.full_name || 'Rider';
           otherRole = 'Rider';
         }
-        const { data: lastMsg } = await supabase
+        const { data: recentMsgs } = await supabase
           .from('messages')
-          .select('body, created_at, sender_id, read_at')
+          .select('body, created_at, sender_id, read_at, message_type')
           .eq('conversation_id', conv.id)
           .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .limit(10);
+        const lastMsg = latestVisibleMessage(recentMsgs, userId);
         const { count } = await supabase
           .from('messages')
           .select('*', { count: 'exact', head: true })

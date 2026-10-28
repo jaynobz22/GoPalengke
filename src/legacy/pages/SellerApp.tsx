@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { latestVisibleMessage } from '../lib/chatNotices';
 import { lockedGroupRider } from '../lib/multiStoreRider';
 import { stockLevel, daysLeft } from '../lib/inventoryStatus';
 import { sellerDashboardStats } from '../lib/sellerDashboardStats';
@@ -2710,13 +2711,13 @@ function SellerMessagesView({ onOpenChat, adminConversations, onOpenAdminChat }:
           otherName = rider?.full_name || 'Rider';
           otherRole = 'Rider';
         }
-        const { data: lastMsg } = await supabase
+        const { data: recentMsgs } = await supabase
           .from('messages')
-          .select('body, created_at, sender_id, read_at')
+          .select('body, created_at, sender_id, read_at, message_type')
           .eq('conversation_id', conv.id)
           .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .limit(10);
+        const lastMsg = latestVisibleMessage(recentMsgs, userId);
         const { count } = await supabase
           .from('messages')
           .select('*', { count: 'exact', head: true })

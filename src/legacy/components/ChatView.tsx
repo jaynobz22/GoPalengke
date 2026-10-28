@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { isChatSystemNotice, isNoticeHiddenForViewer } from '../lib/chatNotices';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
@@ -779,6 +780,8 @@ export function ChatView({
         )}
         {messages.map(msg => {
           const isMine = msg.sender_id === profile?.id;
+          // Order-status notices are addressed to the other party; the sender never sees them.
+          if (isNoticeHiddenForViewer(msg, profile?.id)) return null;
 
           if (msg.message_type === 'video_call') {
             const status = msg.call_status;
@@ -881,7 +884,7 @@ export function ChatView({
           }
 
           // Official status updates: always shown as GoPalengke Admin notice, never as a user's message
-          const isSystemNotice = msg.message_type === 'system' || /^(Nakuha na ng rider|Naihatid na ang order|Paparating na ang rider|Na-deliver na)/i.test((msg.body || '').trim());
+          const isSystemNotice = isChatSystemNotice(msg);
           if (isSystemNotice) {
             return (
               <div key={msg.id} className="flex justify-center">
