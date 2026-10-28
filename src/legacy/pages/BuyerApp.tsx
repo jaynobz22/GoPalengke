@@ -3174,7 +3174,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
 
   const activeStatuses: OrderStatus[] = ['pending', 'accepted', 'preparing', 'ready_for_pickup', 'picked_up'];
 
-  // Ang delivered na order ay nananatili sa "Aktibo" hangga't hindi pa nakakapag-iwan ng review ang buyer
+  // Ang delivered na order ay nananatili sa "Active" hangga't hindi pa nakakapag-iwan ng review ang buyer
   const needsReview = useCallback((o: Order) => {
     if (o.status !== 'delivered') return false;
     const types = reviewMap[o.id] || [];
