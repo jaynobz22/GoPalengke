@@ -3218,7 +3218,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
           }`}
         >
           <Clock size={16} />
-          Aktibo
+          Active
           {activeCount > 0 && (
             <span className="bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
               {activeCount > 9 ? '9+' : activeCount}
@@ -3232,7 +3232,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
           }`}
         >
           <Star size={16} />
-          I-review
+          For Review
           {pendingReviewCount > 0 && (
             <span className="bg-amber-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
               {pendingReviewCount > 9 ? '9+' : pendingReviewCount}
@@ -3246,7 +3246,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
           }`}
         >
           <CheckCircle size={16} />
-          Kasaysayan
+          History
           {historyOrders.length > 0 && (
             <span className="bg-gray-300 text-gray-600 text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
               {historyOrders.length > 9 ? '9+' : historyOrders.length}
@@ -3266,7 +3266,7 @@ function OrdersView({ onOrderClick }: { onOrderClick: (o: Order) => void }) {
         <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-2xl flex items-start gap-2">
           <Star size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-amber-700">
-            May <strong>{pendingReviewCount}</strong> na-deliver na order na wala pang review. Kumusta ang iyong experience sa tindahan at rider? Mag-iwan ng review para mailipat ito sa Kasaysayan.
+            May <strong>{pendingReviewCount}</strong> na-deliver na order na wala pang review. Kumusta ang iyong experience sa tindahan at rider? Mag-iwan ng review para mailipat ito sa History.
           </p>
         </div>
       )}
