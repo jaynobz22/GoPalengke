@@ -26,6 +26,10 @@ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='stores' AND column_name='seller_rank') THEN
     EXECUTE 'UPDATE public.stores SET seller_rank = DEFAULT';
   END IF;
+  -- Milestone counts ng affiliate pabalik sa zero (kung hindi, ibabawas pa ang lumang ₱1,000 cycle)
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='affiliate_referrals' AND column_name='milestones_hit') THEN
+    EXECUTE 'UPDATE public.affiliate_referrals SET milestones_hit = 0';
+  END IF;
 END $$;
 
 -- Verification: dapat lahat 0
