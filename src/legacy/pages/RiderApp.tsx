@@ -690,13 +690,13 @@ function RiderOrderDetail({ order, onBack, onOpenChat, onStoreSelect }: { onStor
 
   async function markDelivered() {
     if (!canMarkRiderDelivered(allStores.map(s => s.order))) return;
-    if (!confirm(isCod ? 'Naiabot na ang parcel, nakolekta ang COD, at naipadala na ang bayad sa bawat seller?' : 'Naiabot at natanggap na ng buyer ang parcel?')) return;
+    if (!confirm(isCod ? 'Naiabot na ang parcel at kinumpirma na ng seller ang bayad?' : 'Naiabot at natanggap na ng buyer ang parcel?')) return;
     setUpdating(true);
     let latestQuery = supabase.from('orders').select('*').eq('rider_id', profile?.id);
     latestQuery = currentOrder.delivery_group_id ? latestQuery.eq('delivery_group_id', currentOrder.delivery_group_id) : latestQuery.eq('id', currentOrder.id);
     const { data: latest, error: readError } = await latestQuery;
     if (readError || !latest || !canMarkRiderDelivered(latest)) {
-      setUpdating(false); alert('Kailangan munang ma-save ang pagdating at COD reference sa bawat seller. Subukan ulit.'); return;
+      setUpdating(false); alert('Kailangan munang i-confirm ng bawat seller ang COD payment (Payment Received). Subukan ulit mamaya.'); return;
     }
     if (currentOrder.delivery_group_id) {
       const { error } = await supabase.from('orders').update({ status: 'delivered', rider_lat: null, rider_lng: null }).eq('delivery_group_id', currentOrder.delivery_group_id);
@@ -950,7 +950,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat, onStoreSelect }: { onStor
           {codSubmitted ? (
             <div className="flex items-center gap-2">
               <Clock size={16} className="text-amber-500 flex-shrink-0" />
-              <p className="text-sm text-amber-700">Nai-submit na ang reference number. {isDelivered ? 'Naghihintay ng confirmation ng seller.' : 'Kung naiabot na ang parcel, i-click ang Mark as Delivered.'}</p>
+              <p className="text-sm text-amber-700">Nai-submit na ang reference number. Hinihintay i-click ng seller ang PAYMENT RECEIVED bago ma-activate ang Mark as Delivered.</p>
             </div>
           ) : showCodPayment && store?.qr_code_url ? (
             <div>
@@ -1356,7 +1356,7 @@ function RiderOrderDetail({ order, onBack, onOpenChat, onStoreSelect }: { onStor
       {currentOrder.status === 'picked_up' && arrivedAtBuyer && (
         <Button onClick={markDelivered} disabled={updating || !readyToDeliver}
           className="next-action w-full h-auto py-4 rounded-2xl font-bold text-base whitespace-normal mb-3">
-          <Check /> {updating ? 'Nag-uupdate...' : `STEP ${isCod ? 7 : 6}: MARK AS DELIVERED`}
+          <Check /> {updating ? 'Nag-uupdate...' : isCod && !readyToDeliver ? 'Hinihintay ang Payment Received ng seller…' : `STEP ${isCod ? 7 : 6}: MARK AS DELIVERED`}
         </Button>
       )}
       </OrderStepTracker>

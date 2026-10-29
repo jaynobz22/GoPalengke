@@ -1997,7 +1997,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   const isCancelled = currentOrder.status === 'cancelled';
   const isDelivered = currentOrder.status === 'delivered';
   const isCod = currentOrder.payment_method === 'cod';
-  const isCodPaymentPending = isCod && isDelivered && !!currentOrder.cod_payment_reference && !currentOrder.cod_payment_accepted_at;
+  const isCodPaymentPending = isCod && (isDelivered || currentOrder.status === 'picked_up') && !!currentOrder.cod_payment_reference && !currentOrder.cod_payment_accepted_at;
 
   const hasRider = !!currentOrder.rider_id;
   const noRiderFlow = !!currentOrder.delivery_method || isBuyerArranged(currentOrder.buyer_note);
@@ -2017,7 +2017,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
     { key: 'ready', label: noRiderFlow ? 'READY FOR PICKUP NA' : 'READY FOR PICKUP NA / MAG-ASSIGN NG RIDER', doneLabel: noRiderFlow ? 'Handa na ang order' : 'May na-assign na na rider', description: currentOrder.status === 'preparing' ? 'Pag tapos nang balutin ang paninda, i-click ang Ready for Pickup.' : 'Pumili ng rider na magdedeliver. Makikita ng buyer ang profile ng rider.', status: 'pending' },
     { key: 'pickup', label: isCod ? 'NA-PICKUP NA NG RIDER' : 'BAYARAN ANG RIDER / NA-PICKUP NA NG RIDER', doneLabel: 'Na-pickup na ng rider', description: isCod ? 'Iabot ang parcel sa rider. Walang bayad sa tindahan — sa buyer sisingilin ng rider.' : 'Ibigay ang delivery fee sa rider (QR o cash), iabot ang parcel, tapos i-click ang Na-pickup na.', status: 'pending' },
     ...(showArrivalStep ? [{ key: 'arrival', label: arrivalPhase === 'arrived' || arrivalPhase === 'delivered' ? 'Dumating na ang Rider' : 'Hinihintay dumating ang rider sa buyer', doneLabel: 'Dumating na ang Rider', description: arrivalPhase === 'arrived' ? (isCod ? 'Nasa buyer na ang rider. Iaabot niya ang parcel, kukunin ang COD at ipapadala ang bayad sa iyo bago i-mark as delivered.' : 'Nasa buyer na ang rider. Iaabot niya ang parcel bago i-mark as delivered.') : 'Na-pickup na ang parcel. Mag-a-update rito kapag pinindot ng rider ang “Nandito na ako” sa lokasyon ng buyer.', status: 'pending' as const }] : []),
-    ...(isCod ? [{ key: 'codpay', label: 'ORDER DELIVERED / CONFIRM PAYMENT', doneLabel: 'Natanggap na ang bayad', description: `Hintayin ma-deliver. Ipapadala ng rider ang ₱${codRemitToSeller(currentOrder).toFixed(2)} (bawas na ang rider's fee) at ang reference number.`, status: 'pending' as const }] : []),
+    ...(isCod ? [{ key: 'codpay', label: 'PAYMENT RECEIVED', doneLabel: 'Natanggap na ang bayad', description: `Ipapadala ng rider ang ₱${codRemitToSeller(currentOrder).toFixed(2)} (bawas na ang rider's fee) at ang reference number. I-check sa GCash/Maya, tapos i-click ang PAYMENT RECEIVED para ma-mark as delivered ng rider.`, status: 'pending' as const }] : []),
     { key: 'done', label: isCod ? 'DONE' : 'ORDER DELIVERED / DONE', doneLabel: 'Tapos na ang transaction', description: isDelivered ? 'Na-deliver na! I-click ang DONE para tapusin. Makakapag-review na ang buyer sa iyo at sa rider.' : 'Hinihintay pang ma-deliver ng rider ang order sa buyer.', status: 'pending' },
   ];
 
@@ -2027,7 +2027,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   else if (st === 'accepted') currentStepIndex = 2;
   else if (st === 'preparing') currentStepIndex = 3;
   else if (st === 'ready_for_pickup') currentStepIndex = currentOrder.picked_up_at ? 5 : hasRider ? 4 : 3;
-  else if (st === 'picked_up') currentStepIndex = isCod ? 5 : 5;
+  else if (st === 'picked_up') currentStepIndex = isCod && currentOrder.cod_payment_reference && !currentOrder.cod_payment_accepted_at ? sellerSteps.findIndex(s => s.key === 'codpay') : isCod && currentOrder.cod_payment_accepted_at ? sellerSteps.findIndex(s => s.key === 'done') : 5;
   else if (st === 'delivered') currentStepIndex = sellerSteps.findIndex(s => s.key === (isCod && !currentOrder.cod_payment_accepted_at ? 'codpay' : 'done'));
   if (finished) currentStepIndex = sellerSteps.length;
 
@@ -2411,23 +2411,23 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
             <DollarSign size={20} className="text-amber-600" />
             <p className="font-semibold text-sm text-amber-800">COD Payment mula sa Rider</p>
           </div>
-          <p className="text-xs text-amber-700 mb-2">Nai-submit na ng rider ang reference number para sa COD payment. Dapat ₱{codRemitToSeller(currentOrder).toFixed(2)} ang natanggap mo (bawas na ang rider's fee). I-verify at i-accept ang payment para matapos ang transaction at lumabas ang review sa buyer.</p>
+          <p className="text-xs text-amber-700 mb-2">Nai-submit na ng rider ang reference number para sa COD payment. Dapat ₱{codRemitToSeller(currentOrder).toFixed(2)} ang natanggap mo (bawas na ang rider's fee). I-check sa GCash/Maya. Pag pinindot mo ang PAYMENT RECEIVED, ma-a-activate ang Mark as Delivered ng rider.</p>
           <div className="p-3 bg-white rounded-xl border border-amber-200 mb-3">
             <p className="text-xs text-gray-400 mb-0.5">Reference Number mula sa Rider:</p>
             <p className="text-sm font-mono font-bold text-gray-800 break-all">{currentOrder.cod_payment_reference}</p>
           </div>
           <button onClick={acceptCodPayment} disabled={updating}
             className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
-            {updating ? 'Nag-uupdate...' : `STEP ${sellerSteps.findIndex(s => s.key === 'codpay') + 1}: CONFIRM PAYMENT`}
+            {updating ? 'Nag-uupdate...' : `STEP ${sellerSteps.findIndex(s => s.key === 'codpay') + 1}: PAYMENT RECEIVED`}
           </button>
         </div>
       )}
 
       {/* COD payment accepted */}
-      {isDelivered && isCod && currentOrder.cod_payment_accepted_at && (
+      {isCod && currentOrder.cod_payment_accepted_at && !finished && (
         <div className="bg-green-50 border border-green-300 rounded-2xl p-4 mb-3 flex items-center gap-2">
           <Check size={18} className="text-green-600" />
-          <p className="text-sm text-green-700 font-medium">Na-tanggap na ang COD payment. Tapos na ang transaction!</p>
+          <p className="text-sm text-green-700 font-medium">Na-tanggap na ang COD payment. {isDelivered ? 'I-click ang DONE para makapag-review ang buyer.' : 'Hinihintay i-mark as delivered ng rider.'}</p>
         </div>
       )}
 

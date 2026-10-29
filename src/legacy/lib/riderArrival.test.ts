@@ -12,16 +12,16 @@ test('NON-COD delivery needs explicit arrival first', () => {
   assert.equal(canMarkRiderDelivered([{ ...travelling, payment_method: 'qr_code' }]), false);
   assert.equal(canMarkRiderDelivered([{ ...travelling, payment_method: 'qr_code', rider_arrived_buyer_at: '2026-10-24T23:11:00Z' }]), true);
 });
-test('COD delivery waits for remittance after arrival', () => {
+test('COD delivery waits for seller Payment Received, not just the reference', () => {
   const arrived = { ...travelling, rider_arrived_buyer_at: '2026-10-24T23:11:00Z' };
   assert.equal(canMarkRiderDelivered([arrived]), false);
-  assert.equal(canMarkRiderDelivered([{ ...arrived, cod_payment_reference: '  ' }]), false);
-  assert.equal(canMarkRiderDelivered([{ ...arrived, cod_payment_reference: 'REF-123' }]), true);
+  assert.equal(canMarkRiderDelivered([{ ...arrived, cod_payment_reference: 'REF-123' }]), false);
+  assert.equal(canMarkRiderDelivered([{ ...arrived, cod_payment_reference: 'REF-123', cod_payment_accepted_at: '2026-10-24T23:15:00Z' }]), true);
 });
-test('every store in a group must have arrival and COD remittance', () => {
-  const ready = { ...travelling, rider_arrived_buyer_at: '2026-10-24T23:11:00Z', cod_payment_reference: 'REF-1' };
-  assert.equal(canMarkRiderDelivered([ready, { ...ready, cod_payment_reference: null }]), false);
-  assert.equal(canMarkRiderDelivered([ready, { ...ready, cod_payment_reference: 'REF-2' }]), true);
+test('every COD store in a group must confirm payment', () => {
+  const ready = { ...travelling, rider_arrived_buyer_at: '2026-10-24T23:11:00Z', cod_payment_reference: 'REF-1', cod_payment_accepted_at: '2026-10-24T23:15:00Z' };
+  assert.equal(canMarkRiderDelivered([ready, { ...ready, cod_payment_accepted_at: null }]), false);
+  assert.equal(canMarkRiderDelivered([ready, { ...ready }]), true);
   assert.equal(canMarkRiderDelivered([{ ...ready, status: 'cancelled' }]), false);
   assert.equal(canMarkRiderDelivered([]), false);
 });
