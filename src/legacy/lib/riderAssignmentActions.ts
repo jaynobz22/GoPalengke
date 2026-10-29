@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { canCarryCargo, cargoWeight, canDeclineAssignment } from './riderAssignment';
+import { declineRiderDelivery } from '../../lib/rider-decline.functions';
 
 type AssignmentOrder = { id: string; delivery_group_id?: string | null; rider_id?: string | null; rider_accepted_at?: string | null; status?: string };
 
@@ -20,11 +21,7 @@ export async function checkAssignmentVehicle(order: AssignmentOrder, riderId: st
 
 export async function declineAssignment(order: AssignmentOrder, riderId: string) {
   if (!canDeclineAssignment(order, riderId)) throw new Error('Tinanggap na o nagbago na ang delivery. I-refresh muna.');
-  const read = supabase.from('orders').select('id, rider_id, rider_accepted_at, status').eq('rider_id', riderId);
-  const group = order.delivery_group_id ? await read.eq('delivery_group_id', order.delivery_group_id) : await read.eq('id', order.id);
-  if (group.error || !group.data?.length || group.data.some(o => !canDeclineAssignment(o, riderId))) throw new Error('May tinanggap na o nagbago nang delivery. I-refresh muna.');
-  const q = supabase.from('orders').update({ rider_id: null, rider_accepted_at: null, rider_lat: null, rider_lng: null }).eq('rider_id', riderId).is('rider_accepted_at', null).in('status', ['pending', 'accepted', 'preparing', 'ready_for_pickup']);
-  const scoped = order.delivery_group_id ? q.eq('delivery_group_id', order.delivery_group_id) : q.eq('id', order.id);
-  const { data, error } = await scoped.select('id');
-  if (error || !data?.length) throw new Error('Hindi na-save ang decline. I-refresh at subukan muli.');
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error || !session || session.user.id !== riderId) throw new Error('Mag-login muli bago i-decline ang delivery.');
+  await declineRiderDelivery({ data: { accessToken: session.access_token, orderId: order.id } });
 }

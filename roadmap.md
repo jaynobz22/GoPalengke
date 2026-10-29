@@ -1,5 +1,11 @@
 # Roadmap: GoPalengke Migration (GitHub → Lovable)
 
+## Current: Decline save failure
+- [x] Replace browser unassignment with server-verified, owner-scoped release for both decline buttons
+- [x] 131 tests pass; isolated browser verifies failed-save retry and successful release; real server rejects invalid session
+- [x] Push fix and regression tests to the existing repository
+- [ ] Verify real rider decline (blocked: authenticated external account session unavailable)
+
 ## Current: Rider assignment safety
 - [x] Add decline for unaccepted assignments without cancelling orders
 - [x] Filter every assignment/acceptance path using combined weight and actual rider vehicle
