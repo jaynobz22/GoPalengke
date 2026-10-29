@@ -2145,7 +2145,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           ) : (
             <div className="bg-white rounded-xl border border-brand-200 p-3 mb-3 text-sm text-gray-700 space-y-1.5">
               <p><strong>Buyer:</strong> {buyer?.full_name || '—'}</p>
-              <div><strong>Mga paninda:</strong>
+              <div><strong>Mga Binili:</strong>
                 <ul className="list-disc pl-5 text-xs">{items.map(it => <li key={it.id}>{it.product_name} × {it.quantity}{it.unit ? ` ${it.unit}` : ''} — ₱{(Number(it.price) * Number(it.quantity)).toFixed(2)}</li>)}</ul>
               </div>
               <p><strong>Lokasyon:</strong> {[currentOrder.delivery_address, currentOrder.delivery_barangay, currentOrder.delivery_city].filter(Boolean).join(', ') || '—'}</p>
