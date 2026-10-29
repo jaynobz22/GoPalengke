@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { latestVisibleMessage } from '../lib/chatNotices';
 import { extraStorePickupFee, EXTRA_PICKUP_FEE } from '../lib/multiStoreRider';
-import { MOTORCYCLE_MAX_KG, buildBuyerNote, withPickedRider } from '../lib/buyerCargo';
+import { MOTORCYCLE_MAX_KG, buildBuyerNote, withPickedRider, canShowSellerQrForOutsiderCod } from '../lib/buyerCargo';
 import { DemoBadge } from '../components/DemoBadge';
 import { shareToMessenger } from '../lib/messengerShare';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -3753,6 +3753,23 @@ function OrderDetailView({ order, onBack, onOpenChat, onStoreSelect }: { onStore
               <p className="text-xs text-blue-600">Tinuloy na ng rider ang pagpunta sa store para kunin ang order mo. Makikita ang live location dito pag nagsimula na ang rider.</p>
             </div>
           </div>
+        </div>
+      )}
+
+      {canShowSellerQrForOutsiderCod(currentOrder) && (
+        <div className="bg-white rounded-2xl border-2 border-brand-200 p-4 mb-3">
+          <div className="flex items-center gap-2 mb-2">
+            <QrCode size={18} className="text-brand-600" />
+            <span className="font-semibold text-sm text-gray-800">Magbayad direkta sa seller</span>
+          </div>
+          <p className="text-xs text-gray-600 mb-3">Nakuha na ng driver mo ang karga. Bayaran ang <strong>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</strong> direkta sa {store?.name || 'seller'} gamit ang QR, o cash kung napag-usapan ninyo.</p>
+          {store?.qr_code_url ? (
+            <div className="bg-gray-50 rounded-xl p-4 flex justify-center">
+              <img src={store.qr_code_url} alt={`QR Code ng ${store.name}`} loading="lazy" className="w-48 h-48 rounded-xl object-contain" />
+            </div>
+          ) : (
+            <p className="text-xs text-amber-700 bg-amber-50 rounded-xl p-3">Wala pang QR code ang tindahan. Makipag-ugnayan sa seller via chat.</p>
+          )}
         </div>
       )}
 

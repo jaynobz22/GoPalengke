@@ -40,3 +40,14 @@ export function getPickedRiderId(note: string | null | undefined): string | null
   const id = end > 0 ? rest.slice(0, end).trim() : '';
   return /^[0-9a-f-]{36}$/i.test(id) ? id : null;
 }
+
+/** Buyer brought a non-member/own-vehicle driver (no system fees). */
+export function isOutsiderDriver(note: string | null | undefined): boolean {
+  return isBuyerArranged(note) && note!.includes('HINDI member ng GoPalengke');
+}
+
+/** COD + outsider driver: buyer pays the seller directly via QR once the driver has the cargo. */
+export function canShowSellerQrForOutsiderCod(order: { status: string; payment_method: string; buyer_note?: string | null; seller_done_at?: string | null }): boolean {
+  return order.payment_method === 'cod' && isOutsiderDriver(order.buyer_note)
+    && order.status === 'delivered' && !order.seller_done_at;
+}

@@ -44,3 +44,13 @@ test('outsider driver note says no system charge', () => {
   assert.match(n!, /HINDI member ng GoPalengke/);
   assert.match(n!, /walang singil ang system/);
 });
+
+import { canShowSellerQrForOutsiderCod } from './buyerCargo';
+test('outsider COD shows seller QR only after driver got the cargo', () => {
+  const o = { status: 'delivered', payment_method: 'cod', buyer_note: buildBuyerNote('', true, 'Kuya', false), seller_done_at: null };
+  assert.equal(canShowSellerQrForOutsiderCod(o), true);
+  assert.equal(canShowSellerQrForOutsiderCod({ ...o, status: 'ready_for_pickup' }), false);
+  assert.equal(canShowSellerQrForOutsiderCod({ ...o, buyer_note: buildBuyerNote('', true, 'Kuya', true) }), false);
+  assert.equal(canShowSellerQrForOutsiderCod({ ...o, payment_method: 'qr_code' }), false);
+  assert.equal(canShowSellerQrForOutsiderCod({ ...o, seller_done_at: '2026-10-29' }), false);
+});
