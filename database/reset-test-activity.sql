@@ -24,7 +24,7 @@ BEGIN
   END IF;
   -- Seller rank pabalik sa simula
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='stores' AND column_name='seller_rank') THEN
-    EXECUTE 'UPDATE public.stores SET seller_rank = NULL';
+    EXECUTE 'UPDATE public.stores SET seller_rank = DEFAULT';
   END IF;
 END $$;
 
