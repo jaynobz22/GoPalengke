@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { loadAdminOrders } from '../lib/adminAnalyticsOrders';
 import { formatRegionForDisplay } from '../lib/philippineLocations';
 import {
   Loader2, Store as StoreIcon, Bike, ShoppingBag, MapPin, TrendingUp,
@@ -146,18 +147,7 @@ function SellerAnalytics({ period }: { period: Period }) {
     }
 
     const [sellersRes, trendRes] = await Promise.all([
-      supabase.from('orders')
-        .select(`
-          store_id,
-          total,
-          commission_amount,
-          status,
-          created_at,
-          store:stores!orders_store_id_fkey(name, palengke_name, city, region, seller:profiles!stores_seller_id_fkey(full_name))
-        `)
-        .neq('status', 'cancelled')
-        .gte('created_at', startDate)
-        .order('created_at', { ascending: false }),
+      loadAdminOrders().then(rows => ({ data: rows.filter(o => o.status !== 'cancelled' && o.created_at >= startDate) })),
       supabase.rpc('get_order_trend', { p_start: startDate, p_format: groupFormat }),
     ]);
 
@@ -292,17 +282,7 @@ function RiderAnalytics() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const { data } = await supabase.from('orders')
-        .select(`
-          rider_id,
-          status,
-          delivery_fee,
-          created_at,
-          rider:profiles!orders_rider_id_fkey(full_name, email, barangay, city)
-        `)
-        .not('rider_id', 'is', null)
-        .order('created_at', { ascending: false })
-        .limit(500);
+      const data = (await loadAdminOrders()).filter(o => o.rider_id).slice(0, 500);
 
       const riderMap: Record<string, RiderStat> = {};
       for (const o of (data || []) as any[]) {
@@ -399,16 +379,7 @@ function BuyerAnalytics() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const { data } = await supabase.from('orders')
-        .select(`
-          buyer_id,
-          total,
-          status,
-          buyer:profiles!orders_buyer_id_fkey(full_name, email, barangay, city)
-        `)
-        .neq('status', 'cancelled')
-        .order('created_at', { ascending: false })
-        .limit(500);
+      const data = (await loadAdminOrders()).filter(o => o.status !== 'cancelled').slice(0, 500);
 
       const buyerMap: Record<string, BuyerStat> = {};
       for (const o of (data || []) as any[]) {
@@ -504,15 +475,7 @@ function GeographicAnalytics({ period }: { period: Period }) {
     else if (period === 'weekly') startDate = new Date(now.getTime() - 12 * 7 * 24 * 60 * 60 * 1000).toISOString();
     else startDate = new Date(now.getTime() - 11 * 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    const { data } = await supabase.from('orders')
-      .select(`
-        total,
-        status,
-        store:stores!orders_store_id_fkey(palengke_name, city, region)
-      `)
-      .neq('status', 'cancelled')
-      .gte('created_at', startDate)
-      .order('created_at', { ascending: false });
+    const data = (await loadAdminOrders()).filter(o => o.status !== 'cancelled' && o.created_at >= startDate);
 
     const geoMap: Record<string, GeoStat> = {};
     for (const o of (data || []) as any[]) {
