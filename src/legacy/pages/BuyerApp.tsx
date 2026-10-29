@@ -2817,7 +2817,7 @@ function CheckoutView({ onBack, onOrderPlaced, canAct, onChatRider }: { onBack: 
         {placing ? 'Nagpapadala...' : !!deliveryPin && Object.values(grouped).some(items => {
           const storeId = items[0]?.store?.id;
           return Boolean(storeId && !roadDistanceCache[storeId]);
-        }) ? 'Kinukuha ang road distance...' : `Mag-order Na · ₱${grandTotal.toFixed(2)}`}
+        }) ? 'Kinukuha ang road distance...' : `I-Submit ang Order · ₱${grandTotal.toFixed(2)}`}
       </button>
 
       {/* IP / Delivery Mismatch Verification Modal */}
