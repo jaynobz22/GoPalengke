@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { latestVisibleMessage } from '../lib/chatNotices';
-import { isBuyerArranged } from '../lib/buyerCargo';
+import { checkAssignmentVehicle, declineAssignment } from '../lib/riderAssignmentActions';
+import { canCarryCargo, cargoWeight } from '../lib/riderAssignment';
+import { isBuyerArranged, getPickedRiderId } from '../lib/buyerCargo';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { watchOrders } from '../lib/liveOrders';
 import { pickupUpdate } from '../lib/orderPickup';
@@ -262,12 +264,13 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
   const load = useCallback(async () => {
     if (!profile) return;
     const [{ data: available }, { data: mine }] = await Promise.all([
-      supabase.from('orders').select('*, store:stores(*), buyer:profiles!orders_buyer_id_fkey(full_name)')
-        .in('status', ['ready_for_pickup']).is('rider_id', null).order('created_at', { ascending: true }),
+      supabase.from('orders').select('*, items:order_items(quantity, unit), store:stores(*), buyer:profiles!orders_buyer_id_fkey(full_name)')
+        .in('status', ['pending', 'accepted', 'preparing', 'ready_for_pickup']).is('rider_id', null).order('created_at', { ascending: true }),
       supabase.from('orders').select('*, store:stores(*), buyer:profiles!orders_buyer_id_fkey(full_name)')
         .eq('rider_id', profile.id).in('status', ['ready_for_pickup', 'picked_up']).order('created_at', { ascending: false }),
     ]);
-    setAvailableOrders(((available || []) as any[]).filter(o => !isBuyerArranged(o.buyer_note)) as any);
+    const eligibleGroups = groupOrders((available || []) as any[]).filter(group => canCarryCargo(profile.vehicle_type, cargoWeight(group.orders)));
+    setAvailableOrders(eligibleGroups.flatMap(group => group.orders).filter(o => o.status === 'ready_for_pickup' && !o.delivery_method && !isBuyerArranged(o.buyer_note) && !getPickedRiderId(o.buyer_note)) as any);
     setMyOrders((mine || []) as any);
     setLoading(false);
   }, [profile]);
@@ -300,6 +303,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
     }
     setAccepting(order.id);
     if (!(await ensureGps('rider'))) { setAccepting(null); return; }
+    try { await checkAssignmentVehicle(order, profile.id); } catch (error) { setAccepting(null); alert(error instanceof Error ? error.message : 'Hindi kaya ang karga.'); return; }
     const batch = await checkRiderBatch(profile.id, order);
     if (!batch.ok) {
       setAccepting(null);
@@ -309,9 +313,9 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
     const update = { rider_id: profile.id, status: 'ready_for_pickup' as const, rider_accepted_at: new Date().toISOString() };
     let error;
     if (order.delivery_group_id) {
-      ({ error } = await supabase.from('orders').update(update).eq('delivery_group_id', order.delivery_group_id));
+      ({ error } = await supabase.from('orders').update(update).eq('delivery_group_id', order.delivery_group_id).is('rider_id', null).not('status', 'in', '(cancelled,delivered)'));
     } else {
-      ({ error } = await supabase.from('orders').update(update).eq('id', order.id));
+      ({ error } = await supabase.from('orders').update(update).eq('id', order.id).is('rider_id', null));
     }
     setAccepting(null);
     if (error) {
@@ -324,12 +328,22 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
   async function confirmAssigned(order: Order) {
     if (!profile) return;
     setAccepting(order.id);
+    try { await checkAssignmentVehicle(order, profile.id); } catch (error) { setAccepting(null); alert(error instanceof Error ? error.message : 'Hindi kaya ang karga.'); return; }
+    if (!(await ensureGps('rider'))) { setAccepting(null); return; }
     const q = supabase.from('orders').update({ rider_accepted_at: new Date().toISOString() }).eq('rider_id', profile.id);
     const { error } = order.delivery_group_id ? await q.eq('delivery_group_id', order.delivery_group_id) : await q.eq('id', order.id);
     setAccepting(null);
     if (error) { alert('Hindi matanggap ang delivery. Subukan ulit.'); return; }
     load();
     onOrderClick({ ...order, rider_accepted_at: new Date().toISOString() } as Order);
+  }
+
+  async function declineAssigned(order: Order) {
+    if (!profile || !confirm('I-decline ang delivery? Makakapili muli ng rider ang seller; hindi makakansela ang order.')) return;
+    setAccepting(order.id);
+    try { await declineAssignment(order, profile.id); await load(); }
+    catch (error) { alert(error instanceof Error ? error.message : 'Hindi ma-decline ang delivery.'); }
+    finally { setAccepting(null); }
   }
 
   // Real-time na abiso kapag may bagong delivery na in-assign ng seller
@@ -459,6 +473,7 @@ function RiderDeliveries({ onOrderClick, canAct, onSignOut, onGoToProfile }: { o
                 >
                   {accepting === first.id ? 'Tinatanggap...' : 'STEP 1: Tanggapin ang Delivery'}
                 </button>
+                <Button variant="destructive" className="w-full" disabled={accepting !== null} onClick={() => declineAssigned(first)}><X size={16} /> Decline Delivery</Button>
               </div>
             );
           })}
@@ -902,9 +917,12 @@ function RiderOrderDetail({ order, onBack, onOpenChat, onStoreSelect }: { onStor
           <p className="text-xs text-green-700 mt-1">Tanggapin para malaman ng buyer at seller na papunta ka na sa tindahan.</p>
           <button
             onClick={async () => {
+              if (!profile) return;
               setUpdating(true);
+              try { await checkAssignmentVehicle(currentOrder, profile.id); } catch (error) { setUpdating(false); alert(error instanceof Error ? error.message : 'Hindi kaya ang karga.'); return; }
+              if (!(await ensureGps('rider'))) { setUpdating(false); return; }
               const now = new Date().toISOString();
-              const q = supabase.from('orders').update({ rider_accepted_at: now }).eq('rider_id', profile!.id);
+              const q = supabase.from('orders').update({ rider_accepted_at: now }).eq('rider_id', profile.id);
               const { error } = currentOrder.delivery_group_id ? await q.eq('delivery_group_id', currentOrder.delivery_group_id) : await q.eq('id', currentOrder.id);
               setUpdating(false);
               if (error) { alert('Hindi matanggap ang delivery. Subukan ulit.'); return; }
@@ -915,6 +933,13 @@ function RiderOrderDetail({ order, onBack, onOpenChat, onStoreSelect }: { onStor
           >
             {updating ? 'Tinatanggap...' : 'STEP 1: Tanggapin ang Delivery'}
           </button>
+          <Button variant="destructive" className="w-full" disabled={updating} onClick={async () => {
+            if (!profile || !confirm('I-decline ang delivery nang hindi kinakansela ang order?')) return;
+            setUpdating(true);
+            try { await declineAssignment(currentOrder, profile.id); onBack(); }
+            catch (error) { alert(error instanceof Error ? error.message : 'Hindi ma-decline ang delivery.'); }
+            finally { setUpdating(false); }
+          }}><X size={16} /> Decline Delivery</Button>
         </div>
       )}
       {currentOrder.status === 'ready_for_pickup' && currentOrder.rider_accepted_at && (() => {

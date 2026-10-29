@@ -3,7 +3,9 @@ import { latestVisibleMessage } from '../lib/chatNotices';
 import { lockedGroupRider } from '../lib/multiStoreRider';
 import { stockLevel, daysLeft } from '../lib/inventoryStatus';
 import { sellerDashboardStats } from '../lib/sellerDashboardStats';
-import { isBuyerArranged, getPickedRiderId } from '../lib/buyerCargo';
+import { readCargoWeight, checkAssignmentVehicle } from '../lib/riderAssignmentActions';
+import { canCarryCargo } from '../lib/riderAssignment';
+import { isBuyerArranged, getPickedRiderId, buildBuyerNote } from '../lib/buyerCargo';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, deleteStorageObject } from '../lib/supabase';
 import { notifyOrderSms } from '../lib/orderSms';
@@ -1772,6 +1774,10 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   const [showRiderPicker, setShowRiderPicker] = useState(false);
   const [availableRiders, setAvailableRiders] = useState<{ id: string; full_name: string; phone: string | null; avatar_url: string | null; busy?: number }[]>([]);
   const [loadingRiders, setLoadingRiders] = useState(false);
+  const [cargoKg, setCargoKg] = useState<number | null>(null);
+  const [arrangedDialog, setArrangedDialog] = useState(false);
+  const [arrangedName, setArrangedName] = useState('');
+  const [arrangedMember, setArrangedMember] = useState(true);
   const [assigningRider, setAssigningRider] = useState<string | null>(null);
   const [fleetTier, setFleetTier] = useState<VehicleTier>((order.vehicle_type as VehicleTier) || 'motorcycle');
   const [riderAssigned, setRiderAssigned] = useState(false);
@@ -1831,6 +1837,11 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
 
   async function loadAvailableRiders() {
     setLoadingRiders(true);
+    setAvailableRiders([]);
+    setNearbyRiders([]);
+    try {
+    const kg = await readCargoWeight(currentOrder);
+    setCargoKg(kg);
 
     // Multi-store: kung may rider na ang ibang tindahan ng parehong buyer, siya lang ang pwede
     if (currentOrder.delivery_group_id) {
@@ -1838,8 +1849,8 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         .eq('delivery_group_id', currentOrder.delivery_group_id).neq('id', currentOrder.id);
       const locked = lockedGroupRider((sibs || []) as any[]);
       if (locked) {
-        const { data: p } = await supabase.from('profiles').select('id, full_name, phone, avatar_url').eq('id', locked).maybeSingle();
-        setAvailableRiders(p ? [{ ...(p as any), busy: 0 }] : []);
+        const { data: p } = await supabase.from('profiles').select('id, full_name, phone, avatar_url, vehicle_type').eq('id', locked).maybeSingle();
+        setAvailableRiders(p && canCarryCargo(p.vehicle_type, kg) ? [{ ...(p as any), busy: 0 }] : []);
         setNearbyRiders([]);
         setLoadingRiders(false);
         return;
@@ -1847,13 +1858,14 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
     }
 
     const [ridersRes, activeOrdersRes] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, phone, avatar_url').eq('role', 'rider').eq('is_available', true).order('full_name', { ascending: true }),
+      supabase.from('profiles').select('id, full_name, phone, avatar_url, vehicle_type').eq('role', 'rider').eq('is_available', true).eq('is_active', true).eq('is_approved', true).order('full_name', { ascending: true }),
       // Riders na papunta pa lang / nasa palengke (hindi pa nakaalis) — pwedeng isabay
       supabase.from('orders').select('id, rider_id, store:stores(name), delivery_barangay, delivery_city, delivery_lat, delivery_lng').in('status', ['accepted', 'preparing', 'ready_for_pickup']).not('rider_id', 'is', null).neq('buyer_id', currentOrder.buyer_id),
     ]);
 
     // Mark riders currently on a trip (accepted/picked up but not yet delivered) as busy
-    const riderList = (ridersRes.data || []) as any[];
+    if (ridersRes.error || activeOrdersRes.error) throw new Error("Hindi makuha ang rider list. Subukan muli.");
+    const riderList = ((ridersRes.data || []) as any[]).filter(r => canCarryCargo(r.vehicle_type, kg));
     const ids = riderList.map(r => r.id);
     const busyMap: Record<string, number> = {};
     if (ids.length) {
@@ -1879,7 +1891,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
     const seenRiders = new Set<string>();
 
     for (const ao of activeOrders) {
-      if (!ao.rider_id || seenRiders.has(ao.rider_id)) continue;
+      if (!ao.rider_id || seenRiders.has(ao.rider_id) || !riderList.some(r => r.id === ao.rider_id)) continue;
       if (ao.rider_id === currentOrder.rider_id) continue;
 
       const aoBarangay = (ao.delivery_barangay || '').toLowerCase().trim();
@@ -1944,7 +1956,8 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
     }
 
     setNearbyRiders(nearby);
-    setLoadingRiders(false);
+    } catch (error) { alert(error instanceof Error ? error.message : "Hindi makuha ang riders."); }
+    finally { setLoadingRiders(false); }
   }
 
   const [detailsChecked, setDetailsChecked] = useState(false);
@@ -1955,24 +1968,48 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   const canReviewNew = canReviewNewSellerOrder(currentOrder, orderRefreshed && !orderLoadError) && !finished;
 
   async function assignRider(riderId: string) {
+    if (isBuyerArranged(currentOrder.buyer_note)) return;
     setAssigningRider(riderId);
-    const batch = await checkRiderBatch(riderId, currentOrder);
-    if (!batch.ok) {
-      setAssigningRider(null);
-      alert(batch.reason);
-      return;
-    }
-    if (currentOrder.delivery_group_id) {
-      await supabase.from('orders').update({ rider_id: riderId, vehicle_type: fleetTier }).eq('delivery_group_id', currentOrder.delivery_group_id);
-    } else {
-      await supabase.from('orders').update({ rider_id: riderId, vehicle_type: fleetTier }).eq('id', currentOrder.id);
-    }
-    notifyOrderSms(currentOrder.id, 'rider_assigned');
-    setCurrentOrder(prev => ({ ...prev, rider_id: riderId }));
-    setRiderAssigned(true);
-    setAssigningRider(null);
-    setShowRiderPicker(false);
-    supabase.from('profiles').select('full_name, phone, avatar_url, rider_qr_code_url').eq('id', riderId).maybeSingle().then(({ data }) => setRider(data as any));
+    try {
+      const vehicle = await checkAssignmentVehicle(currentOrder, riderId);
+      if (currentOrder.delivery_group_id) {
+        const { data, error } = await supabase.from('orders').select('rider_id, status').eq('delivery_group_id', currentOrder.delivery_group_id);
+        if (error) throw new Error('Hindi ma-check ang ibang tindahan.');
+        const locked = lockedGroupRider(data || []);
+        if (locked && locked !== riderId) throw new Error('May ibang rider na ang order ng buyer. I-refresh muna.');
+      }
+      const batch = await checkRiderBatch(riderId, currentOrder);
+      if (!batch.ok) throw new Error(batch.reason);
+      const q = supabase.from('orders').update({ rider_id: riderId, vehicle_type: vehicle }).is('rider_id', null).not('status', 'in', '(cancelled,delivered)');
+      const scoped = currentOrder.delivery_group_id ? q.eq('delivery_group_id', currentOrder.delivery_group_id) : q.eq('id', currentOrder.id);
+      const { data, error } = await scoped.select('id');
+      if (error || !data?.length) throw new Error('Hindi na-save ang assignment. I-refresh muna.');
+      notifyOrderSms(currentOrder.id, 'rider_assigned');
+      setCurrentOrder(prev => ({ ...prev, rider_id: riderId, vehicle_type: vehicle }));
+      setRiderAssigned(true);
+      setShowRiderPicker(false);
+      setArrangedDialog(false);
+      supabase.from('profiles').select('full_name, phone, avatar_url, rider_qr_code_url').eq('id', riderId).maybeSingle().then(({ data }) => setRider(data as any));
+    } catch (error) { alert(error instanceof Error ? error.message : 'Hindi ma-assign ang rider.'); }
+    finally { setAssigningRider(null); }
+  }
+
+  async function confirmOutsideDriver() {
+    if (!arrangedName.trim()) { alert('Pakilagay ang pangalan at sasakyan ng driver na kinumpirma ng buyer.'); return; }
+    setUpdating(true);
+    try {
+      if (currentOrder.delivery_group_id) {
+        const { data, error } = await supabase.from('orders').select('rider_id, status').eq('delivery_group_id', currentOrder.delivery_group_id);
+        if (error || lockedGroupRider(data || [])) throw new Error('May naka-assign nang rider. I-refresh muna.');
+      }
+      const note = buildBuyerNote(currentOrder.buyer_note || '', true, arrangedName, false);
+      const q = supabase.from('orders').update({ buyer_note: note }).is('rider_id', null).eq('status', 'ready_for_pickup');
+      const { data, error } = await q.eq('id', currentOrder.id).select('id');
+      if (error || !data?.length) throw new Error('Hindi na-save ang driver. Subukan muli.');
+      setCurrentOrder(prev => ({ ...prev, buyer_note: note }));
+      setArrangedDialog(false);
+    } catch (error) { alert(error instanceof Error ? error.message : 'Hindi na-save ang driver.'); }
+    finally { setUpdating(false); }
   }
 
   async function updateStatus(status: OrderStatus) {
@@ -2235,7 +2272,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           <p className="text-sm font-bold text-green-800">🛺 May piniling Bao-Bao / Minivan ang buyer</p>
           <p className="text-xs text-green-700 mt-1">{(currentOrder.buyer_note || '').split('\n')[0].replace(/^.*?\]\s*/, '')}</p>
           <button
-            onClick={() => assignRider(getPickedRiderId(currentOrder.buyer_note)!)}
+            onClick={() => { const id = getPickedRiderId(currentOrder.buyer_note); if (id) void assignRider(id); }}
             disabled={!!assigningRider}
             className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3"
           >
@@ -2250,7 +2287,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
         </div>
       )}
       {/* Active step: Ready for pickup — rider selection (skip for livestock) */}
-      {!isCancelled && !currentOrder.rider_id && currentOrder.status === 'ready_for_pickup' && !currentOrder.delivery_method && !isBuyerArranged(currentOrder.buyer_note) && (
+      {!isCancelled && !currentOrder.rider_id && currentOrder.status === 'ready_for_pickup' && !currentOrder.delivery_method && !isBuyerArranged(currentOrder.buyer_note) && !getPickedRiderId(currentOrder.buyer_note) && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
           <div className="flex items-center gap-2 mb-3">
             <Clock size={18} className="text-amber-500" />
@@ -2271,6 +2308,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           >
             <Users size={18} /> STEP 4: MAG-ASSIGN NG RIDER
           </button>
+          <Button variant="outline" className="w-full mb-3" onClick={() => { setArrangedDialog(true); void loadAvailableRiders(); }}><MessageCircle size={16} /> May kausap nang driver ang buyer</Button>
           <div className="flex items-center gap-2 text-xs text-amber-600 py-2">
             <div className="flex-1 h-px bg-amber-200" />
             <span>o</span>
@@ -2448,6 +2486,25 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       )}
       </OrderStepTracker>}
 
+      {arrangedDialog && (
+        <div role="dialog" aria-label="Driver ng buyer" className="fixed inset-0 z-[75] bg-background/95 flex items-center justify-center p-5">
+          <div className="w-full max-w-md space-y-4 border border-border bg-background p-5 rounded-lg">
+            <h3 className="font-bold">May kausap nang driver ang buyer</h3>
+            <p className="text-sm text-muted-foreground">Kumpirmahin muna sa buyer kung sino ang kukuha ng order.</p>
+            <label className="flex gap-2 text-sm"><input type="radio" checked={arrangedMember} onChange={() => setArrangedMember(true)} /> Member ng GoPalengke</label>
+            <label className="flex gap-2 text-sm"><input type="radio" checked={!arrangedMember} onChange={() => setArrangedMember(false)} /> Outsider / sariling sasakyan</label>
+            {arrangedMember ? <>
+              <p className="text-sm text-muted-foreground">Piliin ang eksaktong driver na kausap ng buyer. Mananatili ang napagkasunduang delivery fee sa order.</p>
+              {availableRiders.map(r => <Button key={r.id} variant="outline" className="w-full" disabled={!!assigningRider} onClick={() => { if (!(Number(currentOrder.delivery_fee) > 0)) { alert('Kumpirmahin muna sa buyer ang delivery fee bago magtalaga ng member driver.'); return; } void assignRider(r.id); }}>{r.full_name}</Button>)}
+              {!loadingRiders && availableRiders.length === 0 && <p className="text-sm text-muted-foreground">Walang compatible na available driver.</p>}
+            </> : <>
+              <input aria-label="Pangalan at sasakyan ng driver" value={arrangedName} onChange={e => setArrangedName(e.target.value)} maxLength={120} className="w-full border border-input rounded-md p-2 bg-background" placeholder="Pangalan, sasakyan at plate number" />
+              <Button className="w-full" disabled={updating} onClick={confirmOutsideDriver}>Kumpirmado ng buyer — ituloy</Button>
+            </>}
+            <Button variant="ghost" className="w-full" onClick={() => setArrangedDialog(false)}>Bumalik</Button>
+          </div>
+        </div>
+      )}
       {/* Rider Picker Modal */}
       {showRiderPicker && (
         <div className="fixed inset-0 z-[70] bg-black/50 flex items-end sm:items-center justify-center" onClick={() => setShowRiderPicker(false)}>
@@ -2466,24 +2523,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3">
-                  <label className="text-xs font-semibold text-blue-800 block mb-2">Vehicle tier para sa order</label>
-                  <select
-                    value={fleetTier}
-                    onChange={e => {
-                      const nextTier = e.target.value as VehicleTier;
-                      setFleetTier(nextTier);
-                      supabase.from('orders').update({ vehicle_type: nextTier }).eq('id', currentOrder.id);
-                      setCurrentOrder(prev => ({ ...prev, vehicle_type: nextTier }));
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl border border-blue-200 bg-white text-sm text-gray-700 outline-none"
-                  >
-                    {VEHICLE_TIERS.map(vt => (
-                      <option key={vt.id} value={vt.id}>{vt.label} — max {vt.maxLoadKg}kg</option>
-                    ))}
-                  </select>
-                  <p className="text-[11px] text-blue-700 mt-2">Ang napiling tier ang gagamitin para i-filter ang compatible riders.</p>
-                </div>
+                <p className="text-sm text-muted-foreground">Kabuuang karga: {cargoKg?.toFixed(1)} kg{cargoKg != null && cargoKg > 25 ? ' — Bao-Bao / Minivan lamang' : ''}</p>
                 {/* Nearby riders — already delivering to same/nearby destination */}
                 {nearbyRiders.length > 0 && (
                   <div>

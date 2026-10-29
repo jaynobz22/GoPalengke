@@ -1,5 +1,12 @@
 # Roadmap: GoPalengke Migration (GitHub → Lovable)
 
+## Current: Rider assignment safety
+- [x] Add decline for unaccepted assignments without cancelling orders
+- [x] Filter every assignment/acceptance path using combined weight and actual rider vehicle
+- [x] Add seller confirmation of buyer-arranged driver while preserving member fee accounting
+- [x] 123 tests passed; sample browser verifies decline, 26kg rider filtering and outside-driver handover; push to existing repository
+- [ ] Verify real account delivery (blocked: external account session unavailable)
+
 ## Current: Next-store rider departure
 - [x] Add explicit next-store departure and persistent buyer chat notice after each pickup
 - [x] Gate buyer departure on fresh confirmation of every active store pickup

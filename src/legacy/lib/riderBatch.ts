@@ -5,6 +5,8 @@
 // 3. Kabuuang bigat ng karga ay hanggang 20 kg lang.
 // 4. Kapag nakaalis na ang rider sa palengke (picked_up) ng ibang buyer, hindi na pwedeng dagdagan.
 // Bawat buyer at bawat tindahan ay may sariling delivery fee para sa rider.
+import { itemWeightKg } from './riderAssignment';
+export { itemWeightKg } from './riderAssignment';
 import { supabase } from './supabase';
 import { haversineKm, getStoreCoords } from './deliveryFee';
 
@@ -12,22 +14,6 @@ export const BATCH_MAX_DISTANCE_KM = 1;
 export const BATCH_MAX_WEIGHT_KG = 20;
 
 const ORDER_SELECT = 'id, delivery_group_id, status, delivery_lat, delivery_lng, delivery_barangay, delivery_city, store:stores(id, name, latitude, longitude, palengke_name, barangay, city, region), items:order_items(quantity, unit)';
-
-export function itemWeightKg(qtyRaw: any, unitRaw: any): number {
-  const qty = Number(qtyRaw);
-  if (!Number.isFinite(qty) || qty <= 0) return 0;
-  const unit = String(unitRaw || '').toLowerCase();
-  if (unit === 'kilo' || unit === 'kg' || unit === 'kilogram') return qty;
-  if (unit === 'gram' || unit === 'g') return qty / 1000;
-  if (unit === 'pack' || unit === 'sachet') return qty * 0.5;
-  if (unit === 'bundle' || unit === 'bugkos') return qty * 2;
-  if (unit === 'tray' || unit === 'itlog') return qty * 1;
-  if (unit === 'piece' || unit === 'pc' || unit === 'piraso') return qty * 0.3;
-  if (unit === 'dozen' || unit === 'dosen') return qty * 1.5;
-  if (unit === 'sack' || unit === 'sako') return qty * 25;
-  if (unit === 'liter' || unit === 'litro' || unit === 'l') return qty;
-  return qty * 0.5;
-}
 
 function orderWeight(o: any): number {
   return (o.items || []).reduce((s: number, i: any) => s + itemWeightKg(i.quantity, i.unit), 0);

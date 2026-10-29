@@ -1707,14 +1707,14 @@ function MultiStoreWeightNotice({ items, storeCount }: { items: any[]; storeCoun
     return (
       <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4 text-sm text-red-800">
         <p className="font-bold mb-1">⚠️ Mabigat na: {kg.toFixed(1)} kg mula sa {storeCount} tindahan</p>
-        <p className="text-xs leading-relaxed">Lagpas na sa 25 kg na kaya ng isang motor. Maaaring <b>2 rider</b> na ang kailangan mo, o mag-<b>Bao-Bao / Tricycle</b> ka na para sa mabigat na karga. Pwede ring bawasan o i-checkout muna ang isang tindahan.</p>
+        <p className="text-xs leading-relaxed">Lagpas na sa 25 kg na kaya ng isang motor. <b>Bao-Bao / Tricycle o Minivan</b> ang kailangan para sa karga mo. Hindi na makakapili ng single motorcycle ang seller.</p>
       </div>
     );
   }
   return (
     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4 text-sm text-amber-800">
       <p className="font-bold mb-1">Paalala: namili ka sa {storeCount} tindahan ({kg.toFixed(1)} kg)</p>
-      <p className="text-xs leading-relaxed">Hanggang <b>20 kg</b> lang ang kaya ng isang rider na naka-motor (may palugit hanggang 25 kg). Kapag lumagpas, maaaring 2 rider o Bao-Bao na ang kailangan.</p>
+      <p className="text-xs leading-relaxed">Hanggang <b>20 kg</b> lang ang kaya ng isang rider na naka-motor (may palugit hanggang 25 kg). Kapag lumagpas sa 25 kg, Bao-Bao / Tricycle o Minivan ang kailangan.</p>
     </div>
   );
 }
