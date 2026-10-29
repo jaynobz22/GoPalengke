@@ -2009,7 +2009,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   const showArrivalStep = !noRiderFlow;
   // Arrival is a separate waiting step, not a delivery-status update.
   const sellerSteps: StepInfo[] = [
-    { key: 'details', label: 'MAY BAGONG ORDER! I-click para makita ang details', doneLabel: 'Na-check na ang details', description: 'Tingnan muna ang buyer, mga paninda, lokasyon, total at paraan ng bayad.', status: 'pending' },
+    { key: 'details', label: 'MAY BAGONG ORDER! I-click para makita ang details', doneLabel: 'Na-check na ang details', description: 'Tingnan muna ang buyer, mga binili, lokasyon, total at paraan ng bayad.', status: 'pending' },
     { key: 'accept', label: 'ACCEPT & CONFIRM o DECLINE', doneLabel: 'Na-accept at confirm na', description: isCod ? 'I-accept kung available ang paninda. Kung hindi, i-decline at sabihin sa buyer ang dahilan sa chat.' : 'Pag in-accept, makikita ng buyer ang QR mo para magbayad. Kung hindi kaya, i-decline at ipaliwanag sa chat.', status: 'pending' },
     isCod
       ? { key: 'preparing', label: 'PREPARING ORDER', doneLabel: 'Inihanda na ang order', description: 'Cash on Delivery — walang bayad muna. I-click para malaman ng buyer na inihahanda mo na.', status: 'pending' }
@@ -2608,9 +2608,9 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
       )}
 
       {/* Items */}
-      <CollapsibleSection title="Mga Paninda at Total">
+      <CollapsibleSection title="Mga Binili at Total">
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-3">
-        <h3 className="font-semibold text-gray-800 mb-3">Mga Paninda</h3>
+        <h3 className="font-semibold text-gray-800 mb-3">Mga Binili</h3>
         {items.map(item => (
           <div key={item.id} className="flex items-center gap-3 py-2">
             <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
