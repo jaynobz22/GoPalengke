@@ -3762,7 +3762,7 @@ function OrderDetailView({ order, onBack, onOpenChat, onStoreSelect }: { onStore
             <QrCode size={18} className="text-brand-600" />
             <span className="font-semibold text-sm text-gray-800">Magbayad direkta sa seller</span>
           </div>
-          <p className="text-xs text-gray-600 mb-3">Nakuha na ng driver mo ang karga. Bayaran ang <strong>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</strong> direkta sa {store?.name || 'seller'} gamit ang QR, o cash kung napag-usapan ninyo.</p>
+          <p className="text-xs text-gray-600 mb-3">Na-pickup na ng driver mo ang karga at papunta na sa iyo. Pagdating at pagtanggap mo ng order, bayaran ang <strong>₱{(Number(currentOrder.total) + Number(currentOrder.delivery_fee)).toFixed(2)}</strong> direkta sa {store?.name || 'seller'} gamit ang QR na ito.</p>
           {store?.qr_code_url ? (
             <div className="bg-gray-50 rounded-xl p-4 flex justify-center">
               <img src={store.qr_code_url} alt={`QR Code ng ${store.name}`} loading="lazy" className="w-48 h-48 rounded-xl object-contain" />

@@ -2329,7 +2329,7 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
           {currentOrder.status === 'ready_for_pickup' && (
             <button onClick={() => updateStatus('delivered')} disabled={updating}
               className="next-action w-full py-4 bg-green-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-green-600/20 flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50 mb-3">
-              {updating ? 'Nag-uupdate...' : 'STEP 4: NAIABOT NA SA DRIVER NG BUYER'}
+              {updating ? 'Nag-uupdate...' : 'STEP 4: NA PICKUP NA NG DRIVER'}
             </button>
           )}
         </div>
