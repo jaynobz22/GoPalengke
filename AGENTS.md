@@ -9,7 +9,7 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Affiliate seller fee progress uses the shared browser-safe affiliateSellerMilestone calculator in both tracker and referral details; delivered sales accrue fees and credited milestone counts retire paid cycles without treating accrual as wallet earnings.
+- Affiliate seller fee progress uses the shared browser-safe affiliateSellerMilestone calculator in both tracker and referral details; display outstandingFees as the payable amount and reserve capped percent for the bar, keeping monetary totals separate from visual milestone limits without treating accrual as wallet earnings.
 - Rider onboarding augments existing rider_fees accrual without another order accrual trigger; capped approved onboarding contributes only once to paid cycles, and shared payable progress plus unique cycle/tier keys prevent inconsistent limits and duplicate affiliate payouts.
 - Admin collected-income deductions use paymentAffiliateShares with separate seller/rider payment tags and credited transactions only, so both fee ledgers reconcile with affiliate wallets.
 

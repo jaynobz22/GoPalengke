@@ -487,7 +487,7 @@ export function AffiliateDashboard() {
                                 {milestone && <p className="text-xs font-semibold text-green-700">Benta ng seller: ₱{sellerSales.sales.toLocaleString()} · {sellerSales.orders} delivered orders</p>}
                               </div>
                               <span className="text-xs font-bold text-gray-600">
-                                {milestone ? `₱${milestone.currentFees.toFixed(2)} / ₱${SELLER_MILESTONE.toLocaleString()}` : 'Hindi mabasa ang benta'}
+                                {milestone ? `₱${milestone.outstandingFees.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ₱${SELLER_MILESTONE.toLocaleString()}` : 'Hindi mabasa ang benta'}
                               </span>
                             </div>
                             <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
@@ -682,7 +682,7 @@ export function AffiliateDashboard() {
                 if (list.length === 0) return <p className="text-center text-gray-400 text-sm py-6">Wala pang {detail} referrals.</p>;
                 return list.map(r => {
                   const milestone = detail === 'seller' && !salesError && sales[r.id] ? sellerMilestoneProgress(sales[r.id].sales, Number(r.milestones_hit), sellerRent[r.id] || 0) : null;
-                  const progressAmount = detail === 'seller' ? milestone?.currentFees : riderBalances[r.id];
+                  const progressAmount = detail === 'seller' ? milestone?.outstandingFees : riderBalances[r.id];
                   return (
                   <div key={r.id} className="border border-gray-100 rounded-xl p-3">
                     <div className="flex justify-between items-start gap-2">

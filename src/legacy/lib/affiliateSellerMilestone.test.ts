@@ -42,3 +42,10 @@ test('unpaid 700 rent counts toward the 1000 milestone like seller billing', () 
   assert.equal(r.awaitingPayment, true);
   assert.equal(sellerMilestoneProgress(2770, 0, 700).currentFees, 783.1);
 });
+
+test('Jim Tan payable retains 1045.98 above the 1000 milestone while the bar stays full', () => {
+  const result = sellerMilestoneProgress(11532.67, 0, 700);
+  assert.equal(result.outstandingFees, 1045.98);
+  assert.equal(result.percent, 100);
+  assert.equal(result.remaining, 0);
+});
