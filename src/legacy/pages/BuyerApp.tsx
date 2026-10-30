@@ -351,7 +351,7 @@ export function BuyerApp() {
           <OrderDetailView key={selectedOrder.id} onStoreSelect={setSelectedOrder} order={selectedOrder} onBack={backToBrowse} onOpenChat={openChat} />
         )}
 
-        {tab === 'orders' && (
+        {tab === 'orders' && view !== 'order_detail' && (
           <OrdersView onOrderClick={navigateToOrder} />
         )}
         {tab === 'orders' && view === 'order_detail' && selectedOrder && (

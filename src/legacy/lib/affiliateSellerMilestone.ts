@@ -5,11 +5,13 @@ export const SELLER_TIER2 = 50;
 export const SELLER_COMMISSION_TOTAL = SELLER_TIER1 + SELLER_TIER2;
 
 /** Paid/credited milestones retire fee cycles; reaching a threshold alone does not. */
-export function sellerMilestoneProgress(deliveredSales: number, paidMilestones = 0) {
+export function sellerMilestoneProgress(deliveredSales: number, paidMilestones = 0, unpaidRent = 0) {
   const safeSales = Number.isFinite(deliveredSales) ? Math.max(0, deliveredSales) : 0;
   const cycles = Number.isFinite(paidMilestones) ? Math.max(0, Math.floor(paidMilestones)) : 0;
+  const rent = Number.isFinite(unpaidRent) ? Math.max(0, unpaidRent) : 0;
   const accruedFees = Math.round(safeSales * SELLER_FEE_RATE * 100) / 100;
-  const outstandingFees = Math.max(0, Math.round((accruedFees - cycles * SELLER_MILESTONE) * 100) / 100);
+  // Unpaid ₱700 rent counts toward the same payable as the seller's Billing.
+  const outstandingFees = Math.max(0, Math.round((accruedFees - cycles * SELLER_MILESTONE + rent) * 100) / 100);
   const currentFees = Math.min(SELLER_MILESTONE, outstandingFees);
   return {
     accruedFees,

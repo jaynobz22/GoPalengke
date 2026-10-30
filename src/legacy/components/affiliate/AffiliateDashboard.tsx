@@ -5,6 +5,7 @@ import { navigate } from '../../lib/router';
 import { supabase } from '../../lib/supabase';
 import { sellerMilestoneProgress, SELLER_MILESTONE, SELLER_COMMISSION_TOTAL, SELLER_TIER1, SELLER_TIER2 } from '../../lib/affiliateSellerMilestone';
 import { riderFeeProgress } from '../../lib/riderFeeMilestone';
+import { getAffiliateSellerRent } from '@/lib/affiliate-seller-rent.functions';
 import { AffiliateMarketingTools } from '../../components/affiliate/AffiliateMarketingTools';
 import { AIMarketingKit } from '../../components/affiliate/AIMarketingKit';
 import { TargetedMarketingPages } from '../../components/affiliate/TargetedMarketingPages';
@@ -75,6 +76,7 @@ export function AffiliateDashboard() {
   const [downline, setDownline] = useState<any[]>([]);
   const [sales, setSales] = useState<Record<string, { sales: number; orders: number }>>({});
   const [salesError, setSalesError] = useState(false);
+  const [sellerRent, setSellerRent] = useState<Record<string, number>>({});
   const [riderBalances, setRiderBalances] = useState<Record<string, number>>({});
   const [detail, setDetail] = useState<null | 'seller' | 'rider' | 'affiliate'>(null);
 
@@ -100,6 +102,7 @@ export function AffiliateDashboard() {
     const sm: Record<string, { sales: number; orders: number }> = {};
     (salesRows || []).forEach((x: any) => { sm[x.referral_id] = { sales: Number(x.delivered_sales) || 0, orders: Number(x.delivered_orders) || 0 }; });
     setSales(sm);
+    try { const rr = await getAffiliateSellerRent({ data: { affiliateId: affiliate.id } }); setSellerRent(rr.rent || {}); } catch { setSellerRent({}); }
     const rb: Record<string, number> = {};
     const v3 = await supabase.rpc('affiliate_rider_fee_progress_v3', { p_affiliate_id: affiliate.id });
     if (!v3.error) {
@@ -474,7 +477,7 @@ export function AffiliateDashboard() {
                     <div className="space-y-2">
                       {sellerRefs.map(r => {
                         const sellerSales = sales[r.id];
-                        const milestone = !salesError && sellerSales ? sellerMilestoneProgress(sellerSales.sales, Number(r.milestones_hit)) : null;
+                        const milestone = !salesError && sellerSales ? sellerMilestoneProgress(sellerSales.sales, Number(r.milestones_hit), sellerRent[r.id] || 0) : null;
                         return (
                           <div key={r.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
                             <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
@@ -496,8 +499,8 @@ export function AffiliateDashboard() {
                             <p className="text-[10px] text-gray-400 mt-1">
                               {!milestone ? 'Hindi makuha ang benta. Subukang i-refresh; hindi muna maipapakita ang tamang progress.'
                                 : milestone.awaitingPayment
-                                  ? `Naabot na ang ₱${SELLER_MILESTONE.toLocaleString()} mula sa 3% ng completed sales. Hinihintay ang bayad ng seller at kumpirmasyon ng admin.`
-                                  : `3% ng bawat completed sale ang naiipon mula sa unang benta. ₱${milestone.remaining.toFixed(2)} pa bago ang ₱${SELLER_MILESTONE.toLocaleString()} fee milestone.`}
+                                  ? `Naabot na ang ₱${SELLER_MILESTONE.toLocaleString()} (3% ng benta + rent). Hinihintay ang bayad ng seller at kumpirmasyon ng admin.`
+                                  : `3% ng bawat completed sale${(sellerRent[r.id] || 0) > 0 ? ` + ₱${(sellerRent[r.id]).toFixed(0)} rent` : ''} ang naiipon. ₱${milestone.remaining.toFixed(2)} pa bago ang ₱${SELLER_MILESTONE.toLocaleString()} fee milestone.`}
                             </p>
                             <p className="text-xs text-muted-foreground mt-2">Kapag nakumpirma ang bayad ng seller: ₱{SELLER_COMMISSION_TOTAL} commission — ₱{SELLER_TIER1} sa direct sponsor (ikaw) at ₱{SELLER_TIER2} sa upline sponsor. Hindi pa kita ang naipong fees hangga’t hindi bayad.</p>
                           </div>
@@ -678,7 +681,7 @@ export function AffiliateDashboard() {
                 const ms = detail === 'seller' ? SELLER_MILESTONE : RIDER_MILESTONE;
                 if (list.length === 0) return <p className="text-center text-gray-400 text-sm py-6">Wala pang {detail} referrals.</p>;
                 return list.map(r => {
-                  const milestone = detail === 'seller' && !salesError && sales[r.id] ? sellerMilestoneProgress(sales[r.id].sales, Number(r.milestones_hit)) : null;
+                  const milestone = detail === 'seller' && !salesError && sales[r.id] ? sellerMilestoneProgress(sales[r.id].sales, Number(r.milestones_hit), sellerRent[r.id] || 0) : null;
                   const progressAmount = detail === 'seller' ? milestone?.currentFees : riderBalances[r.id];
                   return (
                   <div key={r.id} className="border border-gray-100 rounded-xl p-3">
@@ -688,7 +691,7 @@ export function AffiliateDashboard() {
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center mt-2">
                       <div className="bg-gray-50 rounded-lg p-2"><p className="text-[10px] text-gray-400">Milestones</p><p className="text-sm font-bold text-gray-800">{r.milestones_hit || 0}</p></div>
-                      <div className="bg-gray-50 rounded-lg p-2"><p className="text-[10px] text-gray-400">{detail === 'seller' ? '3% fee progress' : 'Progress'}</p><p className="text-sm font-bold text-gray-800 break-words">{progressAmount === undefined ? 'Hindi mabasa' : `₱${progressAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ₱${ms.toLocaleString()}`}</p></div>
+                      <div className="bg-gray-50 rounded-lg p-2"><p className="text-[10px] text-gray-400">{detail === 'seller' ? 'Fee progress (3% + rent)' : 'Progress'}</p><p className="text-sm font-bold text-gray-800 break-words">{progressAmount === undefined ? 'Hindi mabasa' : `₱${progressAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ₱${ms.toLocaleString()}`}</p></div>
                       <div className="bg-green-50 rounded-lg p-2"><p className="text-[10px] text-gray-400">Kita mo</p><p className="text-sm font-bold text-green-700">₱{Number(r.total_commission_earned || 0).toLocaleString()}</p></div>
                     </div>
                   </div>

@@ -36,3 +36,9 @@ test('commission is 200 pesos split 150 direct and 50 upline', () => {
   assert.equal(SELLER_TIER1, 150);
   assert.equal(SELLER_TIER2, 50);
 });
+test('unpaid 700 rent counts toward the 1000 milestone like seller billing', () => {
+  const r = sellerMilestoneProgress(11532.5, 0, 700);
+  assert.equal(r.currentFees, 1000);
+  assert.equal(r.awaitingPayment, true);
+  assert.equal(sellerMilestoneProgress(2770, 0, 700).currentFees, 783.1);
+});
