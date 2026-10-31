@@ -87,7 +87,7 @@ export function SellerBilling() {
     if (insertError) {
       setError(insertError.message);
     } else {
-      setSuccess('Nai-submit na ang payment! Maghihintay ng approval mula sa admin.');
+      setSuccess('Nai-submit na ang payment! Hihintayin ang kumpirmasyon ng admin na natanggap ang bayad.');
       setShowPayModal(false);
       setReferenceNumber('');
       setPayAmount('');
@@ -130,7 +130,7 @@ export function SellerBilling() {
       {pendingPayments.length > 0 && (
         <div className="flex items-center gap-2 text-amber-700 text-sm bg-amber-50 border border-amber-200 px-4 py-3 rounded-xl mb-4">
           <AlertCircle size={16} className="flex-shrink-0" />
-          <span>May {pendingPayments.length} pending payment{pendingPayments.length > 1 ? 's' : ''} na naghihintay ng approval.</span>
+          <span>May {pendingPayments.length} pending payment{pendingPayments.length > 1 ? 's' : ''} na hinihintay ang kumpirmasyon ng admin.</span>
         </div>
       )}
 
@@ -147,7 +147,7 @@ export function SellerBilling() {
           <div className="h-full rounded-full transition-all bg-brand-500" style={{ width: `${payableProgress}%` }} />
         </div>
         <p className="text-xs text-gray-400">
-          Babayaran: ₱{totalPayable.toFixed(2)} / ₱{PAYMENT_THRESHOLD.toFixed(0)}. Babalik sa ₱0 pagkatapos ma-approve ang bayad. Ang kabuuang benta mo ay nasa Profile.
+          Babayaran: ₱{totalPayable.toFixed(2)} / ₱{PAYMENT_THRESHOLD.toFixed(0)}. Babalik sa ₱0 pagkatapos makumpirma ng admin ang bayad. Ang kabuuang benta mo ay nasa Profile.
         </p>
       </div>
 
@@ -370,7 +370,7 @@ export function SellerBilling() {
                       p.status === 'pending' ? 'bg-amber-100 text-amber-700' :
                       'bg-red-100 text-red-700'
                     }`}>
-                      {p.status === 'approved' ? 'Na-aprubahan' : p.status === 'pending' ? 'Naghihintay' : 'Hindi na-aprubahan'}
+                      {p.status === 'approved' ? 'Natanggap' : p.status === 'pending' ? 'Naghihintay' : 'Hindi Pumasok'}
                     </span>
                   </div>
                   <p className="text-xs text-gray-400">Ref: {p.reference_number}</p>

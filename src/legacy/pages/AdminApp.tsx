@@ -392,7 +392,7 @@ function OverviewTab() {
         <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-2xl p-3 mb-4">
           <Wallet size={18} className="text-blue-600 flex-shrink-0" />
           <p className="text-sm text-blue-700 font-medium">
-            May {stats.pendingPayments} seller payment na naghihintay ng approval.
+            May {stats.pendingPayments} seller payment na naghihintay ng kumpirmasyon.
           </p>
         </div>
       )}
@@ -400,7 +400,7 @@ function OverviewTab() {
         <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-2xl p-3 mb-4">
           <Bike size={18} className="text-blue-600 flex-shrink-0" />
           <p className="text-sm text-blue-700 font-medium">
-            May {stats.pendingRiderPayments} rider payment na naghihintay ng approval.
+            May {stats.pendingRiderPayments} rider payment na naghihintay ng kumpirmasyon.
           </p>
         </div>
       )}
@@ -1675,7 +1675,7 @@ function FeesTab() {
   }
 
   async function rejectPayment(payment: FeePayment) {
-    if (!confirm('Sigurado ka bang gusto mong i-reject ang payment na ito?')) return;
+    if (!confirm('Sigurado ka bang gusto mong markahan na HINDI PUMASOK ang bayad na ito?')) return;
     setProcessing(payment.id);
     try {
       await supabase.from('fee_payments').update({ status: 'rejected' }).eq('id', payment.id);
@@ -1712,13 +1712,13 @@ function FeesTab() {
         <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4">
           <AlertCircle size={18} className="text-amber-600 flex-shrink-0" />
           <p className="text-sm text-amber-700 font-medium">
-            May {pending.length} payment na naghihintay ng approval.
+            May {pending.length} payment na naghihintay ng kumpirmasyon.
           </p>
         </div>
       )}
 
       {/* Pending Payments */}
-      <h3 className="font-bold text-gray-800 mb-3 text-sm">Naghihintay ng Approval</h3>
+      <h3 className="font-bold text-gray-800 mb-3 text-sm">Naghihintay ng Kumpirmasyon</h3>
       {loading ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 size={24} className="animate-spin text-brand-500" />
@@ -1747,7 +1747,7 @@ function FeesTab() {
                   className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-green-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition disabled:opacity-50"
                 >
                   {processing === p.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                  Approve
+                  Payment Received
                 </button>
                 <button
                   onClick={() => rejectPayment(p)}
@@ -1755,7 +1755,7 @@ function FeesTab() {
                   className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-red-50 text-red-600 rounded-xl text-xs font-semibold active:scale-95 transition disabled:opacity-50"
                 >
                   <X size={14} />
-                  Reject
+                  Hindi Pumasok
                 </button>
               </div>
             </div>
@@ -1811,7 +1811,7 @@ function FeesTab() {
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                   p.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                 }`}>
-                  {p.status === 'approved' ? 'Approved' : 'Rejected'}
+                  {p.status === 'approved' ? 'Received' : 'Hindi Pumasok'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -2014,7 +2014,7 @@ function RiderFeesTab() {
   }
 
   async function rejectPayment(payment: RiderFeePayment) {
-    if (!confirm('Sigurado ka bang gusto mong i-reject ang payment na ito?')) return;
+    if (!confirm('Sigurado ka bang gusto mong markahan na HINDI PUMASOK ang bayad na ito?')) return;
     setProcessing(payment.id);
     try {
       await supabase.from('rider_fee_payments').update({ status: 'rejected' }).eq('id', payment.id);
@@ -2049,13 +2049,13 @@ function RiderFeesTab() {
         <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4">
           <AlertCircle size={18} className="text-amber-600 flex-shrink-0" />
           <p className="text-sm text-amber-700 font-medium">
-            May {pending.length} rider payment na naghihintay ng approval.
+            May {pending.length} rider payment na naghihintay ng kumpirmasyon.
           </p>
         </div>
       )}
 
       {/* Pending Payments */}
-      <h3 className="font-bold text-gray-800 mb-3 text-sm">Naghihintay ng Approval</h3>
+      <h3 className="font-bold text-gray-800 mb-3 text-sm">Naghihintay ng Kumpirmasyon</h3>
       {loading ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 size={24} className="animate-spin text-blue-500" />
@@ -2090,7 +2090,7 @@ function RiderFeesTab() {
                   className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-green-600 text-white rounded-xl text-xs font-semibold active:scale-95 transition disabled:opacity-50"
                 >
                   {processing === p.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                  Approve
+                  Payment Received
                 </button>
                 <button
                   onClick={() => rejectPayment(p)}
@@ -2098,7 +2098,7 @@ function RiderFeesTab() {
                   className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-red-50 text-red-600 rounded-xl text-xs font-semibold active:scale-95 transition disabled:opacity-50"
                 >
                   <X size={14} />
-                  Reject
+                  Hindi Pumasok
                 </button>
               </div>
             </div>
@@ -2154,7 +2154,7 @@ function RiderFeesTab() {
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                   p.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                 }`}>
-                  {p.status === 'approved' ? 'Approved' : 'Rejected'}
+                  {p.status === 'approved' ? 'Received' : 'Hindi Pumasok'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -2964,7 +2964,7 @@ function VideoCreditsTab({ onPendingCountChange }: { onPendingCountChange: (coun
                 : 'bg-white text-gray-500 border border-gray-200'
             }`}
           >
-            {f === 'all' ? 'Lahat' : f === 'pending' ? 'Pending' : f === 'approved' ? 'Approved' : 'Rejected'}
+            {f === 'all' ? 'Lahat' : f === 'pending' ? 'Pending' : f === 'approved' ? 'Received' : 'Hindi Pumasok'}
             {f === 'pending' && pendingCount > 0 && (
               <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] font-bold">
                 {pendingCount}
@@ -3001,7 +3001,7 @@ function VideoCreditsTab({ onPendingCountChange }: { onPendingCountChange: (coun
                   p.status === 'approved' ? 'bg-green-100 text-green-700' :
                   'bg-red-100 text-red-700'
                 }`}>
-                  {p.status === 'pending' ? 'Pending' : p.status === 'approved' ? 'Approved' : 'Rejected'}
+                  {p.status === 'pending' ? 'Pending' : p.status === 'approved' ? 'Received' : 'Hindi Pumasok'}
                 </span>
               </div>
 

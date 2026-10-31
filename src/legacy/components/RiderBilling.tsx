@@ -118,7 +118,7 @@ export function RiderBilling() {
     if (insertError) {
       setError(insertError.message);
     } else {
-      setSuccess('Nai-submit na ang payment mo! Maghihintay ng approval mula sa admin.');
+      setSuccess('Nai-submit na ang payment mo! Hihintayin ang kumpirmasyon ng admin na natanggap ang bayad.');
       setShowPayModal(false);
       setReferenceNumber('');
       setPayAmount('');
@@ -181,7 +181,7 @@ export function RiderBilling() {
       {pendingPayments.length > 0 && (
         <div className="flex items-center gap-2 text-amber-700 text-sm bg-amber-50 border border-amber-200 px-4 py-3 rounded-xl mb-4">
           <AlertCircle size={16} className="flex-shrink-0" />
-          <span>May {pendingPayments.length} pending payment{pendingPayments.length > 1 ? 's' : ''} na naghihintay ng approval ng admin.</span>
+          <span>May {pendingPayments.length} pending payment{pendingPayments.length > 1 ? 's' : ''} na hinihintay ang kumpirmasyon ng admin.</span>
         </div>
       )}
 
@@ -399,7 +399,7 @@ export function RiderBilling() {
                       p.status === 'pending' ? 'bg-amber-100 text-amber-700' :
                       'bg-red-100 text-red-700'
                     }`}>
-                      {p.status === 'approved' ? 'Na-aprubahan' : p.status === 'pending' ? 'Naghihintay' : 'Hindi na-aprubahan'}
+                      {p.status === 'approved' ? 'Natanggap' : p.status === 'pending' ? 'Naghihintay' : 'Hindi Pumasok'}
                     </span>
                   </div>
                   <p className="text-xs text-gray-400">Ref: {p.reference_number}</p>
