@@ -3,6 +3,7 @@ import { latestVisibleMessage } from '../lib/chatNotices';
 import { lockedGroupRider } from '../lib/multiStoreRider';
 import { stockLevel, daysLeft } from '../lib/inventoryStatus';
 import { sellerDashboardStats } from '../lib/sellerDashboardStats';
+import { sellerFreezeNotice, formatSellerPeso } from '../lib/sellerFreezeNotice';
 import { readCargoWeight, checkAssignmentVehicle } from '../lib/riderAssignmentActions';
 import { canCarryCargo } from '../lib/riderAssignment';
 import { isBuyerArranged, getPickedRiderId, buildBuyerNote } from '../lib/buyerCargo';
@@ -263,6 +264,25 @@ export function SellerApp() {
         </div>
       )}
       <div className="flex-1 pb-24 overflow-y-auto">
+        {tab === 'dashboard' && sellerFreezeNotice(sellerFee) && (
+          <div className="bg-red-50 border-b border-red-200 px-5 py-3 flex items-start gap-3">
+            <AlertTriangle size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-red-700">{sellerFreezeNotice(sellerFee)!.title}</p>
+              <p className="mt-0.5 text-xs leading-5 text-red-600">{sellerFreezeNotice(sellerFee)!.body}</p>
+              <p className="mt-1 text-xs font-semibold text-red-700">
+                Kabuuang babayaran: {formatSellerPeso(sellerFreezeNotice(sellerFee)!.amount)}
+              </p>
+            </div>
+            <button
+              onClick={() => openTab('billing')}
+              className="flex-shrink-0 self-center rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white active:scale-95 transition"
+            >
+              {sellerFreezeNotice(sellerFee)!.cta}
+            </button>
+          </div>
+        )}
+
         {tab === 'dashboard' && <SellerDashboard store={store} onEditStore={() => setShowStoreForm(true)} onOpenMessages={() => openTab('messages')} onOpenOrders={() => openTab('orders')} onViewStore={() => { sessionStorage.setItem('gp_store_preview_from_dashboard', '1'); navigate(`/s/${store.slug}`); }} onSignOut={signOut} unreadMessages={unreadCount} canAct={canAct} />}
         {tab === 'products' && (
           <SellerProducts key={productsVersion} store={store} onAdd={() => { setEditingProduct(null); setShowProductForm(true); }} onEdit={(p) => { setEditingProduct(p); setShowProductForm(true); }} />
