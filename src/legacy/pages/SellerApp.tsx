@@ -177,6 +177,13 @@ export function SellerApp() {
     checkFreeze();
   }, [profile]);
 
+  const [showPayRequired, setShowPayRequired] = useState(false);
+  useEffect(() => {
+    const open = () => setShowPayRequired(true);
+    window.addEventListener('gp:seller-payment-required', open);
+    return () => window.removeEventListener('gp:seller-payment-required', open);
+  }, []);
+
   // Track unread messages for badge
   useEffect(() => {
     if (!profile) return;
@@ -236,41 +243,6 @@ export function SellerApp() {
   }
 
   const canAct = profile?.is_active ?? true;
-
-  // Frozen due to unpaid fees — full screen block
-  if (isFeeFrozen) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-5 max-w-md mx-auto">
-        <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center mb-4">
-          <Lock size={40} className="text-red-600" />
-        </div>
-        <h2 className="text-xl font-bold text-gray-800 mb-2 text-center">Naka-freeze ang Account</h2>
-        <p className="text-sm text-gray-500 text-center mb-1">
-          Na-freeze ang iyong account dahil hindi nabayaran ang payable na ₱{(Number(sellerFee?.total_payable) || 0).toFixed(2)}.
-        </p>
-        <p className="text-sm text-gray-500 text-center mb-6">
-          Magbayad muna sa admin para ma-reactivate ang iyong account at makapag-negosyo ulit.
-        </p>
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 w-full mb-4">
-          <p className="text-xs text-gray-400 mb-1">Total Payable</p>
-          <p className="text-2xl font-bold text-red-600">₱{(Number(sellerFee?.total_payable) || 0).toFixed(2)}</p>
-        </div>
-        <a
-          href="mailto:jdabblogger@gmail.com"
-          className="w-full py-3.5 bg-brand-600 text-white rounded-xl font-semibold text-sm text-center active:scale-95 transition flex items-center justify-center gap-2"
-        >
-          <MessageCircle size={18} />
-          Contact Admin
-        </a>
-        <button
-          onClick={async () => { await supabase.auth.signOut(); }}
-          className="mt-3 px-6 py-2.5 bg-gray-100 text-gray-600 rounded-xl font-medium text-sm"
-        >
-          Mag-sign out
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col w-full max-w-7xl mx-auto relative">
@@ -402,6 +374,25 @@ export function SellerApp() {
               className="w-full py-2.5 bg-gray-100 text-gray-600 rounded-xl font-medium text-sm"
             >
               Mamaya na
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showPayRequired && (
+        <div className="fixed inset-0 z-[70] bg-black/50 flex items-center justify-center px-5" onClick={() => setShowPayRequired(false)}>
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center mx-auto mb-4">
+              <Wallet size={32} className="text-brand-600" />
+            </div>
+            <p className="text-base text-gray-700 text-center mb-5 font-medium">
+              Umabot na sa ₱1000 ang iyong payables, kailangan na magbayad para patuloy maka pag tinda dito sa GoPalengke.
+            </p>
+            <button
+              onClick={() => { setTab('billing'); setShowPayRequired(false); }}
+              className="w-full py-3 bg-brand-600 text-white rounded-xl font-semibold text-sm active:scale-95 transition"
+            >
+              Magbayad na Ngayon
             </button>
           </div>
         </div>
@@ -2021,6 +2012,14 @@ function SellerOrderDetail({ order, store, onBack, onOpenChat }: { order: Order;
   async function updateStatus(status: OrderStatus) {
     if ((status === 'accepted' || status === 'cancelled') && !canReviewNew) return;
     setUpdating(true);
+    if (status === 'accepted') {
+      const { data: fee } = await supabase.from('seller_fees').select('frozen_at').eq('seller_id', store.seller_id).maybeSingle();
+      if (fee?.frozen_at) {
+        window.dispatchEvent(new CustomEvent('gp:seller-payment-required'));
+        setUpdating(false);
+        return;
+      }
+    }
     if (status === 'accepted' && !(await ensureGps('seller'))) { setUpdating(false); return; }
     await supabase.from('orders').update({ status }).eq('id', currentOrder.id);
     setCurrentOrder(prev => ({ ...prev, status }));
