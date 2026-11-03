@@ -22,6 +22,7 @@ import { UserProfileReview } from '../components/UserProfileReview';
 import { AdminMarketingMaterials } from '../components/affiliate/AdminMarketingMaterials';
 import { OnboardingReminders } from '../components/OnboardingReminders';
 import { BetaTestersAdmin } from '../components/BetaTestersAdmin';
+import { RoleEmailBroadcastButton } from '../components/RoleEmailBroadcast';
 import { AdminNavigation, adminNavigationGroups, type AdminTab } from '../components/AdminNavigation';
 import { Button } from '@/components/ui/button';
 import { formatRegionForDisplay } from '../lib/philippineLocations';
@@ -755,7 +756,7 @@ function UsersTab({ onStartCall, onStartChat }: { onStartCall: (user: Profile) =
     <div className="px-5 py-4">
       <div className="flex items-center justify-between gap-3 mb-3">
         <h2 className="text-lg font-bold text-gray-800">User Management</h2>
-        <StorageCleanupButton />
+        <div className="flex items-center gap-2"><RoleEmailBroadcastButton defaultGroup={roleFilter === 'seller' || roleFilter === 'buyer' || roleFilter === 'rider' ? roleFilter : 'buyer'} /><StorageCleanupButton /></div>
       </div>
 
 
@@ -3672,6 +3673,7 @@ function AffiliatesTab() {
 
   return (
     <div className="px-5 py-4 space-y-4">
+      <div className="flex justify-end"><RoleEmailBroadcastButton defaultGroup="affiliate" /></div>
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mb-2">
