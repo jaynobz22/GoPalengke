@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { emailCta, emailLayout } from "./email-layout";
 
 // GoPalengke's own database (external project). Anon key is public.
 export const GP_URL = "https://melwjygaczevpasgazfo.supabase.co";
@@ -61,13 +62,10 @@ function emailHtml(c: Candidate) {
   const approvalBox = approval
     ? `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:12px 14px;margin:0 0 16px;font-size:14px;line-height:1.6;color:#92400e">⏳ ${esc(approval)}</div>`
     : "";
-  return `<!doctype html><html><body style="margin:0;background:#ffffff;font-family:Arial,sans-serif;color:#1f2937">
-<div style="max-width:560px;margin:0 auto;padding:24px">
-<div style="background:#15803d;border-radius:16px 16px 0 0;padding:20px 24px;color:#ffffff">
-<div style="font-size:22px;font-weight:bold">GoPalengke</div>
-<div style="font-size:13px;opacity:.9">Online palengke ng bayan</div></div>
-<div style="border:1px solid #e5e7eb;border-top:0;border-radius:0 0 16px 16px;padding:24px">
-<h1 style="font-size:20px;margin:0 0 12px">${copy.title}</h1>
+  return emailLayout({
+    title: copy.subject,
+    preheader: copy.title,
+    bodyHtml: `<h1 style="font-size:20px;margin:0 0 12px;color:#111827">${copy.title}</h1>
 <p style="font-size:15px;line-height:1.6;margin:0 0 8px">Hi ${first},</p>
 <p style="font-size:15px;line-height:1.6;margin:0 0 8px">${lead}</p>
 <ul style="font-size:15px;line-height:1.5;padding-left:20px;margin:8px 0 18px">${items}</ul>
@@ -76,14 +74,8 @@ ${approvalBox}
 <div style="font-size:14px;font-weight:bold;color:#1e40af;margin-bottom:6px">📍 Pakibuksan ang Location (GPS)</div>
 <div style="font-size:14px;line-height:1.6;color:#1e3a8a">${GPS_NOTE[c.role]}</div>
 </div>
-<a href="${SITE}/" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:bold;padding:14px 22px;border-radius:12px">${copy.cta}</a>
-<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:14px 16px;margin:22px 0 0">
-<div style="font-size:14px;font-weight:bold;margin-bottom:4px">🎬 Panoorin ang mga tutorial</div>
-<div style="font-size:14px;line-height:1.6;color:#4b5563">May mga maikling video kung paano gamitin ang GoPalengke step by step.</div>
-<a href="${SITE}/tutorial" style="display:inline-block;margin-top:8px;color:#15803d;font-weight:bold;text-decoration:underline;font-size:14px">Buksan ang Tutorials</a>
-</div>
-<p style="font-size:13px;color:#6b7280;margin:24px 0 0">May tanong? I-reply lang ang email na ito o i-message kami sa GoPalengke app.</p>
-</div></div></body></html>`;
+${emailCta(copy.cta, `${SITE}/`)}`,
+  });
 }
 
 async function findCandidates(sb: ReturnType<typeof createClient>): Promise<Candidate[]> {

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { emailCta, emailLayout } from "./email-layout";
 import { z } from "zod";
 
 const GP_URL = "https://melwjygaczevpasgazfo.supabase.co";
@@ -13,15 +14,16 @@ function esc(s: string) {
 }
 
 function inviteHtml(name: string) {
-  return `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:24px;color:#111827">
-<h2 style="color:#16a34a;margin:0 0 12px">GoPalengke Beta Testing</h2>
+  return emailLayout({
+    title: "GoPalengke Beta Testing",
+    preheader: "Salamat sa pagsali bilang beta tester!",
+    bodyHtml: `<h1 style="font-size:20px;margin:0 0 12px;color:#111827">GoPalengke Beta Testing</h1>
 <p>Hi ${esc(name)},</p>
 <p>Salamat sa pagsali bilang beta tester! Naka-lista ka na sa GoPalengke closed testing sa Google Play. Gamitin ang parehong Gmail account na ito sa Play Store ng Android phone mo.</p>
-<p style="margin:24px 0"><a href="${OPT_IN_URL}" style="background:#16a34a;color:#ffffff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:bold">1. Maging Tester (Opt in)</a></p>
-<p style="margin:24px 0"><a href="${STORE_URL}" style="background:#15803d;color:#ffffff;padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:bold">2. I-download ang App sa Play Store</a></p>
-<p>Pakigamit ang app kahit isang beses kada araw sa loob ng 14 na araw at huwag i-uninstall. Kung "App not available" ang lumabas, maghintay ng ilang minuto at subukan ulit.</p>
-<p style="font-size:13px;color:#6b7280">May tanong? I-reply lang ang email na ito.</p>
-</div>`;
+${emailCta("1. Maging Tester (Opt in)", OPT_IN_URL)}
+${emailCta("2. I-download ang App sa Play Store", STORE_URL, "#15803d")}
+<p>Pakigamit ang app kahit isang beses kada araw sa loob ng 14 na araw at huwag i-uninstall. Kung "App not available" ang lumabas, maghintay ng ilang minuto at subukan ulit.</p>`,
+  });
 }
 
 export const scheduleBetaInvite = createServerFn({ method: "POST" })

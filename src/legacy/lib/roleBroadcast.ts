@@ -1,4 +1,5 @@
 // Browser-safe helpers for admin role-targeted email broadcasts.
+import { emailLayout, escapeEmailHtml } from '@/lib/email-layout';
 export const BROADCAST_GROUPS = ['affiliate', 'rider', 'seller', 'buyer'] as const;
 export type BroadcastGroup = typeof BROADCAST_GROUPS[number];
 
@@ -25,13 +26,15 @@ export function broadcastRecipients(rows: Row[], group: BroadcastGroup): { email
 }
 
 export function escapeHtml(s: string) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return escapeEmailHtml(s);
 }
 
 export function broadcastHtml(name: string, body: string) {
-  const paras = escapeHtml(body).split(/\n{2,}/).map(p => `<p style="margin:0 0 14px;line-height:1.6">${p.replace(/\n/g, '<br>')}</p>`).join('');
-  return `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;background:#fff">
-<div style="background:#16a34a;color:#fff;padding:18px 24px;font-size:20px;font-weight:bold">GoPalengke</div>
-<div style="padding:24px;color:#1f2937;font-size:15px"><p style="margin:0 0 14px">Hi ${escapeHtml(name || 'ka-GoPalengke')},</p>${paras}
-<p style="font-size:13px;color:#6b7280;margin:24px 0 0">— GoPalengke Admin</p></div></div>`;
+  const paras = escapeHtml(body).split(/\n{2,}/).map(p => `<p style="margin:0 0 14px;line-height:1.65">${p.replace(/\n/g, '<br>')}</p>`).join('');
+  return emailLayout({
+    title: 'GoPalengke',
+    preheader: body.slice(0, 120),
+    bodyHtml: `<p style="margin:0 0 14px;font-size:17px;font-weight:bold;color:#111827">Hi ${escapeHtml(name || 'ka-GoPalengke')},</p>${paras}
+<p style="font-size:13px;color:#6b7280;margin:24px 0 0">— GoPalengke Admin</p>`,
+  });
 }

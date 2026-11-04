@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { emailCode, emailLayout } from "./email-layout";
 import { z } from "zod";
 
 // Password reset for Buyer/Seller/Rider/Admin with its own "reset password" email
@@ -55,7 +56,7 @@ export const sendUserResetCode = createServerFn({ method: "POST" })
         from: "GoPalengke <admin@gopalengke.net>",
         to: [email],
         subject: "GoPalengke: Code para sa bagong password",
-        html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px"><h2 style="color:#16a34a">GoPalengke</h2><p>Hi ${name},</p><p>May humiling na palitan ang password ng iyong GoPalengke account. Gamitin ang code sa ibaba para makagawa ng bagong password:</p><p style="font-size:32px;font-weight:bold;letter-spacing:6px;color:#16a34a">${code}</p><p>Valid ito ng mga 15 minuto. Kung hindi ikaw ang humingi nito, huwag pansinin ang email na ito — hindi mapapalitan ang password mo.</p></div>`,
+        html: emailLayout({ title: "Reset password", preheader: "Code para sa bagong password", bodyHtml: `<p>Hi ${name},</p><p>May humiling na palitan ang password ng iyong GoPalengke account. Gamitin ang code sa ibaba para makagawa ng bagong password:</p>${emailCode(code)}<p>Valid ito ng mga 15 minuto. Kung hindi ikaw ang humingi nito, huwag pansinin ang email na ito — hindi mapapalitan ang password mo.</p>` }),
       }),
     });
     if (!res.ok) throw new Error("Hindi maipadala ang code. Subukan ulit.");

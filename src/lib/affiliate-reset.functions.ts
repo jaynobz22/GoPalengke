@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { emailCode, emailLayout } from "./email-layout";
 import { z } from "zod";
 
 // Affiliate password reset. Affiliates use their own table (not app login),
@@ -56,7 +57,7 @@ export const sendAffiliateResetCode = createServerFn({ method: "POST" })
         from: "GoPalengke Admin <admin@gopalengke.net>",
         to: [email],
         subject: "GoPalengke Affiliate: Code para sa bagong password",
-        html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px"><h2 style="color:#16a34a">GoPalengke Affiliate</h2><p>Hi ${name},</p><p>Ito ang code para makagawa ng bagong password:</p><p style="font-size:32px;font-weight:bold;letter-spacing:6px;color:#16a34a">${code}</p><p>Valid ito ng mga 15 minuto. Kung hindi ikaw ang humingi nito, huwag pansinin ang email na ito.</p></div>`,
+        html: emailLayout({ title: "GoPalengke Affiliate", preheader: "Code para sa bagong password", bodyHtml: `<h1 style="font-size:20px;margin:0 0 12px;color:#111827">GoPalengke Affiliate</h1><p>Hi ${name},</p><p>Ito ang code para makagawa ng bagong password:</p>${emailCode(code)}<p>Valid ito ng mga 15 minuto. Kung hindi ikaw ang humingi nito, huwag pansinin ang email na ito.</p>` }),
       }),
     });
     if (!res.ok) throw new Error("Hindi maipadala ang code. Subukan ulit.");
