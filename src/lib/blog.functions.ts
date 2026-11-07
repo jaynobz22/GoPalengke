@@ -105,6 +105,6 @@ export const uploadBlogImage = createServerFn({ method: "POST" })
     if (!m) throw new Error("JPG, PNG o WEBP lang.");
     const bytes = Uint8Array.from(atob(m[3] ?? ""), (c) => c.charCodeAt(0));
     const path = `images/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${m[2] === "jpeg" ? "jpg" : m[2]}`;
-    await upload(key, path, bytes, m[1]);
+    await upload(key, path, bytes, m[1] ?? "image/jpeg");
     return { url: publicUrl(path) };
   });
