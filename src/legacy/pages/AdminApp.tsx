@@ -20,6 +20,7 @@ import { AnalyticsDashboard } from '../components/AnalyticsDashboard';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { UserProfileReview } from '../components/UserProfileReview';
 import { AdminMarketingMaterials } from '../components/affiliate/AdminMarketingMaterials';
+import { AdminBlog } from '../components/AdminBlog';
 import { OnboardingReminders } from '../components/OnboardingReminders';
 import { BetaTestersAdmin } from '../components/BetaTestersAdmin';
 import { RoleEmailBroadcastButton } from '../components/RoleEmailBroadcast';
@@ -250,6 +251,7 @@ export function AdminApp() {
       {tab === 'settings' && <ErrorBoundary><SettingsTab /></ErrorBoundary>}
       {tab === 'affiliates' && <ErrorBoundary><AffiliatesTab /></ErrorBoundary>}
       {tab === 'marketing' && <ErrorBoundary><AdminMarketingMaterials /></ErrorBoundary>}
+      {tab === 'blog' && <ErrorBoundary><AdminBlog /></ErrorBoundary>}
         </main>
       </div>
 

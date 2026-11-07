@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BarChart3, Bike, ChevronDown, Coins, Mail, MapPin, Megaphone, MessageCircle, PlayCircle, Settings, Shield, TrendingUp, UserCheck, Users, Wallet, X, type LucideIcon } from 'lucide-react';
+import { BarChart3, Bike, BookOpen, ChevronDown, Coins, Mail, MapPin, Megaphone, MessageCircle, PlayCircle, Settings, Shield, TrendingUp, UserCheck, Users, Wallet, X, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +26,7 @@ export const adminNavigationGroups = [
   { id: 'content', label: 'Marketing & Guides', icon: Megaphone, tabs: [
     { id: 'marketing', label: 'Marketing', icon: Megaphone },
     { id: 'tutorials', label: 'Tutorials', icon: PlayCircle },
+    { id: 'blog', label: 'Blog', icon: BookOpen },
   ] },
   { id: 'management', label: 'Management', icon: Settings, tabs: [
     { id: 'geographic', label: 'Areas', icon: MapPin },

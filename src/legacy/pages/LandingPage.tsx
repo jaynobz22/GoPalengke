@@ -734,6 +734,7 @@ function Footer() {
     { label: 'Tutorials', hash: '/tutorial' },
     { label: 'Affiliate', hash: '/affiliate' },
     { label: 'Beta Testers', href: '/beta-tester' },
+    { label: 'Blog', href: '/blog' },
   ];
 
 
